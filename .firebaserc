@@ -1,8 +1,7 @@
 {
   "projects": {
-    "centinelamx": "centinela-mx",
-    "centinelaMX": "centinela-mx",
-    "default": "centinela-mx"
+    "centinela": "centinela-c5",
+    "default": "centinela-c5"
   },
   "targets": {},
   "etags": {}

@@ -2574,7 +2574,7 @@ class NavbarComplete {
 
     redirectToLogin() {
         const timestamp = new Date().getTime();
-        const loginUrl = `/usuarios/visitantes/inicioSesion/inicioSesion.html?logout=true&timestamp=${timestamp}&nocache=1`;
+        const loginUrl = `/index.html?logout=true&timestamp=${timestamp}&nocache=1`;
         window.location.href = loginUrl;
 
         setTimeout(() => {

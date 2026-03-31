@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Crear SuperAdmin | Centinela-Mx</title>
+    <title>Crear SuperAdmin | Centinela</title>
     
     <!-- Estilos -->
     <link rel="stylesheet" href="/components/personalization/personalization.css">
@@ -18,8 +18,617 @@
     <link rel="manifest" href="/manifest.json">
     <!-- SweetAlert2 -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    
 
     <style>
+        /* ========== RESET Y ESTILOS BASE ========== */
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: 'Rajdhani', sans-serif;
+    color: var(--color-text-primary);
+    background: var(--color-bg-primary);
+    min-height: 100vh;
+    overflow-x: hidden;
+}
+
+/* ========== LAYOUT PRINCIPAL ========== */
+.edit-main-container {
+    position: relative;
+    z-index: 100;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    padding: 1rem;
+}
+
+.edit-wrapper {
+    display: flex;
+    width: 100%;
+    max-width: 1100px;
+    min-height: 650px;
+    background: var(--color-bg-tertiary);
+    backdrop-filter: blur(8px);
+    border-radius: var(--border-radius-medium);
+    overflow: hidden;
+    box-shadow: var(--shadow-large);
+    border: 1px solid var(--color-border-light);
+}
+
+/* ========== PANELES ========== */
+.edit-left-panel,
+.edit-right-panel {
+    flex: 1;
+    padding: 2.5rem;
+    display: flex;
+    flex-direction: column;
+}
+
+.edit-left-panel {
+    border-right: 1px solid var(--color-border-light);
+    background: var(--color-bg-primary);
+}
+
+.edit-right-panel {
+    background: var(--color-bg-secondary);
+    overflow-y: auto;
+}
+
+/* ========== TIPOGRAFÍA ========== */
+.edit-main-title {
+    font-family: var(--font-family-primary);
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: var(--color-text-primary);
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+    margin-bottom: 0.5rem;
+    text-shadow: var(--text-shadow-effect);
+}
+
+.edit-sub-title {
+    color: var(--color-text-secondary);
+    font-size: 0.875rem;
+    line-height: 1.4;
+}
+
+.section-title {
+    font-family: var(--font-family-primary);
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: var(--color-text-primary);
+    text-transform: uppercase;
+    margin-bottom: 1.25rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.section-title i {
+    color: var(--color-accent-primary);
+}
+
+/* ========== COMPONENTES DE FOTOS ========== */
+.photo-section {
+    margin-bottom: 2.5rem;
+    text-align: center;
+}
+
+.photo-container {
+    position: relative;
+    width: 220px;
+    height: 220px;
+    margin: 0 auto 1.25rem;
+}
+
+.profile-circle {
+    width: 100%;
+    height: 100%;
+    border-radius: var(--border-radius-circle);
+    overflow: hidden;
+    border: 4px solid var(--color-accent-primary);
+    background-color: var(--color-bg-secondary);
+    cursor: pointer;
+    transition: var(--transition-default);
+    position: relative;
+}
+
+.profile-circle:hover {
+    transform: scale(1.05);
+    border-color: var(--color-accent-secondary);
+    box-shadow: var(--shadow-normal);
+}
+
+.profile-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.placeholder-text {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: var(--color-accent-primary);
+}
+
+.placeholder-text i {
+    font-size: 2rem;
+    margin-bottom: 0.5rem;
+}
+
+.placeholder-text span {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    max-width: 150px;
+}
+
+.edit-overlay {
+    position: absolute;
+    bottom: 15px;
+    right: 15px;
+    background-color: var(--color-accent-primary);
+    width: 50px;
+    height: 50px;
+    border-radius: var(--border-radius-circle);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: var(--transition-default);
+    border: 3px solid var(--color-bg-primary);
+    z-index: 10;
+}
+
+.edit-overlay:hover {
+    background-color: var(--color-accent-secondary);
+    transform: scale(1.15) rotate(10deg);
+}
+
+.edit-icon {
+    color: var(--color-text-dark);
+    font-size: 1.25rem;
+}
+
+.file-input {
+    display: none;
+}
+
+.photo-info {
+    color: var(--color-text-secondary);
+    font-size: 0.75rem;
+    line-height: 1.4;
+    margin-top: 0.5rem;
+}
+
+/* ========== FORMULARIO ========== */
+.edit-form-container {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.form-field-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.field-label {
+    color: var(--color-text-secondary);
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.field-label i {
+    color: var(--color-accent-primary);
+    font-size: 0.875rem;
+    min-width: 20px;
+}
+
+.input-wrapper {
+    position: relative;
+}
+
+.form-input-field {
+    width: 100%;
+    background: var(--color-bg-tertiary);
+    border: 1px solid var(--color-border-light);
+    border-radius: var(--border-radius-small);
+    padding: 0.875rem 1.125rem;
+    color: var(--color-text-primary);
+    font-size: 0.9375rem;
+    font-family: 'Rajdhani', sans-serif;
+    height: 50px;
+    transition: var(--transition-default);
+}
+
+.form-input-field:focus {
+    outline: none;
+    border-color: var(--color-accent-primary);
+    background: var(--color-hover, rgba(255, 255, 255, 0.05));
+    box-shadow: 0 0 0 1px var(--color-shadow, rgba(192, 192, 192, 0.1));
+}
+
+.form-input-field::placeholder {
+    color: var(--color-text-secondary);
+    opacity: 0.6;
+}
+
+.password-field .form-input-field {
+    padding-right: 3rem;
+}
+
+.toggle-password {
+    position: absolute;
+    right: 0.875rem;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: var(--color-text-secondary);
+    cursor: pointer;
+    font-size: 1.125rem;
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--border-radius-small);
+    transition: var(--transition-default);
+}
+
+.toggle-password:hover {
+    color: var(--color-accent-primary);
+    background: var(--color-hover, rgba(255, 255, 255, 0.05));
+}
+
+.divider {
+    height: 2px;
+    background: var(--color-border-light);
+    margin: 0.5rem 0;
+}
+
+/* ========== REQUISITOS DE CONTRASEÑA ========== */
+.password-requirements {
+    padding: 1rem;
+    background: var(--color-bg-tertiary);
+    border-radius: var(--border-radius-small);
+    border-left: 4px solid var(--color-accent-primary);
+}
+
+.requirements-title {
+    color: var(--color-accent-primary);
+    font-size: 0.8125rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    font-family: var(--font-family-primary);
+    text-transform: uppercase;
+}
+
+.requirements-list {
+    color: var(--color-text-secondary);
+    font-size: 0.75rem;
+    line-height: 1.5;
+    padding-left: 1.125rem;
+}
+
+.requirements-list li {
+    margin-bottom: 0.375rem;
+}
+
+/* ========== BOTONES ========== */
+.action-buttons {
+    display: flex;
+    gap: 1.25rem;
+    margin-top: 2.5rem;
+}
+
+.action-btn {
+    flex: 1;
+    border: none;
+    border-radius: var(--border-radius-small);
+    padding: 0.9375rem;
+    color: var(--color-text-primary);
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition-default);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.625rem;
+    height: 50px;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    font-family: 'Rajdhani', sans-serif;
+    box-shadow: var(--shadow-small);
+    background: linear-gradient(135deg, var(--color-accent-primary), var(--color-accent-secondary));
+}
+
+.action-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-normal);
+    background: linear-gradient(135deg, var(--color-accent-secondary), var(--color-accent-primary));
+}
+
+/* Botón REGISTRARSE (estilo específico) */
+.save-btn {
+    background: linear-gradient(135deg, var(--color-accent-primary), var(--color-accent-secondary));
+    color: var(--color-text-dark);
+}
+
+.save-btn:hover {
+    background: linear-gradient(135deg, var(--color-accent-secondary), var(--color-accent-primary));
+    color: var(--color-text-dark);
+}
+
+/* Botón CANCELAR (estilo específico) */
+.cancel-btn {
+    background: linear-gradient(135deg, var(--color-bg-tertiary), var(--color-text-secondary));
+    color: var(--color-text-primary);
+    border: 1px solid var(--color-border-light);
+}
+
+.cancel-btn:hover {
+    background: linear-gradient(135deg, var(--color-text-secondary), var(--color-bg-tertiary));
+    border-color: var(--color-accent-primary);
+}
+
+/* Botón VOLVER AL LOGIN */
+.back-btn-container {
+    margin-top: auto;
+}
+
+.back-btn {
+    border: none;
+    border-radius: var(--border-radius-small);
+    padding: 0.9375rem;
+    color: var(--color-text-dark);
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition-default);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    width: 100%;
+    height: 50px;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    font-family: 'Rajdhani', sans-serif;
+    text-decoration: none;
+    box-shadow: var(--shadow-small);
+    background: linear-gradient(135deg, var(--color-accent-primary), var(--color-accent-secondary));
+}
+
+.back-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-normal);
+    background: linear-gradient(135deg, var(--color-accent-secondary), var(--color-accent-primary));
+}
+
+.back-btn i {
+    font-size: 0.875rem;
+}
+
+/* ========== MENSAJES Y ALERTAS ========== */
+.message-container {
+    padding: 0.9375rem 1.125rem;
+    border-radius: var(--border-radius-small);
+    font-size: 0.875rem;
+    font-weight: 500;
+    animation: slideIn 0.3s ease;
+    display: none;
+}
+
+.message-container.success {
+    background-color: rgba(46, 204, 113, 0.1);
+    color: #2ecc71;
+    border: 1px solid rgba(46, 204, 113, 0.3);
+}
+
+.message-container.error {
+    background-color: rgba(231, 76, 60, 0.1);
+    color: #e74c3c;
+    border: 1px solid rgba(231, 76, 60, 0.3);
+}
+
+.message-container.info {
+    background-color: rgba(52, 152, 219, 0.1);
+    color: #3498db;
+    border: 1px solid rgba(52, 152, 219, 0.3);
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes slideOut {
+    from {
+        opacity: 1;
+        transform: translateY(0);
+    }
+
+    to {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+}
+
+
+/* ========== RESPONSIVE ========== */
+@media (max-width: 1100px) {
+    .edit-wrapper {
+        max-width: 850px;
+    }
+
+    .photo-container {
+        width: 200px;
+        height: 200px;
+    }
+}
+
+@media (max-width: 850px) {
+    .edit-wrapper {
+        flex-direction: column;
+        max-width: 550px;
+    }
+
+    .edit-left-panel {
+        border-right: none;
+        border-bottom: 1px solid var(--color-border-light);
+    }
+
+    .photo-container {
+        width: 180px;
+        height: 180px;
+    }
+
+    .action-buttons {
+        flex-direction: column;
+    }
+
+    /* SweetAlert2 responsive - usando estilos de personalization.css */
+    .swal2-popup {
+        width: 90% !important;
+    }
+}
+
+@media (max-width: 600px) {
+
+    .edit-left-panel,
+    .edit-right-panel {
+        padding: 1.5rem;
+    }
+
+    .photo-container {
+        width: 160px;
+        height: 160px;
+    }
+
+    .edit-main-title {
+        font-size: 1.25rem;
+    }
+
+    .modal-content {
+        padding: 1.5625rem;
+    }
+
+    .modal-buttons {
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+
+    .modal-btn {
+        width: 100%;
+        min-width: auto;
+    }
+
+    .action-buttons {
+        gap: 0.75rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .photo-container {
+        width: 140px;
+        height: 140px;
+    }
+
+    .edit-overlay {
+        width: 40px;
+        height: 40px;
+    }
+
+    .edit-main-title {
+        font-size: 1.125rem;
+    }
+
+    .form-input-field {
+        height: 45px;
+        padding: 0.75rem;
+    }
+
+    .action-btn,
+    .back-btn {
+        height: 45px;
+        font-size: 0.8125rem;
+    }
+
+    /* SweetAlert2 responsive - usando estilos de personalization.css */
+    .swal2-actions {
+        flex-direction: column !important;
+        width: 100% !important;
+    }
+
+    .swal2-styled {
+        width: 100% !important;
+        margin: 0.25rem 0 !important;
+    }
+}
+
+/* ========== ANIMACIONES ADICIONALES ========== */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes slideInRight {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@keyframes slideOutRight {
+    from {
+        transform: translateX(0);
+        opacity: 1;
+    }
+
+    to {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+}
         .info-box {
             background: var(--color-bg-tertiary);
             border-radius: var(--border-radius-small);

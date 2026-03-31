@@ -1,6 +1,7 @@
 // ARCHIVO JS PARA CREAR COLABORADOR - VERSIÓN CORREGIDA (SIN DOBLE SELECCIÓN)
 // CON REGISTRO DE BITÁCORA Y CAMPO TELÉFONO NUMÉRICO
 // CON SUCURSALES - SOLO SI EL ÁREA ES "SUCURSALES"
+// ROL ELIMINADO - AHORA SE USA UN ROL POR DEFECTO "colaborador"
 // ==================== IMPORTS CORREGIDOS ====================
 import { UserManager } from '/clases/user.js';
 import { AreaManager } from '/clases/area.js';
@@ -143,7 +144,7 @@ async function registrarCreacionColaborador(colaboradorData, usuarioActual) {
                 colaboradorNombre: colaboradorData.nombreCompleto,
                 colaboradorEmail: colaboradorData.correoElectronico,
                 colaboradorTelefono: colaboradorData.telefono || 'No especificado',
-                colaboradorRol: colaboradorData.rol || 'colaborador',
+                colaboradorRol: 'colaborador', // Rol fijo por defecto
                 areaAsignadaId: colaboradorData.areaAsignadaId || null,
                 sucursalAsignadaId: colaboradorData.sucursalAsignadaId || null,
                 fechaCreacion: new Date().toISOString()
@@ -231,7 +232,7 @@ function obtenerElementosDOM() {
             nombreCompleto: document.getElementById('nombreCompleto'),
             correoElectronico: document.getElementById('correoElectronico'),
             telefono: document.getElementById('telefono'), // Nuevo campo
-            rol: document.getElementById('rol'),
+            // NOTA: El campo 'rol' ha sido ELIMINADO
             areaSelect: document.getElementById('areaSelect'),
             cargoEnAreaSelect: document.getElementById('cargoEnAreaSelect'),
             sucursalContainer: document.getElementById('sucursalContainer'),
@@ -759,10 +760,8 @@ function validarFormulario(elements) {
         errores.push('Las contraseñas no coinciden');
     }
 
-    // Validar rol en el sistema
-    if (elements.rol && !elements.rol.value) {
-        errores.push('Debes seleccionar un rol en el sistema');
-    }
+    // NOTA: La validación del campo ROL ha sido eliminada
+    // El rol se asignará automáticamente como "colaborador"
 
     return errores;
 }
@@ -872,7 +871,7 @@ async function registrarColaborador(event, elements, userManager, usuario) {
             <p><strong>Nombre:</strong> ${elements.nombreCompleto.value.trim()}</p>
             <p><strong>Email:</strong> ${elements.correoElectronico.value.trim()}</p>
             <p><strong>Teléfono:</strong> ${elements.telefono?.value.trim() || 'No especificado'}</p>
-            <p><strong>Rol en sistema:</strong> ${elements.rol ? elements.rol.options[elements.rol.selectedIndex].text : 'No especificado'}</p>
+            <p><strong>Rol en sistema:</strong> Colaborador (asignado automáticamente)</p>
             <p><strong>Área asignada:</strong> ${areaNombre}</p>
             <p><strong>Cargo en el área:</strong> ${cargoNombre}</p>
     `;
@@ -935,8 +934,8 @@ async function registrarColaborador(event, elements, userManager, usuario) {
             sucursalAsignadaNombre: sucursalNombre,
             sucursalAsignadaCiudad: sucursalCiudad,
 
-            // El campo rol es para el nivel de acceso
-            rol: elements.rol ? elements.rol.value : 'colaborador',
+            // ROL POR DEFECTO: "colaborador" (campo eliminado del formulario)
+            rol: 'colaborador',
 
             // Campos de sistema
             status: true,
@@ -996,6 +995,7 @@ async function mostrarExitoRegistro(colaboradorData, esAreaSucursales = false, s
                 <p><strong>Email:</strong> ${colaboradorData.correoElectronico}</p>
                 <p><strong>Teléfono:</strong> ${colaboradorData.telefono || 'No especificado'}</p>
                 <p><strong>Organización:</strong> ${colaboradorData.organizacion}</p>
+                <p><strong>Rol:</strong> Colaborador</p>
                 ${mensajeSucursal}
                 <p style="margin-top: 15px;"><i class="fas fa-envelope"></i> Se ha enviado un correo de verificación</p>
             </div>
