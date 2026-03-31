@@ -1,4 +1,5 @@
-// user.js - VERSIÓN COMPLETA CON ÍNDICES, NOTIFICACIONES Y REGISTRO DE CONSUMO FIREBASE
+// user.js - VERSIÓN COMPLETA CON SUCURSALES
+// CON REGISTRO DE CONSUMO FIREBASE
 
 import { db, auth } from '/config/firebase-config.js';
 import {
@@ -52,6 +53,11 @@ class User {
         this.areaAsignadaId = data.areaAsignadaId || null;
         this.areaAsignadaNombre = data.areaAsignadaNombre || '';
         this.cargoId = data.cargoId || null;
+
+        // ✅ CAMPOS DE SUCURSAL
+        this.sucursalAsignadaId = data.sucursalAsignadaId || null;
+        this.sucursalAsignadaNombre = data.sucursalAsignadaNombre || null;
+        this.sucursalAsignadaCiudad = data.sucursalAsignadaCiudad || null;
 
         this.dispositivos = data.dispositivos || [];
 
@@ -370,7 +376,11 @@ class UserManager {
                         creadoPorEmail: data.creadoPorEmail,
                         creadoPorNombre: data.creadoPorNombre,
                         actualizadoPor: data.actualizadoPor,
-                        telefono: data.telefono || '' // Nuevo campo
+                        telefono: data.telefono || '', // Nuevo campo
+                        // ✅ CAMPOS DE SUCURSAL
+                        sucursalAsignadaId: data.sucursalAsignadaId || null,
+                        sucursalAsignadaNombre: data.sucursalAsignadaNombre || null,
+                        sucursalAsignadaCiudad: data.sucursalAsignadaCiudad || null
                     });
 
                     this.currentUser = user;
@@ -493,12 +503,13 @@ class UserManager {
             throw error;
         }
     }
+
     /**
-  * Crea un nuevo Administrador del Sistema (MASTER)
-  * @param {Object} masterData - Datos del master { nombreCompleto, correoElectronico, fotoUsuario (opcional), telefono (opcional) }
-  * @param {string} password - Contraseña
-  * @returns {Promise<Object>} - Resultado de la creación
-  */
+     * Crea un nuevo Administrador del Sistema (MASTER)
+     * @param {Object} masterData - Datos del master { nombreCompleto, correoElectronico, fotoUsuario (opcional), telefono (opcional) }
+     * @param {string} password - Contraseña
+     * @returns {Promise<Object>} - Resultado de la creación
+     */
     async createMaster(masterData, password) {
         try {
             const emailExists = await this.verificarCorreoExistente(masterData.correoElectronico, 'todos');
@@ -675,7 +686,11 @@ class UserManager {
                 fechaCreacion: serverTimestamp(),
                 fechaActualizacion: serverTimestamp(),
                 ultimoLogin: null,
-                telefono: colaboradorData.telefono || '' // Nuevo campo
+                telefono: colaboradorData.telefono || '', // Nuevo campo
+                // ✅ CAMPOS DE SUCURSAL
+                sucursalAsignadaId: colaboradorData.sucursalAsignadaId || null,
+                sucursalAsignadaNombre: colaboradorData.sucursalAsignadaNombre || null,
+                sucursalAsignadaCiudad: colaboradorData.sucursalAsignadaCiudad || null
             };
 
             // [MODIFICACIÓN]: Registrar ESCRITURA
@@ -1404,6 +1419,17 @@ class UserManager {
                 actualizadoPor: this.currentUser?.id || 'sistema'
             };
 
+            // ✅ ASEGURAR QUE LOS CAMPOS DE SUCURSAL SE GUARDEN
+            if (data.sucursalAsignadaId !== undefined) {
+                updateData.sucursalAsignadaId = data.sucursalAsignadaId;
+            }
+            if (data.sucursalAsignadaNombre !== undefined) {
+                updateData.sucursalAsignadaNombre = data.sucursalAsignadaNombre;
+            }
+            if (data.sucursalAsignadaCiudad !== undefined) {
+                updateData.sucursalAsignadaCiudad = data.sucursalAsignadaCiudad;
+            }
+
             // [MODIFICACIÓN]: Registrar ACTUALIZACIÓN
             await consumo.registrarFirestoreActualizacion(coleccion, id);
 
@@ -1430,6 +1456,9 @@ class UserManager {
                     }
                     if (data.telefono && data.telefono !== usuarioAntes?.telefono) {
                         cambios.push(`teléfono: "${usuarioAntes?.telefono || 'No registrado'}" → "${data.telefono}"`);
+                    }
+                    if (data.sucursalAsignadaNombre !== undefined && data.sucursalAsignadaNombre !== usuarioAntes?.sucursalAsignadaNombre) {
+                        cambios.push(`sucursal: "${usuarioAntes?.sucursalAsignadaNombre || 'No asignada'}" → "${data.sucursalAsignadaNombre || 'No asignada'}"`);
                     }
 
                     await historial.registrarActividad({
@@ -1585,7 +1614,11 @@ class UserManager {
                 const data = doc.data();
                 colaboradores.push(new User(doc.id, {
                     ...data,
-                    cargo: 'colaborador'
+                    cargo: 'colaborador',
+                    // ✅ CAMPOS DE SUCURSAL
+                    sucursalAsignadaId: data.sucursalAsignadaId || null,
+                    sucursalAsignadaNombre: data.sucursalAsignadaNombre || null,
+                    sucursalAsignadaCiudad: data.sucursalAsignadaCiudad || null
                 }));
             });
 
@@ -1632,7 +1665,11 @@ class UserManager {
                 const data = doc.data();
                 colaboradores.push(new User(doc.id, {
                     ...data,
-                    cargo: 'colaborador'
+                    cargo: 'colaborador',
+                    // ✅ CAMPOS DE SUCURSAL
+                    sucursalAsignadaId: data.sucursalAsignadaId || null,
+                    sucursalAsignadaNombre: data.sucursalAsignadaNombre || null,
+                    sucursalAsignadaCiudad: data.sucursalAsignadaCiudad || null
                 }));
             });
 
@@ -1678,10 +1715,11 @@ class UserManager {
             return [];
         }
     }
+
     /**
- * Obtiene la lista de Administradores del Sistema (MASTERS)
- * @returns {Promise<Array<User>>} - Lista de usuarios masters
- */
+     * Obtiene la lista de Administradores del Sistema (MASTERS)
+     * @returns {Promise<Array<User>>} - Lista de usuarios masters
+     */
     async getMasters() {
         try {
             // [MODIFICACIÓN]: Registrar LECTURA
@@ -1749,7 +1787,11 @@ class UserManager {
                 const data = doc.data();
                 usuariosInactivos.push(new User(doc.id, {
                     ...data,
-                    cargo: 'colaborador'
+                    cargo: 'colaborador',
+                    // ✅ CAMPOS DE SUCURSAL
+                    sucursalAsignadaId: data.sucursalAsignadaId || null,
+                    sucursalAsignadaNombre: data.sucursalAsignadaNombre || null,
+                    sucursalAsignadaCiudad: data.sucursalAsignadaCiudad || null
                 }));
             });
 
@@ -1761,7 +1803,7 @@ class UserManager {
         }
     }
 
-    // ========== MÉTODO GETUSERBYID (ACTUALIZADO CON MASTER) ==========
+    // ========== MÉTODO GETUSERBYID (ACTUALIZADO CON MASTER Y SUCURSAL) ==========
     async getUserById(id) {
         const userInMemory = this.users.find(user => user.id === id);
         if (userInMemory) {
@@ -1864,7 +1906,11 @@ class UserManager {
                             creadoPorEmail: data.creadoPorEmail,
                             creadoPorNombre: data.creadoPorNombre,
                             actualizadoPor: data.actualizadoPor,
-                            telefono: data.telefono || '' // Nuevo campo
+                            telefono: data.telefono || '', // Nuevo campo
+                            // ✅ CAMPOS DE SUCURSAL
+                            sucursalAsignadaId: data.sucursalAsignadaId || null,
+                            sucursalAsignadaNombre: data.sucursalAsignadaNombre || null,
+                            sucursalAsignadaCiudad: data.sucursalAsignadaCiudad || null
                         });
 
                         this.users.push(user);
@@ -1915,7 +1961,6 @@ class UserManager {
             throw error;
         }
     }
-    // Agregar este método en la clase UserManager, después del método logout (línea ~1500)
 
     /**
      * Guarda los datos de plan y permisos en localStorage después del login
