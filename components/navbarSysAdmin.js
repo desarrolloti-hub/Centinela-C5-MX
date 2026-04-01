@@ -1736,8 +1736,8 @@ class NavbarComplete {
 
     redirectToLogin() {
         const timestamp = new Date().getTime();
-        window.location.href = `/usuarios/visitantes/inicioSesion/inicioSesion.html?logout=true&timestamp=${timestamp}&nocache=1`;
-        setTimeout(() => window.location.replace(`/usuarios/visitantes/inicioSesion/inicioSesion.html?logout=true&timestamp=${timestamp}&nocache=1`), 1000);
+        window.location.href = `/index.html?logout=true&timestamp=${timestamp}&nocache=1`;
+        setTimeout(() => window.location.replace(`/index.html?logout=true&timestamp=${timestamp}&nocache=1`), 1000);
     }
 
     toggleAdminDropdown(show) {

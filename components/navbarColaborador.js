@@ -2590,8 +2590,8 @@ class NavbarComplete {
 
     redirectToLogin() {
         const timestamp = new Date().getTime();
-        const loginUrl = `/usuarios/visitantes/inicioSesion/inicioSesion.html?logout=true&timestamp=${timestamp}&nocache=1`;
-        window.location.href = loginUrl;
+        window.location.href = `/index.html?logout=true&timestamp=${timestamp}&nocache=1`;
+        setTimeout(() => window.location.replace(`/index.html?logout=true&timestamp=${timestamp}&nocache=1`), 1000);
     }
 
     toggleGestionarDropdown(show) {
