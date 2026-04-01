@@ -2,7 +2,7 @@
 // =================================
 
 // URL base de las Cloud Functions
-const CLOUD_FUNCTION_BASE_URL = "https://us-central1-centinela-mx.cloudfunctions.net/";
+const CLOUD_FUNCTION_BASE_URL = "https://us-central1-centinela-c5.cloudfunctions.net/";
 
 // Acciones disponibles
 const ACTIONS = {
