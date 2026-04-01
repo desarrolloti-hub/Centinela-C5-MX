@@ -562,7 +562,22 @@ function mostrarErrorSesion() {
     ocultarEstadoCarga();
     const container = document.querySelector('.right-layout');
     if (container) {
-        container.innerHTML = `<div style="text-align:center;padding:60px;"><i class="fas fa-user-slash" style="font-size:64px;color:#ff4d4d;"></i><h2>SESIÓN NO DETECTADA</h2><button onclick="window.location.href='/iniciar-sesion/'">INICIAR SESIÓN</button></div>`;
+        container.innerHTML = `
+            <div style="text-align: center; padding: 60px 20px;">
+                <i class="fas fa-user-slash" style="font-size: 64px; color: #ff4d4d; margin-bottom: 20px;"></i>
+                <h2 style="color: white;">SESIÓN NO DETECTADA</h2>
+                <p style="color: #a5a5a5; margin: 20px 0;">Inicia sesión para acceder al panel</p>
+                <button onclick="window.location.href='/iniciar-sesion/'" 
+                    style="background: linear-gradient(145deg, #0f0f0f, #1a1a1a);
+                           border: 1px solid #c0c0c0;
+                           color: white;
+                           padding: 12px 24px;
+                           border-radius: 8px;
+                           cursor: pointer;">
+                    <i class="fas fa-sign-in-alt"></i> INICIAR SESIÓN
+                </button>
+            </div>
+        `;
     }
 }
 

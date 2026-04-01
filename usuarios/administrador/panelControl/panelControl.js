@@ -73,7 +73,7 @@ const MODULOS_CONFIG = {
     // ÁREAS
     'areasLista': {
         selector: '#card-areas-lista',
-        url: '/usuarios/colaboradores/areas/areas.html',
+        url: '/usuarios/administrador/areas/areas.html',
         titulo: 'Lista Áreas',
         permisoRequerido: 'areas',
         grupo: 'modulos-acceso',
@@ -81,7 +81,7 @@ const MODULOS_CONFIG = {
     },
     'areasNueva': {
         selector: '#card-areas-nueva',
-        url: '/usuarios/colaboradores/crearAreas/crearAreas.html',
+        url: '/usuarios/administrador/crearAreas/crearAreas.html',
         titulo: 'Nueva Área',
         permisoRequerido: 'areas',
         grupo: 'modulos-acceso',
@@ -107,7 +107,7 @@ const MODULOS_CONFIG = {
     // REGIONES
     'regionesLista': {
         selector: '#card-regiones-lista',
-        url: '/usuarios/colaboradores/regiones/regiones.html',
+        url: '/usuarios/administrador/regiones/regiones.html',
         titulo: 'Lista Regiones',
         permisoRequerido: 'regiones',
         grupo: 'modulos-acceso',
@@ -144,7 +144,7 @@ const KPI_NAVEGACION = {
         permisoRequerido: 'incidencias'
     },
     'kpi-regiones': {
-        url: '/usuarios/colaboradores/regiones/regiones.html',
+        url: '/usuarios/administrador/regiones/regiones.html',
         titulo: 'Regiones',
         permisoRequerido: 'regiones'
     },
@@ -154,7 +154,7 @@ const KPI_NAVEGACION = {
         permisoRequerido: 'sucursales'
     },
     'kpi-areas': {
-        url: '/usuarios/colaboradores/areas/areas.html',
+        url: '/usuarios/administrador/areas/areas.html',
         titulo: 'Áreas',
         permisoRequerido: 'areas'
     },
