@@ -1797,7 +1797,7 @@ class NavbarComplete {
                 </div>
 
                 <!-- SECCIÓN MONITOREO -->
-                <div class="nav-section" id="monitoreoSection">
+              <div class="nav-section" id="monitoreoSection">
                     <button class="administracion-dropdown-btn" id="monitoreoDropdownBtn">
                         <span><i class="fa-solid fa-map-marker-alt"></i> Monitoreo</span>
                         <i class="fa-solid fa-chevron-down"></i>
@@ -1807,6 +1807,11 @@ class NavbarComplete {
                         <a href="/usuarios/administrador/mapaAlertas/mapaAlertas.html" class="administracion-dropdown-option">
                             <i class="fa-solid fa-map-marker-alt"></i>
                             <span>Mapa de Alertas</span>
+                        </a>
+                        
+                        <a href="/usuarios/administrador/loginMonitoreo/loginMonitoreo.html" class="administracion-dropdown-option">
+                            <i class="fa-solid fa-tachometer-alt"></i>
+                            <span>Tablero de Control</span>
                         </a>
                     </div>
                 </div>
@@ -1840,6 +1845,7 @@ class NavbarComplete {
                             <span>Cerrar Sesión</span>
                         </a>
                     </div>
+                  
                 </div>
             </div>
         `;
