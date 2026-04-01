@@ -183,7 +183,7 @@ import { UserManager } from '/clases/user.js';
             if (!currentUser && !isLoginPage()) {
                 // Pequeño delay para que los mensajes se muestren
                 redirectTimeout = setTimeout(() => {
-                    window.location.href = '/usuarios/visitantes/inicioSesion/inicioSesion.html';
+                    window.location.href = '/index.html';
                 }, 500);
             }
             
@@ -193,7 +193,7 @@ import { UserManager } from '/clases/user.js';
             // Solo redirigir si no estamos en página de login
             if (!isLoginPage()) {
                 redirectTimeout = setTimeout(() => {
-                    window.location.href = '/usuarios/visitantes/inicioSesion/inicioSesion.html';
+                    window.location.href = '/index.html';
                 }, 500);
             }
         }
@@ -504,7 +504,7 @@ import { UserManager } from '/clases/user.js';
          */
         redirectByRole: function(returnUrl) {
             if (!currentUser) {
-                window.location.href = '/usuarios/visitantes/inicioSesion/inicioSesion.html';
+                window.location.href = '/index.html';
                 return;
             }
             

@@ -120,7 +120,15 @@ const MODULOS_CONFIG = {
         permisoRequerido: 'regiones',
         grupo: 'modulos-acceso',
         brillo: false
-    }
+    },
+    'tablero-de-control': {
+        selector: '#tablero-de-control',
+        url: '/usuarios/administrador/loginMonitoreo/loginMonitoreo.html',
+        titulo: 'Tablero de Control',
+        permisoRequerido: 'monitoreo',
+        grupo: 'acceso-rapido',
+        brillo: false
+    },
 };
 
 // ========== CONFIGURACIÓN DE NAVEGACIÓN PARA TARJETAS KPI ==========
@@ -516,7 +524,7 @@ function mostrarErrorSesion() {
                 <i class="fas fa-user-slash" style="font-size: 64px; color: #ff4d4d; margin-bottom: 20px;"></i>
                 <h2 style="color: white;">SESIÓN NO DETECTADA</h2>
                 <p style="color: #a5a5a5; margin: 20px 0;">Inicia sesión para acceder al panel</p>
-                <button onclick="window.location.href='/usuarios/visitantes/inicioSesion/inicioSesion.html'" 
+                <button onclick="window.location.href='/index.html'" 
                     style="background: linear-gradient(145deg, #0f0f0f, #1a1a1a);
                            border: 1px solid #c0c0c0;
                            color: white;

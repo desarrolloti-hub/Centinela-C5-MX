@@ -16,7 +16,6 @@
     
     <!-- SISTEMA DE COLORES -->
     <link rel="stylesheet" href="/components/personalization/personalization.css">
-    <link rel="stylesheet" href="/components/particulas/particulas.css">
 
     <!--Estilos-->
     <style>
@@ -94,7 +93,7 @@
             align-items: center;
             gap: 10px;
             padding: 10px 26px;
-            border-radius: var(--border-radius-circle, 30px);
+
             background: var(--color-bg-primary, #000000);
             border: 1px solid var(--color-border-light, rgba(255, 255, 255, 0.1));
             color: var(--color-text-primary, #ffffff);
@@ -259,7 +258,7 @@
     </main>
 
     <script src="/components/themeloader.js"></script>
-    <script src="/components/particulas/particulas.js"></script>
+   <script type="module" src="/components/particulas.js"></script>
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
@@ -284,5 +283,6 @@
             }, 500);
         });
     </script>
+   
 </body>
 </html>

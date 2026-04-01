@@ -725,6 +725,77 @@ class TareaManager {
             throw error;
         }
     }
+
+    async marcarItemTareaConAutor(tareaId, itemId, completado, marcadoPor, marcadoPorNombre, usuarioActual, organizacionCamelCase) {
+        try {
+            const tarea = await this.getTareaById(tareaId, organizacionCamelCase);
+            if (!tarea) throw new Error('Tarea no encontrada');
+
+            // Verificar que el item existe
+            if (!tarea.items[itemId]) throw new Error('Item no encontrado');
+
+            // Actualizar el item
+            tarea.items[itemId].completado = completado;
+            tarea.items[itemId].marcadoPor = marcadoPor;
+            tarea.items[itemId].marcadoPorNombre = marcadoPorNombre;
+            tarea.items[itemId].fechaModificacion = new Date().toISOString();
+
+            tarea._calcularProgreso();
+
+            const collectionName = this._getCollectionName(organizacionCamelCase);
+            const tareaRef = doc(db, collectionName, tareaId);
+
+            await consumo.registrarFirestoreActualizacion(collectionName, tareaId);
+            
+            await updateDoc(tareaRef, {
+                items: tarea.items,
+                fechaActualizacion: serverTimestamp(),
+                actualizadoPor: usuarioActual.id,
+                actualizadoPorNombre: usuarioActual.nombreCompleto || usuarioActual.email || 'Usuario'
+            });
+
+            return true;
+
+        } catch (error) {
+            console.error('Error marcando item con autor:', error);
+            throw error;
+        }
+    }
+
+
+    async marcarItemTareaConAutor(tareaId, itemId, completado, marcadoPor, marcadoPorNombre, usuarioActual, organizacionCamelCase) {
+        try {
+            const tarea = await this.getTareaById(tareaId, organizacionCamelCase);
+            if (!tarea) throw new Error('Tarea no encontrada');
+
+            if (!tarea.items[itemId]) throw new Error('Item no encontrado');
+
+            tarea.items[itemId].completado = completado;
+            tarea.items[itemId].marcadoPor = marcadoPor;
+            tarea.items[itemId].marcadoPorNombre = marcadoPorNombre;
+            tarea.items[itemId].fechaModificacion = new Date().toISOString();
+
+            tarea._calcularProgreso();
+
+            const collectionName = this._getCollectionName(organizacionCamelCase);
+            const tareaRef = doc(db, collectionName, tareaId);
+
+            await consumo.registrarFirestoreActualizacion(collectionName, tareaId);
+
+            await updateDoc(tareaRef, {
+                items: tarea.items,
+                fechaActualizacion: serverTimestamp(),
+                actualizadoPor: usuarioActual.id,
+                actualizadoPorNombre: usuarioActual.nombreCompleto || usuarioActual.email || 'Usuario'
+            });
+
+            return true;
+
+        } catch (error) {
+            console.error('Error marcando item con autor:', error);
+            throw error;
+        }
+    }
 }
 
 export { Tarea, TareaManager };

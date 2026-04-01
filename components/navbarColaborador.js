@@ -1,7 +1,6 @@
 // [file name]: navbarColaborador.js
 // [file path]: /components/navbarColaborador.js
-// VERSIÓN CORREGIDA - Lee permisos REALES desde Firestore SIN FORZAR NADA
-// La sección de Incidencias se oculta completamente si el usuario no tiene permisos
+// VERSIÓN CORREGIDA - Filtra notificaciones por área Y sucursal
 
 class NavbarComplete {
     constructor() {
@@ -242,23 +241,59 @@ class NavbarComplete {
                 this.currentUser.id,
                 this.currentUser.organizacionCamelCase,
                 false,
-                20
+                50
             );
 
             const areaUsuario = this.currentUser.areaId;
+            const sucursalUsuario = this.currentUser.sucursalAsignadaId;
 
-            if (!areaUsuario) {
+            console.log('👤 Usuario:', this.currentUser.nombreCompleto);
+            console.log('📌 Área asignada:', areaUsuario);
+            console.log('🏪 Sucursal asignada:', sucursalUsuario);
+            console.log('📬 Total notificaciones sin filtrar:', todasNotificaciones.length);
+
+            if (!areaUsuario && !sucursalUsuario) {
+                console.log('⚠️ Usuario sin área ni sucursal asignada');
                 this.notificaciones = [];
                 this.notificacionesNoLeidas = 0;
             } else {
                 const notificacionesFiltradas = todasNotificaciones.filter(notif => {
-                    if (notif.areasIds && Array.isArray(notif.areasIds) && notif.areasIds.length > 0) {
-                        return notif.areasIds.includes(areaUsuario);
+                    // Obtener datos de la notificación
+                    const sucursalesIds = notif.sucursalesIds || [];
+                    const sucursalId = notif.sucursalId;
+                    const areasIds = notif.areasIds || [];
+                    const areasDestino = notif.areasDestino || [];
+                    const sucursalesDestino = notif.sucursalesDestino || [];
+
+                    // Verificar si la notificación es para el área del usuario
+                    let esParaArea = false;
+                    if (areaUsuario) {
+                        esParaArea = areasIds.includes(areaUsuario) || 
+                                    areasDestino.some(a => a.id === areaUsuario);
                     }
-                    if (notif.areasDestino && Array.isArray(notif.areasDestino)) {
-                        return notif.areasDestino.some(area => area.id === areaUsuario);
+
+                    // Verificar si la notificación es para la sucursal del usuario
+                    let esParaSucursal = false;
+                    if (sucursalUsuario) {
+                        esParaSucursal = sucursalesIds.includes(sucursalUsuario) || 
+                                        sucursalId === sucursalUsuario ||
+                                        (sucursalesDestino && sucursalesDestino.some(s => s.id === sucursalUsuario));
                     }
-                    return false;
+
+                    const esVisible = esParaArea || esParaSucursal;
+                    
+                    if (esVisible) {
+                        console.log(`✅ Notificación ${notif.id} visible para usuario:`, {
+                            titulo: notif.titulo,
+                            sucursalesIds,
+                            sucursalId,
+                            areasIds,
+                            esParaArea,
+                            esParaSucursal
+                        });
+                    }
+                    
+                    return esVisible;
                 });
 
                 const nuevasNoLeidas = notificacionesFiltradas.filter(n => !n.leida);
@@ -273,13 +308,15 @@ class NavbarComplete {
 
                 this.notificaciones = notificacionesFiltradas;
                 this.notificacionesNoLeidas = this.notificaciones.filter(n => !n.leida).length;
+
+                console.log(`📬 Notificaciones visibles: ${this.notificaciones.length}, No leídas: ${this.notificacionesNoLeidas}`);
             }
 
             this._actualizarBadgeNotificaciones();
             this._renderizarNotificaciones();
 
         } catch (error) {
-            // Error silencioso
+            console.error('Error cargando notificaciones:', error);
         }
     }
 
@@ -1589,7 +1626,7 @@ class NavbarComplete {
                 <div class="navbar-left-container">
                     <a href="../panelControl/panelControl.html" class="navbar-logo-link">
                         <div class="logo-circle-container">
-                            <img src="/assets/images/logo.png" alt="Centinela Logo" class="navbar-logo-img" style="overflow: clip;">
+                            <img src="/assets/images/logo.png" alt="Centinela Logo" class="navbar-logo-img">
                         </div>
                     </a>
 
@@ -1598,7 +1635,7 @@ class NavbarComplete {
                     <a href="../panelControl/panelControl.html" class="navbar-logo-link" id="orgLogoLink">
                         <div class="logo-circle-container" id="orgLogoContainer">
                             <img src="/assets/images/logo.png" alt="Logo Organización" 
-                                 class="navbar-logo-img" id="orgLogoImg" style="overflow: clip;">
+                                 class="navbar-logo-img" id="orgLogoImg">
                             <div class="org-text-logo" id="orgTextLogo" style="display: none;">ORG</div>
                         </div>
                     </a>
@@ -1646,7 +1683,7 @@ class NavbarComplete {
                 <div class="admin-profile-section">
                     <div class="profile-photo-container">
                         <div class="admin-profile-circle">
-                            <img src="/assets/images/logo.png" alt="Usuario" class="admin-profile-img" id="userProfileImg" style="overflow: clip;">
+                            <img src="/assets/images/logo.png" alt="Usuario" class="admin-profile-img" id="userProfileImg">
                             <div class="profile-placeholder" id="profilePlaceholder" style="display: none;">
                                 <i class="fas fa-user"></i>
                                 <span>Usuario</span>
@@ -1673,49 +1710,34 @@ class NavbarComplete {
                     </button>
 
                     <div class="gestionar-dropdown-options" id="gestionarDropdownOptions">
-                        <!-- Áreas -->
                         <a href="../areas/areas.html" class="gestionar-dropdown-option" id="areasBtn">
                             <i class="fa-solid fa-sitemap"></i>
                             <span>Áreas</span>
                         </a>
-
-                        <!-- Categorías -->
                         <a href="../categorias/categorias.html" class="gestionar-dropdown-option" id="categoriasBtn">
                             <i class="fa-solid fa-tags"></i>
                             <span>Categorías</span>
                         </a>
-
-                        <!-- Sucursales -->
                         <a href="../sucursales/sucursales.html" class="gestionar-dropdown-option" id="sucursalesBtn">
                             <i class="fa-solid fa-store"></i>
                             <span>Sucursales</span>
                         </a>
-
-                        <!-- Regiones -->
                         <a href="../regiones/regiones.html" class="gestionar-dropdown-option" id="regionesBtn">
                             <i class="fa-solid fa-map-marked-alt"></i>
                             <span>Regiones</span>
                         </a>
-
-                        <!-- Usuarios -->
                         <a href="../usuarios/usuarios.html" class="gestionar-dropdown-option" id="usuariosBtn">
                             <i class="fa-solid fa-users"></i>
                             <span>Usuarios</span>
                         </a>
-
-                        <!-- Tareas -->
                         <a href="../tareas/tareas.html" class="gestionar-dropdown-option" id="tareasBtn">
                             <i class="fa-solid fa-tasks"></i>
                             <span>Tareas</span>
                         </a>
-
-                        <!-- Mapa de Alertas -->
                         <a href="../mapa/mapa.html" class="gestionar-dropdown-option" id="mapaBtn">
                             <i class="fa-solid fa-map-location-dot"></i>
                             <span>Mapa de Alertas</span>
                         </a>
-
-                        <!-- Estadísticas -->
                         <a href="../estadisticas/estadisticas.html" class="gestionar-dropdown-option" id="estadisticasBtn">
                             <i class="fa-solid fa-chart-line"></i>
                             <span>Estadísticas</span>
@@ -1735,7 +1757,6 @@ class NavbarComplete {
                             <i class="fa-solid fa-list"></i>
                             <span>Lista de Incidencias</span>
                         </a>
-
                         <a href="../crearIncidencias/crearIncidencias.html" class="incidencias-dropdown-option" id="crearIncidenciasBtn">
                             <i class="fa-solid fa-plus-circle"></i>
                             <span>Crear Incidencia</span>
@@ -1743,22 +1764,6 @@ class NavbarComplete {
                         <a href="../incidenciasCanalizadas/incidenciasCanalizadas.html" class="incidencias-dropdown-option" id="incidenciasCanalizadasBtn">
                             <i class="fa-solid fa-check-circle"></i>
                             <span>Incidencias Canalizadas</span>
-                        </a>
-                      <a href="/usuarios/administrador/estadisticas/estadisticas.html"  class="incidencias-dropdown-option" id="incidenciasCanalizadasBtn">
-                            <i class="fa-solid fa-chart-bar"></i>
-                            <span>Estadisticas Incidencias</span>
-                        </a>
-                         <a href="/usuarios/administrador/mercanciaPerdida/mercanciaPerdida.html"  class="incidencias-dropdown-option" id="incidenciasCanalizadasBtn">
-                            <i class="fa-solid fa-list"></i>
-                            <span>Lista de Extravios</span>
-                        </a>
-                         <a href="/usuarios/administrador/crearIncidenciasRecuperacion/crearIncidenciasRecuperacion.html"  class="incidencias-dropdown-option" id="incidenciasCanalizadasBtn">
-                            <i class="fa-solid fa-plus-circle"></i>
-                            <span>Crear Extravio</span>
-                        </a>
-                          <a href="/usuarios/administrador/estadisticasExtravios/estadisticasExtravios.html"  class="incidencias-dropdown-option" id="incidenciasCanalizadasBtn">
-                            <i class="fa-solid fa-chart-bar"></i>
-                            <span>Estadisticas Extravios</span>
                         </a>
                     </div>
                 </div>
@@ -1769,7 +1774,6 @@ class NavbarComplete {
                         <i class="fa-solid fa-book"></i>
                         <span>Bitácora</span>
                     </div>
-
                     <a href="../bitacoraActividades/bitacoraActividades.html" class="gestionar-dropdown-option" style="width: 100%;">
                         <i class="fa-solid fa-clock-rotate-left"></i>
                         <span>Bitácora de Actividades</span>
@@ -1788,23 +1792,18 @@ class NavbarComplete {
                             <i class="fa-solid fa-user-pen"></i>
                             <span>Editar Perfil</span>
                         </a>
-
                         <a href="../configuracion/configuracion.html" class="configuracion-dropdown-option">
                             <i class="fa-solid fa-sliders-h"></i>
                             <span>Preferencias</span>
                         </a>
-
                         <a href="../ayuda/ayuda.html" class="configuracion-dropdown-option">
                             <i class="fa-solid fa-circle-question"></i>
                             <span>Ayuda</span>
                         </a>
-
-                        <!-- Roles y Permisos (solo admin) -->
                         <a href="../permisos/permisos.html" class="configuracion-dropdown-option" id="permisosBtn">
                             <i class="fa-solid fa-user-gear"></i>
                             <span>Roles y Permisos</span>
                         </a>
-
                         <a href="#" class="configuracion-dropdown-option logout-option" id="logoutOption">
                             <i class="fa-solid fa-right-from-bracket"></i>
                             <span>Cerrar Sesión</span>
@@ -1878,6 +1877,8 @@ class NavbarComplete {
                     fotoOrganizacion: fotoOrganizacion,
                     areaId: userData.areaAsignadaId || userData.areaId || localStorage.getItem('userAreaId') || '',
                     cargoId: userData.cargoId || localStorage.getItem('userCargoId') || '',
+                    sucursalAsignadaId: userData.sucursalAsignadaId || localStorage.getItem('userSucursalId') || '',
+                    sucursalAsignadaNombre: userData.sucursalAsignadaNombre || localStorage.getItem('userSucursalNombre') || '',
                     status: userData.status || 'activo',
                     verificado: userData.verificado || true,
                     ultimoAcceso: userData.ultimoAcceso || userData.sessionStart,
@@ -1885,6 +1886,9 @@ class NavbarComplete {
                 };
 
                 this.userRole = this.currentUser.rol?.toLowerCase() || 'colaborador';
+
+                console.log('👤 Usuario cargado:', this.currentUser.nombreCompleto);
+                console.log('🏪 Sucursal asignada:', this.currentUser.sucursalAsignadaId);
 
                 return true;
             }
@@ -1900,6 +1904,8 @@ class NavbarComplete {
                 fotoOrganizacion: localStorage.getItem('organizacionLogo') || null,
                 areaId: localStorage.getItem('userAreaId') || '',
                 cargoId: localStorage.getItem('userCargoId') || '',
+                sucursalAsignadaId: localStorage.getItem('userSucursalId') || '',
+                sucursalAsignadaNombre: localStorage.getItem('userSucursalNombre') || '',
                 dispositivos: []
             };
 
@@ -1928,7 +1934,7 @@ class NavbarComplete {
         }
     }
 
-    // ========== OBTENER PERMISOS REALES DESDE FIRESTORE (SIN FORZAR NADA) ==========
+    // ========== OBTENER PERMISOS REALES DESDE FIRESTORE ==========
     async obtenerPermisosReales() {
         try {
             const esAdmin = this.userRole === 'administrador' || this.userRole === 'master';
@@ -2069,23 +2075,18 @@ class NavbarComplete {
         }
 
         const menuItems = [
-            // Módulos de Gestionar
-            { id: 'areasBtn', modulo: 'areas', elemento: document.getElementById('areasBtn'), texto: 'Áreas', siempreVisible: false },
-            { id: 'categoriasBtn', modulo: 'categorias', elemento: document.getElementById('categoriasBtn'), texto: 'Categorías', siempreVisible: false },
-            { id: 'sucursalesBtn', modulo: 'sucursales', elemento: document.getElementById('sucursalesBtn'), texto: 'Sucursales', siempreVisible: false },
-            { id: 'regionesBtn', modulo: 'regiones', elemento: document.getElementById('regionesBtn'), texto: 'Regiones', siempreVisible: false },
-            { id: 'usuariosBtn', modulo: 'usuarios', elemento: document.getElementById('usuariosBtn'), texto: 'Usuarios', siempreVisible: false },
-            { id: 'tareasBtn', modulo: 'tareas', elemento: document.getElementById('tareasBtn'), texto: 'Tareas', siempreVisible: false },
-            { id: 'mapaBtn', modulo: 'monitoreo', elemento: document.getElementById('mapaBtn'), texto: 'Mapa de Alertas', siempreVisible: false },
-            { id: 'estadisticasBtn', modulo: 'estadisticas', elemento: document.getElementById('estadisticasBtn'), texto: 'Estadísticas', siempreVisible: false },
-
-            // Módulos de Incidencias
-            { id: 'incidenciasBtn', modulo: 'incidencias', elemento: document.getElementById('incidenciasBtn'), texto: 'Lista de Incidencias', siempreVisible: false },
-            { id: 'crearIncidenciasBtn', modulo: 'incidencias', elemento: document.getElementById('crearIncidenciasBtn'), texto: 'Crear Incidencia', siempreVisible: false },
-            { id: 'incidenciasCanalizadasBtn', modulo: 'incidencias', elemento: document.getElementById('incidenciasCanalizadasBtn'), texto: 'Incidencias Canalizadas', siempreVisible: false },
-
-            // Módulos de Configuración
-            { id: 'permisosBtn', modulo: 'permisos', elemento: document.getElementById('permisosBtn'), texto: 'Roles y Permisos', siempreVisible: false },
+            { id: 'areasBtn', modulo: 'areas', elemento: document.getElementById('areasBtn'), texto: 'Áreas' },
+            { id: 'categoriasBtn', modulo: 'categorias', elemento: document.getElementById('categoriasBtn'), texto: 'Categorías' },
+            { id: 'sucursalesBtn', modulo: 'sucursales', elemento: document.getElementById('sucursalesBtn'), texto: 'Sucursales' },
+            { id: 'regionesBtn', modulo: 'regiones', elemento: document.getElementById('regionesBtn'), texto: 'Regiones' },
+            { id: 'usuariosBtn', modulo: 'usuarios', elemento: document.getElementById('usuariosBtn'), texto: 'Usuarios' },
+            { id: 'tareasBtn', modulo: 'tareas', elemento: document.getElementById('tareasBtn'), texto: 'Tareas' },
+            { id: 'mapaBtn', modulo: 'monitoreo', elemento: document.getElementById('mapaBtn'), texto: 'Mapa de Alertas' },
+            { id: 'estadisticasBtn', modulo: 'estadisticas', elemento: document.getElementById('estadisticasBtn'), texto: 'Estadísticas' },
+            { id: 'incidenciasBtn', modulo: 'incidencias', elemento: document.getElementById('incidenciasBtn'), texto: 'Lista de Incidencias' },
+            { id: 'crearIncidenciasBtn', modulo: 'incidencias', elemento: document.getElementById('crearIncidenciasBtn'), texto: 'Crear Incidencia' },
+            { id: 'incidenciasCanalizadasBtn', modulo: 'incidencias', elemento: document.getElementById('incidenciasCanalizadasBtn'), texto: 'Incidencias Canalizadas' },
+            { id: 'permisosBtn', modulo: 'permisos', elemento: document.getElementById('permisosBtn'), texto: 'Roles y Permisos' },
         ];
 
         let itemsVisibles = 0;
@@ -2095,10 +2096,12 @@ class NavbarComplete {
 
             let debeMostrarse = false;
 
-            if (item.siempreVisible) {
-                debeMostrarse = true;
+            if (item.modulo === 'incidencias') {
+                debeMostrarse = this.permisos.incidencias === true;
+            } else if (item.modulo === 'permisos') {
+                debeMostrarse = this.permisos.permisos === true;
             } else {
-                debeMostrarse = this.verificarPermiso(item.modulo);
+                debeMostrarse = this.permisos[item.modulo] === true;
             }
 
             if (debeMostrarse) {
@@ -2110,14 +2113,11 @@ class NavbarComplete {
         });
 
         this.checkEmptySections(itemsVisibles);
-
-        // Ocultar la sección completa de Incidencias si no tiene permisos
         this.ocultarSeccionIncidencias();
     }
 
-    // ========== OCULTAR SECCIÓN DE INCIDENCIAS SI NO HAY PERMISOS ==========
     ocultarSeccionIncidencias() {
-        const tienePermisoIncidencias = this.verificarPermiso('incidencias');
+        const tienePermisoIncidencias = this.permisos?.incidencias === true;
         const incidenciasSection = document.getElementById('incidenciasNavSection');
 
         if (incidenciasSection) {
@@ -2127,20 +2127,6 @@ class NavbarComplete {
                 incidenciasSection.style.display = 'block';
             }
         }
-    }
-
-    verificarPermiso(modulo) {
-        const esAdmin = this.userRole === 'administrador' || this.userRole === 'master';
-
-        if (esAdmin) {
-            return true;
-        }
-
-        if (modulo && this.permisos) {
-            return this.permisos[modulo] === true;
-        }
-
-        return false;
     }
 
     checkEmptySections(itemsVisibles) {

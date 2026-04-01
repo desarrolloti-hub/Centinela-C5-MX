@@ -12,6 +12,8 @@ class CrearMercanciaPerdidaController {
         this.mercanciaManager = null;
         this.usuarioActual = null;
         this.empresas = [];
+        this.sucursalesLista = []; // 👈 NUEVO: lista completa de sucursales
+        this.sucursalSeleccionada = null; // 👈 NUEVO: sucursal seleccionada
         this.imagenesSeleccionadas = [];
         this.imageEditorModal = null;
         this.loadingOverlay = null;
@@ -22,7 +24,6 @@ class CrearMercanciaPerdidaController {
         this.isInitialized = false;
         
         // Para vista previa de PDF
-        this.pdfPreviewModal = null;
         this.pdfBlobGenerado = null;
         this.datosActuales = null;
 
@@ -57,267 +58,28 @@ class CrearMercanciaPerdidaController {
     }
     
     // =============================================
-    // INICIALIZAR MODAL DE VISTA PREVIA PDF
+    // ABRIR PDF EN NUEVA PESTAÑA
     // =============================================
-    _initPDFPreviewModal() {
-        if (document.getElementById('pdfPreviewModal')) return;
-        
-        const modalHTML = `
-            <div id="pdfPreviewModal" class="pdf-preview-modal">
-                <div class="pdf-preview-header">
-                    <h3><i class="fas fa-file-pdf"></i> Vista Previa del Reporte</h3>
-                    <button class="pdf-preview-btn pdf-close-btn" id="pdfCloseBtn" title="Cerrar">
-                        <i class="fas fa-times"></i>
-                    </button>
-                </div>
-                <div class="pdf-preview-content">
-                    <div class="pdf-preview-loading" id="pdfPreviewLoading">
-                        <div class="spinner"></div>
-                        <p>Generando vista previa del reporte...</p>
-                        <p class="small">Esto puede tomar unos segundos dependiendo de las imágenes</p>
-                    </div>
-                    <iframe id="pdfPreviewIframe" class="pdf-preview-iframe" style="display: none;"></iframe>
-                </div>
-                <div class="pdf-preview-footer">
-                    <button class="btn btn-secondary" id="pdfCancelBtn">
-                        <i class="fas fa-times"></i> Cerrar
-                    </button>
-                    <button class="btn btn-success" id="pdfAcceptBtn">
-                        <i class="fas fa-check-circle"></i> Aceptar
-                    </button>
-                </div>
-            </div>
-        `;
-        
-        document.body.insertAdjacentHTML('beforeend', modalHTML);
-        
-        // Agregar estilos del modal
-        this._addPDFPreviewStyles();
-        
-        // Referencias
-        this.pdfPreviewModal = document.getElementById('pdfPreviewModal');
-        this.pdfPreviewIframe = document.getElementById('pdfPreviewIframe');
-        this.pdfPreviewLoading = document.getElementById('pdfPreviewLoading');
-        
-        // Event listeners
-        document.getElementById('pdfCloseBtn').addEventListener('click', () => this._closePDFPreview());
-        document.getElementById('pdfCancelBtn').addEventListener('click', () => this._closePDFPreview());
-        document.getElementById('pdfAcceptBtn').addEventListener('click', () => this._acceptAndUpload());
-        
-        // Cerrar al hacer click fuera
-        this.pdfPreviewModal.addEventListener('click', (e) => {
-            if (e.target === this.pdfPreviewModal) {
-                this._closePDFPreview();
-            }
-        });
-        
-        // Escapar con ESC
-        document.addEventListener('keydown', (e) => {
-            if (this.pdfPreviewModal && this.pdfPreviewModal.style.display === 'flex' && e.key === 'Escape') {
-                this._closePDFPreview();
-            }
-        });
-    }
-    
-    _addPDFPreviewStyles() {
-        if (document.getElementById('pdfPreviewStyles')) return;
-        
-        const styles = `
-            <style id="pdfPreviewStyles">
-                .pdf-preview-modal {
-                    display: none;
-                    position: fixed;
-                    z-index: 10000;
-                    left: 0;
-                    top: 0;
-                    width: 100%;
-                    height: 100%;
-                    background-color: rgba(0, 0, 0, 0.95);
-                    flex-direction: column;
-                    animation: pdfPreviewFadeIn 0.3s ease;
-                }
-                
-                @keyframes pdfPreviewFadeIn {
-                    from { opacity: 0; }
-                    to { opacity: 1; }
-                }
-                
-                .pdf-preview-header {
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: center;
-                    padding: 16px 24px;
-                    background: linear-gradient(135deg, #1a3b5d 0%, #0f2a44 100%);
-                    color: white;
-                    border-bottom: 2px solid #c9a03d;
-                }
-                
-                .pdf-preview-header h3 {
-                    margin: 0;
-                    font-size: 18px;
-                    display: flex;
-                    align-items: center;
-                    gap: 10px;
-                }
-                
-                .pdf-preview-header h3 i {
-                    color: #e74c3c;
-                }
-                
-                .pdf-preview-close-btn {
-                    background: rgba(255, 255, 255, 0.1);
-                    border: none;
-                    color: white;
-                    width: 40px;
-                    height: 40px;
-                    border-radius: 50%;
-                    cursor: pointer;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    font-size: 18px;
-                    transition: all 0.3s ease;
-                }
-                
-                .pdf-preview-close-btn:hover {
-                    background: rgba(255, 255, 255, 0.2);
-                    transform: scale(1.1);
-                }
-                
-                .pdf-preview-content {
-                    flex: 1;
-                    padding: 20px;
-                    background: #1a1a1a;
-                    position: relative;
-                    min-height: 0;
-                }
-                
-                .pdf-preview-iframe {
-                    width: 100%;
-                    height: 100%;
-                    border: none;
-                    background: white;
-                    border-radius: 8px;
-                    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-                }
-                
-                .pdf-preview-loading {
-                    position: absolute;
-                    top: 50%;
-                    left: 50%;
-                    transform: translate(-50%, -50%);
-                    text-align: center;
-                    color: white;
-                }
-                
-                .pdf-preview-loading .spinner {
-                    width: 50px;
-                    height: 50px;
-                    border: 3px solid rgba(255, 255, 255, 0.3);
-                    border-top-color: #c9a03d;
-                    border-radius: 50%;
-                    animation: spin 1s linear infinite;
-                    margin: 0 auto 15px;
-                }
-                
-                .pdf-preview-loading p {
-                    margin: 10px 0;
-                    font-size: 14px;
-                }
-                
-                .pdf-preview-loading .small {
-                    font-size: 12px;
-                    color: #aaa;
-                }
-                
-                .pdf-preview-footer {
-                    display: flex;
-                    justify-content: flex-end;
-                    gap: 15px;
-                    padding: 16px 24px;
-                    background: #2d2d2d;
-                    border-top: 1px solid #444;
-                }
-                
-                .pdf-preview-footer .btn {
-                    padding: 10px 24px;
-                    font-family: var(--font-family-secondary);
-                    font-weight: 600;
-                    border-radius: 8px;
-                    cursor: pointer;
-                    transition: all 0.3s ease;
-                    display: inline-flex;
-                    align-items: center;
-                    gap: 8px;
-                    border: none;
-                }
-                
-                .pdf-preview-footer .btn-secondary {
-                    background: #6c757d;
-                    color: white;
-                }
-                
-                .pdf-preview-footer .btn-secondary:hover {
-                    background: #5a6268;
-                    transform: translateY(-2px);
-                }
-                
-                .pdf-preview-footer .btn-success {
-                    background: linear-gradient(145deg, #0f0f0f, #1a1a1a);
-                    border: 1px solid #28a745;
-                    color: white;
-                }
-                
-                .pdf-preview-footer .btn-success:hover {
-                    transform: translateY(-2px);
-                    box-shadow: 0 5px 15px rgba(40, 167, 69, 0.3);
-                }
-                
-                @keyframes spin {
-                    to { transform: rotate(360deg); }
-                }
-                
-                @media (max-width: 768px) {
-                    .pdf-preview-header {
-                        padding: 12px 16px;
-                    }
-                    .pdf-preview-header h3 {
-                        font-size: 16px;
-                    }
-                    .pdf-preview-footer {
-                        padding: 12px 16px;
-                    }
-                    .pdf-preview-footer .btn {
-                        padding: 8px 16px;
-                        font-size: 14px;
-                    }
-                }
-            </style>
-        `;
-        
-        document.head.insertAdjacentHTML('beforeend', styles);
-    }
-    
-    // =============================================
-    // MOSTRAR VISTA PREVIA DEL PDF
-    // =============================================
-    async _mostrarVistaPreviaPDF(datos) {
+    async _abrirPDFEnNuevaPestana(datos) {
         try {
-            // Mostrar modal
-            this.pdfPreviewModal.style.display = 'flex';
-            this.pdfPreviewIframe.style.display = 'none';
-            this.pdfPreviewLoading.style.display = 'block';
+            Swal.fire({
+                title: 'Generando PDF...',
+                text: 'Preparando el reporte, esto puede tomar unos segundos',
+                allowOutsideClick: false,
+                showConfirmButton: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                }
+            });
             
-            // Guardar datos para después
             this.datosActuales = datos;
             
-            // Crear un objeto de registro temporal para el PDF
             const registroTemporal = this._crearRegistroTemporal(datos);
             
-            console.log('📄 Generando vista previa del PDF...');
-            console.log('📸 Evidencias para vista previa:', registroTemporal.evidencias?.length || 0);
+            console.log('📄 Generando PDF para nueva pestaña...');
+            console.log('📸 Evidencias:', registroTemporal.evidencias?.length || 0);
+            console.log('📍 Sucursal seleccionada:', this.sucursalSeleccionada);
             
-            // Generar PDF como blob
             const pdfBlob = await this.pdfGenerator.generarReporte(registroTemporal, {
                 mostrarAlerta: false,
                 returnBlob: true,
@@ -330,37 +92,38 @@ class CrearMercanciaPerdidaController {
             
             console.log(`📦 PDF generado: ${(pdfBlob.size / 1024).toFixed(2)} KB`);
             
-            // Guardar el blob para usarlo después
             this.pdfBlobGenerado = pdfBlob;
             
-            // Crear URL para el iframe
             const pdfUrl = URL.createObjectURL(pdfBlob);
+            window.open(pdfUrl, '_blank');
             
-            // Mostrar en iframe
-            this.pdfPreviewIframe.src = pdfUrl;
-            this.pdfPreviewIframe.style.display = 'block';
-            this.pdfPreviewLoading.style.display = 'none';
+            setTimeout(() => {
+                URL.revokeObjectURL(pdfUrl);
+            }, 10000);
             
-            console.log('✅ Vista previa PDF cargada correctamente');
+            Swal.close();
+            
+            console.log('✅ PDF abierto en nueva pestaña');
             
         } catch (error) {
-            console.error('❌ Error generando vista previa:', error);
-            this._closePDFPreview();
+            console.error('❌ Error generando PDF:', error);
+            Swal.close();
             
             Swal.fire({
                 icon: 'error',
-                title: 'Error al generar vista previa',
-                text: error.message || 'No se pudo generar la vista previa del reporte',
+                title: 'Error al generar PDF',
+                text: error.message || 'No se pudo generar el reporte',
                 footer: 'Por favor, verifica tu conexión y las imágenes seleccionadas.'
             });
         }
     }
     
+    // =============================================
+    // CREAR REGISTRO TEMPORAL CON SUCURSAL COMPLETA
+    // =============================================
     _crearRegistroTemporal(datos) {
-        // Crear un objeto que simule la estructura de MercanciaPerdida
         const fechaObj = new Date(datos.fechaHora);
         
-        // Procesar evidencias para el formato que espera el PDF
         const evidenciasProcesadas = datos.imagenes.map((img, index) => {
             return {
                 id: `temp_${Date.now()}_${index}`,
@@ -373,8 +136,9 @@ class CrearMercanciaPerdidaController {
             };
         });
         
+        // 👈 USAR LA SUCURSAL COMPLETA QUE SE SELECCIONÓ
         return {
-            id: `PREVIEW_${Date.now()}`,
+            id: `Vista Previa`,
             nombreEmpresaCC: datos.nombreEmpresaCC,
             tipoEvento: datos.tipoEvento,
             montoPerdido: datos.montoPerdido,
@@ -386,75 +150,12 @@ class CrearMercanciaPerdidaController {
             reportadoPorNombre: this.usuarioActual.nombreCompleto,
             evidencias: evidenciasProcesadas,
             estado: 'activo',
+            sucursalInfo: this.sucursalSeleccionada,  // 👈 Sucursal completa (ciudad, estado, dirección)
             getMontoNeto: () => datos.montoPerdido - (datos.montoRecuperado || 0),
             getPorcentajeRecuperado: () => datos.montoPerdido > 0 ? ((datos.montoRecuperado || 0) / datos.montoPerdido) * 100 : 0,
             getEstadoTexto: () => 'Activo',
             getTipoEventoTexto: () => this._getTipoEventoTexto(datos.tipoEvento)
         };
-    }
-    
-    _closePDFPreview() {
-        if (this.pdfPreviewModal) {
-            this.pdfPreviewModal.style.display = 'none';
-            
-            // Limpiar iframe
-            if (this.pdfPreviewIframe) {
-                this.pdfPreviewIframe.src = '';
-                this.pdfPreviewIframe.style.display = 'none';
-            }
-            
-            // Limpiar loading
-            if (this.pdfPreviewLoading) {
-                this.pdfPreviewLoading.style.display = 'block';
-            }
-            
-            this.pdfPreviewLoading.style.display = 'block';
-        }
-    }
-    
-    async _downloadPreviewPDF() {
-        if (this.pdfBlobGenerado) {
-            const url = URL.createObjectURL(this.pdfBlobGenerado);
-            const link = document.createElement('a');
-            link.href = url;
-            link.download = `preview_reporte_${Date.now()}.pdf`;
-            link.click();
-            URL.revokeObjectURL(url);
-            
-            Swal.fire({
-                icon: 'success',
-                title: 'Descarga iniciada',
-                text: 'El reporte se está descargando',
-                timer: 1500,
-                showConfirmButton: false
-            });
-        } else {
-            Swal.fire({
-                icon: 'warning',
-                title: 'No hay PDF generado',
-                text: 'Por favor, espera a que se genere la vista previa',
-                timer: 2000,
-                showConfirmButton: false
-            });
-        }
-    }
-    
-    async _acceptAndUpload() {
-        // Cerrar modal
-        this._closePDFPreview();
-        
-        // Verificar que tenemos el PDF generado
-        if (!this.pdfBlobGenerado) {
-            Swal.fire({
-                icon: 'error',
-                title: 'Error',
-                text: 'No se pudo generar el PDF. Por favor, intenta de nuevo.'
-            });
-            return;
-        }
-        
-        // Guardar el registro con el PDF generado
-        await this._guardarRegistroConPDF(this.datosActuales, this.pdfBlobGenerado);
     }
     
     // =============================================
@@ -487,7 +188,6 @@ class CrearMercanciaPerdidaController {
             this._configurarMontoPreview();
 
             this.imageEditorModal = new window.ImageEditorModal();
-            this._initPDFPreviewModal();
             
             this.isInitialized = true;
 
@@ -570,6 +270,9 @@ class CrearMercanciaPerdidaController {
         return `${year}-${month}-${day}T${hours}:${minutes}`;
     }
 
+    // =============================================
+    // CARGAR SUCURSALES (GUARDAR LISTA COMPLETA)
+    // =============================================
     async _cargarEmpresas() {
         try {
             const { SucursalManager } = await import('/clases/sucursal.js');
@@ -579,12 +282,17 @@ class CrearMercanciaPerdidaController {
                 this.usuarioActual.organizacionCamelCase
             );
 
+            // 👈 GUARDAR LISTA COMPLETA DE SUCURSALES
+            this.sucursalesLista = sucursales;
             this.empresas = sucursales.map(s => s.nombre);
             this.empresas = [...new Set(this.empresas)];
+
+            console.log('✅ Sucursales cargadas:', this.sucursalesLista.length);
 
         } catch (error) {
             console.error('Error cargando empresas:', error);
             this.empresas = [];
+            this.sucursalesLista = [];
         }
     }
 
@@ -723,7 +431,7 @@ class CrearMercanciaPerdidaController {
 
             document.getElementById('btnCrearRegistro')?.addEventListener('click', (e) => {
                 e.preventDefault();
-                this._validarYMostrarOpciones(); // Cambiado: ahora muestra opciones primero
+                this._validarYMostrarOpciones();
             });
 
             document.getElementById('btnAgregarImagen')?.addEventListener('click', () => {
@@ -734,16 +442,187 @@ class CrearMercanciaPerdidaController {
 
             document.getElementById('formMercanciaPrincipal')?.addEventListener('submit', (e) => {
                 e.preventDefault();
-                this._validarYMostrarOpciones(); // Cambiado: ahora muestra opciones primero
+                this._validarYMostrarOpciones();
             });
 
             this._configurarSugerencias();
+
+            this._configurarValidacionSecuencial();
 
         } catch (error) {
             console.error('Error configurando eventos:', error);
         }
     }
 
+    _configurarValidacionSecuencial() {
+        const ordenCampos = [
+            { id: 'nombreEmpresaCC', siguiente: 'tipoEvento', validar: (valor) => valor.trim() !== '' },
+            { id: 'tipoEvento', siguiente: 'montoPerdido', validar: (valor) => valor !== '' },
+            { id: 'montoPerdido', siguiente: 'montoRecuperado', validar: (valor) => {
+                const monto = parseFloat(valor);
+                return !isNaN(monto) && monto > 0;
+            }},
+            { id: 'montoRecuperado', siguiente: 'fechaHoraEvento', validar: (valor) => true },
+            { id: 'fechaHoraEvento', siguiente: 'narracionEventos', validar: (valor) => valor.trim() !== '' },
+            { id: 'narracionEventos', siguiente: 'detallesPerdida', validar: (valor) => {
+                const texto = valor.trim();
+                return texto.length >= 10 && texto.length <= LIMITES.NARRACION_EVENTOS;
+            }},
+            { id: 'detallesPerdida', siguiente: null, validar: (valor) => true }
+        ];
+
+        ordenCampos.forEach((campo, index) => {
+            const elemento = document.getElementById(campo.id);
+            if (!elemento) return;
+            
+            elemento._validacionSecuencial = {
+                siguienteId: campo.siguiente,
+                validar: campo.validar,
+                indice: index
+            };
+            
+            if (index === 0) {
+                this._habilitarCampo(elemento);
+            } else {
+                this._deshabilitarCampo(elemento);
+            }
+            
+            const eventoCambio = campo.id === 'montoPerdido' || campo.id === 'montoRecuperado' ? 'input' : 'change';
+            elemento.addEventListener(eventoCambio, () => {
+                this._validarYHabilitarSiguiente(campo.id);
+            });
+            
+            if (elemento.tagName === 'INPUT' && elemento.type === 'text') {
+                elemento.addEventListener('blur', () => {
+                    this._validarYHabilitarSiguiente(campo.id);
+                });
+            }
+        });
+        
+        const montoRecuperado = document.getElementById('montoRecuperado');
+        if (montoRecuperado) {
+            montoRecuperado.addEventListener('input', () => {
+                this._validarYHabilitarSiguiente('montoRecuperado');
+            });
+        }
+        
+        const fechaInput = document.getElementById('fechaHoraEvento');
+        if (fechaInput) {
+            fechaInput.addEventListener('change', () => {
+                this._validarYHabilitarSiguiente('fechaHoraEvento');
+            });
+        }
+        
+        const narracion = document.getElementById('narracionEventos');
+        if (narracion) {
+            narracion.addEventListener('input', () => {
+                this._validarYHabilitarSiguiente('narracionEventos');
+            });
+        }
+    }
+    
+    _habilitarCampo(elemento) {
+        if (!elemento) return;
+        elemento.disabled = false;
+        elemento.classList.remove('locked');
+        
+        if (elemento.tagName === 'SELECT') {
+            elemento.disabled = false;
+        }
+        
+        if (elemento.tagName === 'INPUT') {
+            elemento.readOnly = false;
+        }
+        
+        if (elemento.tagName === 'TEXTAREA') {
+            elemento.readOnly = false;
+        }
+        
+        const parent = elemento.closest('.form-field, .full-width, .input-group');
+        if (parent) {
+            parent.classList.remove('locked');
+        }
+    }
+    
+    _deshabilitarCampo(elemento) {
+        if (!elemento) return;
+        elemento.disabled = true;
+        
+        if (elemento.tagName === 'SELECT') {
+            elemento.disabled = true;
+        }
+        
+        if (elemento.tagName === 'INPUT') {
+            elemento.readOnly = true;
+        }
+        
+        if (elemento.tagName === 'TEXTAREA') {
+            elemento.readOnly = true;
+        }
+        
+        const parent = elemento.closest('.form-field, .full-width, .input-group');
+        if (parent) {
+            parent.classList.add('locked');
+        }
+    }
+    
+    _validarYHabilitarSiguiente(campoId) {
+        const campo = document.getElementById(campoId);
+        if (!campo) return;
+        
+        const config = campo._validacionSecuencial;
+        if (!config) return;
+        
+        let valor = campo.value;
+        
+        if (campo.tagName === 'SELECT') {
+            valor = campo.value;
+        }
+        
+        const esValido = config.validar(valor);
+        
+        if (!esValido && valor !== '' && valor !== null) {
+            campo.classList.add('field-error-shake');
+            setTimeout(() => campo.classList.remove('field-error-shake'), 500);
+        }
+        
+        if (esValido && config.siguienteId) {
+            const siguienteCampo = document.getElementById(config.siguienteId);
+            if (siguienteCampo && siguienteCampo.disabled) {
+                this._habilitarCampo(siguienteCampo);
+            }
+        }
+        
+        if (!esValido && config.siguienteId) {
+            this._deshabilitarCamposSiguientes(config.siguienteId);
+        }
+    }
+    
+    _deshabilitarCamposSiguientes(campoId) {
+        const ordenCampos = [
+            'nombreEmpresaCC',
+            'tipoEvento',
+            'montoPerdido',
+            'montoRecuperado',
+            'fechaHoraEvento',
+            'narracionEventos',
+            'detallesPerdida'
+        ];
+        
+        const indiceActual = ordenCampos.indexOf(campoId);
+        if (indiceActual === -1) return;
+        
+        for (let i = indiceActual; i < ordenCampos.length; i++) {
+            const campo = document.getElementById(ordenCampos[i]);
+            if (campo && !campo.disabled && i !== 0) {
+                this._deshabilitarCampo(campo);
+            }
+        }
+    }
+
+    // =============================================
+    // CONFIGURAR SUGERENCIAS CON SUCURSAL COMPLETA
+    // =============================================
     _configurarSugerencias() {
         const inputEmpresa = document.getElementById('nombreEmpresaCC');
 
@@ -825,12 +704,31 @@ class CrearMercanciaPerdidaController {
         });
     }
 
+    // =============================================
+    // SELECCIONAR EMPRESA (GUARDAR SUCURSAL COMPLETA)
+    // =============================================
     _seleccionarEmpresa(nombre) {
         const input = document.getElementById('nombreEmpresaCC');
         input.value = nombre;
         input.dataset.selectedName = nombre;
+        
+        // 👈 BUSCAR LA SUCURSAL COMPLETA EN LA LISTA
+        const sucursalEncontrada = this.sucursalesLista?.find(s => s.nombre === nombre);
+        
+        if (sucursalEncontrada) {
+            // Guardar toda la información de la sucursal
+            this.sucursalSeleccionada = sucursalEncontrada;
+            console.log('📍 Sucursal seleccionada:', sucursalEncontrada.nombre);
+            console.log('   Ciudad:', sucursalEncontrada.ciudad);
+            console.log('   Estado:', sucursalEncontrada.estado);
+            console.log('   Dirección:', sucursalEncontrada.direccion);
+        } else {
+            this.sucursalSeleccionada = null;
+            console.warn('⚠️ No se encontró la sucursal en la lista:', nombre);
+        }
 
         document.getElementById('sugerenciasEmpresa').innerHTML = '';
+        input.dispatchEvent(new Event('change'));
     }
 
     _procesarImagenes(files) {
@@ -982,10 +880,9 @@ class CrearMercanciaPerdidaController {
     }
 
     // =============================================
-    // NUEVO MÉTODO: VALIDAR Y MOSTRAR OPCIONES (SweetAlert con 3 botones)
+    // VALIDAR Y MOSTRAR OPCIONES
     // =============================================
     async _validarYMostrarOpciones() {
-        // Primero validar todos los campos
         const empresaInput = document.getElementById('nombreEmpresaCC');
         const nombreEmpresaCC = empresaInput.value.trim();
 
@@ -1053,7 +950,6 @@ class CrearMercanciaPerdidaController {
 
         const detallesPerdida = document.getElementById('detallesPerdida').value.trim();
 
-        // Guardar datos validados (ubicación y responsableAsignado eliminados)
         const datos = {
             nombreEmpresaCC,
             tipoEvento,
@@ -1065,16 +961,13 @@ class CrearMercanciaPerdidaController {
             imagenes: this.imagenesSeleccionadas
         };
 
-        // Mostrar SweetAlert con opciones
         const result = await Swal.fire({
             title: 'Confirmar registro',
             html: `
                 <div style="text-align: left;">
                     <p><strong><i class="fas fa-store"></i> Empresa:</strong> ${this._escapeHTML(nombreEmpresaCC)}</p>
                     <p><strong><i class="fas fa-exclamation-triangle"></i> Tipo:</strong> ${this._getTipoEventoTexto(tipoEvento)}</p>
-                    <p><strong><i class="fas fa-dollar-sign"></i> Monto perdido:</strong> $${montoPerdido.toLocaleString('es-MX', {minimumFractionDigits: 2})}</p>
-                    ${montoRecuperado > 0 ? `<p><strong><i class="fas fa-undo-alt"></i> Monto recuperado:</strong> $${montoRecuperado.toLocaleString('es-MX', {minimumFractionDigits: 2})}</p>` : ''}
-                    <p><strong><i class="fas fa-calendar"></i> Fecha:</strong> ${new Date(fechaHora).toLocaleString('es-MX')}</p>
+                    <p><strong><i class="fas fa-dollar-sign"></i> Monto:</strong> $${montoPerdido.toLocaleString('es-MX', {minimumFractionDigits: 2})}</p>
                     <p><strong><i class="fas fa-images"></i> Evidencias:</strong> ${this.imagenesSeleccionadas.length} imagen(es)</p>
                 </div>
                 <hr>
@@ -1087,26 +980,20 @@ class CrearMercanciaPerdidaController {
             denyButtonText: '<i class="fas fa-file-pdf"></i> Ver PDF',
             cancelButtonText: '<i class="fas fa-times"></i> Cerrar',
             confirmButtonColor: '#28a745',
-            denyButtonColor: '#dc3545',  // CAMBIADO: ahora es rojo como en las demás vistas
+            denyButtonColor: '#dc3545',
             cancelButtonColor: '#6c757d',
             reverseButtons: false
         });
 
-        // Manejar la opción seleccionada
         if (result.isConfirmed) {
-            // Aceptar - guardar directamente
             await this._guardarRegistroDirecto(datos);
         } else if (result.isDenied) {
-            // Ver PDF - mostrar vista previa
-            await this._generarYMostrarPDFPreview(datos);
-        } else {
-            // Cerrar - no hacer nada
-            console.log('Usuario canceló');
+            await this._abrirPDFEnNuevaPestana(datos);
         }
     }
 
     // =============================================
-    // GUARDAR REGISTRO DIRECTAMENTE (sin vista previa)
+    // GUARDAR REGISTRO CON SUCURSAL COMPLETA
     // =============================================
     async _guardarRegistroDirecto(datos) {
         const btnCrear = document.getElementById('btnCrearRegistro');
@@ -1134,7 +1021,6 @@ class CrearMercanciaPerdidaController {
             const fechaObj = new Date(datos.fechaHora);
             const hora = fechaObj.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
 
-            // Generar PDF en segundo plano
             const registroTemporal = this._crearRegistroTemporal(datos);
             const pdfBlob = await this.pdfGenerator.generarReporte(registroTemporal, {
                 mostrarAlerta: false,
@@ -1146,7 +1032,7 @@ class CrearMercanciaPerdidaController {
                 throw new Error('No se pudo generar el PDF');
             }
 
-            // PASO 1: CREAR REGISTRO EN FIRESTORE (campos ubicacion y responsableAsignado eliminados)
+            // 👈 GUARDAR SUCURSAL COMPLETA EN FIRESTORE
             const registroData = {
                 nombreEmpresaCC: datos.nombreEmpresaCC,
                 tipoEvento: datos.tipoEvento,
@@ -1157,7 +1043,8 @@ class CrearMercanciaPerdidaController {
                 narracionEventos: datos.narracionEventos,
                 detallesPerdida: datos.detallesPerdida,
                 reportadoPorId: this.usuarioActual.id,
-                reportadoPorNombre: this.usuarioActual.nombreCompleto
+                reportadoPorNombre: this.usuarioActual.nombreCompleto,
+                sucursalInfo: this.sucursalSeleccionada  // 👈 Sucursal completa
             };
 
             const nuevoRegistro = await this.mercanciaManager.crearRegistro(
@@ -1170,7 +1057,6 @@ class CrearMercanciaPerdidaController {
             registroId = nuevoRegistro.id;
             console.log('✅ Registro creado:', registroId);
 
-            // PASO 2: SUBIR EVIDENCIAS
             Swal.update({
                 title: 'Subiendo evidencias...',
                 text: `Subiendo ${datos.imagenes.length} evidencias...`
@@ -1178,7 +1064,6 @@ class CrearMercanciaPerdidaController {
 
             const evidenciasUrls = await this._subirEvidencias(registroId, datos.imagenes);
 
-            // PASO 3: ACTUALIZAR REGISTRO CON URLs DE EVIDENCIAS
             if (evidenciasUrls.length > 0) {
                 await this.mercanciaManager.actualizarRegistro(
                     registroId,
@@ -1190,7 +1075,6 @@ class CrearMercanciaPerdidaController {
                 console.log(`✅ ${evidenciasUrls.length} evidencias actualizadas`);
             }
 
-            // PASO 4: SUBIR EL PDF GENERADO
             Swal.update({
                 title: 'Subiendo PDF...',
                 text: 'Guardando el reporte PDF...'
@@ -1213,14 +1097,13 @@ class CrearMercanciaPerdidaController {
 
             Swal.close();
 
-            // PASO 5: REGISTRAR EN HISTORIAL
             const historial = await this._initHistorialManager();
             if (historial) {
                 await historial.registrarActividad({
                     usuario: this.usuarioActual,
                     tipo: 'crear',
                     modulo: 'mercancia_perdida',
-                    descripcion: `Registró mercancía perdida - ${datos.nombreEmpresaCC} - $${datos.montoPerdido}`,
+                    descripcion: `Registró mercancía perdida - ${datos.nombreEmpresaCC}`,
                     detalles: {
                         registroId,
                         nombreEmpresaCC: datos.nombreEmpresaCC,
@@ -1233,18 +1116,9 @@ class CrearMercanciaPerdidaController {
 
             await Swal.fire({
                 icon: 'success',
-                title: '¡Evento registrado!',
-                html: `
-                    <div style="text-align: center;">
-                        <i class="fas fa-check-circle" style="font-size: 48px; color: #28a745; margin-bottom: 16px;"></i>
-                        <p>El registro de <strong>${this._escapeHTML(datos.nombreEmpresaCC)}</strong> se ha guardado correctamente.</p>
-                        <p style="margin-top: 10px; font-size: 12px; color: #666;">
-                            <i class="fas fa-file-pdf"></i> El reporte PDF ya está disponible.<br>
-                            Puedes descargarlo desde la lista de registros.
-                        </p>
-                    </div>
-                `,
-                confirmButtonText: 'Ver registros',
+                title: '¡Incidencia creada!',
+                text: 'Se creó correctamente la incidencia',
+                confirmButtonText: 'Aceptar',
                 confirmButtonColor: '#28a745'
             });
 
@@ -1273,32 +1147,11 @@ class CrearMercanciaPerdidaController {
         }
     }
 
-    // =============================================
-    // GENERAR Y MOSTRAR VISTA PREVIA DEL PDF (sin guardar aún)
-    // =============================================
-    async _generarYMostrarPDFPreview(datos) {
-        // Mostrar loading
-        Swal.fire({
-            title: 'Generando vista previa...',
-            text: 'Preparando el reporte PDF con tus evidencias',
-            allowOutsideClick: false,
-            showConfirmButton: false,
-            didOpen: () => {
-                Swal.showLoading();
-            }
-        });
-        
-        // Generar y mostrar vista previa
-        await this._mostrarVistaPreviaPDF(datos);
-        
-        Swal.close();
-    }
-
     async _subirEvidencias(registroId, imagenes) {
         if (!imagenes || imagenes.length === 0) return [];
         
         const resultados = [];
-        console.log(`📸 Subiendo ${imagenes.length} evidencias...`);
+        console.log(`📤 Subiendo ${imagenes.length} evidencias...`);
         
         for (let i = 0; i < imagenes.length; i++) {
             const img = imagenes[i];
