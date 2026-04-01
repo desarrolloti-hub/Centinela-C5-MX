@@ -120,7 +120,15 @@ const MODULOS_CONFIG = {
         permisoRequerido: 'regiones',
         grupo: 'modulos-acceso',
         brillo: false
-    }
+    },
+    'tablero-de-control': {
+        selector: '#tablero-de-control',
+        url: '/usuarios/administrador/loginMonitoreo/loginMonitoreo.html',
+        titulo: 'Tablero de Control',
+        permisoRequerido: 'monitoreo',
+        grupo: 'acceso-rapido',
+        brillo: false
+    },
 };
 
 // ========== CONFIGURACIÓN DE NAVEGACIÓN PARA TARJETAS KPI ==========

@@ -142,7 +142,15 @@ const MODULOS_CONFIG = {
         titulo: 'Mapa de Alertas',
         descripcion: 'Visualización de alertas en mapa',
         icono: 'fa-map-marker-alt'
-    }
+    },
+    'tablero-de-control': {
+        selector: '#tablero-de-control',
+        url: '/usuarios/colaboradores/loginMonitoreo/loginMonitoreo.html',
+        titulo: 'Tablero de Control',
+        permisoRequerido: 'monitoreo',
+        grupo: 'acceso-rapido',
+        brillo: false
+    },
 };
 
 // ========== INICIALIZACIÓN ==========
