@@ -567,7 +567,7 @@ function mostrarErrorSesion() {
                 <i class="fas fa-user-slash" style="font-size: 64px; color: #ff4d4d; margin-bottom: 20px;"></i>
                 <h2 style="color: white;">SESIÓN NO DETECTADA</h2>
                 <p style="color: #a5a5a5; margin: 20px 0;">Inicia sesión para acceder al panel</p>
-                <button onclick="window.location.href='/iniciar-sesion/'" 
+                <button onclick="window.location.href='/index.html'" 
                     style="background: linear-gradient(145deg, #0f0f0f, #1a1a1a);
                            border: 1px solid #c0c0c0;
                            color: white;
