@@ -5,7 +5,7 @@ import { getFirestore, doc, setDoc, serverTimestamp } from "https://www.gstatic.
 const db = getFirestore(app);
 
 // VAPID Key pública (la nueva que generaste)
-const VAPID_KEY = "BAFZBcxxfwA7zXX0RQsMPhHb3KAspBohLRjQJSD0HDPATB_GIK27G4GT_WzVX4aaeZUhKEdzHDhX0tA5BfWRM1M";
+const VAPID_KEY = "BCLXuBGDijYqT5jzx70dMS8bCnUB-Mm33ADbLEuAW8XPxU3Zx79hvthcUgzwXMRQl0rQy7QtFEad6MVl_o4ax4w";
 
 class FCMInitializer {
     constructor() {
