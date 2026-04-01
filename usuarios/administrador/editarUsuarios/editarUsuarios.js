@@ -1,4 +1,4 @@
-// editUser.js - Editor de colaboradores (VERSIÓN CORREGIDA - CON SELECCIÓN AUTOMÁTICA DE SUCURSAL)
+// editUser.js - Editor de colaboradores (VERSIÓN DEPURACIÓN - CON SUCURSAL VISIBLE)
 // CON REGISTRO DE BITÁCORA
 import { UserManager } from '/clases/user.js';
 import { AreaManager } from '/clases/area.js';
@@ -225,7 +225,7 @@ async function iniciarEditor(userManager) {
         configurarSelectorStatus(elements);
         configurarFiltroNumerico(elements);
 
-        // Cargar áreas y luego sucursales
+        // Cargar áreas (esto también cargará sucursales si el área es sucursales)
         await cargarAreas(elements);
 
     } catch (error) {
@@ -409,15 +409,12 @@ async function cargarDatosColaborador(userManager, collaboratorId, elements) {
             throw new Error('Colaborador no encontrado');
         }
 
-        // Log para verificar datos de sucursal
-        console.log('📋 Datos del colaborador cargados:', {
-            id: collaborator.id,
-            nombre: collaborator.nombreCompleto,
-            areaAsignadaId: collaborator.areaAsignadaId,
-            sucursalAsignadaId: collaborator.sucursalAsignadaId,
-            sucursalAsignadaNombre: collaborator.sucursalAsignadaNombre,
-            sucursalAsignadaCiudad: collaborator.sucursalAsignadaCiudad
-        });
+        // 🔴 LOG IMPORTANTE - Verificar datos de sucursal
+        console.log('🔴🔴🔴 DATOS DEL COLABORADOR DESDE USERMANAGER:');
+        console.log('   - sucursalAsignadaId:', collaborator.sucursalAsignadaId);
+        console.log('   - sucursalAsignadaNombre:', collaborator.sucursalAsignadaNombre);
+        console.log('   - sucursalAsignadaCiudad:', collaborator.sucursalAsignadaCiudad);
+        console.log('   - areaAsignadaId:', collaborator.areaAsignadaId);
 
         window.currentCollaborator = collaborator;
         window.colaboradorOriginal = JSON.parse(JSON.stringify(collaborator));
@@ -579,7 +576,8 @@ function mostrarMensaje(element, type, text) {
     }
 }
 
-// Cargar áreas y sucursales
+// ========== FUNCIONES PARA CARGAR ÁREAS Y SUCURSALES ==========
+
 async function cargarAreas(elements) {
     if (!elements.areaSelect) return;
 
@@ -615,18 +613,31 @@ async function cargarAreas(elements) {
         elements.areaSelect.innerHTML = options;
         elements.areaSelect.disabled = false;
 
-        // Si el colaborador tiene un área asignada, seleccionarla
         if (collaborator.areaAsignadaId) {
             const areaExiste = areas.some(a => a.id === collaborator.areaAsignadaId);
 
             if (areaExiste) {
                 elements.areaSelect.value = collaborator.areaAsignadaId;
 
-                // Disparar evento change para cargar cargos y sucursales
+                // Disparar evento change para cargar cargos
                 const event = new Event('change', { bubbles: true });
                 elements.areaSelect.dispatchEvent(event);
 
-                // Esperar a que se carguen los cargos y luego seleccionar el cargo
+                // ✅ VERIFICAR SI ES ÁREA SUCURSALES Y FORZAR CARGA DE SUCURSAL
+                const areaNombre = elements.areaSelect.options[elements.areaSelect.selectedIndex]?.getAttribute('data-nombre') || '';
+                const esAreaSucursales = areaNombre.toLowerCase() === 'sucursales' || areaNombre.toLowerCase() === 'sucursal';
+
+                console.log('🔴 Área seleccionada:', areaNombre, 'esAreaSucursales:', esAreaSucursales);
+                console.log('🔴 Sucursal asignada del colaborador:', collaborator.sucursalAsignadaId, collaborator.sucursalAsignadaNombre);
+
+                if (esAreaSucursales && collaborator.sucursalAsignadaId) {
+                    console.log('🏢 Área sucursales detectada, forzando carga de sucursal asignada:', collaborator.sucursalAsignadaId);
+                    setTimeout(() => {
+                        cargarSucursales(elements);
+                    }, 300);
+                }
+
+                // Seleccionar cargo
                 const seleccionarCargo = () => {
                     if (collaborator.cargo && collaborator.cargo.id) {
                         const cargoSelect = elements.cargoEnAreaSelect;
@@ -741,13 +752,23 @@ async function cargarSucursales(elements) {
             return;
         }
 
+        // Guardar el ID de la sucursal asignada ANTES de cargar
+        const sucursalAsignadaId = collaborator.sucursalAsignadaId;
+        const sucursalAsignadaNombre = collaborator.sucursalAsignadaNombre;
+
+        console.log('🔴🔴🔴 CARGANDO SUCURSALES - DATOS DEL COLABORADOR:');
+        console.log('   - sucursalAsignadaId:', sucursalAsignadaId);
+        console.log('   - sucursalAsignadaNombre:', sucursalAsignadaNombre);
+
         elements.sucursalSelect.innerHTML = '<option value="">Cargando sucursales...</option>';
         elements.sucursalSelect.disabled = true;
 
         const sucursales = await sucursalManager.getSucursalesByOrganizacion(usuarioActual.organizacionCamelCase);
 
-        console.log('📋 Sucursales cargadas:', sucursales.map(s => ({ id: s.id, nombre: s.nombre })));
-        console.log('📋 Sucursal asignada del colaborador:', collaborator.sucursalAsignadaId);
+        console.log('🔴 SUCURSALES DISPONIBLES EN LA BASE DE DATOS:');
+        sucursales.forEach(s => {
+            console.log(`   - ID: ${s.id}, Nombre: ${s.nombre}`);
+        });
 
         if (sucursales.length === 0) {
             elements.sucursalSelect.innerHTML = '<option value="">No hay sucursales disponibles</option>';
@@ -756,14 +777,18 @@ async function cargarSucursales(elements) {
             }
             elements.sucursalSelect.disabled = true;
         } else {
+            // Construir opciones
             let options = '<option value="">Selecciona una sucursal (opcional)</option>';
             let sucursalEncontrada = false;
+            let valorSeleccionado = '';
 
             sucursales.forEach(sucursal => {
-                const isSelected = (collaborator.sucursalAsignadaId === sucursal.id);
+                // Comparar por ID para seleccionar
+                const isSelected = (sucursalAsignadaId === sucursal.id);
                 if (isSelected) {
                     sucursalEncontrada = true;
-                    console.log(`✅ Sucursal asignada encontrada: ${sucursal.nombre} (${sucursal.id})`);
+                    valorSeleccionado = sucursal.id;
+                    console.log(`✅✅✅ SUCURSAL ENCONTRADA PARA SELECCIONAR: ${sucursal.nombre} (${sucursal.id})`);
                 }
                 const selectedAttr = isSelected ? 'selected' : '';
                 options += `<option value="${sucursal.id}" data-nombre="${sucursal.nombre}" data-ciudad="${sucursal.ciudad}" ${selectedAttr}>${sucursal.nombre} - ${sucursal.ciudad || 'Sin ciudad'}</option>`;
@@ -772,19 +797,30 @@ async function cargarSucursales(elements) {
             elements.sucursalSelect.innerHTML = options;
             elements.sucursalSelect.disabled = false;
 
-            if (elements.sucursalHint) {
-                if (collaborator.sucursalAsignadaId && sucursalEncontrada) {
-                    elements.sucursalHint.innerHTML = '<i class="fas fa-check-circle" style="color: #28a745;"></i> Sucursal asignada cargada correctamente';
-                } else if (collaborator.sucursalAsignadaId && !sucursalEncontrada) {
-                    elements.sucursalHint.innerHTML = '<i class="fas fa-exclamation-triangle" style="color: #ff9800;"></i> La sucursal asignada ya no existe. Selecciona una nueva.';
-                } else {
-                    elements.sucursalHint.innerHTML = '<i class="fas fa-info-circle"></i> Opcional. Selecciona la sucursal a la que pertenecerá (máximo 2 colaboradores por sucursal)';
-                }
+            // Forzar la selección programáticamente si es necesario
+            if (sucursalAsignadaId && sucursalEncontrada) {
+                elements.sucursalSelect.value = valorSeleccionado;
+                console.log('✅ Sucursal forzada en el select, valor actual:', elements.sucursalSelect.value);
+                console.log('✅ Texto seleccionado:', elements.sucursalSelect.options[elements.sucursalSelect.selectedIndex]?.text);
             }
 
-            // Verificar que la sucursal seleccionada se haya aplicado correctamente
-            if (collaborator.sucursalAsignadaId && sucursalEncontrada) {
-                console.log('✅ Sucursal seleccionada en el select:', elements.sucursalSelect.value);
+            // Verificar que la selección se aplicó correctamente
+            if (sucursalAsignadaId) {
+                if (sucursalEncontrada) {
+                    console.log('✅ Sucursal seleccionada en el select:', elements.sucursalSelect.value);
+                    if (elements.sucursalHint) {
+                        elements.sucursalHint.innerHTML = '<i class="fas fa-check-circle" style="color: #28a745;"></i> Sucursal asignada: ' + sucursalAsignadaNombre;
+                    }
+                } else {
+                    console.warn('⚠️ Sucursal asignada NO ENCONTRADA en la lista:', sucursalAsignadaId);
+                    if (elements.sucursalHint) {
+                        elements.sucursalHint.innerHTML = '<i class="fas fa-exclamation-triangle" style="color: #ff9800;"></i> La sucursal asignada "' + sucursalAsignadaNombre + '" ya no existe. Selecciona una nueva.';
+                    }
+                }
+            } else {
+                if (elements.sucursalHint) {
+                    elements.sucursalHint.innerHTML = '<i class="fas fa-info-circle"></i> Opcional. Selecciona la sucursal a la que pertenecerá (máximo 2 colaboradores por sucursal)';
+                }
             }
         }
 
