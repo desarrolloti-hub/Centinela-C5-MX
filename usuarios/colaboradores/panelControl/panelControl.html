@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Panel de Control | Centinela</title>
+    <title>Panel de Control | Centinela-C5</title>
 
     <!-- Estilos -->
     <link rel="stylesheet" href="/components/personalization/personalization.css">
@@ -17,160 +17,117 @@
     <link rel="stylesheet" href="panelControl.css">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
-    <meta name="description"
-        content="Centinela-MX es un sistema inteligente de seguridad para almacenamiento, monitoreo y predicción de incidencias.">
-    <meta name="keywords" content="centinela, centinela-mx, sistema de seguridad">
-    <meta name="author" content="Centinela-MX">
-    <link rel="canonical" href="https://centinela-mx.web.app/">
+    <!-- SEO Básico -->
+    <meta name="description" content="Centinela es un sistema inteligente de seguridad para almacenamiento, monitoreo y predicción de incidencias. Plataforma confiable para prevención y análisis en tiempo real.">
+    <meta name="keywords" content="centinela, centinela, sistema de seguridad, seguridad inteligente, predicción de incidencias, monitoreo de seguridad, plataforma de seguridad, análisis de riesgos, prevención de incidentes">
+    <meta name="author" content="Centinela">
+    <link rel="canonical" href="https://centinela-c5.web.app/" />
+
+    <!-- Open Graph / Facebook / WhatsApp / LinkedIn -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://centinela-c5.web.app">
+    <meta property="og:title" content="Centinela-C5 | Sistema Inteligente de Seguridad y Predicción">
+    <meta property="og:description" content="Centinela-C5 es una plataforma avanzada de seguridad para almacenamiento, monitoreo y predicción de incidencias en tiempo real.">
+    <meta property="og:image" content="https://centinela-c5.web.app/assets/images/logo.png">
+    <meta property="og:image:width" content="500">
+    <meta property="og:image:height" content="500">
+    <meta property="og:image:alt" content="Vista previa oficial de Centinela-C5">
+    <meta property="og:image" content="https://centinela-c5.web.app/assets/images/logo.png">
+    <meta property="og:image:width" content="500">
+    <meta property="og:image:height" content="500">
+    <meta property="og:image:alt" content="Logo oficial de Centinela">
+    <meta property="og:site_name" content="Centinela">
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:url" content="https://centinela-c5.web.app">
+    <meta name="twitter:title" content="Centinela-C5 | Seguridad Inteligente">
+    <meta name="twitter:description" content="Sistema de seguridad inteligente para monitoreo, almacenamiento y predicción de incidencias.">
+    <meta name="twitter:image" content="https://centinela-c5.web.app/assets/images/logo.png">
+    <meta name="twitter:creator" content="">
+
+    <!-- Schema.org / JSON-LD -->
+    <script type="application/ld+json">
+    {
+    "@context": "https://schema.org",
+    "@type": "LocalBusiness",
+    "name": "Centinela",
+    "operatingSystem": "Web",
+    "applicationCategory": "SecurityApplication",
+    "description": "Centinela es un sistema inteligente de seguridad para el almacenamiento, monitoreo y predicción de incidencias en tiempo real.",
+    "url": "https://centinela-c5.web.app",
+    "image": "https://centinela-c5.web.app/assets/images/logo.png",
+    "publisher": {
+        "@type": "Organization",
+        "name": "Centinela",
+        "logo": {
+        "@type": "ImageObject",
+        "url": "https://centinela-c5.web.app/assets/images/logo.png"
+        }
+    },
+    "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "MXN"
+    }
+    }
+    </script>
 </head>
 
 <body>
     <canvas id="particle-canvas"></canvas>
 
     <main class="right-layout">
-        <!-- SECCIÓN KPI SUPERIOR - MODIFICADA SEGÚN PERMISOS -->
+        <!-- SECCIÓN 1: KPIS (SE GENERAN DINÁMICAMENTE) -->
         <div class="kpi-section">
             <h2><i class="fa-solid fa-chart-line"></i> PANEL DE CONTROL</h2>
-            <div class="kpi-row" id="kpi-container">
-                <!-- Las tarjetas KPI se generarán dinámicamente según permisos -->
+            <div class="kpi-row-6" id="kpi-container">
+                <!-- Las tarjetas KPI se generan dinámicamente según permisos -->
             </div>
         </div>
 
-        <!-- ========== TARJETAS DE MÓDULOS PRINCIPALES ========== -->
-        <div class="modulos-principales">
-            <div class="section-header" style="margin-bottom: 20px; margin-top: 30px;">
-                <h2 class="section-title"><i class="fa-solid fa-cubes"></i> MÓDULOS DEL SISTEMA</h2>
-                <p class="section-subtitle">Accede a los diferentes módulos según tus permisos</p>
-            </div>
+        <!-- SECCIÓN 2: ACCESO RÁPIDO -->
+        <section class="center-row">
+            <div class="side full-width">
+                <div class="section-container">
+                    <div class="section-header">
+                        <h2 class="section-title"><i class="fa-solid fa-bolt"></i> ACCESO RÁPIDO</h2>
+                        <p class="section-subtitle">Módulos principales según tu plan</p>
+                    </div>
 
-            <div class="cards-grid-modulos">
-                <!-- ÁREAS -->
-                <div class="dashboard-card" data-modulo="areas" data-url="/usuarios/colaboradores/areas/areas.html">
-                    <div class="card-icon blue">
-                        <i class="fa-solid fa-sitemap"></i>
+                    <div class="cards-grid-2" id="acceso-rapido-container">
+                        <!-- Las tarjetas de acceso rápido se generan dinámicamente según permisos -->
                     </div>
-                    <div class="card-text">
-                        <h3>Áreas</h3>
-                        <p>Gestionar áreas de la organización</p>
-                    </div>
-                    <div class="card-arrow">→</div>
-                </div>
-
-                <!-- CATEGORÍAS -->
-                <div class="dashboard-card" data-modulo="categorias"
-                    data-url="/usuarios/colaboradores/categorias/categorias.html">
-                    <div class="card-icon cyan">
-                        <i class="fa-solid fa-tags"></i>
-                    </div>
-                    <div class="card-text">
-                        <h3>Categorías</h3>
-                        <p>Administrar categorías y subcategorías</p>
-                    </div>
-                    <div class="card-arrow">→</div>
-                </div>
-
-                <!-- SUCURSALES -->
-                <div class="dashboard-card" data-modulo="sucursales"
-                    data-url="/usuarios/colaboradores/sucursales/sucursales.html">
-                    <div class="card-icon yellow">
-                        <i class="fa-solid fa-store"></i>
-                    </div>
-                    <div class="card-text">
-                        <h3>Sucursales</h3>
-                        <p>Gestionar sucursales activas</p>
-                    </div>
-                    <div class="card-arrow">→</div>
-                </div>
-
-                <!-- REGIONES -->
-                <div class="dashboard-card" data-modulo="regiones"
-                    data-url="/usuarios/colaboradores/regiones/regiones.html">
-                    <div class="card-icon purple">
-                        <i class="fa-solid fa-map-marked-alt"></i>
-                    </div>
-                    <div class="card-text">
-                        <h3>Regiones</h3>
-                        <p>Administrar regiones geográficas</p>
-                    </div>
-                    <div class="card-arrow">→</div>
-                </div>
-
-                <!-- INCIDENCIAS -->
-                <div class="dashboard-card" data-modulo="incidencias"
-                    data-url="/usuarios/colaboradores/incidencias/incidencias.html">
-                    <div class="card-icon danger">
-                        <i class="fa-solid fa-exclamation-triangle"></i>
-                    </div>
-                    <div class="card-text">
-                        <h3>Incidencias</h3>
-                        <p>Gestionar reportes de incidencias</p>
-                    </div>
-                    <div class="card-arrow">→</div>
-                </div>
-
-                <!-- USUARIOS -->
-                <div class="dashboard-card" data-modulo="usuarios"
-                    data-url="/usuarios/colaboradores/usuarios/usuarios.html">
-                    <div class="card-icon" style="color: #00cfff;">
-                        <i class="fa-solid fa-users"></i>
-                    </div>
-                    <div class="card-text">
-                        <h3>Usuarios</h3>
-                        <p>Gestionar usuarios del sistema</p>
-                    </div>
-                    <div class="card-arrow">→</div>
-                </div>
-
-                <!-- ESTADÍSTICAS -->
-                <div class="dashboard-card" data-modulo="estadisticas"
-                    data-url="/usuarios/colaboradores/estadisticas/estadisticas.html">
-                    <div class="card-icon" style="color: #b16bff;">
-                        <i class="fa-solid fa-chart-line"></i>
-                    </div>
-                    <div class="card-text">
-                        <h3>Estadísticas</h3>
-                        <p>Visualizar estadísticas y reportes</p>
-                    </div>
-                    <div class="card-arrow">→</div>
-                </div>
-
-                <!-- TAREAS -->
-                <div class="dashboard-card" data-modulo="tareas" data-url="/usuarios/colaboradores/tareas/tareas.html">
-                    <div class="card-icon" style="color: #ffcc00;">
-                        <i class="fa-solid fa-tasks"></i>
-                    </div>
-                    <div class="card-text">
-                        <h3>Tareas</h3>
-                        <p>Gestionar tareas asignadas</p>
-                    </div>
-                    <div class="card-arrow">→</div>
-                </div>
-
-                <!-- MAPA DE ALERTAS (Monitoreo) -->
-                <div class="dashboard-card" data-modulo="monitoreo" data-url="/usuarios/colaboradores/mapa/mapa.html">
-                    <div class="card-icon" style="color: #ff4d00;">
-                        <i class="fa-solid fa-map-marker-alt"></i>
-                    </div>
-                    <div class="card-text">
-                        <h3>Mapa de Alertas</h3>
-                        <p>Visualización de alertas en mapa</p>
-                    </div>
-                    <div class="card-arrow">→</div>
                 </div>
             </div>
-        </div>
+        </section>
+
+        <!-- SECCIÓN 3: MÓDULOS DE ACCESO (3 COLUMNAS) -->
+        <section class="center-row">
+            <div class="side full-width">
+                <div class="section-container">
+                    <div class="section-header">
+                        <h2 class="section-title"><i class="fa-solid fa-cubes"></i> MÓDULOS DE ACCESO</h2>
+                        <p class="section-subtitle">Gestión administrativa según tus permisos</p>
+                    </div>
+
+                    <div class="modulos-grid" id="modulos-container">
+                        <!-- Los módulos se generan dinámicamente según permisos -->
+                    </div>
+                </div>
+            </div>
+        </section>
     </main>
 
     <!-- COMPONENTES -->
     <script type="module" src="/components/autenticador.js"></script>
     <script type="module" src="/components/cargadorTemas.js"></script>
     <script type="module" src="/components/particulas.js"></script>
-    <script src="/components/navbarColaborador.js"></script>
+    <script src="/components/navbarAdministrador.js"></script>
     <script src="/components/footerColaborador.js"></script>
     <script type="module" src="panelControl.js"></script>
 
     <!-- Protector de pagina -->
-    <script src="/components/protector-colaborador.js" data-modulo="dashboard"></script>
 
 </body>
 

@@ -7,8 +7,8 @@
 // CONFIGURACIÓN DE COLORES BASE
 // =============================================
 export const coloresBase = {
-    primario: '#1a3b5d',
-    secundario: '#c9a03d',
+    primario: '#0033A0',
+    secundario: '#FF6600',
     texto: '#333333',
     textoClaro: '#666666',
     fondo: '#ffffff',
@@ -84,7 +84,7 @@ export class PDFBaseGenerator {
     // =============================================
     // CONVERSIÓN DE IMÁGENES A BASE64 (DIRECTA)
     // =============================================
-    
+
     /**
      * Convierte un objeto imagen (File o objeto con datos) a base64
      */
@@ -371,7 +371,7 @@ export class PDFBaseGenerator {
         const textoStr = String(texto);
         const parrafos = textoStr.split('\n');
         const todasLasLineas = [];
-        
+
         for (const parrafo of parrafos) {
             if (parrafo.trim() === '') {
                 todasLasLineas.push('');
@@ -536,7 +536,7 @@ export class PDFBaseGenerator {
     async mostrarOpcionesDescarga(pdf, nombreArchivo) {
         const result = await Swal.fire({
             title: 'Reporte Generado',
-            html: `<div style="text-align: center;"><i class="fas fa-file-pdf" style="font-size: 48px; color: #c0392b; margin-bottom: 16px;"></i><p style="color: #333; margin: 10px 0;">El reporte se ha generado correctamente.</p></div>`,
+            html: `<div style="text-align: center;"><i class="fas fa-file-pdf" style="font-size: 48px; color: #c0392b; margin-bottom: 16px;"></i></div>`,
             icon: 'success',
             showCancelButton: true,
             confirmButtonText: 'DESCARGAR',
@@ -544,7 +544,7 @@ export class PDFBaseGenerator {
             showDenyButton: true,
             denyButtonText: 'VISUALIZAR',
             confirmButtonColor: '#1a3b5d',
-            denyButtonColor: '#c9a03d',
+            denyButtonColor: '#d70000',
             cancelButtonColor: '#666'
         });
         if (result.isConfirmed) {

@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Registro de Mercancía Perdida | Centinela</title>
+    <title>Registro de Mercancía Perdida | Centinela-C5</title>
 
     <!-- Estilos -->
     <link rel="stylesheet" href="/components/personalization/personalization.css">
@@ -12,7 +12,9 @@
     <!-- Flatpickr CSS -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
 
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Rajdhani:wght@500;700&display=swap"
+        rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <!-- Icono en barra de titulo -->
     <link rel="icon" href="/assets/images/logo.png" type="image/png">
@@ -28,24 +30,64 @@
     <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/es.js"></script>
 
     <!-- SEO Básico -->
-    <meta name="description" content="Registro de mercancía perdida o robada - Sistema Centinela">
-    <meta name="keywords" content="centinela, mercancia perdida, robo, extravio, registro de perdidas">
-    <meta name="author" content="Centinela-MX">
-    <link rel="canonical" href="https://centinela-mx.web.app/" />
+    <meta name="description"
+        content="Centinela es un sistema inteligente de seguridad para almacenamiento, monitoreo y predicción de incidencias. Plataforma confiable para prevención y análisis en tiempo real.">
+    <meta name="keywords"
+        content="centinela, centinela, sistema de seguridad, seguridad inteligente, predicción de incidencias, monitoreo de seguridad, plataforma de seguridad, análisis de riesgos, prevención de incidentes">
+    <meta name="author" content="Centinela">
+    <link rel="canonical" href="https://centinela-c5.web.app/" />
 
-    <!-- Open Graph -->
+    <!-- Open Graph / Facebook / WhatsApp / LinkedIn -->
     <meta property="og:type" content="website">
-    <meta property="og:url" content="https://centinela-mx.web.app">
-    <meta property="og:title" content="Centinela-MX | Registro de Mercancía Perdida">
-    <meta property="og:description" content="Registro de mercancía perdida o robada con evidencias fotográficas">
-    <meta property="og:image" content="https://centinela-mx.web.app/assets/images/logo.png">
-    <meta property="og:site_name" content="Centinela-MX">
+    <meta property="og:url" content="https://centinela-c5.web.app">
+    <meta property="og:title" content="Centinela-C5 | Sistema Inteligente de Seguridad y Predicción">
+    <meta property="og:description"
+        content="Centinela-C5 es una plataforma avanzada de seguridad para almacenamiento, monitoreo y predicción de incidencias en tiempo real.">
+    <meta property="og:image" content="https://centinela-c5.web.app/assets/images/logo.png">
+    <meta property="og:image:width" content="500">
+    <meta property="og:image:height" content="500">
+    <meta property="og:image:alt" content="Vista previa oficial de Centinela-C5">
+    <meta property="og:image" content="https://centinela-c5.web.app/assets/images/logo.png">
+    <meta property="og:image:width" content="500">
+    <meta property="og:image:height" content="500">
+    <meta property="og:image:alt" content="Logo oficial de Centinela">
+    <meta property="og:site_name" content="Centinela">
 
     <!-- Twitter Card -->
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="Centinela-MX | Registro de Mercancía Perdida">
-    <meta name="twitter:description" content="Registro de mercancía perdida o robada con evidencias fotográficas">
-    <meta name="twitter:image" content="https://centinela-mx.web.app/assets/images/logo.png">
+    <meta name="twitter:url" content="https://centinela-c5.web.app">
+    <meta name="twitter:title" content="Centinela-C5 | Seguridad Inteligente">
+    <meta name="twitter:description"
+        content="Sistema de seguridad inteligente para monitoreo, almacenamiento y predicción de incidencias.">
+    <meta name="twitter:image" content="https://centinela-c5.web.app/assets/images/logo.png">
+    <meta name="twitter:creator" content="">
+
+    <!-- Schema.org / JSON-LD -->
+    <script type="application/ld+json">
+    {
+    "@context": "https://schema.org",
+    "@type": "LocalBusiness",
+    "name": "Centinela",
+    "operatingSystem": "Web",
+    "applicationCategory": "SecurityApplication",
+    "description": "Centinela es un sistema inteligente de seguridad para el almacenamiento, monitoreo y predicción de incidencias en tiempo real.",
+    "url": "https://centinela-c5.web.app",
+    "image": "https://centinela-c5.web.app/assets/images/logo.png",
+    "publisher": {
+        "@type": "Organization",
+        "name": "Centinela",
+        "logo": {
+        "@type": "ImageObject",
+        "url": "https://centinela-c5.web.app/assets/images/logo.png"
+        }
+    },
+    "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "MXN"
+    }
+    }
+    </script>
 </head>
 
 <body>
@@ -102,7 +144,7 @@
                                     <div class="input-group">
                                         <span class="input-group-icon"><i class="fas fa-store"></i></span>
                                         <input type="text" class="form-control" id="nombreEmpresaCC"
-                                            placeholder="Escribe el nombre de la empresa o centro comercial..." 
+                                            placeholder="Escribe el nombre de la empresa o centro comercial..."
                                             autocomplete="off" required>
                                     </div>
                                     <div class="form-help-text">Nombre de la empresa o centro comercial afectado</div>
@@ -113,7 +155,8 @@
                                 <div class="full-width">
                                     <label for="tipoEvento" class="form-label">Tipo de Evento *</label>
                                     <div class="input-group">
-                                        <span class="input-group-icon"><i class="fas fa-exclamation-triangle"></i></span>
+                                        <span class="input-group-icon"><i
+                                                class="fas fa-exclamation-triangle"></i></span>
                                         <select class="form-control" id="tipoEvento" required>
                                             <option value="">-- Selecciona el tipo de evento --</option>
                                             <option value="robo">Robo</option>
@@ -131,11 +174,12 @@
                                     <div class="monto-input-group">
                                         <div class="input-group" style="flex: 1;">
                                             <span class="input-group-icon"><i class="fas fa-dollar-sign"></i></span>
-                                            <input type="number" class="form-control" id="montoPerdido" 
+                                            <input type="number" class="form-control" id="montoPerdido"
                                                 placeholder="0.00" step="0.01" min="0" required>
                                         </div>
                                         <div class="monto-preview">
-                                            <i class="fas fa-chart-line"></i> <span id="montoPerdidoPreview">$0.00</span>
+                                            <i class="fas fa-chart-line"></i> <span
+                                                id="montoPerdidoPreview">$0.00</span>
                                         </div>
                                     </div>
                                     <div class="form-help-text">Monto total de la mercancía perdida</div>
@@ -147,11 +191,12 @@
                                     <div class="monto-input-group">
                                         <div class="input-group" style="flex: 1;">
                                             <span class="input-group-icon"><i class="fas fa-undo-alt"></i></span>
-                                            <input type="number" class="form-control" id="montoRecuperado" 
+                                            <input type="number" class="form-control" id="montoRecuperado"
                                                 placeholder="0.00" step="0.01" min="0">
                                         </div>
                                         <div class="monto-preview">
-                                            <i class="fas fa-chart-line"></i> <span id="montoRecuperadoPreview">$0.00</span>
+                                            <i class="fas fa-chart-line"></i> <span
+                                                id="montoRecuperadoPreview">$0.00</span>
                                         </div>
                                     </div>
                                     <div class="form-help-text">Monto recuperado (si aplica)</div>
@@ -167,7 +212,8 @@
                                         <input type="text" class="form-control" id="fechaHoraEvento"
                                             placeholder="Selecciona fecha y hora" required>
                                     </div>
-                                    <div class="form-help-text">Fecha y hora en que ocurrió el evento (no puede ser futura)</div>
+                                    <div class="form-help-text">Fecha y hora en que ocurrió el evento (no puede ser
+                                        futura)</div>
                                 </div>
 
                                 <!-- Narración de Eventos -->
@@ -187,7 +233,8 @@
                                     <label for="detallesPerdida" class="form-label">Detalles de la Pérdida</label>
                                     <textarea class="form-control" id="detallesPerdida" rows="4"
                                         placeholder="Especificaciones de la mercancía perdida: productos, cantidades, valores unitarios, etc. (opcional)"></textarea>
-                                    <div class="form-help-text">Detalles específicos de la mercancía perdida (opcional)</div>
+                                    <div class="form-help-text">Detalles específicos de la mercancía perdida (opcional)
+                                    </div>
                                     <div class="char-limit-info">
                                         <span class="char-counter" id="contadorDetalles">0/1000</span>
                                     </div>
@@ -273,7 +320,7 @@
     <script type="module" src="./crearIncidenciasRecuperacion.js"></script>
 
     <!-- Protector de pagina -->
-    <script src="/components/protector-admin.js" data-modulo="incidencias"> </script>
+
 </body>
 
 </html>
