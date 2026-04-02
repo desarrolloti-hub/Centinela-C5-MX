@@ -14,7 +14,7 @@ const firebaseConfig = {
   storageBucket: "centinela-c5.firebasestorage.app",
   messagingSenderId: "572612004113",
   appId: "1:572612004113:web:9ff187d18068d1fdf5a4b0",
-  measurementId: "G-GP0ZLWBT7Y",
+  measurementId: "G-GP0ZLWBT7Y"
 };
 
 // Initialize Firebase

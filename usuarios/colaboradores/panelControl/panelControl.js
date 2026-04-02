@@ -194,6 +194,14 @@ document.addEventListener('DOMContentLoaded', async function () {
 
         await obtenerPermisosUsuario();
 
+        // Verificar si el usuario tiene algún permiso
+        const tieneAlgunPermiso = Object.values(permisosUsuario).some(valor => valor === true);
+
+        if (!tieneAlgunPermiso) {
+            mostrarSinPermisos();
+            return;
+        }
+
         renderizarKPIs();
         renderizarAccesoRapido();
         renderizarColumnas();
@@ -282,6 +290,18 @@ async function obtenerPermisosUsuario() {
             incidencias: true, usuarios: false, estadisticas: false, tareas: false,
             monitoreo: false, permisos: false, admin: false
         };
+    }
+}
+
+// ========== MOSTRAR MENSAJE DE SIN PERMISOS ==========
+function mostrarSinPermisos() {
+    const container = document.querySelector('.right-layout');
+    if (container) {
+        container.innerHTML = `
+            <div style="text-align: center; padding: 80px 20px;">
+                <p style="color: #ffaa88; font-size: 1.2rem;">No tienes permisos habilitados por el administrador</p>
+            </div>
+        `;
     }
 }
 

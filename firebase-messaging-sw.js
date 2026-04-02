@@ -2,14 +2,16 @@
 importScripts('https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js');
 importScripts('https://www.gstatic.com/firebasejs/10.8.0/firebase-messaging-compat.js');
 
-// Configuración de Firebase de Centinela-MX
+// Configuración de Firebase de Centinela C5
 const firebaseConfig = {
-  apiKey: "AIzaSyB5D45RI21rRAJB9mlt1NeI6N4d3PDyEqg",
-  authDomain: "centinela-mx.firebaseapp.com",
-  projectId: "centinela-mx",
-  storageBucket: "centinela-mx.firebasestorage.app",
-  messagingSenderId: "215358382201",
-  appId: "1:215358382201:web:cf7e0fffb00ca36b05b4a8"
+  apiKey: "AIzaSyAkRF8CUBs8dKlpk6N2U4EhESYhsOAW9sQ",
+  authDomain: "centinela-c5.firebaseapp.com",
+  databaseURL: "https://centinela-c5-default-rtdb.firebaseio.com",
+  projectId: "centinela-c5",
+  storageBucket: "centinela-c5.firebasestorage.app",
+  messagingSenderId: "572612004113",
+  appId: "1:572612004113:web:9ff187d18068d1fdf5a4b0",
+  measurementId: "G-GP0ZLWBT7Y"
 };
 
 // Inicializar Firebase
@@ -118,11 +120,11 @@ self.addEventListener('message', (event) => {
 // Manejador para mensajes en segundo plano
 messaging.onBackgroundMessage(function(payload) {
   
-  const notificationTitle = payload.notification?.title || 'Centinela-MX';
+  const notificationTitle = payload.notification?.title || 'Centinela C5';
   const notificationOptions = {
     body: payload.notification?.body || payload.data?.message || 'Nueva notificación',
     icon: '/assets/images/logo.png',
-    badge: '/assets/images/logo-badge.png',
+    badge: '/assets/images/logo.png',
     data: payload.data || {},
     vibrate: [200, 100, 200],
     actions: [
