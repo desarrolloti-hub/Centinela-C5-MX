@@ -1,27 +1,30 @@
 // ========== VARIABLES GLOBALES ==========
 let userManager = null;
 let usuarioActual = null;
-let historialManager = null; // ✅ NUEVO: Para registrar actividades
+let historialManager = null;
+let areaManager = null;
+let areasMap = new Map(); // Cache de áreas por ID
 
 // Configuración de paginación
 const ITEMS_POR_PAGINA = 10;
 let paginaActual = 1;
 let terminoBusqueda = '';
-let todosLosColaboradores = []; // Almacena todos los colaboradores para búsqueda
-let colaboradoresFiltrados = []; // Colaboradores filtrados para mostrar
+let todosLosColaboradores = [];
+let colaboradoresFiltrados = [];
 
 // ========== INICIALIZACIÓN ==========
 document.addEventListener('DOMContentLoaded', async function() {    
     try {
-        // ✅ NUEVO: Inicializar historialManager
         await inicializarHistorial();
         
         const { UserManager } = await import('/clases/user.js');
         userManager = new UserManager();
         
+        const { AreaManager } = await import('/clases/area.js');
+        areaManager = new AreaManager();
+        
         await new Promise(resolve => setTimeout(resolve, 1500));
         
-        // Obtener usuario actual (temporal - será reemplazado por componente Auth)
         usuarioActual = obtenerUsuarioActual();
 
         if (!usuarioActual) {
@@ -47,11 +50,13 @@ document.addEventListener('DOMContentLoaded', async function() {
         
         localStorage.removeItem('selectedCollaborator');
         
+        // Cargar áreas primero
+        await cargarAreas();
+        
         await loadCollaborators();
         configurarBusqueda();
         setupEvents();
         
-        // ✅ NUEVO: Registrar acceso a la vista de usuarios
         await registrarAccesoVistaUsuarios();
         
     } catch (error) {
@@ -60,7 +65,25 @@ document.addEventListener('DOMContentLoaded', async function() {
     }
 });
 
-// ✅ NUEVO: Inicializar historialManager
+// ========== CARGAR ÁREAS ==========
+async function cargarAreas() {
+    try {
+        if (!areaManager || !usuarioActual?.organizacionCamelCase) return;
+        
+        const areas = await areaManager.getAreasByOrganizacion(usuarioActual.organizacionCamelCase);
+        
+        areasMap.clear();
+        areas.forEach(area => {
+            areasMap.set(area.id, area.nombreArea);
+        });
+        
+        console.log('📦 Áreas cargadas:', areasMap.size);
+        
+    } catch (error) {
+        console.error('Error cargando áreas:', error);
+    }
+}
+
 async function inicializarHistorial() {
     try {
         const { HistorialUsuarioManager } = await import('/clases/historialUsuario.js');
@@ -71,7 +94,6 @@ async function inicializarHistorial() {
     }
 }
 
-// ✅ NUEVO: Registrar acceso a la vista de usuarios
 async function registrarAccesoVistaUsuarios() {
     if (!historialManager) return;
     
@@ -92,11 +114,13 @@ async function registrarAccesoVistaUsuarios() {
     }
 }
 
-// ✅ NUEVO: Registrar visualización de detalles de colaborador
 async function registrarVisualizacionColaborador(colaborador) {
     if (!historialManager) return;
     
     try {
+        const areaNombre = colaborador.areaAsignadaNombre || 'No asignada';
+        const cargoNombre = colaborador.cargo?.nombre || 'No asignado';
+        
         await historialManager.registrarActividad({
             usuario: usuarioActual,
             tipo: 'leer',
@@ -106,7 +130,8 @@ async function registrarVisualizacionColaborador(colaborador) {
                 colaboradorId: colaborador.id,
                 colaboradorNombre: colaborador.nombreCompleto || colaborador.nombre,
                 colaboradorEmail: colaborador.correoElectronico,
-                colaboradorRol: colaborador.rol,
+                colaboradorArea: areaNombre,
+                colaboradorCargo: cargoNombre,
                 colaboradorStatus: colaborador.status === true || colaborador.status === 'active' ? 'activo' : 'inactivo'
             }
         });
@@ -116,7 +141,6 @@ async function registrarVisualizacionColaborador(colaborador) {
     }
 }
 
-// ✅ NUEVO: Registrar cambio de estado de colaborador
 async function registrarCambioEstadoColaborador(colaborador, nuevoEstado, estadoAnterior) {
     if (!historialManager) return;
     
@@ -144,35 +168,8 @@ async function registrarCambioEstadoColaborador(colaborador, nuevoEstado, estado
     }
 }
 
-// ✅ NUEVO: Registrar eliminación de colaborador
-async function registrarEliminacionColaborador(colaborador) {
-    if (!historialManager) return;
-    
-    try {
-        await historialManager.registrarActividad({
-            usuario: usuarioActual,
-            tipo: 'eliminar',
-            modulo: 'usuarios',
-            descripcion: `Eliminó colaborador: ${colaborador.nombreCompleto || colaborador.nombre}`,
-            detalles: {
-                colaboradorId: colaborador.id,
-                colaboradorNombre: colaborador.nombreCompleto || colaborador.nombre,
-                colaboradorEmail: colaborador.correoElectronico,
-                colaboradorRol: colaborador.rol,
-                fechaEliminacion: new Date().toISOString()
-            }
-        });
-        console.log(`✅ Eliminación de colaborador "${colaborador.nombreCompleto}" registrada en bitácora`);
-    } catch (error) {
-        console.error('Error registrando eliminación de colaborador:', error);
-    }
-}
-
-// ========== OBTENER USUARIO ACTUAL (TEMP) ==========
 function obtenerUsuarioActual() {
-    // TODO: Reemplazar con llamado al componente Auth
     try {
-        // Intentar obtener de localStorage primero
         const adminInfo = JSON.parse(localStorage.getItem('adminInfo') || '{}');
         if (adminInfo && Object.keys(adminInfo).length > 0) {
             return {
@@ -197,7 +194,6 @@ function obtenerUsuarioActual() {
             };
         }
 
-        // Si no hay datos, retornar null para usar valores por defecto
         return null;
 
     } catch (error) {
@@ -216,7 +212,6 @@ function generarCamelCase(texto) {
         .replace(/[^a-zA-Z0-9]/g, '');
 }
 
-// ========== CONFIGURAR BÚSQUEDA ==========
 function configurarBusqueda() {
     const inputBuscar = document.getElementById('buscarColaborador');
     const btnBuscar = document.getElementById('btnBuscarColaborador');
@@ -239,7 +234,6 @@ function configurarBusqueda() {
         });
     }
 
-    // Búsqueda en tiempo real con debounce
     if (inputBuscar) {
         let timeoutId;
         inputBuscar.addEventListener('input', (e) => {
@@ -262,32 +256,27 @@ function configurarBusqueda() {
     }
 }
 
-// ========== FUNCIÓN DE FILTRADO ==========
 function filtrarYRenderizar() {
     if (!todosLosColaboradores.length) {
         colaboradoresFiltrados = [];
     } else if (!terminoBusqueda || terminoBusqueda.length < 2) {
-        // Si no hay término de búsqueda, mostrar todas
         colaboradoresFiltrados = [...todosLosColaboradores];
     } else {
-        // Filtrar en memoria
         const terminoLower = terminoBusqueda.toLowerCase();
         colaboradoresFiltrados = todosLosColaboradores.filter(col => 
             (col.nombreCompleto && col.nombreCompleto.toLowerCase().includes(terminoLower)) ||
             (col.correoElectronico && col.correoElectronico.toLowerCase().includes(terminoLower)) ||
-            (col.rol && col.rol.toLowerCase().includes(terminoLower))
+            (col.areaAsignadaNombre && col.areaAsignadaNombre.toLowerCase().includes(terminoLower)) ||
+            (col.cargo?.nombre && col.cargo.nombre.toLowerCase().includes(terminoLower))
         );
     }
 
     renderizarConPaginacion();
 }
 
-// ========== FUNCIONES DE PAGINACIÓN ==========
 function irPagina(pagina) {
     paginaActual = pagina;
     renderizarConPaginacion();
-    
-    // Scroll suave hacia arriba
     document.querySelector('.card-body')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
@@ -301,7 +290,6 @@ function renderizarPaginacion(totalPaginas) {
     }
 
     let html = '';
-
     for (let i = 1; i <= totalPaginas; i++) {
         html += `
             <li class="page-item ${i === paginaActual ? 'active' : ''}">
@@ -309,20 +297,15 @@ function renderizarPaginacion(totalPaginas) {
             </li>
         `;
     }
-
     pagination.innerHTML = html;
 }
 
-// Hacer la función global para que funcionen los botones
 window.irPaginaColaborador = function(pagina) {
     paginaActual = pagina;
     renderizarConPaginacion();
-    
-    // Scroll suave hacia arriba
     document.querySelector('.card-body')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 };
 
-// ========== RENDERIZAR CON PAGINACIÓN ==========
 function renderizarConPaginacion() {
     const tbody = document.getElementById('usersTableBody');
     if (!tbody) return;
@@ -330,7 +313,6 @@ function renderizarConPaginacion() {
     const totalItems = colaboradoresFiltrados.length;
     const totalPaginas = Math.ceil(totalItems / ITEMS_POR_PAGINA);
     
-    // Ajustar página actual si está fuera de rango
     if (paginaActual > totalPaginas && totalPaginas > 0) {
         paginaActual = totalPaginas;
     }
@@ -339,7 +321,6 @@ function renderizarConPaginacion() {
     const fin = Math.min(inicio + ITEMS_POR_PAGINA, totalItems);
     const colaboradoresPagina = colaboradoresFiltrados.slice(inicio, fin);
 
-    // Actualizar información de paginación
     const paginationInfo = document.getElementById('paginationInfo');
     if (paginationInfo) {
         if (totalItems === 0) {
@@ -349,7 +330,6 @@ function renderizarConPaginacion() {
         }
     }
 
-    // Mostrar/ocultar contenedor de paginación
     const paginacionContainer = document.querySelector('.pagination-container');
     if (paginacionContainer) {
         paginacionContainer.style.display = totalItems > ITEMS_POR_PAGINA ? 'flex' : 'none';
@@ -361,7 +341,7 @@ function renderizarConPaginacion() {
         } else {
             tbody.innerHTML = `
                 <tr>
-                    <td colspan="5" class="empty-state">
+                    <td colspan="6" class="empty-state">
                         <div class="empty-state-content">
                             <i class="fas fa-search" style="font-size: 48px; color: rgba(255,255,255,0.3); margin-bottom: 16px;"></i>
                             <h3>No se encontraron colaboradores</h3>
@@ -384,26 +364,63 @@ async function loadCollaborators() {
     try {
         showLoadingState();
         
-        todosLosColaboradores = await userManager.getColaboradoresByOrganizacion(
+        const colaboradoresBasicos = await userManager.getColaboradoresByOrganizacion(
             usuarioActual.organizacionCamelCase,
             true
         );
+        
+        console.log('📊 Colaboradores básicos cargados:', colaboradoresBasicos.length);
+        
+        // Procesar cada colaborador para agregar área y cargo
+        todosLosColaboradores = [];
+        
+        for (const col of colaboradoresBasicos) {
+            // Buscar el nombre del área usando el areaAsignadaId
+            let areaNombre = '';
+            if (col.areaAsignadaId && areasMap.has(col.areaAsignadaId)) {
+                areaNombre = areasMap.get(col.areaAsignadaId);
+                console.log(`📍 Área encontrada para ${col.nombreCompleto}: ${areaNombre} (ID: ${col.areaAsignadaId})`);
+            }
+            
+            // Asignar el nombre del área al objeto
+            col.areaAsignadaNombre = areaNombre;
+            
+            // ✅ IMPORTANTE: Si no tiene cargo, cargar datos completos con getUserById
+            let cargoNombre = col.cargo?.nombre || '';
+            
+            if (!cargoNombre && col.id) {
+                try {
+                    console.log(`🔄 Cargando datos completos para ${col.nombreCompleto} para obtener el cargo...`);
+                    const colCompleto = await userManager.getUserById(col.id);
+                    if (colCompleto && colCompleto.cargo?.nombre) {
+                        cargoNombre = colCompleto.cargo.nombre;
+                        col.cargo = colCompleto.cargo;
+                        console.log(`✅ Cargo encontrado: ${cargoNombre}`);
+                    }
+                } catch (err) {
+                    console.warn(`No se pudo cargar cargo para ${col.id}:`, err);
+                }
+            }
+            
+            console.log(`   - ${col.nombreCompleto}: área="${areaNombre}", cargo="${cargoNombre}"`);
+            
+            todosLosColaboradores.push(col);
+        }
         
         localStorage.setItem('colaboradoresList', JSON.stringify(
             todosLosColaboradores.map(col => ({
                 id: col.id,
                 nombreCompleto: col.nombreCompleto,
                 correoElectronico: col.correoElectronico,
-                rol: col.rol,
+                areaAsignadaNombre: col.areaAsignadaNombre || '',
+                cargoNombre: col.cargo?.nombre || '',
                 status: col.status,
                 organizacion: col.organizacion,
                 fotoUsuario: col.fotoUsuario,
             }))
         ));
         
-        // Inicializar filtradas
         colaboradoresFiltrados = [...todosLosColaboradores];
-        
         renderizarConPaginacion();
         
     } catch (error) {
@@ -412,7 +429,7 @@ async function loadCollaborators() {
     }
 }
 
-// ========== RENDERIZAR TABLA DE COLABORADORES ==========
+// ========== RENDERIZAR TABLA CON ÁREA Y CARGO ==========
 function renderCollaboratorsTable(collaborators) {
     const tbody = document.getElementById('usersTableBody');
     if (!tbody) return;
@@ -425,6 +442,10 @@ function renderCollaboratorsTable(collaborators) {
         
         const fullName = col.nombreCompleto || '';
         const fotoUrl = col.getFotoUrl ? col.getFotoUrl() : (col.fotoUsuario || '');
+        
+        // Área y cargo - AHORA SÍ ESTÁN
+        const areaNombre = col.areaAsignadaNombre || '';
+        const cargoNombre = col.cargo?.nombre || '';
         
         row.className = isActive ? 'collaborator-row' : 'collaborator-row inactive';
         
@@ -439,15 +460,16 @@ function renderCollaboratorsTable(collaborators) {
                         <span class="user-name">${escapeHTML(fullName)}</span>
                     </div>
                 </div>
-             </td>
-            <td data-label="ROL">${escapeHTML(col.rol || 'Colaborador')}</td>
+               </td>
+            <td data-label="ÁREA">${escapeHTML(areaNombre || 'No asignada')}</td>
+            <td data-label="CARGO">${escapeHTML(cargoNombre || 'No asignado')}</td>
             <td data-label="CORREO">${escapeHTML(col.correoElectronico || 'No disponible')}</td>
             <td data-label="ESTADO">
                 <span class="status ${isActive ? 'active' : 'inactive'}">
                     <i class="fas ${isActive ? 'fa-check-circle' : 'fa-ban'}"></i> 
                     ${isActive ? 'Activo' : 'Inactivo'}
                 </span>
-             </td>
+               </td>
             <td data-label="ACCIONES">
                 <div class="btn-group">
                     <button type="button" class="btn ${isActive ? 'btn-disable' : 'btn-enable'}" 
@@ -464,14 +486,13 @@ function renderCollaboratorsTable(collaborators) {
                         <i class="fas fa-eye"></i>
                     </button>
                 </div>
-             </td>
+               </td>
         `;
         
         tbody.appendChild(row);
     });
 }
 
-// ========== CONFIGURAR EVENTOS ==========
 function setupEvents() {
     const addBtn = document.getElementById('addBtn');
     if (addBtn) {
@@ -484,7 +505,6 @@ function setupEvents() {
     if (tbody) {
         tbody.addEventListener('click', async (e) => {
             const button = e.target.closest('.btn');
-            
             if (!button) return;
             
             const action = button.getAttribute('data-action');
@@ -505,10 +525,8 @@ function setupEvents() {
     }
 }
 
-// ========== CAMBIAR ESTADO DEL COLABORADOR ==========
 async function toggleUserStatus(collaboratorId, collaboratorName, enable) {
     try {
-        // Obtener el colaborador completo antes de cambiar su estado
         const collaborator = await userManager.getUserById(collaboratorId);
         if (!collaborator) throw new Error('Colaborador no encontrado');
         
@@ -543,9 +561,7 @@ async function toggleUserStatus(collaboratorId, collaboratorName, enable) {
             title: `${actionText}...`,
             text: 'Por favor espera',
             allowOutsideClick: false,
-            didOpen: () => {
-                Swal.showLoading();
-            }
+            didOpen: () => Swal.showLoading()
         });
         
         if (enable) {
@@ -570,7 +586,6 @@ async function toggleUserStatus(collaboratorId, collaboratorName, enable) {
             usuarioActual.organizacionCamelCase
         );
         
-        // ✅ NUEVO: Registrar cambio de estado en bitácora
         await registrarCambioEstadoColaborador(collaborator, enable, estadoAnterior);
         
         Swal.close();
@@ -579,12 +594,7 @@ async function toggleUserStatus(collaboratorId, collaboratorName, enable) {
         Swal.fire({
             icon: 'success',
             title: '¡Estado cambiado!',
-            html: `
-                <div>
-                    <p><strong>${escapeHTML(collaboratorName)}</strong></p>
-                    <p>ha sido ${statusText} exitosamente</p>
-                </div>
-            `,
+            html: `<p><strong>${escapeHTML(collaboratorName)}</strong> ha sido ${statusText} exitosamente</p>`,
             timer: 2000,
             timerProgressBar: true,
             showConfirmButton: false
@@ -593,7 +603,6 @@ async function toggleUserStatus(collaboratorId, collaboratorName, enable) {
     } catch (error) {
         console.error('Error cambiando estado:', error);
         Swal.close();
-        
         Swal.fire({
             icon: 'error',
             title: 'Error',
@@ -602,7 +611,6 @@ async function toggleUserStatus(collaboratorId, collaboratorName, enable) {
     }
 }
 
-// ========== EDITAR COLABORADOR ==========
 async function editUser(collaboratorId, collaboratorName) {    
     const selectedCollaborator = {
         id: collaboratorId,
@@ -614,22 +622,22 @@ async function editUser(collaboratorId, collaboratorName) {
     };
     
     localStorage.setItem('selectedCollaborator', JSON.stringify(selectedCollaborator));
-    
     window.location.href = `../editarUsuarios/editarUsuarios.html?id=${collaboratorId}&org=${usuarioActual.organizacionCamelCase}`;
 }
 
-// ========== VER DETALLES DEL COLABORADOR ==========
 async function viewUserDetails(collaboratorId, collaboratorName) {
     try {
         const collaborator = await userManager.getUserById(collaboratorId);
+        if (!collaborator) throw new Error('Colaborador no encontrado');
         
-        if (!collaborator) {
-            throw new Error('Colaborador no encontrado');
+        // Si no tiene área asignada, buscarla
+        if (collaborator.areaAsignadaId && !collaborator.areaAsignadaNombre) {
+            if (areasMap.has(collaborator.areaAsignadaId)) {
+                collaborator.areaAsignadaNombre = areasMap.get(collaborator.areaAsignadaId);
+            }
         }
         
-        // ✅ NUEVO: Registrar visualización de colaborador
         await registrarVisualizacionColaborador(collaborator);
-        
         showCollaboratorDetails(collaborator, collaboratorName);
         
     } catch (error) {
@@ -645,16 +653,58 @@ async function viewUserDetails(collaboratorId, collaboratorName) {
 // ========== MOSTRAR DETALLES EN MODAL ==========
 function showCollaboratorDetails(collaborator, collaboratorName) {
     let fechaCreacion = 'No disponible';
+    
+    // ✅ CORRECCIÓN: Manejar correctamente el Timestamp de Firestore
     if (collaborator.fechaCreacion) {
-        if (collaborator.fechaCreacion.toDate) {
-            fechaCreacion = collaborator.fechaCreacion.toDate().toLocaleDateString('es-MX');
-        } else if (typeof collaborator.fechaCreacion === 'string') {
-            fechaCreacion = new Date(collaborator.fechaCreacion).toLocaleDateString('es-MX');
+        try {
+            // Si es Timestamp de Firestore (tiene método toDate)
+            if (typeof collaborator.fechaCreacion.toDate === 'function') {
+                const date = collaborator.fechaCreacion.toDate();
+                fechaCreacion = date.toLocaleDateString('es-MX', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                });
+            }
+            // Si es string ISO
+            else if (typeof collaborator.fechaCreacion === 'string') {
+                const date = new Date(collaborator.fechaCreacion);
+                if (!isNaN(date.getTime())) {
+                    fechaCreacion = date.toLocaleDateString('es-MX', {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric'
+                    });
+                }
+            }
+            // Si es objeto con seconds (Timestamp alternativo)
+            else if (collaborator.fechaCreacion.seconds) {
+                const date = new Date(collaborator.fechaCreacion.seconds * 1000);
+                fechaCreacion = date.toLocaleDateString('es-MX', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                });
+            }
+            // Si ya es Date
+            else if (collaborator.fechaCreacion instanceof Date) {
+                fechaCreacion = collaborator.fechaCreacion.toLocaleDateString('es-MX', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                });
+            }
+        } catch (e) {
+            console.warn('Error formateando fecha de creación:', e);
+            fechaCreacion = 'No disponible';
         }
     }
     
     const isActive = collaborator.status === true || collaborator.status === 'active';
     const fotoUrl = collaborator.getFotoUrl ? collaborator.getFotoUrl() : (collaborator.fotoUsuario || '');
+    
+    const areaNombre = collaborator.areaAsignadaNombre || 'No asignada';
+    const cargoNombre = collaborator.cargo?.nombre || 'No asignado';
     
     Swal.fire({
         title: `Detalles de: ${collaboratorName}`,
@@ -669,7 +719,7 @@ function showCollaboratorDetails(collaborator, collaboratorName) {
                     </div>
                     <div class="swal-user-info-large">
                         <h3>${escapeHTML(collaborator.nombreCompleto || 'Sin nombre')}</h3>
-                        <p>${escapeHTML(collaborator.rol || 'Colaborador')}</p>
+                        <p>${escapeHTML(cargoNombre)} · ${escapeHTML(areaNombre)}</p>
                     </div>
                 </div>
                 
@@ -709,7 +759,6 @@ function showCollaboratorDetails(collaborator, collaboratorName) {
     });
 }
 
-// ========== FUNCIÓN AUXILIAR ESCAPE HTML ==========
 function escapeHTML(text) {
     if (!text) return '';
     return String(text)
@@ -720,14 +769,13 @@ function escapeHTML(text) {
         .replace(/'/g, '&#039;');
 }
 
-// ========== ESTADO VACÍO ==========
 function showEmptyState() {
     const tbody = document.getElementById('usersTableBody');
     if (!tbody) return;
     
     tbody.innerHTML = `
         <tr>
-            <td colspan="5" class="empty-state">
+            <td colspan="6" class="empty-state">
                 <div class="empty-state-content">
                     <i class="fas fa-users"></i>
                     <h3>No hay colaboradores en ${usuarioActual?.organizacion || 'tu organización'}</h3>
@@ -736,53 +784,44 @@ function showEmptyState() {
                         <i class="fas fa-plus"></i> Agregar Colaborador
                     </button>
                 </div>
-             </td>
-         </tr>
+               </td>
+           </tr>
     `;
     
     document.getElementById('addFirstCollaborator')?.addEventListener('click', () => {
         window.location.href = '../crearUsuarios/crearUsuarios.html';
     });
 
-    // Ocultar paginación
     const paginacionContainer = document.querySelector('.pagination-container');
-    if (paginacionContainer) {
-        paginacionContainer.style.display = 'none';
-    }
+    if (paginacionContainer) paginacionContainer.style.display = 'none';
 }
 
-// ========== ESTADO DE CARGA ==========
 function showLoadingState() {
     const tbody = document.getElementById('usersTableBody');
     if (!tbody) return;
     
     tbody.innerHTML = `
         <tr>
-            <td colspan="5" class="loading-state">
+            <td colspan="6" class="loading-state">
                 <div class="loading-content">
                     <div class="loading-spinner"></div>
                     <h3>Cargando colaboradores...</h3>
-                    <p>Obteniendo datos de Firebase</p>
                 </div>
-             </td>
-         </tr>
+               </td>
+           </tr>
     `;
 
-    // Ocultar paginación mientras carga
     const paginacionContainer = document.querySelector('.pagination-container');
-    if (paginacionContainer) {
-        paginacionContainer.style.display = 'none';
-    }
+    if (paginacionContainer) paginacionContainer.style.display = 'none';
 }
 
-// ========== MANEJO DE ERRORES ==========
 function showFirebaseError(error) {
     const tbody = document.getElementById('usersTableBody');
     if (!tbody) return;
     
     tbody.innerHTML = `
         <tr>
-            <td colspan="5" class="error-state">
+            <td colspan="6" class="error-state">
                 <div class="error-content firebase-error">
                     <i class="fas fa-exclamation-triangle"></i>
                     <h3>Error al cargar colaboradores</h3>
@@ -792,15 +831,12 @@ function showFirebaseError(error) {
                         <i class="fas fa-sync-alt"></i> Recargar página
                     </button>
                 </div>
-             </td>
-         </tr>
+               </td>
+           </tr>
     `;
 
-    // Ocultar paginación
     const paginacionContainer = document.querySelector('.pagination-container');
-    if (paginacionContainer) {
-        paginacionContainer.style.display = 'none';
-    }
+    if (paginacionContainer) paginacionContainer.style.display = 'none';
 }
 
 function showError(message) {
@@ -809,7 +845,7 @@ function showError(message) {
     
     tbody.innerHTML = `
         <tr>
-            <td colspan="5" class="error-state">
+            <td colspan="6" class="error-state">
                 <div class="error-content">
                     <i class="fas fa-exclamation-circle"></i>
                     <h3>${escapeHTML(message)}</h3>
@@ -817,13 +853,10 @@ function showError(message) {
                         <i class="fas fa-sync-alt"></i> Reintentar
                     </button>
                 </div>
-             </td>
-         </tr>
+               </td>
+           </tr>
     `;
 
-    // Ocultar paginación
     const paginacionContainer = document.querySelector('.pagination-container');
-    if (paginacionContainer) {
-        paginacionContainer.style.display = 'none';
-    }
+    if (paginacionContainer) paginacionContainer.style.display = 'none';
 }

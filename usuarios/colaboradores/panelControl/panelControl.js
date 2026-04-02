@@ -158,8 +158,7 @@ const COLUMNAS_CONFIG = [
         color: '#ffcc00',
         permisos: ['tareas'],
         tarjetas: [
-            { modulo: 'tareasLista', titulo: 'Mis Tareas', descripcion: 'Ver tareas asignadas', icono: 'fa-list-check', color: 'yellow', url: '/usuarios/colaboradores/tareas/tareas.html' },
-            { modulo: 'tareasNueva', titulo: 'Nueva Tarea', descripcion: 'Crear nueva tarea', icono: 'fa-plus-circle', color: 'yellow', url: '/usuarios/colaboradores/tareas/tareas.html' }
+            { modulo: 'tareasLista', titulo: 'Mis Tareas', descripcion: 'Ver tareas asignadas', icono: 'fa-list-check', color: 'yellow', url: '/usuarios/colaboradores/tareas/tareas.html' }
         ]
     },
     {
@@ -193,6 +192,14 @@ document.addEventListener('DOMContentLoaded', async function () {
         } catch (error) { }
 
         await obtenerPermisosUsuario();
+
+        // Verificar si el usuario tiene algún permiso
+        const tieneAlgunPermiso = Object.values(permisosUsuario).some(valor => valor === true);
+
+        if (!tieneAlgunPermiso) {
+            mostrarSinPermisos();
+            return;
+        }
 
         renderizarKPIs();
         renderizarAccesoRapido();
@@ -282,6 +289,18 @@ async function obtenerPermisosUsuario() {
             incidencias: true, usuarios: false, estadisticas: false, tareas: false,
             monitoreo: false, permisos: false, admin: false
         };
+    }
+}
+
+// ========== MOSTRAR MENSAJE DE SIN PERMISOS ==========
+function mostrarSinPermisos() {
+    const container = document.querySelector('.right-layout');
+    if (container) {
+        container.innerHTML = `
+            <div style="text-align: center; padding: 80px 20px;">
+                <p style="color: #ffaa88; font-size: 1.2rem;">No tienes permisos habilitados por el administrador</p>
+            </div>
+        `;
     }
 }
 
