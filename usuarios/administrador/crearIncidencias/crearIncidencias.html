@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Crear Nueva Incidencia | Centinela</title>
+    <title>Crear Nueva Incidencia | Centinela-C5</title>
 
     <!-- Estilos -->
     <link rel="stylesheet" href="/components/personalization/personalization.css">
@@ -31,35 +31,35 @@
 
     <!-- SEO Básico -->
     <meta name="description"
-        content="Centinela-MX es un sistema inteligente de seguridad para almacenamiento, monitoreo y predicción de incidencias. Plataforma confiable para prevención y análisis en tiempo real.">
+        content="Centinela es un sistema inteligente de seguridad para almacenamiento, monitoreo y predicción de incidencias. Plataforma confiable para prevención y análisis en tiempo real.">
     <meta name="keywords"
-        content="centinela, centinela-mx, sistema de seguridad, seguridad inteligente, predicción de incidencias, monitoreo de seguridad, plataforma de seguridad, análisis de riesgos, prevención de incidentes">
-    <meta name="author" content="Centinela-MX">
-    <link rel="canonical" href="https://centinela-mx.web.app/" />
+        content="centinela, centinela, sistema de seguridad, seguridad inteligente, predicción de incidencias, monitoreo de seguridad, plataforma de seguridad, análisis de riesgos, prevención de incidentes">
+    <meta name="author" content="Centinela">
+    <link rel="canonical" href="https://centinela-c5.web.app/" />
 
     <!-- Open Graph / Facebook / WhatsApp / LinkedIn -->
     <meta property="og:type" content="website">
-    <meta property="og:url" content="https://centinela-mx.web.app">
-    <meta property="og:title" content="Centinela-MX | Sistema Inteligente de Seguridad y Predicción">
+    <meta property="og:url" content="https://centinela-c5.web.app">
+    <meta property="og:title" content="Centinela-C5 | Sistema Inteligente de Seguridad y Predicción">
     <meta property="og:description"
-        content="Centinela-MX es una plataforma avanzada de seguridad para almacenamiento, monitoreo y predicción de incidencias en tiempo real.">
-    <meta property="og:image" content="https://centinela-mx.web.app/img/centinela-mx-og.png">
+        content="Centinela-C5 es una plataforma avanzada de seguridad para almacenamiento, monitoreo y predicción de incidencias en tiempo real.">
+    <meta property="og:image" content="https://centinela-c5.web.app/assets/images/logo.png">
     <meta property="og:image:width" content="500">
     <meta property="og:image:height" content="500">
-    <meta property="og:image:alt" content="Vista previa oficial de Centinela-MX">
-    <meta property="og:image" content="https://centinela-mx.web.app/assets/images/logo.png">
+    <meta property="og:image:alt" content="Vista previa oficial de Centinela-C5">
+    <meta property="og:image" content="https://centinela-c5.web.app/assets/images/logo.png">
     <meta property="og:image:width" content="500">
     <meta property="og:image:height" content="500">
-    <meta property="og:image:alt" content="Logo oficial de Centinela-MX">
-    <meta property="og:site_name" content="Centinela-MX">
+    <meta property="og:image:alt" content="Logo oficial de Centinela">
+    <meta property="og:site_name" content="Centinela">
 
     <!-- Twitter Card -->
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:url" content="https://centinela-mx.web.app">
-    <meta name="twitter:title" content="Centinela-MX | Seguridad Inteligente">
+    <meta name="twitter:url" content="https://centinela-c5.web.app">
+    <meta name="twitter:title" content="Centinela-C5 | Seguridad Inteligente">
     <meta name="twitter:description"
         content="Sistema de seguridad inteligente para monitoreo, almacenamiento y predicción de incidencias.">
-    <meta name="twitter:image" content="https://centinela-mx.web.app/img/centinela-mx-og.png">
+    <meta name="twitter:image" content="https://centinela-c5.web.app/assets/images/logo.png">
     <meta name="twitter:creator" content="">
 
     <!-- Schema.org / JSON-LD -->
@@ -67,18 +67,18 @@
     {
     "@context": "https://schema.org",
     "@type": "LocalBusiness",
-    "name": "Centinela-MX",
+    "name": "Centinela",
     "operatingSystem": "Web",
     "applicationCategory": "SecurityApplication",
-    "description": "Centinela-MX es un sistema inteligente de seguridad para el almacenamiento, monitoreo y predicción de incidencias en tiempo real.",
-    "url": "https://centinela-mx.web.app",
-    "image": "https://centinela-mx.web.app/assets/images/logo.png",
+    "description": "Centinela es un sistema inteligente de seguridad para el almacenamiento, monitoreo y predicción de incidencias en tiempo real.",
+    "url": "https://centinela-c5.web.app",
+    "image": "https://centinela-c5.web.app/assets/images/logo.png",
     "publisher": {
         "@type": "Organization",
-        "name": "Centinela-MX",
+        "name": "Centinela",
         "logo": {
         "@type": "ImageObject",
-        "url": "https://centinela-mx.web.app/assets/images/logo.png"
+        "url": "https://centinela-c5.web.app/assets/images/logo.png"
         }
     },
     "offers": {
@@ -123,176 +123,121 @@
                     </div>
                     <div class="card-body">
                         <form id="formIncidenciaPrincipal">
-                            <!-- ORGANIZACIÓN (siempre visible) -->
-                            <div class="form-field-container" id="containerOrganization">
-                                <div class="form-grid" style="grid-template-columns: 1fr;">
-                                    <div class="full-width">
-                                        <h6 class="section-title"><i class="fas fa-building"></i>Organización</h6>
+                            <!-- Grid de UNA sola columna -->
+                            <div class="form-grid" style="grid-template-columns: 1fr;">
+                                <div class="full-width">
+                                    <h6 class="section-title"><i class="fas fa-info-circle"></i>Información Básica</h6>
+                                </div>
+
+                                <!-- Organización (solo lectura) -->
+                                <div class="full-width">
+                                    <label for="organization" class="form-label">Organización</label>
+                                    <div class="input-group">
+                                        <span class="input-group-icon"><i class="fas fa-building"></i></span>
+                                        <input type="text" class="form-control" id="organization" readonly>
                                     </div>
-                                    <div class="full-width">
-                                        <label for="organization" class="form-label">Organización</label>
-                                        <div class="input-group">
-                                            <span class="input-group-icon"><i class="fas fa-building"></i></span>
-                                            <input type="text" class="form-control" id="organization" readonly>
-                                        </div>
-                                        <div class="form-help-text">Organización a la que pertenece la incidencia</div>
+                                    <div class="form-help-text">Organización a la que pertenece la incidencia</div>
+                                </div>
+
+                                <!-- Sucursal con buscador de sugerencias -->
+                                <div class="full-width">
+                                    <label for="sucursalIncidencia" class="form-label">Sucursal *</label>
+                                    <div class="input-group">
+                                        <span class="input-group-icon"><i class="fas fa-store"></i></span>
+                                        <input type="text" class="form-control" id="sucursalIncidencia"
+                                            placeholder="Escribe para buscar sucursal..." autocomplete="off" required>
+                                    </div>
+                                    <div class="form-help-text">Escribe y selecciona la sucursal de las sugerencias
+                                    </div>
+                                    <!-- Contenedor de sugerencias -->
+                                    <div id="sugerenciasSucursal" class="sugerencias-container"></div>
+                                </div>
+
+                                <!-- Categoría con buscador de sugerencias -->
+                                <div class="full-width">
+                                    <label for="categoriaIncidencia" class="form-label">Categoría *</label>
+                                    <div class="input-group">
+                                        <span class="input-group-icon"><i class="fas fa-tags"></i></span>
+                                        <input type="text" class="form-control" id="categoriaIncidencia"
+                                            placeholder="Escribe para buscar categoría..." autocomplete="off" required>
+                                    </div>
+                                    <div class="form-help-text">Escribe y selecciona la categoría de las sugerencias
+                                    </div>
+                                    <!-- Contenedor de sugerencias -->
+                                    <div id="sugerenciasCategoria" class="sugerencias-container"></div>
+                                </div>
+
+                                <!-- Subcategoría (opcional) - select normal -->
+                                <div class="full-width">
+                                    <label for="subcategoriaIncidencia" class="form-label">Subcategoría</label>
+                                    <div class="input-group">
+                                        <span class="input-group-icon"><i class="fas fa-tag"></i></span>
+                                        <select class="form-control" id="subcategoriaIncidencia">
+                                            <option value="">-- Selecciona una subcategoría (opcional) --</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-help-text">Puedes especificar una subcategoría (opcional)</div>
+                                </div>
+
+                                <!-- ============================================= -->
+
+                                <!-- Nivel de Riesgo -->
+                                <div class="full-width">
+                                    <label for="nivelRiesgo" class="form-label">Nivel de Riesgo *</label>
+                                    <div class="input-group">
+                                        <span class="input-group-icon"><i
+                                                class="fas fa-exclamation-triangle"></i></span>
+                                        <select class="form-control" id="nivelRiesgo" required>
+                                            <option value="">-- Selecciona el nivel de riesgo --</option>
+                                            <option value="bajo">Bajo</option>
+                                            <option value="medio">Medio</option>
+                                            <option value="alto">Alto</option>
+                                            <option value="critico">Crítico</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-help-text">Define la criticidad de la incidencia</div>
+                                </div>
+
+                                <!-- Estado de la incidencia -->
+                                <div class="full-width">
+                                    <label for="estadoIncidencia" class="form-label">Estado *</label>
+                                    <div class="input-group">
+                                        <span class="input-group-icon"><i class="fas fa-check-circle"></i></span>
+                                        <select class="form-control" id="estadoIncidencia" required>
+                                            <option value="pendiente">Pendiente</option>
+                                            <option value="finalizada">Finalizada</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-help-text">Define el estado actual de la incidencia</div>
+                                </div>
+
+                                <!-- Fecha y Hora de la incidencia -->
+                                <div class="full-width">
+                                    <label for="fechaHoraIncidencia" class="form-label">Fecha y Hora *</label>
+                                    <div class="input-group">
+                                        <span class="input-group-icon">
+                                            <i class="fas fa-calendar-alt"></i>
+                                        </span>
+                                        <input type="text" class="form-control" id="fechaHoraIncidencia"
+                                            placeholder="Selecciona fecha y hora" required>
+                                    </div>
+                                    <div class="form-help-text">Fecha y hora en que ocurrió la incidencia (no puede ser
+                                        futura)</div>
+                                </div>
+
+                                <!-- Descripción/Detalles -->
+                                <div class="full-width">
+                                    <label for="detallesIncidencia" class="form-label">Descripción de la Incidencia
+                                        *</label>
+                                    <textarea class="form-control" id="detallesIncidencia" rows="5"
+                                        placeholder="Describa detalladamente lo sucedido, incluyendo fechas, personas involucradas, y cualquier información relevante..."
+                                        required></textarea>
+                                    <div class="form-help-text">Proporcione una descripción detallada del incidente
+                                    </div>
+                                    <div class="char-limit-info">
+                                        <span class="char-counter" id="contadorCaracteres">0/1000</span>
                                     </div>
                                 </div>
-                            </div>
-
-                            <!-- SUCURSAL (siempre visible) -->
-                            <div class="form-field-container" id="containerSucursal">
-                                <div class="form-grid" style="grid-template-columns: 1fr;">
-                                    <div class="full-width">
-                                        <h6 class="section-title"><i class="fas fa-store"></i>Sucursal</h6>
-                                    </div>
-                                    <div class="full-width">
-                                        <label for="sucursalIncidencia" class="form-label">Sucursal *</label>
-                                        <div class="input-group">
-                                            <span class="input-group-icon"><i class="fas fa-store"></i></span>
-                                            <input type="text" class="form-control" id="sucursalIncidencia"
-                                                placeholder="Escribe para buscar sucursal..." autocomplete="off"
-                                                required>
-                                        </div>
-                                        <div class="form-help-text">Escribe y selecciona la sucursal de las sugerencias
-                                        </div>
-                                        <div id="sugerenciasSucursal" class="sugerencias-container"></div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- CATEGORÍA (inicialmente oculto) -->
-                            <div class="form-field-container" id="containerCategoria" style="display: none;">
-                                <div class="form-grid" style="grid-template-columns: 1fr;">
-                                    <div class="full-width">
-                                        <h6 class="section-title"><i class="fas fa-tags"></i>Categoría</h6>
-                                    </div>
-                                    <div class="full-width">
-                                        <label for="categoriaIncidencia" class="form-label">Categoría *</label>
-                                        <div class="input-group">
-                                            <span class="input-group-icon"><i class="fas fa-tags"></i></span>
-                                            <input type="text" class="form-control" id="categoriaIncidencia"
-                                                placeholder="Escribe para buscar categoría..." autocomplete="off"
-                                                required>
-                                        </div>
-                                        <div class="form-help-text">Escribe y selecciona la categoría de las sugerencias
-                                        </div>
-                                        <div id="sugerenciasCategoria" class="sugerencias-container"></div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- SUBCATEGORÍA (inicialmente oculto) -->
-                            <div class="form-field-container" id="containerSubcategoria" style="display: none;">
-                                <div class="form-grid" style="grid-template-columns: 1fr;">
-                                    <div class="full-width">
-                                        <h6 class="section-title"><i class="fas fa-tag"></i>Subcategoría (Opcional)</h6>
-                                    </div>
-                                    <div class="full-width">
-                                        <label for="subcategoriaIncidencia" class="form-label">Subcategoría</label>
-                                        <div class="input-group">
-                                            <span class="input-group-icon"><i class="fas fa-tag"></i></span>
-                                            <select class="form-control" id="subcategoriaIncidencia">
-                                                <option value="">-- Selecciona una subcategoría (opcional) --</option>
-                                            </select>
-                                        </div>
-                                        <div class="form-help-text">Puedes especificar una subcategoría (opcional)</div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- NIVEL DE RIESGO (inicialmente oculto) -->
-                            <div class="form-field-container" id="containerRiesgo" style="display: none;">
-                                <div class="form-grid" style="grid-template-columns: 1fr;">
-                                    <div class="full-width">
-                                        <h6 class="section-title"><i class="fas fa-exclamation-triangle"></i>Nivel de
-                                            Riesgo</h6>
-                                    </div>
-                                    <div class="full-width">
-                                        <label for="nivelRiesgo" class="form-label">Nivel de Riesgo *</label>
-                                        <div class="input-group">
-                                            <span class="input-group-icon"><i
-                                                    class="fas fa-exclamation-triangle"></i></span>
-                                            <select class="form-control" id="nivelRiesgo" required>
-                                                <option value="">-- Selecciona el nivel de riesgo --</option>
-                                                <option value="bajo">Bajo</option>
-                                                <option value="medio">Medio</option>
-                                                <option value="alto">Alto</option>
-                                                <option value="critico">Crítico</option>
-                                            </select>
-                                        </div>
-                                        <div class="form-help-text">Define la criticidad de la incidencia</div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- ESTADO (inicialmente oculto) -->
-                            <div class="form-field-container" id="containerEstado" style="display: none;">
-                                <div class="form-grid" style="grid-template-columns: 1fr;">
-                                    <div class="full-width">
-                                        <h6 class="section-title"><i class="fas fa-check-circle"></i>Estado</h6>
-                                    </div>
-                                    <div class="full-width">
-                                        <label for="estadoIncidencia" class="form-label">Estado *</label>
-                                        <div class="input-group">
-                                            <span class="input-group-icon"><i class="fas fa-check-circle"></i></span>
-                                            <select class="form-control" id="estadoIncidencia" required>
-                                                <option value="">-- Selecciona el estado --</option>
-                                                <option value="pendiente">Pendiente</option>
-                                                <option value="finalizada">Finalizada</option>
-                                            </select>
-                                        </div>
-                                        <div class="form-help-text">Define el estado actual de la incidencia</div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- FECHA Y HORA (inicialmente oculto) -->
-                            <div class="form-field-container" id="containerFecha" style="display: none;">
-                                <div class="form-grid" style="grid-template-columns: 1fr;">
-                                    <div class="full-width">
-                                        <h6 class="section-title"><i class="fas fa-calendar-alt"></i>Fecha y Hora</h6>
-                                    </div>
-                                    <div class="full-width">
-                                        <label for="fechaHoraIncidencia" class="form-label">Fecha y Hora *</label>
-                                        <div class="input-group">
-                                            <span class="input-group-icon"><i class="fas fa-calendar-alt"></i></span>
-                                            <input type="text" class="form-control" id="fechaHoraIncidencia"
-                                                placeholder="Selecciona fecha y hora" required>
-                                        </div>
-                                        <div class="form-help-text">Fecha y hora en que ocurrió la incidencia (no puede
-                                            ser futura)</div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- DESCRIPCIÓN (inicialmente oculto) -->
-                            <div class="form-field-container" id="containerDescripcion" style="display: none;">
-                                <div class="form-grid" style="grid-template-columns: 1fr;">
-                                    <div class="full-width">
-                                        <h6 class="section-title"><i class="fas fa-info-circle"></i>Descripción</h6>
-                                    </div>
-                                    <div class="full-width">
-                                        <label for="detallesIncidencia" class="form-label">Descripción de la Incidencia
-                                            *</label>
-                                        <textarea class="form-control" id="detallesIncidencia" rows="5"
-                                            placeholder="Describa detalladamente lo sucedido, incluyendo fechas, personas involucradas, y cualquier información relevante..."
-                                            required></textarea>
-                                        <div class="form-help-text">Proporcione una descripción detallada del incidente
-                                        </div>
-                                        <div class="char-limit-info">
-                                            <span class="char-counter" id="contadorCaracteres">0/1000</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Botón de finalizar (aparece al final) -->
-                            <div class="action-buttons-container" id="btnFinalizarContainer"
-                                style="display: none; margin-top: 30px;">
-                                <button type="button" class="btn btn-success" id="btnCrearIncidencia">
-                                    <i class="fas fa-check-circle"></i> Finalizar y Guardar Incidencia
-                                </button>
                             </div>
                         </form>
                     </div>
@@ -301,9 +246,9 @@
         </div>
 
         <!-- ============================================= -->
-        <!-- SECCIÓN 2: IMÁGENES Y EVIDENCIAS (INICIALMENTE OCULTA) -->
+        <!-- SECCIÓN 2: IMÁGENES Y EVIDENCIAS -->
         <!-- ============================================= -->
-        <div class="form-row" id="seccionEvidencias" style="margin-top: 20px; display: none;">
+        <div class="form-row" style="margin-top: 20px;">
             <div class="full-width">
                 <div class="card">
                     <div class="card-header">
@@ -345,18 +290,17 @@
                                 </div>
                             </div>
                         </div>
-                    </div>
-                </div>
-            </div>
-        </div>
 
-        <!-- Botón Cancelar fuera de la sección de evidencias -->
-        <div class="form-row" style="margin-top: 20px;">
-            <div class="full-width">
-                <div class="action-buttons-container">
-                    <button type="button" class="btn btn-secondary" id="btnCancelar">
-                        <i class="fas fa-times"></i>Cancelar
-                    </button>
+                        <!-- BOTONES DE ACCIÓN -->
+                        <div class="action-buttons-container">
+                            <button type="button" class="btn btn-success" id="btnCrearIncidencia">
+                                <i class="fas fa-check"></i>Crear Incidencia
+                            </button>
+                            <button type="button" class="btn btn-secondary" id="btnCancelar">
+                                <i class="fas fa-times"></i>Cancelar
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -364,7 +308,7 @@
 
     <br>
 
-    <!-- Modal de Vista Previa PDF -->
+    <!-- Modal de Vista Previa PDF (AGREGADO) -->
     <div id="pdfPreviewModal" class="pdf-preview-modal" style="display: none;">
         <div class="pdf-preview-header">
             <h3><i class="fas fa-file-pdf"></i> Vista Previa del Informe de Incidencia</h3>
@@ -400,7 +344,8 @@
     <script type="module" src="crearIncidencias.js"></script>
 
     <!-- Protector de pagina -->
-    <script src="/components/protector-admin.js" data-modulo="incidencias"> </script>
+    <!-- /usuarios/administrador/cualquier-pagina.html -->
+
 </body>
 
 </html>
