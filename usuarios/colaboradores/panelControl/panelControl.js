@@ -158,8 +158,7 @@ const COLUMNAS_CONFIG = [
         color: '#ffcc00',
         permisos: ['tareas'],
         tarjetas: [
-            { modulo: 'tareasLista', titulo: 'Mis Tareas', descripcion: 'Ver tareas asignadas', icono: 'fa-list-check', color: 'yellow', url: '/usuarios/colaboradores/tareas/tareas.html' },
-            { modulo: 'tareasNueva', titulo: 'Nueva Tarea', descripcion: 'Crear nueva tarea', icono: 'fa-plus-circle', color: 'yellow', url: '/usuarios/colaboradores/tareas/tareas.html' }
+            { modulo: 'tareasLista', titulo: 'Mis Tareas', descripcion: 'Ver tareas asignadas', icono: 'fa-list-check', color: 'yellow', url: '/usuarios/colaboradores/tareas/tareas.html' }
         ]
     },
     {
