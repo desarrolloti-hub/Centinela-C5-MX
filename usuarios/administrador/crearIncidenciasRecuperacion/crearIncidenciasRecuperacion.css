@@ -69,6 +69,7 @@ body {
         text-shadow: 0 0 5px var(--color-accent-primary), 0 0 15px var(--color-accent-primary);
         opacity: 0.9;
     }
+
     100% {
         text-shadow: 0 0 15px var(--color-accent-primary), 0 0 30px var(--color-accent-primary), 0 0 45px var(--color-accent-primary);
         opacity: 1;
@@ -131,7 +132,7 @@ body {
     border-radius: var(--border-radius-large) !important;
     box-shadow: var(--shadow-normal) !important;
     margin-bottom: 20px !important;
-    overflow: hidden;
+    overflow: visible !important;
 }
 
 .card-header {
@@ -165,6 +166,7 @@ body {
 
 .card-body {
     padding: 30px !important;
+    overflow: visible !important;
 }
 
 /* =============================================
@@ -202,6 +204,7 @@ body {
     display: grid;
     grid-template-columns: 1fr;
     gap: 20px;
+    overflow: visible !important;
 }
 
 .full-width {
@@ -905,6 +908,7 @@ body {
         opacity: 0;
         transform: translateY(20px);
     }
+
     to {
         opacity: 1;
         transform: translateY(0);
@@ -916,6 +920,7 @@ body {
         opacity: 0;
         transform: translateX(-10px);
     }
+
     to {
         opacity: 1;
         transform: translateX(0);
@@ -928,7 +933,7 @@ body {
 .sugerencias-container {
     position: relative;
     width: 100%;
-    z-index: 1000;
+    z-index: 10000;
 }
 
 .sugerencias-lista {
@@ -941,9 +946,9 @@ body {
     border-radius: var(--border-radius-small);
     max-height: 250px;
     overflow-y: auto;
-    box-shadow: var(--shadow-normal);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
     margin-top: 5px;
-    z-index: 1000;
+    z-index: 10001;
 }
 
 .sugerencia-item {
@@ -1061,78 +1066,66 @@ body {
 }
 
 @keyframes shakeWarning {
-    0%, 100% { transform: translateX(0); }
-    25% { transform: translateX(-4px); }
-    75% { transform: translateX(4px); }
+
+    0%,
+    100% {
+        transform: translateX(0);
+    }
+
+    25% {
+        transform: translateX(-4px);
+    }
+
+    75% {
+        transform: translateX(4px);
+    }
 }
 
 /* =============================================
-   RESPONSIVE
+   CAMPOS SECUENCIALES - APARECEN AL LLENAR
    ============================================= */
-@media (max-width: 1023px) {
-    body {
-        padding-top: 70px;
-    }
-    .custom-container {
-        padding: 20px !important;
-    }
-    .header-section {
-        flex-direction: column !important;
-        align-items: flex-start !important;
-        gap: 20px !important;
-        padding: 20px !important;
-    }
-    .btn-volver {
-        width: 100% !important;
-        max-width: 300px !important;
-    }
-    .card-body {
-        padding: 20px !important;
-    }
-    .btn {
-        width: 100% !important;
-        margin-bottom: 10px !important;
-    }
-    .action-buttons-container {
-        flex-direction: column !important;
-        gap: 10px !important;
-    }
+
+/* Ocultar todos los campos de steps inicialmente */
+.field-group-step {
+    display: none;
+    position: relative;
+    overflow: visible !important;
 }
 
+/* Campo visible */
+.field-group-step.visible {
+    display: block;
+    animation: fadeInUp 0.3s ease;
+}
+
+/* Asegurar que los botones originales se muestren al final */
+.action-buttons-container {
+    margin-top: 20px;
+}
+
+/* Asegurar que el primer campo tenga z-index alto para las sugerencias */
+.field-group-step[data-step="0"] {
+    position: relative;
+    z-index: 100;
+    overflow: visible !important;
+}
+
+/* Asegurar que el formulario no corte el contenido */
+#formMercanciaPrincipal {
+    overflow: visible !important;
+}
+
+.form-grid {
+    overflow: visible !important;
+}
+
+/* Responsive */
 @media (max-width: 768px) {
-    body {
-        padding: 10px !important;
-        padding-top: 70px !important;
-    }
-    .custom-container {
-        padding: 15px !important;
-    }
-    .main-title {
-        font-size: 20px !important;
-        justify-content: center !important;
-        text-align: center !important;
-    }
-    .images-grid {
-        grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-    }
-    .monto-input-group {
-        flex-direction: column;
-    }
-    .monto-preview {
-        width: 100%;
-    }
-}
-
-@media (max-width: 480px) {
-    body {
-        padding: 8px !important;
-        padding-top: 65px !important;
-    }
-    .images-grid {
-        grid-template-columns: 1fr;
-    }
-    .btn-upload {
-        width: 100%;
-        justify-content: center;
+    .sugerencias-lista {
+        max-height: 200px;
+        position: fixed;
+        left: 20px;
+        right: 20px;
+        width: auto;
     }
 }

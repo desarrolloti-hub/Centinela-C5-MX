@@ -1,5 +1,5 @@
 // permiso.js - VERSIÓN COMPLETA CON HISTORIAL DE ACTIVIDADES Y REGISTRO DE CONSUMO
-// AGREGADOS MÓDULOS: USUARIOS, ESTADÍSTICAS, TAREAS
+// AGREGADOS MÓDULOS: USUARIOS, ESTADÍSTICAS, TAREAS, PERMISOS, LOGIN_MONITOREO
 
 import {
     collection,
@@ -25,7 +25,7 @@ class Permiso {
         this.areaId = data.areaId || '';
         this.cargoId = data.cargoId || '';
 
-        // MÓDULOS ACTUALIZADOS: Agregados usuarios, estadisticas, tareas
+        // MÓDULOS ACTUALIZADOS: Agregados usuarios, estadisticas, tareas, permisos, loginMonitoreo
         this.permisos = data.permisos || {
             areas: false,
             categorias: false,
@@ -35,7 +35,9 @@ class Permiso {
             // NUEVOS MÓDULOS
             usuarios: false,
             estadisticas: false,
-            tareas: false
+            tareas: false,
+            permisos: false,
+            loginMonitoreo: false
         };
 
         this.organizacionCamelCase = data.organizacionCamelCase || '';
@@ -109,7 +111,7 @@ class Permiso {
         return this.puedeAcceder('incidencias');
     }
 
-    // NUEVOS MÓDULOS
+    // Módulos anteriores
     puedeAccederUsuarios() {
         return this.puedeAcceder('usuarios');
     }
@@ -120,6 +122,15 @@ class Permiso {
 
     puedeAccederTareas() {
         return this.puedeAcceder('tareas');
+    }
+
+    // NUEVOS MÓDULOS
+    puedeAccederPermisos() {
+        return this.puedeAcceder('permisos');
+    }
+
+    puedeAccederLoginMonitoreo() {
+        return this.puedeAcceder('loginMonitoreo');
     }
 
     toFirestore() {
@@ -171,7 +182,9 @@ class Permiso {
             // NUEVOS: acceso específico por módulo
             accesoUsuarios: this.puedeAccederUsuarios(),
             accesoEstadisticas: this.puedeAccederEstadisticas(),
-            accesoTareas: this.puedeAccederTareas()
+            accesoTareas: this.puedeAccederTareas(),
+            accesoPermisos: this.puedeAccederPermisos(),
+            accesoLoginMonitoreo: this.puedeAccederLoginMonitoreo()
         };
     }
 
@@ -305,7 +318,9 @@ class PermisoManager {
                 incidencias: false,
                 usuarios: false,
                 estadisticas: false,
-                tareas: false
+                tareas: false,
+                permisos: false,
+                loginMonitoreo: false
             };
 
             const permisoFirestoreData = {
@@ -703,7 +718,7 @@ class PermisoManager {
         const sinAcceso = total - conAcceso;
 
         // MÓDULOS ACTUALIZADOS: Incluir todos los módulos
-        const modulos = ['areas', 'categorias', 'sucursales', 'regiones', 'incidencias', 'usuarios', 'estadisticas', 'tareas'];
+        const modulos = ['areas', 'categorias', 'sucursales', 'regiones', 'incidencias', 'usuarios', 'estadisticas', 'tareas', 'permisos', 'loginMonitoreo'];
 
         const estadisticasPorModulo = {};
 

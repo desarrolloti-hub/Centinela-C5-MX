@@ -128,7 +128,7 @@
                                     <h6 class="section-title"><i class="fas fa-info-circle"></i>Información Básica</h6>
                                 </div>
 
-                                <!-- Organización (solo lectura) -->
+                                <!-- Organización (siempre visible) -->
                                 <div class="full-width">
                                     <label for="organization" class="form-label">Organización</label>
                                     <div class="input-group">
@@ -138,8 +138,8 @@
                                     <div class="form-help-text">Organización a la que pertenece el registro</div>
                                 </div>
 
-                                <!-- Empresa/Centro Comercial con buscador -->
-                                <div class="full-width">
+                                <!-- PASO 1: Empresa/Centro Comercial -->
+                                <div class="full-width field-group-step" data-step="0">
                                     <label for="nombreEmpresaCC" class="form-label">Empresa / Centro Comercial *</label>
                                     <div class="input-group">
                                         <span class="input-group-icon"><i class="fas fa-store"></i></span>
@@ -151,8 +151,8 @@
                                     <div id="sugerenciasEmpresa" class="sugerencias-container"></div>
                                 </div>
 
-                                <!-- Tipo de Evento -->
-                                <div class="full-width">
+                                <!-- PASO 2: Tipo de Evento -->
+                                <div class="full-width field-group-step" data-step="1">
                                     <label for="tipoEvento" class="form-label">Tipo de Evento *</label>
                                     <div class="input-group">
                                         <span class="input-group-icon"><i
@@ -168,8 +168,8 @@
                                     <div class="form-help-text">Clasifica el tipo de evento ocurrido</div>
                                 </div>
 
-                                <!-- Monto Perdido -->
-                                <div class="full-width">
+                                <!-- PASO 3: Monto Perdido -->
+                                <div class="full-width field-group-step" data-step="2">
                                     <label for="montoPerdido" class="form-label">Monto Perdido *</label>
                                     <div class="monto-input-group">
                                         <div class="input-group" style="flex: 1;">
@@ -185,8 +185,8 @@
                                     <div class="form-help-text">Monto total de la mercancía perdida</div>
                                 </div>
 
-                                <!-- Monto Recuperado (opcional) -->
-                                <div class="full-width">
+                                <!-- PASO 4: Monto Recuperado (opcional) -->
+                                <div class="full-width field-group-step" data-step="3">
                                     <label for="montoRecuperado" class="form-label">Monto Recuperado</label>
                                     <div class="monto-input-group">
                                         <div class="input-group" style="flex: 1;">
@@ -202,8 +202,8 @@
                                     <div class="form-help-text">Monto recuperado (si aplica)</div>
                                 </div>
 
-                                <!-- Fecha y Hora del evento -->
-                                <div class="full-width">
+                                <!-- PASO 5: Fecha y Hora del evento -->
+                                <div class="full-width field-group-step" data-step="4">
                                     <label for="fechaHoraEvento" class="form-label">Fecha y Hora del Evento *</label>
                                     <div class="input-group">
                                         <span class="input-group-icon">
@@ -216,8 +216,8 @@
                                         futura)</div>
                                 </div>
 
-                                <!-- Narración de Eventos -->
-                                <div class="full-width">
+                                <!-- PASO 6: Narración de Eventos -->
+                                <div class="full-width field-group-step" data-step="5">
                                     <label for="narracionEventos" class="form-label">Narración de los Eventos *</label>
                                     <textarea class="form-control" id="narracionEventos" rows="6"
                                         placeholder="Describa detalladamente lo sucedido, incluyendo cómo ocurrió, personas involucradas, circunstancias, etc..."
@@ -228,8 +228,8 @@
                                     </div>
                                 </div>
 
-                                <!-- Detalles de la Pérdida (opcional) -->
-                                <div class="full-width">
+                                <!-- PASO 7: Detalles de la Pérdida (opcional) -->
+                                <div class="full-width field-group-step" data-step="6">
                                     <label for="detallesPerdida" class="form-label">Detalles de la Pérdida</label>
                                     <textarea class="form-control" id="detallesPerdida" rows="4"
                                         placeholder="Especificaciones de la mercancía perdida: productos, cantidades, valores unitarios, etc. (opcional)"></textarea>
@@ -240,6 +240,15 @@
                                     </div>
                                 </div>
 
+                                <!-- Botones de acción (se muestran cuando todos los campos requeridos están listos) -->
+                                <div class="action-buttons-container" id="originalButtons" style="display: none;">
+                                    <button type="button" class="btn btn-success" id="btnCrearRegistro">
+                                        <i class="fas fa-save"></i>Registrar Evento
+                                    </button>
+                                    <button type="button" class="btn btn-secondary" id="btnCancelar">
+                                        <i class="fas fa-times"></i>Cancelar
+                                    </button>
+                                </div>
                             </div>
                         </form>
                     </div>
@@ -291,16 +300,6 @@
                                     <p>No hay evidencias seleccionadas</p>
                                 </div>
                             </div>
-                        </div>
-
-                        <!-- BOTONES DE ACCIÓN -->
-                        <div class="action-buttons-container">
-                            <button type="button" class="btn btn-success" id="btnCrearRegistro">
-                                <i class="fas fa-save"></i>Registrar Evento
-                            </button>
-                            <button type="button" class="btn btn-secondary" id="btnCancelar">
-                                <i class="fas fa-times"></i>Cancelar
-                            </button>
                         </div>
                     </div>
                 </div>
