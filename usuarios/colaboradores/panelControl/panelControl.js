@@ -81,7 +81,7 @@ const ACCESO_RAPIDO_CONFIG = [
         descripcion: 'Monitoreo en tiempo real',
         icono: 'fa-map-marker-alt',
         color: 'cyan',
-        url: '/usuarios/colaboradores/mapa/mapa.html',
+        url: '/usuarios/colaboradores/mapaAlertas/mapaAlertas.html',
         permiso: 'monitoreo',
         brillo: false
     }
@@ -168,7 +168,7 @@ const COLUMNAS_CONFIG = [
         color: '#ff4d00',
         permisos: ['monitoreo'],
         tarjetas: [
-            { modulo: 'mapaAlertas', titulo: 'Mapa de Alertas', descripcion: 'Visualización en tiempo real', icono: 'fa-map', color: 'danger', url: '/usuarios/colaboradores/mapa/mapa.html' },
+            { modulo: 'mapaAlertas', titulo: 'Mapa de Alertas', descripcion: 'Visualización en tiempo real', icono: 'fa-map', color: 'danger', url: '/usuarios/colaboradores/mapaAlertas/mapaAlertas.html' },
             { modulo: 'tableroControl', titulo: 'Tablero de Control', descripcion: 'Cuentas de monitoreo', icono: 'fa-dashboard', color: 'danger', url: '/usuarios/colaboradores/loginMonitoreo/loginMonitoreo.html' }
         ]
     }

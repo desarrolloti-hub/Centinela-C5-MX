@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Mapa de Alertas | Centinela-C5</title>
+
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+    <!-- Estilos globales -->
+    <link rel="stylesheet" href="/components/personalization/personalization.css">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Rajdhani:wght@500;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    <!-- Icono y PWA -->
+    <link rel="icon" href="/assets/images/logo.png" type="image/png">
+    <link rel="manifest" href="/manifest.json">
+
+    <!-- TU CSS - NOMBRE CORRECTO -->
+    <link rel="stylesheet" href="/usuarios/administrador/mapaAlertas/mapaAlertas.css">
+
+    <!-- SweetAlert2 -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <!-- SEO Básico -->
+    <meta name="description"
+        content="Centinela es un sistema inteligente de seguridad para almacenamiento, monitoreo y predicción de incidencias. Plataforma confiable para prevención y análisis en tiempo real.">
+    <meta name="keywords"
+        content="centinela, centinela, sistema de seguridad, seguridad inteligente, predicción de incidencias, monitoreo de seguridad, plataforma de seguridad, análisis de riesgos, prevención de incidentes">
+    <meta name="author" content="Centinela">
+    <link rel="canonical" href="https://centinela-c5.web.app/" />
+
+    <!-- Open Graph / Facebook / WhatsApp / LinkedIn -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://centinela-c5.web.app">
+    <meta property="og:title" content="Centinela-C5 | Sistema Inteligente de Seguridad y Predicción">
+    <meta property="og:description"
+        content="Centinela-C5 es una plataforma avanzada de seguridad para almacenamiento, monitoreo y predicción de incidencias en tiempo real.">
+    <meta property="og:image" content="https://centinela-c5.web.app/assets/images/logo.png">
+    <meta property="og:image:width" content="500">
+    <meta property="og:image:height" content="500">
+    <meta property="og:image:alt" content="Vista previa oficial de Centinela-C5">
+    <meta property="og:image" content="https://centinela-c5.web.app/assets/images/logo.png">
+    <meta property="og:image:width" content="500">
+    <meta property="og:image:height" content="500">
+    <meta property="og:image:alt" content="Logo oficial de Centinela">
+    <meta property="og:site_name" content="Centinela">
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:url" content="https://centinela-c5.web.app">
+    <meta name="twitter:title" content="Centinela-C5 | Seguridad Inteligente">
+    <meta name="twitter:description"
+        content="Sistema de seguridad inteligente para monitoreo, almacenamiento y predicción de incidencias.">
+    <meta name="twitter:image" content="https://centinela-c5.web.app/assets/images/logo.png">
+    <meta name="twitter:creator" content="">
+
+    <!-- Schema.org / JSON-LD -->
+    <script type="application/ld+json">
+    {
+    "@context": "https://schema.org",
+    "@type": "LocalBusiness",
+    "name": "Centinela",
+    "operatingSystem": "Web",
+    "applicationCategory": "SecurityApplication",
+    "description": "Centinela es un sistema inteligente de seguridad para el almacenamiento, monitoreo y predicción de incidencias en tiempo real.",
+    "url": "https://centinela-c5.web.app",
+    "image": "https://centinela-c5.web.app/assets/images/logo.png",
+    "publisher": {
+        "@type": "Organization",
+        "name": "Centinela",
+        "logo": {
+        "@type": "ImageObject",
+        "url": "https://centinela-c5.web.app/assets/images/logo.png"
+        }
+    },
+    "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "MXN"
+    }
+    }
+    </script>
+</head>
+
+<body>
+    <canvas id="particle-canvas"></canvas>
+
+    <!-- Navbar -->
+    <div id="navbar-container"></div>
+
+    <!-- Contenedor principal -->
+    <div class="main-content">
+        <!-- Page Header -->
+        <div class="page-header">
+            <h1>
+                <i class="fas fa-map-marked-alt"></i>
+                Mapa de Alertas en Vivo
+            </h1>
+            <div class="header-description">
+                Visualiza en tiempo real las incidencias activas y las sucursales con el color de su región
+            </div>
+        </div>
+
+        <!-- Contenedor del mapa -->
+        <div class="map-fullscreen">
+            <!-- Mapa -->
+            <div id="mapa"></div>
+
+            <!-- Panel superior izquierdo - Título mini -->
+            <div class="map-header-panel">
+                <h1>
+                    <i class="fas fa-map-marked-alt"></i>
+                    CENTINELA
+                </h1>
+                <div class="stats-mini">
+                    <span><i class="fas fa-exclamation-triangle" style="color: #ff4444;"></i> <span
+                            id="statAltasMini">0</span></span>
+                    <span><i class="fas fa-exclamation-circle" style="color: #ffbb33;"></i> <span
+                            id="statMediasMini">0</span></span>
+                    <span><i class="fas fa-info-circle" style="color: #00C851;"></i> <span
+                            id="statBajasMini">0</span></span>
+                    <span><i class="fas fa-store" style="color: #2f8cff;"></i> <span
+                            id="statSucursalesMini">0</span></span>
+                </div>
+            </div>
+
+            <!-- Panel selector de región -->
+            <div class="region-selector-panel">
+                <button class="region-selector-btn" id="btnSeleccionarRegion">
+                    <i class="fas fa-map-marker-alt"></i>
+                    <span>Seleccionar una Región</span>
+                    <i class="fas fa-chevron-down"></i>
+                </button>
+                <div class="region-dropdown" id="regionDropdown">
+                    <div class="dropdown-header">
+                        <i class="fas fa-palette"></i>
+                        <span>Regiones disponibles</span>
+                    </div>
+                    <div class="region-list" id="regionList">
+                        <div class="loading-regions">
+                            <i class="fas fa-spinner fa-spin"></i> Cargando regiones...
+                        </div>
+                    </div>
+                    <div class="dropdown-footer" id="limpiarFiltroRegion">
+                        <i class="fas fa-undo-alt"></i> Mostrar todas las sucursales
+                    </div>
+                </div>
+            </div>
+
+            <!-- Panel de incidencias -->
+            <div class="incidencias-panel" id="incidenciasPanel">
+                <div class="incidencias-header" id="toggleIncidencias">
+                    <h3>
+                        <i class="fas fa-bell"></i>
+                        Últimas Incidencias
+                        <span class="badge-count" id="incidenciasBadge">0</span>
+                    </h3>
+                    <i class="fas fa-chevron-down" id="incidenciasChevron"></i>
+                </div>
+                <div class="incidencias-list" id="listaIncidencias">
+                    <div class="no-incidencias">
+                        <i class="fas fa-check-circle"></i> Sin incidencias activas
+                    </div>
+                </div>
+            </div>
+            <!-- Panel inferior derecho - Botones de control -->
+            <div class="control-panel">
+                <button class="control-btn" id="btnCentrarMapa">
+                    <i class="fas fa-crosshairs"></i>
+                    <span>Centrar</span>
+                </button>
+                <button class="control-btn" id="btnRefrescarRegiones">
+                    <i class="fas fa-sync-alt"></i>
+                    <span>Actualizar</span>
+                </button>
+            </div>
+
+            <!-- Leyenda -->
+            <div class="legend-panel">
+                <div class="legend-title">LEYENDA</div>
+                <div class="legend-colors">
+                    <div class="legend-item">
+                        <i class="fas fa-circle" style="color: #ff4444;"></i>
+                        <span>Crítica</span>
+                    </div>
+                    <div class="legend-item">
+                        <i class="fas fa-circle" style="color: #ff8844;"></i>
+                        <span>Alta</span>
+                    </div>
+                    <div class="legend-item">
+                        <i class="fas fa-circle" style="color: #ffbb33;"></i>
+                        <span>Media</span>
+                    </div>
+                    <div class="legend-item">
+                        <i class="fas fa-circle" style="color: #00C851;"></i>
+                        <span>Baja</span>
+                    </div>
+                    <div class="legend-item">
+                        <i class="fas fa-store" style="color: #2f8cff;"></i>
+                        <span>Sucursal</span>
+                    </div>
+                </div>
+            </div>
+
+
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script type="module" src="/components/autenticador.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script type="module" src="/components/navbarAdministrador.js"></script>
+    <script src="/components/footerAdministrador.js"></script>
+    <script type="module" src="/components/cargadorTemas.js"></script>
+    <script type="module" src="/components/particulas.js"></script>
+
+    <!-- TU JS - NOMBRE CORRECTO -->
+    <script type="module" src="/usuarios/administrador/mapaAlertas/mapaAlertas.js"></script>
+
+    <!-- Protector de pagina -->
+    <!-- /usuarios/administrador/cualquier-pagina.html -->
+</body>
+</body>
+
+</html>
