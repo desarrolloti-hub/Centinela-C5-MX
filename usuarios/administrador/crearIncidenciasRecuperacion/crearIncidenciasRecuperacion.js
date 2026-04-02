@@ -19,10 +19,10 @@ class CrearMercanciaPerdidaController {
         this.loadingOverlay = null;
         this.flatpickrInstance = null;
         this.historialManager = null;
-        
+
         this.pdfGenerator = null;
         this.isInitialized = false;
-        
+
         // Para vista previa de PDF
         this.pdfBlobGenerado = null;
         this.datosActuales = null;
@@ -56,7 +56,7 @@ class CrearMercanciaPerdidaController {
         }
         return true;
     }
-    
+
     // =============================================
     // ABRIR PDF EN NUEVA PESTAÑA
     // =============================================
@@ -71,44 +71,44 @@ class CrearMercanciaPerdidaController {
                     Swal.showLoading();
                 }
             });
-            
+
             this.datosActuales = datos;
-            
+
             const registroTemporal = this._crearRegistroTemporal(datos);
-            
+
             console.log('📄 Generando PDF para nueva pestaña...');
             console.log('📸 Evidencias:', registroTemporal.evidencias?.length || 0);
             console.log('📍 Sucursal seleccionada:', this.sucursalSeleccionada);
-            
+
             const pdfBlob = await this.pdfGenerator.generarReporte(registroTemporal, {
                 mostrarAlerta: false,
                 returnBlob: true,
                 diagnosticar: false
             });
-            
+
             if (!pdfBlob || pdfBlob.size === 0) {
                 throw new Error('El PDF generado está vacío');
             }
-            
+
             console.log(`📦 PDF generado: ${(pdfBlob.size / 1024).toFixed(2)} KB`);
-            
+
             this.pdfBlobGenerado = pdfBlob;
-            
+
             const pdfUrl = URL.createObjectURL(pdfBlob);
             window.open(pdfUrl, '_blank');
-            
+
             setTimeout(() => {
                 URL.revokeObjectURL(pdfUrl);
             }, 10000);
-            
+
             Swal.close();
-            
+
             console.log('✅ PDF abierto en nueva pestaña');
-            
+
         } catch (error) {
             console.error('❌ Error generando PDF:', error);
             Swal.close();
-            
+
             Swal.fire({
                 icon: 'error',
                 title: 'Error al generar PDF',
@@ -117,13 +117,13 @@ class CrearMercanciaPerdidaController {
             });
         }
     }
-    
+
     // =============================================
     // CREAR REGISTRO TEMPORAL CON SUCURSAL COMPLETA
     // =============================================
     _crearRegistroTemporal(datos) {
         const fechaObj = new Date(datos.fechaHora);
-        
+
         const evidenciasProcesadas = datos.imagenes.map((img, index) => {
             return {
                 id: `temp_${Date.now()}_${index}`,
@@ -135,7 +135,7 @@ class CrearMercanciaPerdidaController {
                 generatedName: img.generatedName
             };
         });
-        
+
         // 👈 USAR LA SUCURSAL COMPLETA QUE SE SELECCIONÓ
         return {
             id: `Vista Previa`,
@@ -157,11 +157,11 @@ class CrearMercanciaPerdidaController {
             getTipoEventoTexto: () => this._getTipoEventoTexto(datos.tipoEvento)
         };
     }
-    
+
     // =============================================
     // MÉTODOS EXISTENTES
     // =============================================
-    
+
     async _init() {
         try {
             this._cargarUsuario();
@@ -174,9 +174,9 @@ class CrearMercanciaPerdidaController {
 
             await this._inicializarManager();
             await this._cargarEmpresas();
-            
+
             const pdfOk = await this._initPDFGenerator();
-            
+
             if (!pdfOk) {
                 console.warn('⚠️ PDFGenerator no disponible');
             }
@@ -188,7 +188,7 @@ class CrearMercanciaPerdidaController {
             this._configurarMontoPreview();
 
             this.imageEditorModal = new window.ImageEditorModal();
-            
+
             this.isInitialized = true;
 
         } catch (error) {
@@ -458,61 +458,65 @@ class CrearMercanciaPerdidaController {
         const ordenCampos = [
             { id: 'nombreEmpresaCC', siguiente: 'tipoEvento', validar: (valor) => valor.trim() !== '' },
             { id: 'tipoEvento', siguiente: 'montoPerdido', validar: (valor) => valor !== '' },
-            { id: 'montoPerdido', siguiente: 'montoRecuperado', validar: (valor) => {
-                const monto = parseFloat(valor);
-                return !isNaN(monto) && monto > 0;
-            }},
+            {
+                id: 'montoPerdido', siguiente: 'montoRecuperado', validar: (valor) => {
+                    const monto = parseFloat(valor);
+                    return !isNaN(monto) && monto > 0;
+                }
+            },
             { id: 'montoRecuperado', siguiente: 'fechaHoraEvento', validar: (valor) => true },
             { id: 'fechaHoraEvento', siguiente: 'narracionEventos', validar: (valor) => valor.trim() !== '' },
-            { id: 'narracionEventos', siguiente: 'detallesPerdida', validar: (valor) => {
-                const texto = valor.trim();
-                return texto.length >= 10 && texto.length <= LIMITES.NARRACION_EVENTOS;
-            }},
+            {
+                id: 'narracionEventos', siguiente: 'detallesPerdida', validar: (valor) => {
+                    const texto = valor.trim();
+                    return texto.length >= 10 && texto.length <= LIMITES.NARRACION_EVENTOS;
+                }
+            },
             { id: 'detallesPerdida', siguiente: null, validar: (valor) => true }
         ];
 
         ordenCampos.forEach((campo, index) => {
             const elemento = document.getElementById(campo.id);
             if (!elemento) return;
-            
+
             elemento._validacionSecuencial = {
                 siguienteId: campo.siguiente,
                 validar: campo.validar,
                 indice: index
             };
-            
+
             if (index === 0) {
                 this._habilitarCampo(elemento);
             } else {
                 this._deshabilitarCampo(elemento);
             }
-            
+
             const eventoCambio = campo.id === 'montoPerdido' || campo.id === 'montoRecuperado' ? 'input' : 'change';
             elemento.addEventListener(eventoCambio, () => {
                 this._validarYHabilitarSiguiente(campo.id);
             });
-            
+
             if (elemento.tagName === 'INPUT' && elemento.type === 'text') {
                 elemento.addEventListener('blur', () => {
                     this._validarYHabilitarSiguiente(campo.id);
                 });
             }
         });
-        
+
         const montoRecuperado = document.getElementById('montoRecuperado');
         if (montoRecuperado) {
             montoRecuperado.addEventListener('input', () => {
                 this._validarYHabilitarSiguiente('montoRecuperado');
             });
         }
-        
+
         const fechaInput = document.getElementById('fechaHoraEvento');
         if (fechaInput) {
             fechaInput.addEventListener('change', () => {
                 this._validarYHabilitarSiguiente('fechaHoraEvento');
             });
         }
-        
+
         const narracion = document.getElementById('narracionEventos');
         if (narracion) {
             narracion.addEventListener('input', () => {
@@ -520,84 +524,84 @@ class CrearMercanciaPerdidaController {
             });
         }
     }
-    
+
     _habilitarCampo(elemento) {
         if (!elemento) return;
         elemento.disabled = false;
         elemento.classList.remove('locked');
-        
+
         if (elemento.tagName === 'SELECT') {
             elemento.disabled = false;
         }
-        
+
         if (elemento.tagName === 'INPUT') {
             elemento.readOnly = false;
         }
-        
+
         if (elemento.tagName === 'TEXTAREA') {
             elemento.readOnly = false;
         }
-        
+
         const parent = elemento.closest('.form-field, .full-width, .input-group');
         if (parent) {
             parent.classList.remove('locked');
         }
     }
-    
+
     _deshabilitarCampo(elemento) {
         if (!elemento) return;
         elemento.disabled = true;
-        
+
         if (elemento.tagName === 'SELECT') {
             elemento.disabled = true;
         }
-        
+
         if (elemento.tagName === 'INPUT') {
             elemento.readOnly = true;
         }
-        
+
         if (elemento.tagName === 'TEXTAREA') {
             elemento.readOnly = true;
         }
-        
+
         const parent = elemento.closest('.form-field, .full-width, .input-group');
         if (parent) {
             parent.classList.add('locked');
         }
     }
-    
+
     _validarYHabilitarSiguiente(campoId) {
         const campo = document.getElementById(campoId);
         if (!campo) return;
-        
+
         const config = campo._validacionSecuencial;
         if (!config) return;
-        
+
         let valor = campo.value;
-        
+
         if (campo.tagName === 'SELECT') {
             valor = campo.value;
         }
-        
+
         const esValido = config.validar(valor);
-        
+
         if (!esValido && valor !== '' && valor !== null) {
             campo.classList.add('field-error-shake');
             setTimeout(() => campo.classList.remove('field-error-shake'), 500);
         }
-        
+
         if (esValido && config.siguienteId) {
             const siguienteCampo = document.getElementById(config.siguienteId);
             if (siguienteCampo && siguienteCampo.disabled) {
                 this._habilitarCampo(siguienteCampo);
             }
         }
-        
+
         if (!esValido && config.siguienteId) {
             this._deshabilitarCamposSiguientes(config.siguienteId);
         }
     }
-    
+
     _deshabilitarCamposSiguientes(campoId) {
         const ordenCampos = [
             'nombreEmpresaCC',
@@ -608,10 +612,10 @@ class CrearMercanciaPerdidaController {
             'narracionEventos',
             'detallesPerdida'
         ];
-        
+
         const indiceActual = ordenCampos.indexOf(campoId);
         if (indiceActual === -1) return;
-        
+
         for (let i = indiceActual; i < ordenCampos.length; i++) {
             const campo = document.getElementById(ordenCampos[i]);
             if (campo && !campo.disabled && i !== 0) {
@@ -711,10 +715,10 @@ class CrearMercanciaPerdidaController {
         const input = document.getElementById('nombreEmpresaCC');
         input.value = nombre;
         input.dataset.selectedName = nombre;
-        
+
         // 👈 BUSCAR LA SUCURSAL COMPLETA EN LA LISTA
         const sucursalEncontrada = this.sucursalesLista?.find(s => s.nombre === nombre);
-        
+
         if (sucursalEncontrada) {
             // Guardar toda la información de la sucursal
             this.sucursalSeleccionada = sucursalEncontrada;
@@ -967,7 +971,7 @@ class CrearMercanciaPerdidaController {
                 <div style="text-align: left;">
                     <p><strong><i class="fas fa-store"></i> Empresa:</strong> ${this._escapeHTML(nombreEmpresaCC)}</p>
                     <p><strong><i class="fas fa-exclamation-triangle"></i> Tipo:</strong> ${this._getTipoEventoTexto(tipoEvento)}</p>
-                    <p><strong><i class="fas fa-dollar-sign"></i> Monto:</strong> $${montoPerdido.toLocaleString('es-MX', {minimumFractionDigits: 2})}</p>
+                    <p><strong><i class="fas fa-dollar-sign"></i> Monto:</strong> $${montoPerdido.toLocaleString('es-MX', { minimumFractionDigits: 2 })}</p>
                     <p><strong><i class="fas fa-images"></i> Evidencias:</strong> ${this.imagenesSeleccionadas.length} imagen(es)</p>
                 </div>
                 <hr>
@@ -1127,7 +1131,7 @@ class CrearMercanciaPerdidaController {
         } catch (error) {
             console.error('Error guardando registro:', error);
             Swal.close();
-            
+
             if (registroId) {
                 try {
                     const rutaStorage = `mercancia_perdida_${this.usuarioActual.organizacionCamelCase}/${registroId}`;
@@ -1137,7 +1141,7 @@ class CrearMercanciaPerdidaController {
                     console.error('Error limpiando:', cleanupError);
                 }
             }
-            
+
             this._mostrarError(error.message || 'No se pudo registrar el evento');
         } finally {
             if (btnCrear) {
@@ -1149,23 +1153,23 @@ class CrearMercanciaPerdidaController {
 
     async _subirEvidencias(registroId, imagenes) {
         if (!imagenes || imagenes.length === 0) return [];
-        
+
         const resultados = [];
         console.log(`📤 Subiendo ${imagenes.length} evidencias...`);
-        
+
         for (let i = 0; i < imagenes.length; i++) {
             const img = imagenes[i];
             const comentario = img.comentario || '';
-            
-            const nombreArchivo = img.generatedName || 
+
+            const nombreArchivo = img.generatedName ||
                 `${Date.now()}_${Math.random().toString(36).substring(2, 8)}_${img.file.name.replace(/[^a-zA-Z0-9.]/g, '_')}`;
-            
+
             const rutaStorage = `mercancia_perdida_${this.usuarioActual.organizacionCamelCase}/${registroId}/evidencias/${nombreArchivo}`;
-            
+
             try {
                 console.log(`📤 Evidencia ${i + 1}/${imagenes.length}: ${nombreArchivo}`);
                 const resultado = await this.mercanciaManager.subirArchivo(img.file, rutaStorage);
-                
+
                 resultados.push({
                     id: `EVD${Date.now()}_${i}_${Math.random().toString(36).substring(2, 6)}`,
                     url: resultado.url,
@@ -1181,7 +1185,7 @@ class CrearMercanciaPerdidaController {
                 throw error;
             }
         }
-        
+
         return resultados;
     }
 
@@ -1240,7 +1244,7 @@ class CrearMercanciaPerdidaController {
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#039;');
     }
-    
+
     _getTipoEventoTexto(tipo) {
         const tipos = {
             'robo': 'Robo',
@@ -1255,3 +1259,152 @@ class CrearMercanciaPerdidaController {
 document.addEventListener('DOMContentLoaded', () => {
     window.crearMercanciaPerdidaDebug = { controller: new CrearMercanciaPerdidaController() };
 });
+
+
+// =============================================
+// FORMULARIO SECUENCIAL - APARECEN AL LLENAR
+// =============================================
+
+document.addEventListener('DOMContentLoaded', function () {
+    setTimeout(() => {
+        inicializarFormularioSecuencial();
+    }, 500);
+});
+
+function inicializarFormularioSecuencial() {
+    let pasoActual = 0;
+    const totalPasos = 7;
+    const campos = document.querySelectorAll('.field-group-step');
+
+    // Ocultar todos los campos
+    campos.forEach(campo => {
+        campo.classList.remove('visible');
+    });
+
+    // Mostrar solo el primer campo
+    if (campos[0]) {
+        campos[0].classList.add('visible');
+    }
+
+    // Verificar si todos los campos requeridos están completos para mostrar los botones
+    function verificarBotonesFinales() {
+        const empresaValida = document.getElementById('nombreEmpresaCC').value.trim() !== '';
+        const tipoValido = document.getElementById('tipoEvento').value !== '';
+        const montoValido = parseFloat(document.getElementById('montoPerdido').value) > 0;
+        const fechaValida = (() => {
+            const fechaValor = document.getElementById('fechaHoraEvento').value;
+            if (!fechaValor) return false;
+            const fecha = new Date(fechaValor);
+            return !isNaN(fecha.getTime()) && fecha <= new Date();
+        })();
+        const narracionValida = (() => {
+            const texto = document.getElementById('narracionEventos').value.trim();
+            return texto.length >= 10 && texto.length <= 2000;
+        })();
+
+        if (empresaValida && tipoValido && montoValido && fechaValida && narracionValida) {
+            document.getElementById('originalButtons').style.display = 'flex';
+        } else {
+            document.getElementById('originalButtons').style.display = 'none';
+        }
+    }
+
+    // Función para validar y mostrar siguiente campo
+    function validarYMostrarSiguiente(stepIndex) {
+        if (stepIndex !== pasoActual) return;
+
+        let esValido = false;
+
+        switch (stepIndex) {
+            case 0: // Empresa
+                esValido = document.getElementById('nombreEmpresaCC').value.trim() !== '';
+                break;
+            case 1: // Tipo evento
+                esValido = document.getElementById('tipoEvento').value !== '';
+                break;
+            case 2: // Monto perdido
+                const monto = parseFloat(document.getElementById('montoPerdido').value);
+                esValido = !isNaN(monto) && monto > 0;
+                break;
+            case 3: // Monto recuperado (opcional)
+                esValido = true;
+                break;
+            case 4: // Fecha
+                const fechaValor = document.getElementById('fechaHoraEvento').value;
+                if (!fechaValor) {
+                    esValido = false;
+                } else {
+                    const fecha = new Date(fechaValor);
+                    esValido = !isNaN(fecha.getTime()) && fecha <= new Date();
+                }
+                break;
+            case 5: // Narración
+                const texto = document.getElementById('narracionEventos').value.trim();
+                esValido = texto.length >= 10 && texto.length <= 2000;
+                break;
+            case 6: // Detalles (opcional)
+                esValido = true;
+                break;
+        }
+
+        if (esValido && pasoActual < totalPasos - 1) {
+            // Mostrar el siguiente campo
+            const siguienteIndex = pasoActual + 1;
+            const siguienteCampo = document.querySelector(`.field-group-step[data-step="${siguienteIndex}"]`);
+            if (siguienteCampo) {
+                siguienteCampo.classList.add('visible');
+                pasoActual = siguienteIndex;
+
+                // Enfocar el nuevo campo
+                setTimeout(() => {
+                    const nuevoInput = siguienteCampo.querySelector('input, select, textarea');
+                    if (nuevoInput) nuevoInput.focus();
+                }, 100);
+            }
+        }
+
+        verificarBotonesFinales();
+    }
+
+    // Configurar eventos para cada campo
+    function configurarEventos() {
+        const empresaInput = document.getElementById('nombreEmpresaCC');
+        if (empresaInput) {
+            empresaInput.addEventListener('change', () => validarYMostrarSiguiente(0));
+            empresaInput.addEventListener('blur', () => validarYMostrarSiguiente(0));
+        }
+
+        const tipoSelect = document.getElementById('tipoEvento');
+        if (tipoSelect) {
+            tipoSelect.addEventListener('change', () => validarYMostrarSiguiente(1));
+        }
+
+        const montoInput = document.getElementById('montoPerdido');
+        if (montoInput) {
+            montoInput.addEventListener('input', () => validarYMostrarSiguiente(2));
+        }
+
+        const montoRecupInput = document.getElementById('montoRecuperado');
+        if (montoRecupInput) {
+            montoRecupInput.addEventListener('input', () => validarYMostrarSiguiente(3));
+        }
+
+        const fechaInput = document.getElementById('fechaHoraEvento');
+        if (fechaInput) {
+            fechaInput.addEventListener('change', () => validarYMostrarSiguiente(4));
+        }
+
+        const narracionTextarea = document.getElementById('narracionEventos');
+        if (narracionTextarea) {
+            narracionTextarea.addEventListener('input', () => validarYMostrarSiguiente(5));
+        }
+
+        const detallesTextarea = document.getElementById('detallesPerdida');
+        if (detallesTextarea) {
+            detallesTextarea.addEventListener('input', () => validarYMostrarSiguiente(6));
+        }
+    }
+
+    configurarEventos();
+    verificarBotonesFinales();
+}
