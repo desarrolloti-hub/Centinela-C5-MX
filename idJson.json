@@ -1,18 +1,18 @@
     {
     "@context": "https://schema.org",
     "@type": "LocalBusiness",
-    "name": "Centinela-MX",
+    "name": "Centinela-C5",
     "operatingSystem": "Web",
     "applicationCategory": "SecurityApplication",
-    "description": "Centinela-MX es un sistema inteligente de seguridad para el almacenamiento, monitoreo y predicción de incidencias en tiempo real.",
-    "url": "https://centinela-mx.web.app",
-    "image": "https://centinela-mx.web.app/assets/images/logo.png",
+    "description": "Centinela-C5 es un sistema inteligente de seguridad para el almacenamiento, monitoreo y predicción de incidencias en tiempo real.",
+    "url": "https://centinela-c5.web.app",
+    "image": "https://centinela-c5.web.app/assets/images/logo.png",
     "publisher": {
         "@type": "Organization",
-        "name": "Centinela-MX",
+        "name": "Centinela-C5",
         "logo": {
         "@type": "ImageObject",
-        "url": "https://centinela-mx.web.app/assets/images/logo.png"
+        "url": "https://centinela-c5.web.app/assets/images/logo.png"
         }
     },
     "offers": {

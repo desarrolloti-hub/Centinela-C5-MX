@@ -1836,10 +1836,6 @@ class NavbarComplete {
                     </button>
 
                     <div class="admin-dropdown-options" id="adminDropdownOptions">
-                        <a href="/usuarios/administrador/administradorTemas/administradorTemas.html" class="admin-dropdown-option">
-                            <i class="fa-solid fa-palette"></i>
-                            <span>Personalización</span>
-                        </a>
                         <a href="#" class="admin-dropdown-option logout-option" id="logoutOption">
                             <i class="fa-solid fa-right-from-bracket"></i>
                             <span>Cerrar Sesión</span>

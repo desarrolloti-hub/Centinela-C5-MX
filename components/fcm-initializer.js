@@ -110,7 +110,7 @@ class FCMInitializer {
                     {
                         body: payload.notification?.body || payload.data?.message || '',
                         icon: '/assets/images/logo.png',
-                        badge: '/assets/images/logo-badge.png',
+                        badge: '/assets/images/logo.png',
                         data: payload.data
                     }
                 );
