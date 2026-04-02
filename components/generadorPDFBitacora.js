@@ -1,42 +1,24 @@
 /**
  * GENERADOR PDF BITÁCORA - Sistema Centinela
- * VERSIÓN: 4.1 - SIN ÍCONOS QUE CAUSAN SÍMBOLOS EXTRAÑOS
+ * VERSIÓN: FINAL - CON FILTRO Y COLORES CORRECTOS
  */
 
 import { PDFBaseGenerator, coloresBase } from './pdf-base-generator.js';
 
-// =============================================
-// CONFIGURACIÓN DE COLORES PARA BITÁCORA
-// =============================================
 export const coloresBitacora = {
     ...coloresBase,
     actividad: '#00cfff'
 };
 
-// =============================================
-// CLASE GENERADOR PDF BITÁCORA
-// =============================================
 class GeneradorPDFBitacora extends PDFBaseGenerator {
     constructor() {
         super();
-
         this.usuarioActual = null;
         this.actividades = [];
         this.fechaSeleccionada = null;
         this.organizacionNombre = '';
         this.baseUrl = window.location.origin;
-        
         this.pdfUrlsCache = new Map();
-
-        this.fonts = {
-            tituloPrincipal: 18,
-            titulo: 16,
-            subtitulo: 14,
-            normal: 11,
-            small: 10,
-            mini: 9,
-            micro: 8
-        };
     }
 
     configurar(config) {
@@ -51,14 +33,11 @@ class GeneradorPDFBitacora extends PDFBaseGenerator {
             if (!window.jspdf) {
                 await this.cargarScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
             }
-
             if (!window.jspdf?.autoTable) {
                 await this.cargarScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.29/jspdf.plugin.autotable.min.js');
             }
-
             this.jsPDF = window.jspdf?.jsPDF;
             if (!this.jsPDF) throw new Error('No se pudo cargar jsPDF');
-
             return true;
         } catch (error) {
             console.error('Error cargando librerías:', error);
@@ -66,25 +45,63 @@ class GeneradorPDFBitacora extends PDFBaseGenerator {
         }
     }
 
-    async _obtenerPdfUrl(incidenciaId, organizacion) {
-        if (this.pdfUrlsCache.has(incidenciaId)) {
-            return this.pdfUrlsCache.get(incidenciaId);
+    async _obtenerPdfUrl(registroId, organizacion) {
+        if (this.pdfUrlsCache.has(registroId)) {
+            return this.pdfUrlsCache.get(registroId);
         }
         
         try {
-            const { IncidenciaManager } = await import('/clases/incidencia.js');
-            const incidenciaManager = new IncidenciaManager();
+            let pdfUrl = null;
             
-            const incidencia = await incidenciaManager.getIncidenciaById(incidenciaId, organizacion);
-            if (incidencia && incidencia.pdfUrl) {
-                this.pdfUrlsCache.set(incidenciaId, incidencia.pdfUrl);
-                return incidencia.pdfUrl;
+            if (registroId.startsWith('INC-')) {
+                const { IncidenciaManager } = await import('/clases/incidencia.js');
+                const incidenciaManager = new IncidenciaManager();
+                const incidencia = await incidenciaManager.getIncidenciaById(registroId, organizacion);
+                if (incidencia && incidencia.pdfUrl) {
+                    pdfUrl = incidencia.pdfUrl;
+                }
+            } 
+            else if (registroId.startsWith('MP-')) {
+                const { MercanciaPerdidaManager } = await import('/clases/mercanciaPerdida.js');
+                const mpManager = new MercanciaPerdidaManager();
+                const registro = await mpManager.getRegistroById(registroId, organizacion);
+                if (registro && registro.pdfUrl) {
+                    pdfUrl = registro.pdfUrl;
+                }
+            }
+            
+            if (pdfUrl) {
+                this.pdfUrlsCache.set(registroId, pdfUrl);
+                return pdfUrl;
             }
         } catch (error) {
-            console.warn(`No se pudo obtener PDF para ${incidenciaId}:`, error);
+            console.warn(`No se pudo obtener PDF para ${registroId}:`, error);
         }
         
         return null;
+    }
+
+    _limpiarDescripcion(descripcion) {
+        if (!descripcion) return '';
+        return descripcion
+            .replace(/\$undefined/g, '')
+            .replace(/undefined/g, '')
+            .replace(/!''/g, '')
+            .replace(/,''/g, '')
+            .replace(/\s+/g, ' ')
+            .trim();
+    }
+
+    _debeExcluirActividad(actividad) {
+        const modulo = actividad.modulo || '';
+        const tipo = actividad.tipo || actividad.tipoActividad || '';
+        
+        if (tipo === 'editar' || tipo === 'edit') {
+            if (modulo === 'incidencias' || modulo === 'mercancia_perdida' || modulo === 'mercancia_p erdida') {
+                return true;
+            }
+        }
+        return false;
     }
 
     async generarBitacoraPDF(actividades, fecha, opciones = {}) {
@@ -97,38 +114,40 @@ class GeneradorPDFBitacora extends PDFBaseGenerator {
                     title: 'Generando PDF...',
                     text: 'Procesando información...',
                     allowOutsideClick: false,
-                    didOpen: () => {
-                        Swal.showLoading();
-                    }
+                    didOpen: () => Swal.showLoading()
                 });
             }
 
             const organizacion = this.usuarioActual?.organizacionCamelCase || this.organizacionActual?.camelCase;
             
-            const incidenciasIds = new Set();
+            const actividadesFiltradas = actividades.filter(act => !this._debeExcluirActividad(act));
+            
+            const registrosIds = new Set();
             const actividadesLimpia = [];
             
-            for (const act of actividades) {
+            for (const act of actividadesFiltradas) {
                 const actLimpia = { ...act };
+                let descripcion = actLimpia.descripcion || actLimpia.accion || '';
+                descripcion = this._limpiarDescripcion(descripcion);
+                actLimpia.descripcionLimpia = descripcion;
                 
-                const incidenciaId = this._extraerIdIncidencia(actLimpia.descripcion || '');
-                if (incidenciaId) {
-                    incidenciasIds.add(incidenciaId);
-                }
+                const incMatch = descripcion.match(/INC-\d{8}-\d{6}/i);
+                const mpMatch = descripcion.match(/MP-\d{8}-\d{6}/i);
+                
+                if (incMatch) registrosIds.add(incMatch[0]);
+                if (mpMatch) registrosIds.add(mpMatch[0]);
                 
                 actividadesLimpia.push(actLimpia);
             }
             
-            const pdfUrlsPromises = Array.from(incidenciasIds).map(async (id) => {
+            const pdfUrlsPromises = Array.from(registrosIds).map(async (id) => {
                 const url = await this._obtenerPdfUrl(id, organizacion);
                 return { id, url };
             });
             
             const pdfUrlsResults = await Promise.all(pdfUrlsPromises);
             pdfUrlsResults.forEach(({ id, url }) => {
-                if (url) {
-                    this.pdfUrlsCache.set(id, url);
-                }
+                if (url) this.pdfUrlsCache.set(id, url);
             });
 
             await Promise.all([
@@ -152,7 +171,7 @@ class GeneradorPDFBitacora extends PDFBaseGenerator {
             const nombreArchivo = `bitacora_${fechaStr}.pdf`;
 
             const endTime = performance.now();
-            console.log(`⏱️ PDF generado en ${(endTime - startTime).toFixed(0)}ms`);
+            console.log(`PDF generado en ${(endTime - startTime).toFixed(0)}ms`);
 
             if (mostrarAlerta) {
                 Swal.close();
@@ -265,9 +284,9 @@ class GeneradorPDFBitacora extends PDFBaseGenerator {
         this.dibujarPiePagina(pdf);
     }
 
-    _extraerIdIncidencia(descripcion) {
+    _extraerIdRegistro(descripcion) {
         if (!descripcion) return null;
-        const patron = /INC-\d{8}-\d{6}/i;
+        const patron = /(?:INC|MP)-\d{8}-\d{6}/i;
         const match = descripcion.match(patron);
         return match ? match[0] : null;
     }
@@ -288,7 +307,11 @@ class GeneradorPDFBitacora extends PDFBaseGenerator {
 
     _dibujarTablaActividades(pdf, actividades, margen, yInicio, anchoContenido) {
         const headers = [['Hora', 'Módulo', 'Tipo', 'Descripción']];
-        const columnWidths = [18, 28, 22, anchoContenido - 68];
+        
+        const anchoHora = 20;
+        const anchoModulo = 32;
+        const anchoTipo = 24;
+        const anchoDescripcion = anchoContenido - (anchoHora + anchoModulo + anchoTipo);
 
         const actividadesOrdenadas = [...actividades].sort((a, b) => {
             const fechaA = a.fecha ? (a.fecha.toDate ? a.fecha.toDate() : new Date(a.fecha)) : new Date(0);
@@ -296,38 +319,41 @@ class GeneradorPDFBitacora extends PDFBaseGenerator {
             return fechaA - fechaB;
         });
 
-        const filasConLinks = [];
+        const bodyData = [];
+        const linkPorFila = [];
         
-        actividadesOrdenadas.forEach(act => {
+        for (const act of actividadesOrdenadas) {
             const uiData = act.toUI ? act.toUI() : this._extraerUIData(act);
-            let descripcion = uiData.descripcion || 'Sin descripción';
             
-            const incidenciaId = this._extraerIdIncidencia(descripcion);
-            const pdfUrl = incidenciaId ? this.pdfUrlsCache.get(incidenciaId) : null;
-            const tienePDF = !!pdfUrl;
+            let descripcion = act.descripcionLimpia || uiData.descripcion || 'Sin descripción';
+            descripcion = this._limpiarDescripcion(descripcion);
             
-            const textoColor = tienePDF ? [41, 98, 255] : [40, 40, 40];
+            const registroId = this._extraerIdRegistro(descripcion);
+            const pdfUrl = registroId ? this.pdfUrlsCache.get(registroId) : null;
+            const tieneLink = !!pdfUrl;
             
-            filasConLinks.push({
-                data: [
-                    uiData.hora || '--:--',
-                    uiData.modulo || 'N/A',
-                    uiData.tipo || 'N/A',
-                    {
-                        content: descripcion,
-                        styles: { textColor: textoColor }
-                    }
-                ],
-                incidenciaId: incidenciaId,
-                pdfUrl: pdfUrl,
-                tienePDF: tienePDF
+            let modulo = (uiData.modulo || 'N/A').replace(/_/g, ' ').trim();
+            
+            // Determinar color: AZUL si tiene link, NEGRO si no
+            const colorTexto = tieneLink ? [41, 98, 255] : [40, 40, 40];
+            
+            bodyData.push([
+                uiData.hora || '--:--',
+                modulo,
+                uiData.tipo || 'N/A',
+                { content: descripcion, styles: { textColor: colorTexto } }
+            ]);
+            
+            linkPorFila.push({
+                tieneLink: tieneLink,
+                pdfUrl: pdfUrl
             });
-        });
+        }
 
         pdf.autoTable({
             startY: yInicio,
             head: headers,
-            body: filasConLinks.map(f => f.data),
+            body: bodyData,
             theme: 'grid',
             styles: {
                 font: 'helvetica',
@@ -335,9 +361,9 @@ class GeneradorPDFBitacora extends PDFBaseGenerator {
                 cellPadding: 4,
                 lineColor: [200, 200, 200],
                 lineWidth: 0.1,
-                cellWidth: 'wrap',
                 minCellHeight: 10,
-                valign: 'middle'
+                valign: 'middle',
+                halign: 'left'
             },
             headStyles: {
                 fillColor: [41, 98, 255],
@@ -348,34 +374,28 @@ class GeneradorPDFBitacora extends PDFBaseGenerator {
                 valign: 'middle'
             },
             columnStyles: {
-                0: { cellWidth: columnWidths[0], halign: 'center' },
-                1: { cellWidth: columnWidths[1], halign: 'left' },
-                2: { cellWidth: columnWidths[2], halign: 'center' },
-                3: { cellWidth: columnWidths[3], halign: 'left' }
+                0: { cellWidth: anchoHora, halign: 'center' },
+                1: { cellWidth: anchoModulo, halign: 'left' },
+                2: { cellWidth: anchoTipo, halign: 'center' },
+                3: { cellWidth: anchoDescripcion, halign: 'left' }
             },
             alternateRowStyles: {
                 fillColor: [245, 245, 245]
             },
             margin: { left: margen, right: margen },
             didDrawCell: (data) => {
-                // SOLO agregar el enlace, NO el ícono que causa el problema
                 if (data.column.index === 3) {
-                    const filaIndex = data.row.index;
-                    const filaInfo = filasConLinks[filaIndex];
-                    
-                    if (filaInfo && filaInfo.tienePDF && filaInfo.pdfUrl) {
+                    const linkInfo = linkPorFila[data.row.index];
+                    if (linkInfo && linkInfo.tieneLink && linkInfo.pdfUrl) {
                         try {
-                            const x = data.cell.x;
-                            const y = data.cell.y;
-                            const width = data.cell.width;
-                            const height = data.cell.height;
-                            
-                            pdf.link(x, y, width, height, { url: filaInfo.pdfUrl });
-                            
-                            // NO dibujar el ícono 📄 - eso es lo que causa Ø=ÜÄ
-                        } catch (e) {
-                            console.warn('Error:', e);
-                        }
+                            pdf.link(
+                                data.cell.x, 
+                                data.cell.y, 
+                                data.cell.width, 
+                                data.cell.height, 
+                                { url: linkInfo.pdfUrl }
+                            );
+                        } catch (e) {}
                     }
                 }
             },
@@ -391,11 +411,7 @@ class GeneradorPDFBitacora extends PDFBaseGenerator {
             hora: act.hora || this._extraerHora(act.fecha),
             modulo: act.modulo || 'N/A',
             tipo: act.tipo || act.tipoActividad || 'N/A',
-            descripcion: act.descripcion || act.accion || 'Sin descripción',
-            usuario: {
-                nombre: act.usuarioNombre || act.usuario?.nombre || 'Desconocido',
-                correo: act.usuarioCorreo || act.usuario?.correo || ''
-            }
+            descripcion: act.descripcion || act.accion || 'Sin descripción'
         };
     }
 
@@ -413,6 +429,5 @@ class GeneradorPDFBitacora extends PDFBaseGenerator {
     }
 }
 
-// EXPORTACIÓN
 export const generadorBitacoraPDF = new GeneradorPDFBitacora();
 export default generadorBitacoraPDF;
