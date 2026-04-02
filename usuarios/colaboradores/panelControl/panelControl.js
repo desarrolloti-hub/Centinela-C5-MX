@@ -1,15 +1,6 @@
 // ========== panelControl.js - PANEL DE CONTROL COLABORADOR ==========
 // CON ACCESO RÁPIDO Y MÓDULOS EN 3 COLUMNAS (SIN INCIDENCIAS EN MÓDULOS)
 
-import { db } from '/config/firebase-config.js';
-import {
-    collection,
-    query,
-    where,
-    orderBy,
-    onSnapshot
-} from "https://www.gstatic.com/firebasejs/12.8.0/firebase-firestore.js";
-
 let permisoManager = null;
 let usuarioActual = null;
 let permisosUsuario = null;
@@ -186,7 +177,6 @@ const COLUMNAS_CONFIG = [
 // ========== INICIALIZACIÓN ==========
 document.addEventListener('DOMContentLoaded', async function () {
     try {
-        mostrarEstadoCarga();
         const usuarioCargado = cargarUsuarioDesdeStorage();
 
         if (!usuarioCargado) {
@@ -210,10 +200,7 @@ document.addEventListener('DOMContentLoaded', async function () {
         configurarEventosTarjetas();
 
         await cargarDatosKPIs();
-
-        ocultarEstadoCarga();
     } catch (error) {
-        ocultarEstadoCarga();
         mostrarError(error.message);
     }
 });
@@ -492,6 +479,9 @@ async function cargarDatosKPIs() {
 }
 
 async function suscribirIncidenciasCanalizadas(organizacion) {
+    const { db } = await import('/config/firebase-config.js');
+    const { collection, query, where, orderBy, onSnapshot } = await import("https://www.gstatic.com/firebasejs/12.8.0/firebase-firestore.js");
+
     const collectionName = `incidencias_${organizacion}`;
     const incidenciasCollection = collection(db, collectionName);
     const numberElement = document.getElementById('kpi-number-incidencias');
@@ -522,6 +512,9 @@ async function suscribirIncidenciasCanalizadas(organizacion) {
 }
 
 async function suscribirAColeccion(collectionName, moduloId) {
+    const { db } = await import('/config/firebase-config.js');
+    const { collection, onSnapshot } = await import("https://www.gstatic.com/firebasejs/12.8.0/firebase-firestore.js");
+
     const numberElement = document.getElementById(`kpi-number-${moduloId}`);
     if (!numberElement) return;
     const coleccion = collection(db, collectionName);
@@ -532,6 +525,9 @@ async function suscribirAColeccion(collectionName, moduloId) {
 }
 
 async function suscribirColaboradoresActivos(organizacion) {
+    const { db } = await import('/config/firebase-config.js');
+    const { collection, query, where, onSnapshot } = await import("https://www.gstatic.com/firebasejs/12.8.0/firebase-firestore.js");
+
     const numberElement = document.getElementById('kpi-number-usuarios');
     if (!numberElement) return;
     const colaboradoresCollection = collection(db, `colaboradores_${organizacion}`);
@@ -543,23 +539,7 @@ async function suscribirColaboradoresActivos(organizacion) {
 }
 
 // ========== UTILIDADES ==========
-function mostrarEstadoCarga() {
-    if (!document.getElementById('loading-overlay')) {
-        const overlay = document.createElement('div');
-        overlay.id = 'loading-overlay';
-        overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.9);display:flex;justify-content:center;align-items:center;z-index:9999;backdrop-filter:blur(5px);';
-        overlay.innerHTML = `<div style="text-align:center;"><i class="fas fa-spinner fa-spin" style="font-size:48px;color:#c0c0c0;"></i><h3 style="color:white;">CARGANDO PANEL</h3><p style="color:#a5a5a5;">Verificando permisos...</p></div>`;
-        document.body.appendChild(overlay);
-    }
-}
-
-function ocultarEstadoCarga() {
-    const overlay = document.getElementById('loading-overlay');
-    if (overlay) overlay.remove();
-}
-
 function mostrarErrorSesion() {
-    ocultarEstadoCarga();
     const container = document.querySelector('.right-layout');
     if (container) {
         container.innerHTML = `
@@ -582,7 +562,6 @@ function mostrarErrorSesion() {
 }
 
 function mostrarError(mensaje) {
-    ocultarEstadoCarga();
     const container = document.querySelector('.right-layout');
     if (container) {
         container.innerHTML = `<div style="text-align:center;padding:60px;"><i class="fas fa-exclamation-circle" style="font-size:64px;color:#ff4d4d;"></i><h2>ERROR</h2><p>${mensaje}</p><button onclick="window.location.reload()">REINTENTAR</button></div>`;

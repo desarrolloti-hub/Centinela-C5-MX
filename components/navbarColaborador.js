@@ -1696,7 +1696,7 @@ class NavbarComplete {
 
                     <div class="admin-info">
                         <div class="admin-name" id="userName">Cargando...</div>
-                        <div class="admin-role" id="userRole">Colaborador</div>
+                        <div class="admin-role" id="userRole"></div>
                         <div class="admin-email" id="userEmail">cargando@email.com</div>
                         <div class="admin-organization" id="userOrganization"></div>
                     </div>
@@ -1788,22 +1788,6 @@ class NavbarComplete {
                     </button>
 
                     <div class="configuracion-dropdown-options" id="configuracionDropdownOptions">
-                        <a href="../perfil/perfil.html" class="configuracion-dropdown-option">
-                            <i class="fa-solid fa-user-pen"></i>
-                            <span>Editar Perfil</span>
-                        </a>
-                        <a href="../configuracion/configuracion.html" class="configuracion-dropdown-option">
-                            <i class="fa-solid fa-sliders-h"></i>
-                            <span>Preferencias</span>
-                        </a>
-                        <a href="../ayuda/ayuda.html" class="configuracion-dropdown-option">
-                            <i class="fa-solid fa-circle-question"></i>
-                            <span>Ayuda</span>
-                        </a>
-                        <a href="../permisos/permisos.html" class="configuracion-dropdown-option" id="permisosBtn">
-                            <i class="fa-solid fa-user-gear"></i>
-                            <span>Roles y Permisos</span>
-                        </a>
                         <a href="#" class="configuracion-dropdown-option logout-option" id="logoutOption">
                             <i class="fa-solid fa-right-from-bracket"></i>
                             <span>Cerrar Sesión</span>
@@ -1876,7 +1860,8 @@ class NavbarComplete {
                     fotoUsuario: fotoUsuario,
                     fotoOrganizacion: fotoOrganizacion,
                     areaId: userData.areaAsignadaId || userData.areaId || localStorage.getItem('userAreaId') || '',
-                    cargoId: userData.cargoId || localStorage.getItem('userCargoId') || '',
+                    areaAsignadaId: userData.areaAsignadaId || userData.areaId || localStorage.getItem('userAreaId') || '',  // 👈 Agregar
+                    cargoId: userData.cargoId || localStorage.getItem('userCargoId') || '',  // 👈 Agregar
                     sucursalAsignadaId: userData.sucursalAsignadaId || localStorage.getItem('userSucursalId') || '',
                     sucursalAsignadaNombre: userData.sucursalAsignadaNombre || localStorage.getItem('userSucursalNombre') || '',
                     status: userData.status || 'activo',
@@ -2202,33 +2187,76 @@ class NavbarComplete {
     }
 
     updateUserMenuInfo() {
-        const userName = document.getElementById('userName');
-        if (userName) userName.textContent = this.currentUser.nombreCompleto || 'Usuario';
+    const userName = document.getElementById('userName');
+    if (userName) userName.textContent = this.currentUser.nombreCompleto || 'Usuario';
 
-        const userRole = document.getElementById('userRole');
-        if (userRole) {
+    // CAMBIO: En lugar de mostrar el rol, mostrar área y cargo
+    const userRole = document.getElementById('userRole');
+    if (userRole) {
+        this.cargarAreaYCargo().then(info => {
+            if (info.cargoNombre) {
+                userRole.textContent = `${info.cargoNombre}`;
+            } else if (info.cargoNombre) {
+                userRole.textContent = info.cargoNombre;
+            } else {
+                const rol = this.currentUser.rol || 'colaborador';
+                userRole.textContent = rol.charAt(0).toUpperCase() + rol.slice(1).toLowerCase();
+            }
+        }).catch(() => {
             const rol = this.currentUser.rol || 'colaborador';
             userRole.textContent = rol.charAt(0).toUpperCase() + rol.slice(1).toLowerCase();
+        });
+    }
+
+    const userEmail = document.getElementById('userEmail');
+    if (userEmail) userEmail.textContent = this.currentUser.correoElectronico || 'No especificado';
+
+    const userOrganization = document.getElementById('userOrganization');
+    if (userOrganization) userOrganization.textContent = this.currentUser.organizacion || 'Sin organización';
+
+    const userProfileImg = document.getElementById('userProfileImg');
+    const profilePlaceholder = document.getElementById('profilePlaceholder');
+
+    if (userProfileImg && profilePlaceholder) {
+        if (this.currentUser.fotoUsuario && this.currentUser.fotoUsuario.length > 10) {
+            userProfileImg.src = this.currentUser.fotoUsuario;
+            userProfileImg.style.display = 'block';
+            profilePlaceholder.style.display = 'none';
+            userProfileImg.alt = `Foto de ${this.currentUser.nombreCompleto}`;
+        } else {
+            this.showProfilePlaceholder();
         }
+    }
+}
 
-        const userEmail = document.getElementById('userEmail');
-        if (userEmail) userEmail.textContent = this.currentUser.correoElectronico || 'No especificado';
+    // NUEVO MÉTODO: Cargar área y cargo desde Firestore
+    async cargarAreaYCargo() {
+        try {
+            const areaId = this.currentUser.areaAsignadaId || this.currentUser.areaId || '';
+            const cargoId = this.currentUser.cargoId || '';
 
-        const userOrganization = document.getElementById('userOrganization');
-        if (userOrganization) userOrganization.textContent = this.currentUser.organizacion || 'Sin organización';
+            let areaNombre = '';
+            let cargoNombre = '';
 
-        const userProfileImg = document.getElementById('userProfileImg');
-        const profilePlaceholder = document.getElementById('profilePlaceholder');
+            // Cargar área si existe
+            if (areaId && this.currentUser.organizacionCamelCase) {
+                const { AreaManager } = await import('/clases/area.js');
+                const areaManager = new AreaManager();
+                const area = await areaManager.getAreaById(areaId, this.currentUser.organizacionCamelCase);
+                if (area) {
+                    areaNombre = area.nombreArea;
 
-        if (userProfileImg && profilePlaceholder) {
-            if (this.currentUser.fotoUsuario && this.currentUser.fotoUsuario.length > 10) {
-                userProfileImg.src = this.currentUser.fotoUsuario;
-                userProfileImg.style.display = 'block';
-                profilePlaceholder.style.display = 'none';
-                userProfileImg.alt = `Foto de ${this.currentUser.nombreCompleto}`;
-            } else {
-                this.showProfilePlaceholder();
+                    // Cargar cargo específico si existe
+                    if (cargoId && area.cargos && area.cargos[cargoId]) {
+                        cargoNombre = area.cargos[cargoId].nombre;
+                    }
+                }
             }
+
+            return { areaNombre, cargoNombre };
+        } catch (error) {
+            console.error('Error cargando área/cargo:', error);
+            return { areaNombre: '', cargoNombre: '' };
         }
     }
 
