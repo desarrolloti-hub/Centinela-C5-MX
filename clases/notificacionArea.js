@@ -289,7 +289,6 @@ class NotificacionAreaManager {
                 }
             });
             
-            console.log(`📋 Encontrados ${administradores.length} administradores para ${organizacionCamelCase}`);
             return administradores;
             
         } catch (error) {
@@ -433,12 +432,8 @@ class NotificacionAreaManager {
 
             const areasIds = areas.map(a => a.id);
             
-            const colaboradores = await this._getUsuariosPorMultiplesAreas(areasIds, organizacionCamelCase);
-            console.log(`👥 Colaboradores encontrados: ${colaboradores.length}`);
-            
-            const administradores = await this._getAdministradores(organizacionCamelCase);
-            console.log(`👑 Administradores encontrados: ${administradores.length}`);
-            
+            const colaboradores = await this._getUsuariosPorMultiplesAreas(areasIds, organizacionCamelCase);            
+            const administradores = await this._getAdministradores(organizacionCamelCase);            
             const todosDestinatarios = [...colaboradores, ...administradores];
             const idsUnicos = new Set();
             const destinatariosUnicos = [];
@@ -450,8 +445,6 @@ class NotificacionAreaManager {
                 }
             }
             
-            console.log(`📬 Total destinatarios únicos: ${destinatariosUnicos.length}`);
-
             const titulo = this._generarTitulo(tipo, areas, nivelRiesgo);
             let mensaje = mensajePersonalizado;
             
