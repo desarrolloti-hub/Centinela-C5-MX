@@ -1,26 +1,26 @@
 /* =============================================
-   VARIABLES PRINCIPALES DE COLOR
+   VARIABLES PRINCIPALES DE COLOR - TEMA NARANJA COMPLETO
    ============================================= */
 
 :root {
     /* ====== COLORES BASE ====== */
     --color-bg-primary: #000000;
-    --color-bg-secondary: #00000000;
-    --color-bg-tertiary: #0000007a;
+    --color-bg-secondary: #2c1a0f;        /* ← Fondo sólido para navbar/footer */
+    --color-bg-tertiary: #3d2413;         /* ← Fondo secundario sólido */
     --color-bg-light: #ffffff;
 
     /* ====== COLORES DE TEXTO ====== */
     --color-text-primary: #ffffff;
-    --color-text-secondary: rgba(255, 255, 255, 0.8);
+    --color-text-secondary: #ffd9b3;      /* ← Texto secundario con tono naranja */
     --color-text-light: #ffffff;
-    --color-text-dark: #000000;
+    --color-text-dark: #1a0f0a;
 
-    /* ====== COLORES DE ACENTO Y EFECTOS ====== */
-    --color-accent-primary: #c0c0c0;
-    --color-accent-secondary: #ffffff;
-    --color-accent-footer: #ffffff;
-    --color-shadow: rgba(255, 255, 255, 0.55);
-    --color-glow: #ffffff;
+    /* ====== COLORES DE ACENTO Y EFECTOS (NARANJA) ====== */
+    --color-accent-primary: #FF6600;
+    --color-accent-secondary: #FF8533;
+    --color-accent-footer: #FF6600;
+    --color-shadow: rgba(255, 102, 0, 0.5);
+    --color-glow: #FF6600;
 
     /* ====== VARIABLES DE EFECTO ESPECÍFICAS ====== */
     --text-shadow-effect: 0 0 10px var(--color-glow), 0 0 20px var(--color-glow), 0 0 30px var(--color-glow), 0 0 40px var(--color-glow);
@@ -29,12 +29,12 @@
     --shadow-small: 0 2px 8px var(--color-shadow);
 
     /* ====== VARIABLES DE ESTADO ====== */
-    --color-hover: rgba(245, 215, 66, 0);
-    --color-active: #c0c0c0;
+    --color-hover: rgba(255, 102, 0, 0.2);   /* ← Hover con naranja */
+    --color-active: #FF8533;
 
     /* ====== VARIABLES DE BORDES ====== */
-    --color-border-light: rgba(255, 255, 255, 0.1);
-    --color-border-dark: #3d8ad6;
+    --color-border-light: rgba(255, 102, 0, 0.2);  /* ← Bordes con naranja */
+    --color-border-dark: #FF8533;
 
     /* ====== VARIABLES DE ÍCONOS ====== */
     --color-icon-primary: var(--color-accent-secondary);
@@ -54,26 +54,26 @@
     --font-family-secondary: sans-serif;
 
     /* ====== VARIABLES ESPECÍFICAS POR COMPONENTE ====== */
-    --navbar-bg: var(--color-bg-secondary);
-    --navbar-text: var(--color-text-primary);
-    --navbar-logo-text: var(--color-text-primary);
+    --navbar-bg: #2c1a0f;                 /* ← Fondo SÓLIDO para navbar */
+    --navbar-text: #ffffff;
+    --navbar-logo-text: #FF8533;           /* ← Logo en naranja */
     --navbar-link-hover: var(--text-shadow-effect);
-    --navbar-scrolled-bg: var(--color-bg-primary);
+    --navbar-scrolled-bg: #1a0f0a;         /* ← Fondo al hacer scroll */
     --navbar-scrolled-shadow: var(--shadow-normal);
-    --footer-bg-primary: var(--color-bg-secondary);
-    --footer-bg-secondary: var(--color-bg-tertiary);
-    --footer-text-primary: var(--color-text-primary);
-    --footer-text-secondary: var(--color-text-secondary);
-    --footer-accent: var(--color-accent-footer);
+    
+    --footer-bg-primary: #2c1a0f;          /* ← Fondo SÓLIDO para footer */
+    --footer-bg-secondary: #3d2413;
+    --footer-text-primary: #ffffff;
+    --footer-text-secondary: #ffd9b3;
+    --footer-accent: #FF6600;
     --footer-link-hover: var(--text-shadow-effect);
-    --footer-social-bg: rgb(3, 3, 3);
-    --footer-social-hover: var(--color-accent-secondary);
-    --footer-border-accent: var(--color-accent-footer);
+    --footer-social-bg: #1a0f0a;
+    --footer-social-hover: #FF8533;
+    --footer-border-accent: #FF6600;
 }
 
 :root {
-    /* ====== VARIABLES ESPECÍFICAS PARA COMPONENTES ====== */
-    --sweetalert-bg: rgb(0, 0, 0); /* Fondo semitransparente pero no transparente */
+    --sweetalert-bg: rgb(0, 0, 0);
 }
 
 /* =============================================
