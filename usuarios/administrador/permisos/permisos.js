@@ -1,7 +1,6 @@
 // ========== permisos.js - GESTIÓN DE PERMISOS ==========
 // Basado en la estructura de categorias.js - VERSIÓN CON LOCALSTORAGE ÚNICAMENTE
-// ACTUALIZADO: Incluye módulos Usuarios, Estadísticas y Tareas
-// Y lógica de plan para Incidencias y Mapa de Alertas
+// ACTUALIZADO: Incluye módulos Usuarios, Estadísticas, Tareas, Permisos y Login/Monitoreo
 
 // ========== VARIABLES GLOBALES ==========
 let permisoManager = null;
@@ -30,17 +29,18 @@ const nombresModulos = {
     usuarios: 'Usuarios',
     estadisticas: 'Estadísticas',
     tareas: 'Tareas',
-    monitoreo: 'Mapa Alertas'
+    permisos: 'Permisos',
+    loginMonitoreo: 'Login/Monitoreo'
 };
 
 // Módulos fijos (siempre visibles)
-const modulosFijos = ['areas', 'categorias', 'sucursales', 'regiones', 'usuarios', 'estadisticas', 'tareas'];
+const modulosFijos = ['areas', 'categorias', 'sucursales', 'regiones', 'usuarios', 'estadisticas', 'tareas', 'permisos', 'loginMonitoreo'];
 
 // Módulos dinámicos (dependen del plan)
 const modulosDinamicos = ['incidencias', 'monitoreo'];
 
 // Orden de los módulos para mostrar
-const ordenModulos = ['areas', 'categorias', 'sucursales', 'regiones', 'incidencias', 'usuarios', 'estadisticas', 'tareas', 'monitoreo'];
+const ordenModulos = ['areas', 'categorias', 'sucursales', 'regiones', 'incidencias', 'usuarios', 'estadisticas', 'tareas', 'permisos', 'loginMonitoreo'];
 
 // ========== INICIALIZACIÓN ==========
 document.addEventListener('DOMContentLoaded', async function () {

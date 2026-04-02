@@ -1,4 +1,5 @@
-// crearPermiso.js - VERSIÓN CON MÓDULOS COMPLETOS (Áreas, Categorías, Sucursales, Regiones, Incidencias, Mapa Alertas, Usuarios, Estadísticas, Tareas)
+// crearPermiso.js - VERSIÓN CON MÓDULOS COMPLETOS
+// Módulos: Áreas, Categorías, Sucursales, Regiones, Incidencias, Mapa Alertas, Usuarios, Estadísticas, Tareas, Permisos, Login/Monitoreo
 
 // =============================================
 // CLASE PRINCIPAL - CrearPermisoController
@@ -325,8 +326,12 @@ class CrearPermisoController {
     }
 
     _configurarCheckboxesPermisos() {
-        // TODOS los módulos disponibles (siempre visibles o dinámicos según plan)
-        const todosModulos = ['Areas', 'Categorias', 'Sucursales', 'Regiones', 'Incidencias', 'Monitoreo', 'Usuarios', 'Estadisticas', 'Tareas'];
+        // TODOS los módulos disponibles (incluyendo Permisos y Login/Monitoreo)
+        const todosModulos = [
+            'Areas', 'Categorias', 'Sucursales', 'Regiones', 
+            'Incidencias', 'Monitoreo', 'Usuarios', 'Estadisticas', 
+            'Tareas', 'Permisos', 'LoginMonitoreo'
+        ];
 
         todosModulos.forEach(modulo => {
             const checkbox = document.getElementById(`permiso${modulo}`);
@@ -399,10 +404,11 @@ class CrearPermisoController {
             regiones: document.getElementById('permisoRegiones')?.checked || false,
             incidencias: document.getElementById('permisoIncidencias')?.checked || false,
             monitoreo: document.getElementById('permisoMonitoreo')?.checked || false,
-            // NUEVOS MÓDULOS
             usuarios: document.getElementById('permisoUsuarios')?.checked || false,
             estadisticas: document.getElementById('permisoEstadisticas')?.checked || false,
-            tareas: document.getElementById('permisoTareas')?.checked || false
+            tareas: document.getElementById('permisoTareas')?.checked || false,
+            permisos: document.getElementById('permisoPermisos')?.checked || false,
+            loginMonitoreo: document.getElementById('permisoLoginMonitoreo')?.checked || false
         };
 
         return permisos;
@@ -538,7 +544,9 @@ class CrearPermisoController {
                 monitoreo: 'Mapa de Alertas',
                 usuarios: 'Usuarios',
                 estadisticas: 'Estadísticas',
-                tareas: 'Tareas'
+                tareas: 'Tareas',
+                permisos: 'Permisos',
+                loginMonitoreo: 'Login/Monitoreo'
             };
 
             Swal.close();
