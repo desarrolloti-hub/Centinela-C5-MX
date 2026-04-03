@@ -1247,8 +1247,10 @@ function configurarGuardado(elements, userManager) {
                 icon: 'success',
                 title: '¡Éxito!',
                 text: 'Datos actualizados correctamente',
-                timer: 3000,
+                timer: 2000,
                 showConfirmButton: false
+            }).then(() => {
+                window.location.href = '../usuarios/usuarios.html';
             });
 
             mostrarMensaje(elements.mainMessage, 'success', 'Cambios guardados exitosamente');

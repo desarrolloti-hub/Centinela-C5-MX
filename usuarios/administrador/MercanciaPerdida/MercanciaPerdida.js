@@ -313,8 +313,9 @@ function limpiarFiltros() {
     cargarRegistrosPagina(1);
 }
 
+
 // =============================================
-// VER PDF (muestra si ya está generado o informa estado)
+// VER PDF (abre en nueva pestaña con visor nativo)
 // =============================================
 window.verPDF = async function (registroId, event) {
     event?.stopPropagation();
@@ -327,7 +328,8 @@ window.verPDF = async function (registroId, event) {
         }
         
         if (registro.pdfUrl) {
-            window.visualizadorPDF.abrir(registro.pdfUrl, `Reporte ${registro.id}`);
+            // Abrir PDF en nueva pestaña con el visor nativo del navegador
+            window.open(registro.pdfUrl, '_blank');
         } else if (registro.estadoGeneracion === 'generando') {
             Swal.fire({
                 icon: 'info',
@@ -659,11 +661,6 @@ function crearFilaRegistro(registro, tbody) {
                 <button type="button" class="btn" data-action="pdf" data-id="${registro.id}" title="${pdfTitle}">
                     ${pdfIcono}
                 </button>
-                ${uiData.estado !== 'recuperado' && uiData.estado !== 'cerrado' && uiData.montoRecuperado < uiData.montoPerdido ? `
-                <button type="button" class="btn" data-action="recuperar" data-id="${registro.id}" title="Registrar recuperación">
-                    <i class="fas fa-undo-alt" style="color: #28a745;"></i>
-                </button>
-                ` : ''}
             </div>
         </td>
     `;
@@ -678,7 +675,6 @@ function crearFilaRegistro(registro, tbody) {
                 const id = btn.dataset.id;
                 if (action === 'ver') window.verDetallesRegistro(id, e);
                 else if (action === 'pdf') window.verPDF(id, e);
-                else if (action === 'recuperar') window.registrarRecuperacion(id, e);
             });
         });
         
