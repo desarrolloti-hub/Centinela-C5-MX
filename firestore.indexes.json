@@ -84,6 +84,23 @@
       ]
     },
     {
+      "collectionGroup": "colaboradores",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "sucursalAsignadaId", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "colaboradores",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "sucursalAsignadaId", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "fechaCreacion", "order": "DESCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "areas",
       "queryScope": "COLLECTION",
       "fields": [
@@ -123,6 +140,86 @@
       "fields": [
         { "fieldPath": "organizacionCamelCase", "order": "ASCENDING" },
         { "fieldPath": "fechaCreacion", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "sucursales",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "organizacionCamelCase", "order": "ASCENDING" },
+        { "fieldPath": "fechaCreacion", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "sucursales",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "organizacionCamelCase", "order": "ASCENDING" },
+        { "fieldPath": "nombre", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "sucursales",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "regionId", "order": "ASCENDING" },
+        { "fieldPath": "organizacionCamelCase", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "sucursales",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "regionId", "order": "ASCENDING" },
+        { "fieldPath": "nombre", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "sucursales",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "ciudad", "order": "ASCENDING" },
+        { "fieldPath": "organizacionCamelCase", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "sucursales",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "estado", "order": "ASCENDING" },
+        { "fieldPath": "organizacionCamelCase", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "sucursales",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "nombre", "order": "ASCENDING" },
+        { "fieldPath": "organizacionCamelCase", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "regiones",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "organizacionCamelCase", "order": "ASCENDING" },
+        { "fieldPath": "fechaCreacion", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "regiones",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "organizacionCamelCase", "order": "ASCENDING" },
+        { "fieldPath": "nombre", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "regiones",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "estado", "order": "ASCENDING" },
+        { "fieldPath": "organizacionCamelCase", "order": "ASCENDING" }
       ]
     },
     {
@@ -243,6 +340,102 @@
       "fields": [
         { "fieldPath": "incidenciaId", "order": "ASCENDING" },
         { "fieldPath": "fecha", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "permisos",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "organizacionCamelCase", "order": "ASCENDING" },
+        { "fieldPath": "fechaCreacion", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "permisos",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "areaId", "order": "ASCENDING" },
+        { "fieldPath": "cargoId", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "permisos",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "cargoId", "order": "ASCENDING" },
+        { "fieldPath": "areaId", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "tareas",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "organizacionCamelCase", "order": "ASCENDING" },
+        { "fieldPath": "fechaCreacion", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "tareas",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "asignadoAId", "order": "ASCENDING" },
+        { "fieldPath": "estado", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "tareas",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "areaId", "order": "ASCENDING" },
+        { "fieldPath": "estado", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "historial",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "organizacionCamelCase", "order": "ASCENDING" },
+        { "fieldPath": "fecha", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "historial",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "usuarioId", "order": "ASCENDING" },
+        { "fieldPath": "fecha", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "historial",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "modulo", "order": "ASCENDING" },
+        { "fieldPath": "fecha", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "mercancia_perdida",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "organizacionCamelCase", "order": "ASCENDING" },
+        { "fieldPath": "fechaCreacion", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "mercancia_perdida",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "estado", "order": "ASCENDING" },
+        { "fieldPath": "fechaCreacion", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "mercancia_perdida",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "tipoEvento", "order": "ASCENDING" },
+        { "fieldPath": "fechaCreacion", "order": "DESCENDING" }
       ]
     }
   ],
