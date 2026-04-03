@@ -11,6 +11,9 @@ import {
     query, 
     where, 
     orderBy,
+    limit,
+    startAfter,
+    getCountFromServer,
     serverTimestamp 
 } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-firestore.js";
 
@@ -878,6 +881,210 @@ class SucursalManager {
         const colaboradores = await this.getColaboradoresPorSucursal(sucursalId, organizacionCamelCase);
         return colaboradores < 2;
     }
+
+    // Agregar estos métodos a la clase SucursalManager en sucursal.js
+    // Agregar estos métodos a la clase SucursalManager en sucursal.js (después del método getTotalSucursales)
+
+async getSucursalesPaginadas(organizacionCamelCase, filtros = {}, pagina = 1, itemsPorPagina = 10, cursores = null) {
+    try {
+        if (!organizacionCamelCase) {
+            throw new Error('Organización no especificada');
+        }
+
+        const collectionName = this._getCollectionName(organizacionCamelCase);
+        const sucursalesCollection = collection(db, collectionName);
+        
+        let constraints = [orderBy("fechaCreacion", "desc")];
+        
+        // Búsqueda por nombre (usando índice nombre + organizacionCamelCase)
+        if (filtros.termino && filtros.termino.length >= 2) {
+            constraints.push(where("nombre", ">=", filtros.termino));
+            constraints.push(where("nombre", "<=", filtros.termino + '\uf8ff'));
+        }
+        
+        // Paginación hacia adelante
+        if (pagina > 1 && cursores?.ultimoDocumento) {
+            constraints.push(startAfter(cursores.ultimoDocumento));
+        }
+        
+        constraints.push(limit(itemsPorPagina));
+        
+        const q = query(sucursalesCollection, ...constraints);
+        
+        await consumo.registrarFirestoreLectura(collectionName, `página ${pagina}`);
+        const snapshot = await getDocs(q);
+        
+        const sucursales = [];
+        let ultimoDoc = null;
+        let primerDoc = null;
+        
+        if (!snapshot.empty) {
+            ultimoDoc = snapshot.docs[snapshot.docs.length - 1];
+            primerDoc = snapshot.docs[0];
+            
+            snapshot.forEach(doc => {
+                try {
+                    const data = doc.data();
+                    const sucursal = new Sucursal(doc.id, {
+                        ...data,
+                        id: doc.id,
+                        fechaCreacion: data.fechaCreacion?.toDate?.() || data.fechaCreacion,
+                        fechaActualizacion: data.fechaActualizacion?.toDate?.() || data.fechaActualizacion
+                    });
+                    sucursales.push(sucursal);
+                } catch (error) {
+                    console.error('Error procesando sucursal:', error);
+                }
+            });
+        }
+        
+        // Contar total (con o sin filtro)
+        let total = 0;
+        if (filtros.termino && filtros.termino.length >= 2) {
+            const countQuery = query(sucursalesCollection, 
+                where("nombre", ">=", filtros.termino),
+                where("nombre", "<=", filtros.termino + '\uf8ff')
+            );
+            const countSnapshot = await getCountFromServer(countQuery);
+            total = countSnapshot.data().count;
+        } else {
+            const countQuery = query(sucursalesCollection);
+            const countSnapshot = await getCountFromServer(countQuery);
+            total = countSnapshot.data().count;
+        }
+        
+        return {
+            sucursales,
+            total,
+            paginaActual: pagina,
+            totalPaginas: Math.ceil(total / itemsPorPagina),
+            ultimoDocumento: ultimoDoc,
+            primerDocumento: primerDoc,
+            tieneMas: snapshot.docs.length === itemsPorPagina
+        };
+        
+    } catch (error) {
+        console.error('Error obteniendo sucursales paginadas:', error);
+        return {
+            sucursales: [],
+            total: 0,
+            paginaActual: pagina,
+            totalPaginas: 0,
+            ultimoDocumento: null,
+            primerDocumento: null,
+            tieneMas: false
+        };
+    }
+}
+
+async getSucursalesPaginaEspecifica(organizacionCamelCase, filtros = {}, paginaDeseada = 1, itemsPorPagina = 10) {
+    try {
+        if (paginaDeseada === 1) {
+            return await this.getSucursalesPaginadas(organizacionCamelCase, filtros, 1, itemsPorPagina);
+        }
+        
+        const collectionName = this._getCollectionName(organizacionCamelCase);
+        const sucursalesCollection = collection(db, collectionName);
+        
+        let constraints = [orderBy("fechaCreacion", "desc")];
+        
+        if (filtros.termino && filtros.termino.length >= 2) {
+            constraints.push(where("nombre", ">=", filtros.termino));
+            constraints.push(where("nombre", "<=", filtros.termino + '\uf8ff'));
+        }
+        
+        // Para páginas específicas, necesitamos saltar documentos
+        // Esto requiere una consulta adicional para obtener los documentos hasta la página deseada
+        if (paginaDeseada > 1) {
+            // Primero obtenemos los documentos hasta la página anterior
+            const skipQuery = query(sucursalesCollection, ...constraints, limit((paginaDeseada - 1) * itemsPorPagina));
+            const skipSnapshot = await getDocs(skipQuery);
+            
+            if (skipSnapshot.empty) {
+                return {
+                    sucursales: [],
+                    total: 0,
+                    paginaActual: paginaDeseada,
+                    totalPaginas: 0,
+                    ultimoDocumento: null,
+                    primerDocumento: null,
+                    tieneMas: false
+                };
+            }
+            
+            const lastDoc = skipSnapshot.docs[skipSnapshot.docs.length - 1];
+            constraints.push(startAfter(lastDoc));
+        }
+        
+        constraints.push(limit(itemsPorPagina));
+        
+        const q = query(sucursalesCollection, ...constraints);
+        
+        await consumo.registrarFirestoreLectura(collectionName, `página específica ${paginaDeseada}`);
+        const snapshot = await getDocs(q);
+        
+        const sucursales = [];
+        let ultimoDoc = null;
+        let primerDoc = null;
+        
+        if (!snapshot.empty) {
+            ultimoDoc = snapshot.docs[snapshot.docs.length - 1];
+            primerDoc = snapshot.docs[0];
+            
+            snapshot.forEach(doc => {
+                try {
+                    const data = doc.data();
+                    const sucursal = new Sucursal(doc.id, {
+                        ...data,
+                        id: doc.id,
+                        fechaCreacion: data.fechaCreacion?.toDate?.() || data.fechaCreacion,
+                        fechaActualizacion: data.fechaActualizacion?.toDate?.() || data.fechaActualizacion
+                    });
+                    sucursales.push(sucursal);
+                } catch (error) {
+                    console.error('Error procesando sucursal:', error);
+                }
+            });
+        }
+        
+        // Contar total
+        let total = 0;
+        if (filtros.termino && filtros.termino.length >= 2) {
+            const countQuery = query(sucursalesCollection, 
+                where("nombre", ">=", filtros.termino),
+                where("nombre", "<=", filtros.termino + '\uf8ff')
+            );
+            const countSnapshot = await getCountFromServer(countQuery);
+            total = countSnapshot.data().count;
+        } else {
+            const countQuery = query(sucursalesCollection);
+            const countSnapshot = await getCountFromServer(countQuery);
+            total = countSnapshot.data().count;
+        }
+        
+        return {
+            sucursales,
+            total,
+            paginaActual: paginaDeseada,
+            totalPaginas: Math.ceil(total / itemsPorPagina),
+            ultimoDocumento: ultimoDoc,
+            primerDocumento: primerDoc,
+            tieneMas: snapshot.docs.length === itemsPorPagina
+        };
+        
+    } catch (error) {
+        console.error('Error obteniendo página específica:', error);
+        return {
+            sucursales: [],
+            total: 0,
+            paginaActual: paginaDeseada,
+            totalPaginas: 0,
+            ultimoDocumento: null,
+            primerDocumento: null,
+            tieneMas: false
+        };
+    }
+}
 }
 
 const ESTADOS_MEXICO = [

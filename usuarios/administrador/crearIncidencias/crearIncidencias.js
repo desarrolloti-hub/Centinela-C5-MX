@@ -1,4 +1,5 @@
 // crearIncidencias.js - VERSIÓN COMPLETA CON CANALIZACIÓN A SUCURSALES Y ÁREAS
+// CON SOPORTE PARA ARRASTRAR Y PEGAR IMÁGENES
 
 const LIMITES = {
     DETALLES_INCIDENCIA: 1000
@@ -23,7 +24,7 @@ class CrearIncidenciaController {
         this.AreaManager = null;
         this.notificacionManager = null;
         this.notificacionSucursalManager = null;
-
+        
         this.pdfGenerator = null;
 
         this._init();
@@ -94,7 +95,7 @@ class CrearIncidenciaController {
             await this._cargarSucursalesParaNotificacion();
             await this._initNotificacionManager();
             await this._initNotificacionSucursalManager();
-
+            
             await this._initPDFGenerator();
 
             this._configurarOrganizacion();
@@ -102,12 +103,136 @@ class CrearIncidenciaController {
             this._configurarEventos();
             this._inicializarValidaciones();
             this._inicializarValidacionSecuencial();
+            this._configurarDragAndDropYPaste(); // NUEVO: Configurar arrastrar y pegar
 
             this.imageEditorModal = new window.ImageEditorModal();
 
         } catch (error) {
             console.error('Error inicializando:', error);
             this._mostrarError('Error al inicializar: ' + error.message);
+        }
+    }
+
+    // ========== NUEVO: CONFIGURAR DRAG & DROP Y PASTE ==========
+    _configurarDragAndDropYPaste() {
+        const dropZone = document.getElementById('dropZone');
+        const inputImagenes = document.getElementById('inputImagenes');
+        
+        // Si no existe dropZone, la creamos
+        if (!dropZone) {
+            this._crearDropZone();
+            return;
+        }
+        
+        // Prevenir comportamientos por defecto
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+            });
+        });
+        
+        // Resaltar zona cuando se arrastra sobre ella
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropZone.addEventListener(eventName, () => {
+                dropZone.classList.add('drag-over');
+            });
+        });
+        
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, () => {
+                dropZone.classList.remove('drag-over');
+            });
+        });
+        
+        // Manejar el drop de archivos
+        dropZone.addEventListener('drop', (e) => {
+            const files = Array.from(e.dataTransfer.files);
+            const imageFiles = files.filter(file => file.type.startsWith('image/'));
+            
+            if (imageFiles.length > 0) {
+                this._procesarImagenes(imageFiles);
+                this._mostrarNotificacion(`${imageFiles.length} imagen(es) agregadas`, 'success', 2000);
+            } else if (files.length > 0) {
+                this._mostrarNotificacion('Solo se permiten archivos de imagen', 'warning', 3000);
+            }
+        });
+        
+        // Hacer clic en la zona para abrir selector de archivos
+        dropZone.addEventListener('click', () => {
+            if (inputImagenes) {
+                inputImagenes.click();
+            }
+        });
+        
+        // Configurar paste (Ctrl+V)
+        document.addEventListener('paste', (e) => {
+            this._manejarPegarImagen(e);
+        });
+        
+        console.log('✅ Drag & drop y paste configurados');
+    }
+
+    // Crear drop zone si no existe en el DOM
+    _crearDropZone() {
+        const imagenesContainer = document.querySelector('.imagenes-section');
+        if (!imagenesContainer) return;
+        
+        const dropZoneHTML = `
+            <div id="dropZone" class="drop-zone">
+                <i class="fas fa-cloud-upload-alt"></i>
+                <p>Arrastra y suelta imágenes aquí</p>
+                <p class="small">o haz clic para seleccionar archivos</p>
+                <p class="small text-muted mt-2">
+                    <i class="fas fa-keyboard"></i> También puedes pegar imágenes con Ctrl+V
+                </p>
+            </div>
+        `;
+        
+        // Insertar antes del contenedor de preview
+        const previewContainer = document.getElementById('imagenesPreview');
+        if (previewContainer && previewContainer.parentNode) {
+            previewContainer.insertAdjacentHTML('beforebegin', dropZoneHTML);
+        } else {
+            imagenesContainer.insertAdjacentHTML('beforeend', dropZoneHTML);
+        }
+        
+        // Reconfigurar eventos
+        this._configurarDragAndDropYPaste();
+    }
+
+    // Manejar pegado de imágenes (Ctrl+V)
+    _manejarPegarImagen(event) {
+        const items = event.clipboardData?.items;
+        
+        if (!items) return;
+        
+        const imageFiles = [];
+        
+        for (let i = 0; i < items.length; i++) {
+            const item = items[i];
+            
+            // Verificar si es una imagen
+            if (item.type.startsWith('image/')) {
+                const file = item.getAsFile();
+                if (file) {
+                    // Generar nombre para la imagen pegada
+                    const timestamp = Date.now();
+                    const random = Math.random().toString(36).substring(2, 8);
+                    const extension = file.type.split('/')[1] || 'png';
+                    const fileName = `pasted_${timestamp}_${random}.${extension}`;
+                    
+                    // Crear un nuevo archivo con nombre personalizado
+                    const renamedFile = new File([file], fileName, { type: file.type });
+                    imageFiles.push(renamedFile);
+                }
+            }
+        }
+        
+        if (imageFiles.length > 0) {
+            event.preventDefault();
+            this._procesarImagenes(imageFiles);
+            this._mostrarNotificacion(`${imageFiles.length} imagen(es) pegadas`, 'success', 2000);
         }
     }
 
@@ -355,11 +480,11 @@ class CrearIncidenciaController {
         try {
             const { SucursalManager } = await import('/clases/sucursal.js');
             const sucursalManager = new SucursalManager();
-
+            
             this.sucursalesParaNotificar = await sucursalManager.getSucursalesByOrganizacion(
                 this.usuarioActual.organizacionCamelCase
             );
-
+            
             console.log('✅ Sucursales cargadas para notificaciones:', this.sucursalesParaNotificar.length);
         } catch (error) {
             console.error('Error cargando sucursales:', error);
@@ -932,7 +1057,7 @@ class CrearIncidenciaController {
 
     _crearRegistroTemporal(datos) {
         const fechaObj = new Date(datos.fechaHora);
-
+        
         const evidenciasProcesadas = datos.imagenes.map((img, index) => {
             return {
                 id: `temp_${Date.now()}_${index}`,
@@ -944,7 +1069,7 @@ class CrearIncidenciaController {
                 generatedName: img.generatedName
             };
         });
-
+        
         return {
             id: `PREVIEW_${Date.now()}`,
             sucursalId: datos.sucursalId,
@@ -976,191 +1101,140 @@ class CrearIncidenciaController {
     }
 
     async _validarYGuardar() {
-    const sucursalInput = document.getElementById('sucursalIncidencia');
-    const categoriaInput = document.getElementById('categoriaIncidencia');
+        const sucursalInput = document.getElementById('sucursalIncidencia');
+        const categoriaInput = document.getElementById('categoriaIncidencia');
 
-    const sucursalId = sucursalInput.dataset.selectedId;
-    const categoriaId = categoriaInput.dataset.selectedId;
+        const sucursalId = sucursalInput.dataset.selectedId;
+        const categoriaId = categoriaInput.dataset.selectedId;
 
-    if (!sucursalId) {
-        this._mostrarError('⚠️ Es necesario seleccionar una sucursal primero');
-        sucursalInput.focus();
-        return;
-    }
+        if (!sucursalId) {
+            this._mostrarError('⚠️ Es necesario seleccionar una sucursal primero');
+            sucursalInput.focus();
+            return;
+        }
 
-    if (!categoriaId) {
-        this._mostrarError('Debe seleccionar una categoría válida de la lista');
-        categoriaInput.focus();
-        return;
-    }
+        if (!categoriaId) {
+            this._mostrarError('Debe seleccionar una categoría válida de la lista');
+            categoriaInput.focus();
+            return;
+        }
 
-    const riesgoSelect = document.getElementById('nivelRiesgo');
-    const nivelRiesgo = riesgoSelect.value;
-    if (!nivelRiesgo) {
-        this._mostrarError('Debe seleccionar el nivel de riesgo');
-        riesgoSelect.focus();
-        return;
-    }
+        const riesgoSelect = document.getElementById('nivelRiesgo');
+        const nivelRiesgo = riesgoSelect.value;
+        if (!nivelRiesgo) {
+            this._mostrarError('Debe seleccionar el nivel de riesgo');
+            riesgoSelect.focus();
+            return;
+        }
 
-    const estadoSelect = document.getElementById('estadoIncidencia');
-    const estado = estadoSelect.value;
-    if (!estado) {
-        this._mostrarError('Debe seleccionar el estado');
-        estadoSelect.focus();
-        return;
-    }
+        const estadoSelect = document.getElementById('estadoIncidencia');
+        const estado = estadoSelect.value;
+        if (!estado) {
+            this._mostrarError('Debe seleccionar el estado');
+            estadoSelect.focus();
+            return;
+        }
 
-    const fechaInput = document.getElementById('fechaHoraIncidencia');
-    let fechaHora = fechaInput.value;
+        const fechaInput = document.getElementById('fechaHoraIncidencia');
+        let fechaHora = fechaInput.value;
 
-    if (!fechaHora) {
-        this._mostrarError('Debe seleccionar fecha y hora');
-        fechaInput.focus();
-        return;
-    }
+        if (!fechaHora) {
+            this._mostrarError('Debe seleccionar fecha y hora');
+            fechaInput.focus();
+            return;
+        }
 
-    const fechaSeleccionada = new Date(fechaHora);
-    const ahora = new Date();
+        const fechaSeleccionada = new Date(fechaHora);
+        const ahora = new Date();
 
-    if (fechaSeleccionada > ahora) {
-        this._mostrarError('No puede seleccionar una fecha futura');
-        fechaInput.focus();
-        return;
-    }
+        if (fechaSeleccionada > ahora) {
+            this._mostrarError('No puede seleccionar una fecha futura');
+            fechaInput.focus();
+            return;
+        }
 
-    const detallesInput = document.getElementById('detallesIncidencia');
-    const detalles = detallesInput.value.trim();
-    if (!detalles) {
-        detallesInput.classList.add('is-invalid');
-        this._mostrarError('La descripción de la incidencia es obligatoria');
-        detallesInput.focus();
-        return;
-    }
-    if (detalles.length < 10) {
-        detallesInput.classList.add('is-invalid');
-        this._mostrarError('La descripción debe tener al menos 10 caracteres');
-        detallesInput.focus();
-        return;
-    }
-    if (detalles.length > LIMITES.DETALLES_INCIDENCIA) {
-        detallesInput.classList.add('is-invalid');
-        this._mostrarError(`La descripción no puede exceder ${LIMITES.DETALLES_INCIDENCIA} caracteres`);
-        detallesInput.focus();
-        return;
-    }
-    detallesInput.classList.remove('is-invalid');
+        const detallesInput = document.getElementById('detallesIncidencia');
+        const detalles = detallesInput.value.trim();
+        if (!detalles) {
+            detallesInput.classList.add('is-invalid');
+            this._mostrarError('La descripción de la incidencia es obligatoria');
+            detallesInput.focus();
+            return;
+        }
+        if (detalles.length < 10) {
+            detallesInput.classList.add('is-invalid');
+            this._mostrarError('La descripción debe tener al menos 10 caracteres');
+            detallesInput.focus();
+            return;
+        }
+        if (detalles.length > LIMITES.DETALLES_INCIDENCIA) {
+            detallesInput.classList.add('is-invalid');
+            this._mostrarError(`La descripción no puede exceder ${LIMITES.DETALLES_INCIDENCIA} caracteres`);
+            detallesInput.focus();
+            return;
+        }
+        detallesInput.classList.remove('is-invalid');
 
-    const subcategoriaSelect = document.getElementById('subcategoriaIncidencia');
-    const subcategoriaId = subcategoriaSelect.value;
+        const subcategoriaSelect = document.getElementById('subcategoriaIncidencia');
+        const subcategoriaId = subcategoriaSelect.value;
 
-    const sucursalNombre = sucursalInput.value;
-    const categoriaNombre = categoriaInput.value;
-    
-    const subcategoriaNombre = subcategoriaId ? 
-        subcategoriaSelect.options[subcategoriaSelect.selectedIndex]?.text : '';
-
-    const datos = {
-        sucursalId,
-        sucursalNombre,
-        categoriaId,
-        categoriaNombre,
-        subcategoriaId: subcategoriaId || '',
-        subcategoriaNombre: subcategoriaNombre || '',
-        nivelRiesgo,
-        estado,
-        fechaHora,
-        detalles,
-        imagenes: this.imagenesSeleccionadas
-    };
-
-    // Generar PDF temporal para vista previa y descarga
-    Swal.fire({
-        title: 'Generando vista previa...',
-        text: 'Preparando el PDF de la incidencia',
-        allowOutsideClick: false,
-        showConfirmButton: false,
-        didOpen: () => Swal.showLoading()
-    });
-
-    const fechaObj = new Date(datos.fechaHora);
-    const incidenciaTemporal = this._crearRegistroTemporal(datos);
-    let pdfBlob = null;
-    let pdfUrl = null;
-
-    try {
-        pdfBlob = await this.pdfGenerator.generarIPH(incidenciaTemporal, {
-            mostrarAlerta: false,
-            returnBlob: true,
-            diagnosticar: false
-        });
-        pdfUrl = URL.createObjectURL(pdfBlob);
-        Swal.close();
-    } catch (pdfError) {
-        console.error('Error generando PDF preview:', pdfError);
-        Swal.close();
-    }
-
-    // SweetAlert con 3 botones y diseño limpio
-    const result = await Swal.fire({
-        title: 'Confirmar creación de incidencia',
-        html: `
-            <div style="text-align: left;">
-                <p><strong>Sucursal:</strong> ${this._escapeHTML(sucursalNombre)}</p>
-                <p><strong>Categoría:</strong> ${this._escapeHTML(categoriaNombre)}</p>
-                ${subcategoriaId ? `<p><strong>Subcategoría:</strong> ${this._escapeHTML(subcategoriaNombre)}</p>` : ''}
-                <p><strong>Riesgo:</strong> ${this._getRiesgoTexto(nivelRiesgo)}</p>
-                <p><strong>Estado:</strong> ${estado === 'pendiente' ? 'Pendiente' : 'Finalizada'}</p>
-                <p><strong>Fecha:</strong> ${new Date(fechaHora).toLocaleString('es-MX')}</p>
-                <p><strong>Evidencias:</strong> ${this.imagenesSeleccionadas.length} imagen(es)</p>
-            </div>
-        `,
-        icon: 'question',
-        showCancelButton: true,
-        showDenyButton: true,
-        confirmButtonText: '<i class="fas fa-save"></i> Crear',
-        denyButtonText: '<i class="fas fa-file-pdf"></i> Ver PDF',
-        cancelButtonText: '<i class="fas fa-times"></i> Cancelar',
-        confirmButtonColor: '#28a745',
-        denyButtonColor: '#b81717',
-        cancelButtonColor: '#6c757d'
-    });
-
-    if (result.isConfirmed) {
-        // Crear incidencia (lo que ya hace)
-        await this._guardarIncidencia(datos);
-    } else if (result.isDenied && pdfUrl) {
-        // Abrir PDF en nueva pestaña
-        window.open(pdfUrl, '_blank');
+        const sucursalNombre = sucursalInput.value;
+        const categoriaNombre = categoriaInput.value;
         
-        // Preguntar si quiere continuar con la creación
-        const continuar = await Swal.fire({
-            title: '¿Deseas crear la incidencia?',
-            text: 'La incidencia aún no ha sido guardada',
+        const subcategoriaNombre = subcategoriaId ? 
+            subcategoriaSelect.options[subcategoriaSelect.selectedIndex]?.text : '';
+
+        const datos = {
+            sucursalId,
+            sucursalNombre,
+            categoriaId,
+            categoriaNombre,
+            subcategoriaId: subcategoriaId || '',
+            subcategoriaNombre: subcategoriaNombre || '',
+            nivelRiesgo,
+            estado,
+            fechaHora,
+            detalles,
+            imagenes: this.imagenesSeleccionadas
+        };
+
+        const result = await Swal.fire({
+            title: 'Confirmar creación de incidencia',
+            html: `
+                <div style="text-align: left;">
+                    <p><strong><i class="fas fa-store"></i> Sucursal:</strong> ${this._escapeHTML(sucursalNombre)}</p>
+                    <p><strong><i class="fas fa-tag"></i> Categoría:</strong> ${this._escapeHTML(categoriaNombre)}</p>
+                    ${subcategoriaId ? `<p><strong><i class="fas fa-tags"></i> Subcategoría:</strong> ${this._escapeHTML(subcategoriaNombre)}</p>` : ''}
+                    <p><strong><i class="fas fa-exclamation-triangle"></i> Riesgo:</strong> ${this._getRiesgoTexto(nivelRiesgo)}</p>
+                    <p><strong><i class="fas fa-check-circle"></i> Estado:</strong> ${estado === 'pendiente' ? 'Pendiente' : 'Finalizada'}</p>
+                    <p><strong><i class="fas fa-calendar"></i> Fecha:</strong> ${new Date(fechaHora).toLocaleString('es-MX')}</p>
+                    <p><strong><i class="fas fa-images"></i> Evidencias:</strong> ${this.imagenesSeleccionadas.length} imagen(es)</p>
+                </div>
+            `,
             icon: 'question',
             showCancelButton: true,
-            confirmButtonText: 'Sí, crear',
-            cancelButtonText: 'No, cancelar'
+            confirmButtonText: '<i class="fas fa-check-circle"></i> Aceptar',
+            cancelButtonText: '<i class="fas fa-times"></i> Cancelar',
+            confirmButtonColor: '#28a745',
+            cancelButtonColor: '#6c757d'
         });
-        
-        if (continuar.isConfirmed) {
+
+        if (result.isConfirmed) {
             await this._guardarIncidencia(datos);
         }
-    } else if (result.isDenied && !pdfUrl) {
-        this._mostrarError('No se pudo generar el PDF para vista previa');
     }
-    // Si es cancelado, no hace nada
-}
+
     // ========== CANALIZACIÓN A SUCURSAL (LA MISMA DEL FORMULARIO) ==========
     async _canalizarSucursal(incidenciaId, incidenciaTitulo = '') {
         const sucursalInput = document.getElementById('sucursalIncidencia');
         const sucursalId = sucursalInput?.dataset.selectedId;
         const sucursalNombre = sucursalInput?.value;
-
+        
         if (!sucursalId || !sucursalNombre) {
             console.warn('No hay sucursal seleccionada para canalizar');
             return null;
         }
-
+        
         Swal.fire({
             title: 'Canalizando...',
             html: '<i class="fas fa-spinner fa-spin"></i>',
@@ -1168,7 +1242,7 @@ class CrearIncidenciaController {
             showConfirmButton: false,
             didOpen: () => Swal.showLoading()
         });
-
+        
         try {
             const resultado = await this.incidenciaManager.agregarCanalizacionSucursal(
                 incidenciaId,
@@ -1179,9 +1253,9 @@ class CrearIncidenciaController {
                 'Canalización desde creación',
                 this.usuarioActual.organizacionCamelCase
             );
-
+            
             Swal.close();
-
+            
             if (resultado && resultado.success) {
                 await Swal.fire({
                     icon: 'success',
@@ -1190,12 +1264,12 @@ class CrearIncidenciaController {
                     timer: 2000,
                     showConfirmButton: false
                 });
-
+                
                 await this._enviarNotificacionesSucursal([{
                     id: sucursalId,
                     nombre: sucursalNombre
                 }], incidenciaId, incidenciaTitulo);
-
+                
                 return {
                     id: sucursalId,
                     nombre: sucursalNombre
@@ -1203,7 +1277,7 @@ class CrearIncidenciaController {
             } else {
                 throw new Error(resultado?.message || 'Error al guardar canalización');
             }
-
+            
         } catch (error) {
             Swal.close();
             console.error('Error guardando canalización a sucursal:', error);
@@ -1267,11 +1341,11 @@ class CrearIncidenciaController {
                 let mensaje = `✅ Notificaciones enviadas:`;
                 mensaje += `<br>👥 ${resultado.totalColaboradores} colaboradores en ${resultado.sucursales} sucursales`;
                 mensaje += `<br>👑 ${resultado.totalAdministradores} administradores`;
-
+                
                 if (resultado.push && resultado.push.enviados > 0) {
                     mensaje += `<br>📱 Push: ${resultado.push.enviados}/${resultado.push.total} enviados`;
                 }
-
+                
                 await Swal.fire({
                     icon: 'success',
                     title: 'Notificaciones enviadas',
@@ -1482,15 +1556,15 @@ class CrearIncidenciaController {
 
             // PASO 1: Generar PDF con imágenes en memoria
             const fechaObj = new Date(datos.fechaHora);
-
+            
             const incidenciaTemporal = this._crearRegistroTemporal(datos);
-
+            
             Swal.update({
                 title: 'Generando PDF...',
                 text: 'Creando el documento de la incidencia...'
             });
-
-                    let pdfBlob = null;
+            
+            let pdfBlob = null;
             try {
                 pdfBlob = await this.pdfGenerator.generarIPH(incidenciaTemporal, {
                     mostrarAlerta: false,
@@ -1498,23 +1572,11 @@ class CrearIncidenciaController {
                     diagnosticar: false
                 });
                 console.log(`📦 PDF generado: ${(pdfBlob.size / 1024).toFixed(2)} KB`);
-                
-                // 👇 NUEVO: Descargar PDF automáticamente al dispositivo
-                const urlDescarga = URL.createObjectURL(pdfBlob);
-                const enlace = document.createElement('a');
-                enlace.href = urlDescarga;
-                enlace.download = `incidencia_${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.pdf`;
-                document.body.appendChild(enlace);
-                enlace.click();
-                document.body.removeChild(enlace);
-                URL.revokeObjectURL(urlDescarga);
-                console.log('📥 PDF descargado automáticamente');
-                
             } catch (pdfError) {
                 console.error('Error generando PDF:', pdfError);
                 throw new Error('No se pudo generar el PDF');
             }
-
+            
             if (!pdfBlob || pdfBlob.size === 0) {
                 throw new Error('El PDF generado está vacío');
             }
@@ -1524,7 +1586,7 @@ class CrearIncidenciaController {
                 title: 'Creando incidencia...',
                 text: 'Guardando la información en la base de datos...'
             });
-
+            
             const incidenciaData = {
                 sucursalId: datos.sucursalId,
                 categoriaId: datos.categoriaId,
@@ -1535,35 +1597,35 @@ class CrearIncidenciaController {
                 detalles: datos.detalles,
                 reportadoPorId: this.usuarioActual.id
             };
-
+            
             const nuevaIncidencia = await this.incidenciaManager.crearIncidencia(
                 incidenciaData,
                 this.usuarioActual,
                 [],
                 []
             );
-
-            console.log(' Incidencia creada:', nuevaIncidencia.id);
-
+            
+            console.log('✅ Incidencia creada:', nuevaIncidencia.id);
+            
             // PASO 3: Subir imágenes en paralelo
             if (datos.imagenes.length > 0) {
                 Swal.update({
                     title: 'Subiendo imágenes...',
                     text: `Subiendo ${datos.imagenes.length} imagen(es)...`
                 });
-
+                
                 const archivos = datos.imagenes.map(img => img.file);
                 const imagenesConDatos = datos.imagenes.map(img => ({
                     comentario: img.comentario,
                     elementos: img.elementos,
                     generatedName: img.generatedName
                 }));
-
+                
                 const uploadPromises = archivos.map(async (file, index) => {
                     const datosImagen = imagenesConDatos[index] || {};
                     const comentario = datosImagen.comentario || '';
                     const elementos = datosImagen.elementos || [];
-
+                    
                     let nombreArchivo = datosImagen.generatedName;
                     if (!nombreArchivo) {
                         const timestamp = Date.now();
@@ -1571,10 +1633,10 @@ class CrearIncidenciaController {
                         const cleanFileName = file.name.replace(/[^a-zA-Z0-9.]/g, '_');
                         nombreArchivo = `${timestamp}_${random}_${cleanFileName}`;
                     }
-
+                    
                     const rutaStorage = `incidencias_${this.usuarioActual.organizacionCamelCase}/${nuevaIncidencia.id}/imagenes/${nombreArchivo}`;
                     const resultado = await this.incidenciaManager.subirArchivo(file, rutaStorage, null);
-
+                    
                     return {
                         url: resultado.url,
                         path: resultado.path,
@@ -1586,39 +1648,38 @@ class CrearIncidenciaController {
                         tamaño: file.size
                     };
                 });
-
+                
                 const imagenesSubidas = await Promise.all(uploadPromises);
-
+                
                 const collectionName = `incidencias_${this.usuarioActual.organizacionCamelCase}`;
                 const { doc, updateDoc } = await import("https://www.gstatic.com/firebasejs/12.8.0/firebase-firestore.js");
                 const { db } = await import('/config/firebase-config.js');
-
+                
                 const incidenciaRef = doc(db, collectionName, nuevaIncidencia.id);
                 await updateDoc(incidenciaRef, {
                     imagenes: imagenesSubidas,
                     fechaActualizacion: new Date()
                 });
-
+                
                 nuevaIncidencia.imagenes = imagenesSubidas;
-                console.log(` ${imagenesSubidas.length} imágenes subidas`);
+                console.log(`✅ ${imagenesSubidas.length} imágenes subidas`);
             }
-
-            // PASO 4: Subir el PDF (CORREGIDO - usando updateDoc directamente)
+            
+            // PASO 4: Subir el PDF
             Swal.update({
                 title: 'Subiendo PDF...',
                 text: 'Guardando el documento PDF...'
             });
-
+            
             const pdfFile = new File([pdfBlob], `incidencia_${nuevaIncidencia.id}.pdf`, { type: 'application/pdf' });
             const rutaPDF = nuevaIncidencia.getRutaPDF();
-
+            
             const resultadoPDF = await this.incidenciaManager.subirArchivo(pdfFile, rutaPDF);
-
-            // CORRECCIÓN: Usar updateDoc directamente en lugar de actualizarPDFIncidencia
+            
             const collectionName = `incidencias_${this.usuarioActual.organizacionCamelCase}`;
             const { doc, updateDoc } = await import("https://www.gstatic.com/firebasejs/12.8.0/firebase-firestore.js");
             const { db } = await import('/config/firebase-config.js');
-
+            
             const incidenciaRef = doc(db, collectionName, nuevaIncidencia.id);
             await updateDoc(incidenciaRef, {
                 pdfUrl: resultadoPDF.url,
@@ -1626,18 +1687,18 @@ class CrearIncidenciaController {
                 actualizadoPor: this.usuarioActual.id,
                 actualizadoPorNombre: this.usuarioActual.nombreCompleto
             });
-
-            console.log('PDF subido exitosamente:', resultadoPDF.url);
-
+            
+            console.log('✅ PDF subido exitosamente:', resultadoPDF.url);
+            
             Swal.close();
-
+            
             // =============================================
             // PASO 5: CANALIZACIÓN - PRIMERO SUCURSAL DEL FORMULARIO, LUEGO ÁREAS
             // =============================================
-
+            
             let sucursalCanalizada = null;
             let areasCanalizadas = [];
-
+            
             const quiereCanalizarSucursal = await Swal.fire({
                 icon: 'question',
                 title: '¿Canalizar a la sucursal?',
@@ -1647,11 +1708,11 @@ class CrearIncidenciaController {
                 cancelButtonText: 'NO, CONTINUAR',
                 confirmButtonColor: '#28a745'
             });
-
+            
             if (quiereCanalizarSucursal.isConfirmed) {
                 sucursalCanalizada = await this._canalizarSucursal(nuevaIncidencia.id, datos.detalles.substring(0, 50));
             }
-
+            
             const quiereCanalizarArea = await Swal.fire({
                 icon: 'question',
                 title: '¿Canalizar a área(s)?',
@@ -1661,14 +1722,14 @@ class CrearIncidenciaController {
                 cancelButtonText: 'NO, FINALIZAR',
                 confirmButtonColor: '#28a745'
             });
-
+            
             if (quiereCanalizarArea.isConfirmed) {
                 areasCanalizadas = await this._canalizarAreas(nuevaIncidencia.id, datos.detalles.substring(0, 50));
             }
-
+            
             const tieneSucursal = sucursalCanalizada !== null;
             const totalAreas = areasCanalizadas.length;
-
+            
             let mensajeCanalizacion = '';
             if (tieneSucursal && totalAreas > 0) {
                 mensajeCanalizacion = `Canalizada a sucursal ${sucursalCanalizada.nombre} y ${totalAreas} área(s).`;
@@ -1679,23 +1740,23 @@ class CrearIncidenciaController {
             } else {
                 mensajeCanalizacion = 'No se canalizó a ninguna sucursal o área.';
             }
-
+            
             await Swal.fire({
                 icon: 'success',
                 title: '¡Incidencia creada!',
                 html: `
                     <div style="text-align: left;">
-                        <p> Incidencia guardada con ${nuevaIncidencia.imagenes.length} imagen(es).</p>
-                        <p> El PDF se ha generado correctamente.</p>
+                        <p>✅ Incidencia guardada con ${nuevaIncidencia.imagenes.length} imagen(es).</p>
+                        <p>✅ El PDF se ha generado correctamente.</p>
                         <p>${mensajeCanalizacion}</p>
                     </div>
                 `,
                 confirmButtonText: 'Ver incidencias',
                 confirmButtonColor: '#28a745'
             });
-
+            
             this._volverALista();
-
+            
         } catch (error) {
             console.error('Error guardando incidencia:', error);
             Swal.close();

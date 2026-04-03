@@ -1,19 +1,25 @@
 // ========== VARIABLES GLOBALES ==========
 let sucursalManager = null;
 let usuarioActual = null;
-let historialManager = null; // ✅ NUEVO: Para registrar actividades
+let historialManager = null;
 
-// Configuración de paginación
+// Configuración de paginación REAL (como en incidencias)
 const ITEMS_POR_PAGINA = 10;
 let paginaActual = 1;
+let totalSucursales = 0;
+let totalPaginas = 0;
+let sucursalesActuales = [];
+let cursoresPaginacion = {
+    ultimoDocumento: null,
+    primerDocumento: null
+};
+
+// Filtros activos
 let terminoBusqueda = '';
-let todasLasSucursales = []; // Almacena todas las sucursales para búsqueda
-let sucursalesFiltradas = []; // Sucursales filtradas para mostrar
 
 // ========== INICIALIZACIÓN ==========
 document.addEventListener('DOMContentLoaded', async function() {    
     try {
-        // ✅ NUEVO: Inicializar historialManager
         await inicializarHistorial();
         
         const { SucursalManager } = await import('/clases/sucursal.js');
@@ -22,7 +28,6 @@ document.addEventListener('DOMContentLoaded', async function() {
         
         await new Promise(resolve => setTimeout(resolve, 1500));
         
-        // Obtener usuario actual (temporal - será reemplazado por componente Auth)
         usuarioActual = obtenerUsuarioActual();
         
         if (!usuarioActual) {
@@ -36,7 +41,6 @@ document.addEventListener('DOMContentLoaded', async function() {
             };
         }
         
-        // Guardar info en localStorage para otros componentes (temporal)
         localStorage.setItem('userInfo', JSON.stringify({
             id: usuarioActual.id,
             nombreCompleto: usuarioActual.nombreCompleto,
@@ -46,11 +50,10 @@ document.addEventListener('DOMContentLoaded', async function() {
             timestamp: new Date().toISOString()
         }));
         
-        await loadBranches();
+        await cargarSucursalesPagina(1);
         configurarBusqueda();
         setupEvents();
         
-        // ✅ NUEVO: Registrar acceso a la vista de sucursales
         await registrarAccesoVistaSucursales();
         
     } catch (error) {
@@ -59,7 +62,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     }
 });
 
-// ✅ NUEVO: Inicializar historialManager
+// ========== INICIALIZAR HISTORIAL ==========
 async function inicializarHistorial() {
     try {
         const { HistorialUsuarioManager } = await import('/clases/historialUsuario.js');
@@ -70,7 +73,7 @@ async function inicializarHistorial() {
     }
 }
 
-// ✅ NUEVO: Registrar acceso a la vista de sucursales
+// ========== REGISTRAR ACCESO A VISTA ==========
 async function registrarAccesoVistaSucursales() {
     if (!historialManager) return;
     
@@ -81,7 +84,7 @@ async function registrarAccesoVistaSucursales() {
             modulo: 'sucursales',
             descripcion: 'Accedió a la vista de sucursales',
             detalles: {
-                totalSucursales: todasLasSucursales.length || 0,
+                totalSucursales: totalSucursales || 0,
                 organizacion: usuarioActual?.organizacion
             }
         });
@@ -91,7 +94,7 @@ async function registrarAccesoVistaSucursales() {
     }
 }
 
-// ✅ NUEVO: Registrar visualización de detalles de sucursal
+// ========== REGISTRAR VISUALIZACIÓN DE SUCURSAL ==========
 async function registrarVisualizacionSucursal(sucursal) {
     if (!historialManager) return;
     
@@ -118,7 +121,7 @@ async function registrarVisualizacionSucursal(sucursal) {
     }
 }
 
-// ✅ NUEVO: Registrar eliminación de sucursal
+// ========== REGISTRAR ELIMINACIÓN DE SUCURSAL ==========
 async function registrarEliminacionSucursal(sucursal) {
     if (!historialManager) return;
     
@@ -146,11 +149,9 @@ async function registrarEliminacionSucursal(sucursal) {
     }
 }
 
-// ========== OBTENER USUARIO ACTUAL (TEMP) ==========
+// ========== OBTENER USUARIO ACTUAL ==========
 function obtenerUsuarioActual() {
-    // TODO: Reemplazar con llamado al componente Auth
     try {
-        // Intentar obtener de localStorage primero
         const adminInfo = JSON.parse(localStorage.getItem('adminInfo') || '{}');
         if (adminInfo && Object.keys(adminInfo).length > 0) {
             return {
@@ -173,7 +174,6 @@ function obtenerUsuarioActual() {
             };
         }
 
-        // Si no hay datos, retornar null para usar valores por defecto
         return null;
 
     } catch (error) {
@@ -182,7 +182,6 @@ function obtenerUsuarioActual() {
     }
 }
 
-// ========== GENERAR CAMEL CASE (TEMP) ==========
 function generarCamelCase(texto) {
     if (!texto || typeof texto !== 'string') return 'miOrganizacion';
     return texto
@@ -203,7 +202,8 @@ function configurarBusqueda() {
         btnBuscar.addEventListener('click', () => {
             terminoBusqueda = inputBuscar?.value.trim() || '';
             paginaActual = 1;
-            filtrarYRenderizar();
+            cursoresPaginacion = { ultimoDocumento: null, primerDocumento: null };
+            cargarSucursalesPagina(1);
         });
     }
 
@@ -212,11 +212,11 @@ function configurarBusqueda() {
             if (inputBuscar) inputBuscar.value = '';
             terminoBusqueda = '';
             paginaActual = 1;
-            filtrarYRenderizar();
+            cursoresPaginacion = { ultimoDocumento: null, primerDocumento: null };
+            cargarSucursalesPagina(1);
         });
     }
 
-    // Búsqueda en tiempo real con debounce
     if (inputBuscar) {
         let timeoutId;
         inputBuscar.addEventListener('input', (e) => {
@@ -224,7 +224,8 @@ function configurarBusqueda() {
             timeoutId = setTimeout(() => {
                 terminoBusqueda = e.target.value.trim();
                 paginaActual = 1;
-                filtrarYRenderizar();
+                cursoresPaginacion = { ultimoDocumento: null, primerDocumento: null };
+                cargarSucursalesPagina(1);
             }, 300);
         });
 
@@ -233,181 +234,183 @@ function configurarBusqueda() {
                 e.preventDefault();
                 terminoBusqueda = e.target.value.trim();
                 paginaActual = 1;
-                filtrarYRenderizar();
+                cursoresPaginacion = { ultimoDocumento: null, primerDocumento: null };
+                cargarSucursalesPagina(1);
             }
         });
     }
 }
 
-// ========== FUNCIÓN DE FILTRADO ==========
-function filtrarYRenderizar() {
-    if (!todasLasSucursales.length) {
-        sucursalesFiltradas = [];
-    } else if (!terminoBusqueda || terminoBusqueda.length < 2) {
-        // Si no hay término de búsqueda, mostrar todas
-        sucursalesFiltradas = [...todasLasSucursales];
-    } else {
-        // Filtrar en memoria
-        const terminoLower = terminoBusqueda.toLowerCase();
-        sucursalesFiltradas = todasLasSucursales.filter(suc => 
-            (suc.nombre && suc.nombre.toLowerCase().includes(terminoLower)) ||
-            (suc.direccion && suc.direccion.toLowerCase().includes(terminoLower)) ||
-            (suc.ciudad && suc.ciudad.toLowerCase().includes(terminoLower)) ||
-            (suc.contacto && suc.contacto.toLowerCase().includes(terminoLower)) ||
-            (suc.tipo && suc.tipo.toLowerCase().includes(terminoLower))
-        );
-    }
-
-    renderizarConPaginacion();
-}
-
-// ========== FUNCIONES DE PAGINACIÓN ==========
-function irPagina(pagina) {
-    paginaActual = pagina;
-    renderizarConPaginacion();
-    
-    // Scroll suave hacia arriba
-    document.querySelector('.card-body')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-}
-
-function renderizarPaginacion(totalPaginas) {
-    const pagination = document.getElementById('pagination');
-    if (!pagination) return;
-
-    if (totalPaginas <= 1) {
-        pagination.innerHTML = '';
+// ========== CARGAR SUCURSALES CON PAGINACIÓN REAL ==========
+async function cargarSucursalesPagina(pagina) {
+    if (!usuarioActual?.organizacionCamelCase) {
+        console.error('No hay organización configurada');
         return;
     }
 
-    let html = '';
+    try {
+        const tbody = document.getElementById('branchesTableBody');
+        if (!tbody) return;
 
-    for (let i = 1; i <= totalPaginas; i++) {
-        html += `
-            <li class="page-item ${i === paginaActual ? 'active' : ''}">
-                <button class="page-link" onclick="window.irPaginaSucursal(${i})">${i}</button>
-            </li>
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="6" style="text-align:center; padding:40px;">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Cargando...</span>
+                    </div>
+                    <p style="margin-top: 12px; color: var(--color-text-secondary);">Cargando sucursales...</p>
+                </td>
+            </tr>
         `;
-    }
 
-    pagination.innerHTML = html;
+        // Construir filtros para búsqueda
+        let filtros = {};
+        if (terminoBusqueda && terminoBusqueda.length >= 2) {
+            filtros.termino = terminoBusqueda;
+        }
+
+        // Obtener sucursales paginadas usando el manager
+        const resultado = await sucursalManager.getSucursalesPaginadas(
+            usuarioActual.organizacionCamelCase,
+            filtros,
+            pagina,
+            ITEMS_POR_PAGINA,
+            cursoresPaginacion
+        );
+
+        cursoresPaginacion.ultimoDocumento = resultado.ultimoDocumento;
+        cursoresPaginacion.primerDocumento = resultado.primerDocumento;
+
+        sucursalesActuales = resultado.sucursales;
+        totalSucursales = resultado.total;
+        totalPaginas = resultado.totalPaginas;
+        paginaActual = resultado.paginaActual;
+
+        if (sucursalesActuales.length === 0 && pagina === 1) {
+            if (!terminoBusqueda) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="6" class="empty-state">
+                            <div class="empty-state-content">
+                                <i class="fas fa-store-alt"></i>
+                                <h3>No hay sucursales en ${escapeHTML(usuarioActual?.organizacion || 'tu organización')}</h3>
+                                <p>Comienza agregando tu primera sucursal</p>
+                                <button class="add-first-btn" id="addFirstBranch">
+                                    <i class="fas fa-plus-circle"></i> CREAR PRIMERA SUCURSAL
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+                document.getElementById('addFirstBranch')?.addEventListener('click', () => {
+                    window.location.href = '../crearSucursales/crearSucursales.html';
+                });
+            } else {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="6" class="empty-state">
+                            <div class="empty-state-content">
+                                <i class="fas fa-search"></i>
+                                <h3>No se encontraron sucursales</h3>
+                                <p>No hay resultados para "${escapeHTML(terminoBusqueda)}"</p>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }
+            renderizarPaginacion();
+            return;
+        }
+
+        renderizarSucursales();
+        renderizarPaginacion();
+
+    } catch (error) {
+        console.error('Error cargando sucursales:', error);
+        mostrarError('Error al cargar sucursales: ' + error.message);
+    }
 }
 
-// Hacer la función global para que funcionen los botones
-window.irPaginaSucursal = function(pagina) {
-    paginaActual = pagina;
-    renderizarConPaginacion();
-    
-    // Scroll suave hacia arriba
-    document.querySelector('.card-body')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-};
+// ========== IR A PÁGINA ==========
+window.irPaginaSucursal = async function (pagina) {
+    if (pagina < 1 || pagina > totalPaginas || pagina === paginaActual) return;
 
-// ========== RENDERIZAR CON PAGINACIÓN ==========
-function renderizarConPaginacion() {
-    const tbody = document.getElementById('branchesTableBody');
-    if (!tbody) return;
-
-    const totalItems = sucursalesFiltradas.length;
-    const totalPaginas = Math.ceil(totalItems / ITEMS_POR_PAGINA);
-    
-    // Ajustar página actual si está fuera de rango
-    if (paginaActual > totalPaginas && totalPaginas > 0) {
-        paginaActual = totalPaginas;
-    }
-    
-    const inicio = (paginaActual - 1) * ITEMS_POR_PAGINA;
-    const fin = Math.min(inicio + ITEMS_POR_PAGINA, totalItems);
-    const sucursalesPagina = sucursalesFiltradas.slice(inicio, fin);
-
-    // Actualizar información de paginación
-    const paginationInfo = document.getElementById('paginationInfo');
-    if (paginationInfo) {
-        if (totalItems === 0) {
-            paginationInfo.textContent = 'No se encontraron sucursales';
-        } else {
-            paginationInfo.textContent = `Mostrando ${inicio + 1}-${fin} de ${totalItems} sucursales`;
-        }
-    }
-
-    // Mostrar/ocultar contenedor de paginación
-    const paginacionContainer = document.querySelector('.pagination-container');
-    if (paginacionContainer) {
-        paginacionContainer.style.display = totalItems > ITEMS_POR_PAGINA ? 'flex' : 'none';
-    }
-
-    if (totalItems === 0) {
-        if (!todasLasSucursales.length) {
-            showEmptyState();
-        } else {
+    try {
+        const tbody = document.getElementById('branchesTableBody');
+        if (tbody) {
             tbody.innerHTML = `
                 <tr>
-                    <td colspan="6" class="empty-state">
-                        <div class="empty-state-content">
-                            <i class="fas fa-search"></i>
-                            <h3>No se encontraron sucursales</h3>
-                            <p>${terminoBusqueda ? `No hay resultados para "${terminoBusqueda}"` : ''}</p>
+                    <td colspan="6" style="text-align:center; padding:40px;">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Cargando...</span>
                         </div>
-                    </div>
+                        <p style="margin-top: 12px;">Cargando página ${pagina}...</p>
+                    </td>
                 </tr>
             `;
         }
-        renderizarPaginacion(0);
-        return;
-    }
 
-    renderBranchesTable(sucursalesPagina);
-    renderizarPaginacion(totalPaginas);
-}
+        let filtros = {};
+        if (terminoBusqueda && terminoBusqueda.length >= 2) {
+            filtros.termino = terminoBusqueda;
+        }
 
-// ========== CARGAR SUCURSALES ==========
-async function loadBranches() {
-    try {
-        showLoadingState();
-        
-        todasLasSucursales = await sucursalManager.getSucursalesByOrganizacion(
-            usuarioActual.organizacionCamelCase
-        );
-        
-        // Guardar en localStorage con campos directos
-        localStorage.setItem('sucursalesList', JSON.stringify(
-            todasLasSucursales.map(suc => ({
-                id: suc.id,
-                nombre: suc.nombre,
-                tipo: suc.tipo,
-                direccion: suc.direccion,
-                ciudad: suc.ciudad,
-                estado: suc.estado,
-                zona: suc.zona,
-                regionId: suc.regionId,
-                contacto: suc.contacto,
-                latitud: suc.latitud,
-                longitud: suc.longitud,
-                organizacionCamelCase: suc.organizacionCamelCase,
-                fechaCreacion: suc.fechaCreacion
-            }))
-        ));
-        
-        // Inicializar filtradas
-        sucursalesFiltradas = [...todasLasSucursales];
-        
-        renderizarConPaginacion();
-        
+        let resultado;
+        if (pagina > paginaActual) {
+            resultado = await sucursalManager.getSucursalesPaginadas(
+                usuarioActual.organizacionCamelCase,
+                filtros,
+                pagina,
+                ITEMS_POR_PAGINA,
+                cursoresPaginacion
+            );
+        } else {
+            resultado = await sucursalManager.getSucursalesPaginaEspecifica(
+                usuarioActual.organizacionCamelCase,
+                filtros,
+                pagina,
+                ITEMS_POR_PAGINA
+            );
+        }
+
+        cursoresPaginacion.ultimoDocumento = resultado.ultimoDocumento;
+        cursoresPaginacion.primerDocumento = resultado.primerDocumento;
+        sucursalesActuales = resultado.sucursales;
+        totalSucursales = resultado.total;
+        totalPaginas = resultado.totalPaginas;
+        paginaActual = pagina;
+
+        renderizarSucursales();
+        renderizarPaginacion();
+
     } catch (error) {
-        console.error('❌ Error cargando sucursales:', error);
-        showFirebaseError(error);
+        console.error('Error navegando a página:', error);
+        mostrarError('Error al cambiar de página: ' + error.message);
     }
-}
+};
 
-// ========== RENDERIZAR TABLA DE SUCURSALES ==========
-function renderBranchesTable(sucursales) {
+// ========== RENDERIZAR SUCURSALES ==========
+function renderizarSucursales() {
     const tbody = document.getElementById('branchesTableBody');
     if (!tbody) return;
-    
+
+    const paginationInfo = document.getElementById('paginationInfo');
+    if (paginationInfo) {
+        const inicio = (paginaActual - 1) * ITEMS_POR_PAGINA + 1;
+        const fin = Math.min(inicio + sucursalesActuales.length - 1, totalSucursales);
+
+        if (totalSucursales > 0) {
+            paginationInfo.textContent = `Mostrando ${inicio}-${fin} de ${totalSucursales} sucursales`;
+        } else {
+            paginationInfo.textContent = `Mostrando 0 de 0 sucursales`;
+        }
+    }
+
     tbody.innerHTML = '';
-    
-    sucursales.forEach(suc => {
+
+    sucursalesActuales.forEach(suc => {
         const row = document.createElement('tr');
         
-        // Formatear fecha de creación
         let fechaCreacion = 'No disponible';
         if (suc.fechaCreacion) {
             try {
@@ -437,30 +440,24 @@ function renderBranchesTable(sucursales) {
                     });
                 }
             } catch (e) {
-                console.warn('Error formateando fecha:', e);
                 fechaCreacion = 'Fecha inválida';
             }
         }
         
-        // Construir ubicación completa con campos directos
         const ubicacionPartes = [];
         if (suc.direccion) ubicacionPartes.push(suc.direccion);
         if (suc.ciudad) ubicacionPartes.push(suc.ciudad);
         if (suc.estado) ubicacionPartes.push(suc.estado);
         const ubicacionCompleta = ubicacionPartes.join(', ') || 'No disponible';
         
-        // Formatear teléfono
         let telefonoFormateado = suc.contacto || 'No disponible';
         if (suc.contacto) {
             const telefono = suc.contacto.replace(/\D/g, '');
             if (telefono.length === 10) {
                 telefonoFormateado = `${telefono.slice(0,3)} ${telefono.slice(3,6)} ${telefono.slice(6)}`;
-            } else if (telefono.length > 0) {
-                telefonoFormateado = suc.contacto; // Mostrar como está si no tiene 10 dígitos
             }
         }
         
-        // Formatear tipo
         const tipoDisplay = suc.tipo ? suc.tipo.replace(/_/g, ' ').toUpperCase() : 'No especificado';
         
         row.innerHTML = `
@@ -508,15 +505,74 @@ function renderBranchesTable(sucursales) {
     });
 }
 
-// Función auxiliar para escapar HTML
-function escapeHTML(text) {
-    if (!text) return '';
-    return String(text)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#039;');
+// ========== RENDERIZAR PAGINACIÓN ==========
+function renderizarPaginacion() {
+    const pagination = document.getElementById('pagination');
+    if (!pagination) return;
+
+    if (totalPaginas <= 1) {
+        pagination.innerHTML = '';
+        const paginacionContainer = document.querySelector('.pagination-container');
+        if (paginacionContainer) paginacionContainer.style.display = 'none';
+        return;
+    }
+
+    const paginacionContainer = document.querySelector('.pagination-container');
+    if (paginacionContainer) paginacionContainer.style.display = 'flex';
+
+    let html = '';
+
+    html += `
+        <li class="page-item ${paginaActual === 1 ? 'disabled' : ''}">
+            <button class="page-link" onclick="irPaginaSucursal(${paginaActual - 1})" ${paginaActual === 1 ? 'disabled' : ''}>
+                <i class="fas fa-chevron-left"></i>
+            </button>
+        </li>
+    `;
+
+    const maxPagesToShow = 5;
+    let startPage = Math.max(1, paginaActual - Math.floor(maxPagesToShow / 2));
+    let endPage = Math.min(totalPaginas, startPage + maxPagesToShow - 1);
+
+    if (endPage - startPage + 1 < maxPagesToShow) {
+        startPage = Math.max(1, endPage - maxPagesToShow + 1);
+    }
+
+    if (startPage > 1) {
+        html += `
+            <li class="page-item">
+                <button class="page-link" onclick="irPaginaSucursal(1)">1</button>
+            </li>
+            ${startPage > 2 ? '<li class="page-item disabled"><span class="page-link">...</span></li>' : ''}
+        `;
+    }
+
+    for (let i = startPage; i <= endPage; i++) {
+        html += `
+            <li class="page-item ${i === paginaActual ? 'active' : ''}">
+                <button class="page-link" onclick="irPaginaSucursal(${i})">${i}</button>
+            </li>
+        `;
+    }
+
+    if (endPage < totalPaginas) {
+        html += `
+            ${endPage < totalPaginas - 1 ? '<li class="page-item disabled"><span class="page-link">...</span></li>' : ''}
+            <li class="page-item">
+                <button class="page-link" onclick="irPaginaSucursal(${totalPaginas})">${totalPaginas}</button>
+            </li>
+        `;
+    }
+
+    html += `
+        <li class="page-item ${paginaActual === totalPaginas || totalPaginas === 0 ? 'disabled' : ''}">
+            <button class="page-link" onclick="irPaginaSucursal(${paginaActual + 1})" ${paginaActual === totalPaginas || totalPaginas === 0 ? 'disabled' : ''}>
+                <i class="fas fa-chevron-right"></i>
+            </button>
+        </li>
+    `;
+
+    pagination.innerHTML = html;
 }
 
 // ========== CONFIGURAR EVENTOS ==========
@@ -532,7 +588,6 @@ function setupEvents() {
     if (table) {
         table.addEventListener('click', async (e) => {
             const button = e.target.closest('.btn');
-            
             if (!button) return;
             
             const action = button.getAttribute('data-action');
@@ -564,11 +619,10 @@ async function editBranch(branchId, branchName) {
     };
     
     localStorage.setItem('selectedBranch', JSON.stringify(selectedBranch));
-    
     window.location.href = `../editarSucursales/editarSucursales.html?id=${branchId}&org=${usuarioActual.organizacionCamelCase}`;
 }
 
-// ========== VER DETALLES DE LA SUCURSAL ==========
+// ========== VER DETALLES DE SUCURSAL ==========
 async function viewBranchDetails(branchId, branchName) {
     try {
         const sucursal = await sucursalManager.getSucursalById(branchId, usuarioActual.organizacionCamelCase);
@@ -577,9 +631,7 @@ async function viewBranchDetails(branchId, branchName) {
             throw new Error('Sucursal no encontrada');
         }
         
-        // ✅ NUEVO: Registrar visualización de sucursal
         await registrarVisualizacionSucursal(sucursal);
-        
         await showBranchDetails(sucursal, branchName);
         
     } catch (error) {
@@ -595,7 +647,6 @@ async function viewBranchDetails(branchId, branchName) {
 // ========== MOSTRAR DETALLES EN MODAL ==========
 async function showBranchDetails(sucursal, branchName) {
     try {
-        // Mostrar loading mientras se obtienen los detalles de la región
         Swal.fire({
             title: 'Cargando detalles...',
             html: '<i class="fas fa-spinner fa-spin" style="font-size: 48px;"></i>',
@@ -603,22 +654,17 @@ async function showBranchDetails(sucursal, branchName) {
             showConfirmButton: false
         });
         
-        // Obtener información de la región (asíncrona)
         const regionInfo = await sucursal.getRegionInfo();
-        
-        // Usar los métodos de la clase Sucursal para formatear
         const contactoFormateado = sucursal.getContactoFormateado();
         const ubicacionCompleta = sucursal.getUbicacionCompleta();
         const tipoDisplay = sucursal.tipo ? sucursal.tipo.replace(/_/g, ' ').toUpperCase() : 'No especificado';
         const coordenadas = sucursal.getCoordenadas();
         
-        // Cerrar loading
         Swal.close();
         
-        // Mostrar detalles
         Swal.fire({
             title: sucursal.nombre,
-            html: /*html*/`
+            html: `
                 <div style="text-align: left;">
                     <div style="margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid var(--color-border-light);">
                         <h4 style="color: var(--color-accent-primary); margin: 0 0 10px 0; font-size: 0.9rem; text-transform: uppercase;">INFORMACIÓN GENERAL</h4>
@@ -661,20 +707,16 @@ async function showBranchDetails(sucursal, branchName) {
 
 // ========== ELIMINAR SUCURSAL ==========
 async function deleteBranch(branchId, branchName) {
-    // Obtener la sucursal completa antes de eliminarla para registrar detalles
     let sucursalCompleta = null;
     try {
         sucursalCompleta = await sucursalManager.getSucursalById(branchId, usuarioActual.organizacionCamelCase);
     } catch (error) {
-        console.warn('No se pudo obtener sucursal completa para registro:', error);
-        // Si no se puede obtener, crear un objeto mínimo con la información disponible
         sucursalCompleta = { id: branchId, nombre: branchName };
     }
     
-    // Mostrar confirmación antes de eliminar
     const confirmResult = await Swal.fire({
         title: '¿Eliminar sucursal?',
-        html: /*html*/`
+        html: `
             <div class="delete-confirmation">
                 <p style="color: var(--color-text-primary); margin: 10px 0; font-size: 1.1rem;">
                     <strong style="color: #ff4d4d;">"${escapeHTML(branchName)}"</strong>
@@ -699,7 +741,6 @@ async function deleteBranch(branchId, branchName) {
 
     if (!confirmResult.isConfirmed) return;
 
-    // Mostrar loader
     Swal.fire({
         title: 'Eliminando sucursal...',
         html: '<i class="fas fa-spinner fa-spin" style="font-size: 48px; color: #ff4d4d;"></i>',
@@ -710,13 +751,10 @@ async function deleteBranch(branchId, branchName) {
 
     try {
         await sucursalManager.eliminarSucursal(branchId, usuarioActual.organizacionCamelCase);
-        
-        // ✅ NUEVO: Registrar eliminación en bitácora
         await registrarEliminacionSucursal(sucursalCompleta);
         
         Swal.close();
         
-        // Mostrar mensaje de éxito
         await Swal.fire({
             icon: 'success',
             title: '¡Sucursal eliminada!',
@@ -727,8 +765,8 @@ async function deleteBranch(branchId, branchName) {
             color: 'var(--color-text-primary)'
         });
         
-        // Recargar la lista de sucursales
-        await loadBranches();
+        cursoresPaginacion = { ultimoDocumento: null, primerDocumento: null };
+        await cargarSucursalesPagina(1);
         
     } catch (error) {
         console.error('❌ Error eliminando sucursal:', error);
@@ -745,43 +783,12 @@ async function deleteBranch(branchId, branchName) {
     }
 }
 
-// ========== ESTADO VACÍO ==========
-function showEmptyState() {
-    const tbody = document.getElementById('branchesTableBody');
-    if (!tbody) return;
-    
-    tbody.innerHTML = `
-        <tr>
-            <td colspan="6" class="empty-state">
-                <div class="empty-state-content">
-                    <i class="fas fa-store-alt"></i>
-                    <h3>No hay sucursales en ${escapeHTML(usuarioActual?.organizacion || 'tu organización')}</h3>
-                    <p>Comienza agregando tu primera sucursal</p>
-                    <button class="add-first-btn" id="addFirstBranch">
-                        <i class="fas fa-plus-circle"></i> CREAR PRIMERA SUCURSAL
-                    </button>
-                </div>
-            </td>
-        </tr>
-    `;
-    
-    document.getElementById('addFirstBranch')?.addEventListener('click', () => {
-        window.location.href = '../crearSucursales/crearSucursales.html';
-    });
-
-    // Ocultar paginación
-    const paginacionContainer = document.querySelector('.pagination-container');
-    if (paginacionContainer) {
-        paginacionContainer.style.display = 'none';
-    }
-}
-
-// ========== ESTADO DE CARGA ==========
+// ========== ESTADOS DE CARGA Y ERROR ==========
 function showLoadingState() {
     const tbody = document.getElementById('branchesTableBody');
     if (!tbody) return;
     
-    tbody.innerHTML = /*html*/`
+    tbody.innerHTML = `
         <tr>
             <td colspan="6" class="loading-state">
                 <div class="loading-content">
@@ -794,7 +801,6 @@ function showLoadingState() {
     `;
 }
 
-// ========== MANEJO DE ERRORES ==========
 function showFirebaseError(error) {
     const tbody = document.getElementById('branchesTableBody');
     if (!tbody) return;
@@ -815,11 +821,8 @@ function showFirebaseError(error) {
         </tr>
     `;
 
-    // Ocultar paginación
     const paginacionContainer = document.querySelector('.pagination-container');
-    if (paginacionContainer) {
-        paginacionContainer.style.display = 'none';
-    }
+    if (paginacionContainer) paginacionContainer.style.display = 'none';
 }
 
 function showError(message) {
@@ -840,9 +843,13 @@ function showError(message) {
         </tr>
     `;
 
-    // Ocultar paginación
     const paginacionContainer = document.querySelector('.pagination-container');
-    if (paginacionContainer) {
-        paginacionContainer.style.display = 'none';
-    }
+    if (paginacionContainer) paginacionContainer.style.display = 'none';
+}
+
+function escapeHTML(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
 }

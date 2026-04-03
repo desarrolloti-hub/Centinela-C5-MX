@@ -1805,3 +1805,46 @@ select:not(.field-disabled):focus {
     transform: translateY(-2px);
     box-shadow: 0 5px 15px rgba(40, 167, 69, 0.3);
 }
+/* Drop Zone ultra transparente - solo borde punteado */
+.drop-zone {
+    border: 2px dashed #ccc;
+    border-radius: 12px;
+    padding: 2rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background: transparent;
+    margin-bottom: 1.5rem;
+}
+
+.drop-zone:hover {
+    border-color: #4a6cf7;
+    border-style: dashed;
+}
+
+.drop-zone.drag-over {
+    border-color: #28a745;
+    border-style: solid;
+    background: transparent;
+}
+
+.drop-zone i {
+    font-size: 42px;
+    color: #aaa;
+    margin-bottom: 0.75rem;
+}
+
+.drop-zone:hover i {
+    color: #4a6cf7;
+}
+
+.drop-zone p {
+    margin: 0.25rem 0;
+    color: #888;
+    font-size: 14px;
+}
+
+.drop-zone .small {
+    font-size: 11px;
+    color: #aaa;
+}
