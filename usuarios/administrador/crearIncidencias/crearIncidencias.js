@@ -1100,129 +1100,181 @@ class CrearIncidenciaController {
         return riesgos[riesgo] || riesgo;
     }
 
-    async _validarYGuardar() {
-        const sucursalInput = document.getElementById('sucursalIncidencia');
-        const categoriaInput = document.getElementById('categoriaIncidencia');
+       async _validarYGuardar() {
+    const sucursalInput = document.getElementById('sucursalIncidencia');
+    const categoriaInput = document.getElementById('categoriaIncidencia');
 
-        const sucursalId = sucursalInput.dataset.selectedId;
-        const categoriaId = categoriaInput.dataset.selectedId;
+    const sucursalId = sucursalInput.dataset.selectedId;
+    const categoriaId = categoriaInput.dataset.selectedId;
 
-        if (!sucursalId) {
-            this._mostrarError('⚠️ Es necesario seleccionar una sucursal primero');
-            sucursalInput.focus();
-            return;
-        }
+    if (!sucursalId) {
+        this._mostrarError('⚠️ Es necesario seleccionar una sucursal primero');
+        sucursalInput.focus();
+        return;
+    }
 
-        if (!categoriaId) {
-            this._mostrarError('Debe seleccionar una categoría válida de la lista');
-            categoriaInput.focus();
-            return;
-        }
+    if (!categoriaId) {
+        this._mostrarError('Debe seleccionar una categoría válida de la lista');
+        categoriaInput.focus();
+        return;
+    }
 
-        const riesgoSelect = document.getElementById('nivelRiesgo');
-        const nivelRiesgo = riesgoSelect.value;
-        if (!nivelRiesgo) {
-            this._mostrarError('Debe seleccionar el nivel de riesgo');
-            riesgoSelect.focus();
-            return;
-        }
+    const riesgoSelect = document.getElementById('nivelRiesgo');
+    const nivelRiesgo = riesgoSelect.value;
+    if (!nivelRiesgo) {
+        this._mostrarError('Debe seleccionar el nivel de riesgo');
+        riesgoSelect.focus();
+        return;
+    }
 
-        const estadoSelect = document.getElementById('estadoIncidencia');
-        const estado = estadoSelect.value;
-        if (!estado) {
-            this._mostrarError('Debe seleccionar el estado');
-            estadoSelect.focus();
-            return;
-        }
+    const estadoSelect = document.getElementById('estadoIncidencia');
+    const estado = estadoSelect.value;
+    if (!estado) {
+        this._mostrarError('Debe seleccionar el estado');
+        estadoSelect.focus();
+        return;
+    }
 
-        const fechaInput = document.getElementById('fechaHoraIncidencia');
-        let fechaHora = fechaInput.value;
+    const fechaInput = document.getElementById('fechaHoraIncidencia');
+    let fechaHora = fechaInput.value;
 
-        if (!fechaHora) {
-            this._mostrarError('Debe seleccionar fecha y hora');
-            fechaInput.focus();
-            return;
-        }
+    if (!fechaHora) {
+        this._mostrarError('Debe seleccionar fecha y hora');
+        fechaInput.focus();
+        return;
+    }
 
-        const fechaSeleccionada = new Date(fechaHora);
-        const ahora = new Date();
+    const fechaSeleccionada = new Date(fechaHora);
+    const ahora = new Date();
 
-        if (fechaSeleccionada > ahora) {
-            this._mostrarError('No puede seleccionar una fecha futura');
-            fechaInput.focus();
-            return;
-        }
+    if (fechaSeleccionada > ahora) {
+        this._mostrarError('No puede seleccionar una fecha futura');
+        fechaInput.focus();
+        return;
+    }
 
-        const detallesInput = document.getElementById('detallesIncidencia');
-        const detalles = detallesInput.value.trim();
-        if (!detalles) {
-            detallesInput.classList.add('is-invalid');
-            this._mostrarError('La descripción de la incidencia es obligatoria');
-            detallesInput.focus();
-            return;
-        }
-        if (detalles.length < 10) {
-            detallesInput.classList.add('is-invalid');
-            this._mostrarError('La descripción debe tener al menos 10 caracteres');
-            detallesInput.focus();
-            return;
-        }
-        if (detalles.length > LIMITES.DETALLES_INCIDENCIA) {
-            detallesInput.classList.add('is-invalid');
-            this._mostrarError(`La descripción no puede exceder ${LIMITES.DETALLES_INCIDENCIA} caracteres`);
-            detallesInput.focus();
-            return;
-        }
-        detallesInput.classList.remove('is-invalid');
+    const detallesInput = document.getElementById('detallesIncidencia');
+    const detalles = detallesInput.value.trim();
+    if (!detalles) {
+        detallesInput.classList.add('is-invalid');
+        this._mostrarError('La descripción de la incidencia es obligatoria');
+        detallesInput.focus();
+        return;
+    }
+    if (detalles.length < 10) {
+        detallesInput.classList.add('is-invalid');
+        this._mostrarError('La descripción debe tener al menos 10 caracteres');
+        detallesInput.focus();
+        return;
+    }
+    if (detalles.length > LIMITES.DETALLES_INCIDENCIA) {
+        detallesInput.classList.add('is-invalid');
+        this._mostrarError(`La descripción no puede exceder ${LIMITES.DETALLES_INCIDENCIA} caracteres`);
+        detallesInput.focus();
+        return;
+    }
+    detallesInput.classList.remove('is-invalid');
 
-        const subcategoriaSelect = document.getElementById('subcategoriaIncidencia');
-        const subcategoriaId = subcategoriaSelect.value;
+    const subcategoriaSelect = document.getElementById('subcategoriaIncidencia');
+    const subcategoriaId = subcategoriaSelect.value;
 
-        const sucursalNombre = sucursalInput.value;
-        const categoriaNombre = categoriaInput.value;
+    const sucursalNombre = sucursalInput.value;
+    const categoriaNombre = categoriaInput.value;
+    
+    const subcategoriaNombre = subcategoriaId ? 
+        subcategoriaSelect.options[subcategoriaSelect.selectedIndex]?.text : '';
+
+    const datos = {
+        sucursalId,
+        sucursalNombre,
+        categoriaId,
+        categoriaNombre,
+        subcategoriaId: subcategoriaId || '',
+        subcategoriaNombre: subcategoriaNombre || '',
+        nivelRiesgo,
+        estado,
+        fechaHora,
+        detalles,
+        imagenes: this.imagenesSeleccionadas
+    };
+
+    // Generar PDF temporal para vista previa y descarga
+    Swal.fire({
+        title: 'Generando vista previa...',
+        text: 'Preparando el PDF de la incidencia',
+        allowOutsideClick: false,
+        showConfirmButton: false,
+        didOpen: () => Swal.showLoading()
+    });
+
+    const fechaObj = new Date(datos.fechaHora);
+    const incidenciaTemporal = this._crearRegistroTemporal(datos);
+    let pdfBlob = null;
+    let pdfUrl = null;
+
+    try {
+        pdfBlob = await this.pdfGenerator.generarIPH(incidenciaTemporal, {
+            mostrarAlerta: false,
+            returnBlob: true,
+            diagnosticar: false
+        });
+        pdfUrl = URL.createObjectURL(pdfBlob);
+        Swal.close();
+    } catch (pdfError) {
+        console.error('Error generando PDF preview:', pdfError);
+        Swal.close();
+    }
+
+    // SweetAlert con 3 botones y diseño limpio
+    const result = await Swal.fire({
+        title: 'Confirmar creación de incidencia',
+        html: `
+            <div style="text-align: left;">
+                <p><strong>Sucursal:</strong> ${this._escapeHTML(sucursalNombre)}</p>
+                <p><strong>Categoría:</strong> ${this._escapeHTML(categoriaNombre)}</p>
+                ${subcategoriaId ? `<p><strong>Subcategoría:</strong> ${this._escapeHTML(subcategoriaNombre)}</p>` : ''}
+                <p><strong>Riesgo:</strong> ${this._getRiesgoTexto(nivelRiesgo)}</p>
+                <p><strong>Estado:</strong> ${estado === 'pendiente' ? 'Pendiente' : 'Finalizada'}</p>
+                <p><strong>Fecha:</strong> ${new Date(fechaHora).toLocaleString('es-MX')}</p>
+                <p><strong>Evidencias:</strong> ${this.imagenesSeleccionadas.length} imagen(es)</p>
+            </div>
+        `,
+        icon: 'question',
+        showCancelButton: true,
+        showDenyButton: true,
+        confirmButtonText: '<i class="fas fa-save"></i> Crear',
+        denyButtonText: '<i class="fas fa-file-pdf"></i> Ver PDF',
+        cancelButtonText: '<i class="fas fa-times"></i> Cancelar',
+        confirmButtonColor: '#28a745',
+        denyButtonColor: '#b81717',
+        cancelButtonColor: '#6c757d'
+    });
+
+    if (result.isConfirmed) {
+        // Crear incidencia (lo que ya hace)
+        await this._guardarIncidencia(datos);
+    } else if (result.isDenied && pdfUrl) {
+        // Abrir PDF en nueva pestaña
+        window.open(pdfUrl, '_blank');
         
-        const subcategoriaNombre = subcategoriaId ? 
-            subcategoriaSelect.options[subcategoriaSelect.selectedIndex]?.text : '';
-
-        const datos = {
-            sucursalId,
-            sucursalNombre,
-            categoriaId,
-            categoriaNombre,
-            subcategoriaId: subcategoriaId || '',
-            subcategoriaNombre: subcategoriaNombre || '',
-            nivelRiesgo,
-            estado,
-            fechaHora,
-            detalles,
-            imagenes: this.imagenesSeleccionadas
-        };
-
-        const result = await Swal.fire({
-            title: 'Confirmar creación de incidencia',
-            html: `
-                <div style="text-align: left;">
-                    <p><strong><i class="fas fa-store"></i> Sucursal:</strong> ${this._escapeHTML(sucursalNombre)}</p>
-                    <p><strong><i class="fas fa-tag"></i> Categoría:</strong> ${this._escapeHTML(categoriaNombre)}</p>
-                    ${subcategoriaId ? `<p><strong><i class="fas fa-tags"></i> Subcategoría:</strong> ${this._escapeHTML(subcategoriaNombre)}</p>` : ''}
-                    <p><strong><i class="fas fa-exclamation-triangle"></i> Riesgo:</strong> ${this._getRiesgoTexto(nivelRiesgo)}</p>
-                    <p><strong><i class="fas fa-check-circle"></i> Estado:</strong> ${estado === 'pendiente' ? 'Pendiente' : 'Finalizada'}</p>
-                    <p><strong><i class="fas fa-calendar"></i> Fecha:</strong> ${new Date(fechaHora).toLocaleString('es-MX')}</p>
-                    <p><strong><i class="fas fa-images"></i> Evidencias:</strong> ${this.imagenesSeleccionadas.length} imagen(es)</p>
-                </div>
-            `,
+        // Preguntar si quiere continuar con la creación
+        const continuar = await Swal.fire({
+            title: '¿Deseas crear la incidencia?',
+            text: 'La incidencia aún no ha sido guardada',
             icon: 'question',
             showCancelButton: true,
-            confirmButtonText: '<i class="fas fa-check-circle"></i> Aceptar',
-            cancelButtonText: '<i class="fas fa-times"></i> Cancelar',
-            confirmButtonColor: '#28a745',
-            cancelButtonColor: '#6c757d'
+            confirmButtonText: 'Sí, crear',
+            cancelButtonText: 'No, cancelar'
         });
-
-        if (result.isConfirmed) {
+        
+        if (continuar.isConfirmed) {
             await this._guardarIncidencia(datos);
         }
+    } else if (result.isDenied && !pdfUrl) {
+        this._mostrarError('No se pudo generar el PDF para vista previa');
     }
+    // Si es cancelado, no hace nada
+}
 
     // ========== CANALIZACIÓN A SUCURSAL (LA MISMA DEL FORMULARIO) ==========
     async _canalizarSucursal(incidenciaId, incidenciaTitulo = '') {
