@@ -262,10 +262,20 @@
                             completo donde podrás dibujar círculos, flechas y agregar comentarios.
                         </div>
 
-                        <!-- Sección de carga de imágenes -->
-                        <div class="image-upload-section">
+                        <!-- DROP ZONE - Área para arrastrar y soltar imágenes -->
+                        <div id="dropZone" class="drop-zone">
+                            <i class="fas fa-cloud-upload-alt"></i>
+                            <p>Arrastra y suelta imágenes aquí</p>
+                            <p class="small">o haz clic para seleccionar archivos</p>
+                            <p class="small text-muted mt-2">
+                                También puedes pegar imágenes con Ctrl+V
+                            </p>
+                        </div>
+
+                        <!-- Sección de carga de imágenes (oculta, solo para compatibilidad) -->
+                        <div class="image-upload-section" style="display: none;">
                             <div class="upload-area">
-                                <input type="file" id="inputImagenes" multiple accept="image/*" style="display: none;">
+                                <input type="file" id="inputImagenes" multiple accept="image/*">
                                 <button type="button" class="btn-upload" id="btnAgregarImagen">
                                     <i class="fas fa-cloud-upload-alt"></i>
                                     Agregar imágenes
@@ -308,43 +318,18 @@
 
     <br>
 
-    <!-- Modal de Vista Previa PDF (AGREGADO) -->
-    <div id="pdfPreviewModal" class="pdf-preview-modal" style="display: none;">
-        <div class="pdf-preview-header">
-            <h3><i class="fas fa-file-pdf"></i> Vista Previa del Informe de Incidencia</h3>
-            <button class="pdf-preview-btn pdf-close-btn" id="pdfCloseBtn" title="Cerrar">
-                <i class="fas fa-times"></i>
-            </button>
-        </div>
-        <div class="pdf-preview-content">
-            <div class="pdf-preview-loading" id="pdfPreviewLoading">
-                <div class="spinner"></div>
-                <p>Generando vista previa del informe...</p>
-                <p class="small">Esto puede tomar unos segundos dependiendo de las imágenes</p>
-            </div>
-            <iframe id="pdfPreviewIframe" class="pdf-preview-iframe" style="display: none;"></iframe>
-        </div>
-        <div class="pdf-preview-footer">
-            <button class="btn btn-secondary" id="pdfCancelBtn">
-                <i class="fas fa-times"></i> Cerrar
-            </button>
-            <button class="btn btn-success" id="pdfAcceptBtn">
-                <i class="fas fa-check-circle"></i> Aceptar y Guardar
-            </button>
-        </div>
-    </div>
-
     <!-- Scripts -->
     <script type="module" src="/components/autenticador.js"></script>
     <script type="module" src="/components/cargadorTemas.js"></script>
     <script type="module" src="/components/particulas.js"></script>
-    <script type="module" src="/components/navbarAdministrador.js"></script>
+    <script src="/components/navbarColaborador.js"></script>
     <script src="/components/imagenEditorEvidencias.js"></script>
-    <script src="/components/footerAdministrador.js"></script>
-    <script type="module" src="crearIncidencias.js"></script>
-    <script type="module" src="/components/autenticador.js"></script>
-    <script src="/components/protector-admin.js"> </script>
+    <script src="/components/footerColaborador.js"></script>
+    <script type="module" src="/usuarios/administrador/crearIncidencias/crearIncidencias.js"></script>
+    <script src="/components/protector-colaborador.js" data-modulo="incidencias"></script>
 
+    <!-- Protector de pagina -->
+    <script src="/components/protector-colaborador.js" data-modulo="categorias"></script>
 </body>
 
 </html>
