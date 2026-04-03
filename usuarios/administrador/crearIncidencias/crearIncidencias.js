@@ -1100,7 +1100,7 @@ class CrearIncidenciaController {
         return riesgos[riesgo] || riesgo;
     }
 
-       async _validarYGuardar() {
+async _validarYGuardar() {
     const sucursalInput = document.getElementById('sucursalIncidencia');
     const categoriaInput = document.getElementById('categoriaIncidencia');
 
@@ -1198,34 +1198,7 @@ class CrearIncidenciaController {
         imagenes: this.imagenesSeleccionadas
     };
 
-    // Generar PDF temporal para vista previa y descarga
-    Swal.fire({
-        title: 'Generando vista previa...',
-        text: 'Preparando el PDF de la incidencia',
-        allowOutsideClick: false,
-        showConfirmButton: false,
-        didOpen: () => Swal.showLoading()
-    });
-
-    const fechaObj = new Date(datos.fechaHora);
-    const incidenciaTemporal = this._crearRegistroTemporal(datos);
-    let pdfBlob = null;
-    let pdfUrl = null;
-
-    try {
-        pdfBlob = await this.pdfGenerator.generarIPH(incidenciaTemporal, {
-            mostrarAlerta: false,
-            returnBlob: true,
-            diagnosticar: false
-        });
-        pdfUrl = URL.createObjectURL(pdfBlob);
-        Swal.close();
-    } catch (pdfError) {
-        console.error('Error generando PDF preview:', pdfError);
-        Swal.close();
-    }
-
-    // SweetAlert con 3 botones y diseño limpio
+    // Mostrar confirmación con SOLO dos botones: Crear y Cancelar
     const result = await Swal.fire({
         title: 'Confirmar creación de incidencia',
         html: `
@@ -1241,41 +1214,55 @@ class CrearIncidenciaController {
         `,
         icon: 'question',
         showCancelButton: true,
-        showDenyButton: true,
         confirmButtonText: '<i class="fas fa-save"></i> Crear',
-        denyButtonText: '<i class="fas fa-file-pdf"></i> Ver PDF',
         cancelButtonText: '<i class="fas fa-times"></i> Cancelar',
         confirmButtonColor: '#28a745',
-        denyButtonColor: '#b81717',
         cancelButtonColor: '#6c757d'
     });
 
     if (result.isConfirmed) {
-        // Crear incidencia (lo que ya hace)
-        await this._guardarIncidencia(datos);
-    } else if (result.isDenied && pdfUrl) {
-        // Abrir PDF en nueva pestaña
-        window.open(pdfUrl, '_blank');
-        
-        // Preguntar si quiere continuar con la creación
-        const continuar = await Swal.fire({
-            title: '¿Deseas crear la incidencia?',
-            text: 'La incidencia aún no ha sido guardada',
-            icon: 'question',
-            showCancelButton: true,
-            confirmButtonText: 'Sí, crear',
-            cancelButtonText: 'No, cancelar'
+        // Generar y descargar PDF ANTES de guardar
+        Swal.fire({
+            title: 'Generando PDF...',
+            text: 'Preparando el documento para descargar',
+            allowOutsideClick: false,
+            showConfirmButton: false,
+            didOpen: () => Swal.showLoading()
         });
-        
-        if (continuar.isConfirmed) {
-            await this._guardarIncidencia(datos);
+
+        const incidenciaTemporal = this._crearRegistroTemporal(datos);
+        let pdfBlob = null;
+
+        try {
+            pdfBlob = await this.pdfGenerator.generarIPH(incidenciaTemporal, {
+                mostrarAlerta: false,
+                returnBlob: true,
+                diagnosticar: false
+            });
+            
+            // FORZAR DESCARGA DEL PDF
+            const pdfUrl = URL.createObjectURL(pdfBlob);
+            const link = document.createElement('a');
+            link.href = pdfUrl;
+            const fechaParaNombre = new Date(datos.fechaHora).toISOString().slice(0, 19).replace(/:/g, '-');
+            link.download = `incidencia_${datos.sucursalNombre}_${fechaParaNombre}.pdf`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(pdfUrl);
+            
+            Swal.close();
+        } catch (pdfError) {
+            console.error('Error generando PDF:', pdfError);
+            Swal.close();
+            this._mostrarError('No se pudo generar el PDF, pero continuaremos con el guardado');
         }
-    } else if (result.isDenied && !pdfUrl) {
-        this._mostrarError('No se pudo generar el PDF para vista previa');
+        
+        // Crear incidencia
+        await this._guardarIncidencia(datos);
     }
     // Si es cancelado, no hace nada
 }
-
     // ========== CANALIZACIÓN A SUCURSAL (LA MISMA DEL FORMULARIO) ==========
     async _canalizarSucursal(incidenciaId, incidenciaTitulo = '') {
         const sucursalInput = document.getElementById('sucursalIncidencia');
