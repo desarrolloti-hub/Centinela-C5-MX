@@ -1,9 +1,9 @@
 /**
  * IPH GENERATOR PARA SEGUIMIENTO - Sistema Centinela
- * VERSIÓN: 9.13 - DISEÑO ULTRA COMPACTO
+ * VERSIÓN: 9.15 - IMÁGENES DE SEGUIMIENTO GRANDES (78x72)
  * 
- * Diseño extremadamente compacto para maximizar uso del papel.
- * Espacios reducidos al mínimo.
+ * Diseño optimizado para imágenes grandes de seguimiento.
+ * Layout mejorado con mejor distribución de espacios.
  */
 
 import { PDFBaseGenerator, coloresBase } from './pdf-base-generator.js';
@@ -29,10 +29,10 @@ const CONFIG = {
     MARGEN_PIE_PAGINA: 12,
     MAX_CARACTERES_POR_LINEA: 88,
     MAX_CARACTERES_COMENTARIO: 48,
-    ALTURA_SEGUIMIENTO_BASE: 18,
-    ALTURA_EVIDENCIA_SEGUIMIENTO: 35,
-    ESPACIO_ENTRE_BLOQUES: 1,
-    ESPACIO_ENTRE_BLOQUES_TITULO: 0,
+    ALTURA_SEGUIMIENTO_BASE: 22,
+    ALTURA_EVIDENCIA_SEGUIMIENTO: 90,
+    ESPACIO_ENTRE_BLOQUES: 2,
+    ESPACIO_ENTRE_BLOQUES_TITULO: 1,
     // Configuración de imágenes
     MAX_PARALLEL_IMAGES: 4,
     IMAGE_TIMEOUT: 10000,
@@ -512,7 +512,7 @@ class IPHGeneratorSeguimiento extends PDFBaseGenerator {
         let alturaEvidencias = 0;
         if (evidencias.length > 0) {
             alturaEvidencias = CONFIG.ALTURA_EVIDENCIA_SEGUIMIENTO;
-            alturaTotal += alturaEvidencias + 4;
+            alturaTotal += alturaEvidencias + 8;
         }
         
         pdf.saveGraphicsState();
@@ -550,40 +550,65 @@ class IPHGeneratorSeguimiento extends PDFBaseGenerator {
         }
         
         if (evidencias.length > 0) {
-            pdf.setFont('helvetica', 'bold');
-            pdf.setFontSize(this.fonts.mini - 1);
-            pdf.setTextColor(100, 100, 100);
-           // pdf.text(`[${evidencias.length}]`, x + 4, yTexto + 2);
+            // Añadir un pequeño espacio antes de las imágenes
+            yTexto += 4;
             
-            const anchoMiniatura = 28;
-            const altoMiniatura = 22;
-            const espaciadoMiniatura = 6;
-            let xMiniatura = x + 20;
+            // Calcular posición centrada para las imágenes
+            const anchoMiniatura = 78;
+            const altoMiniatura = 72;
+            const espaciadoMiniatura = 12;
+            
+            // Calcular cuántas imágenes caben (máximo 2 por fila con este tamaño)
+            const maxPorFila = 2;
+            const imagenesAMostrar = Math.min(evidencias.length, 4);
+            
+            // Calcular ancho total de las imágenes en la fila
+            const imagenesFila1 = Math.min(maxPorFila, imagenesAMostrar);
+            const anchoTotalFila = (anchoMiniatura * imagenesFila1) + (espaciadoMiniatura * (imagenesFila1 - 1));
+            
+            // Centrar horizontalmente
+            let xMiniatura = x + ((ancho - anchoTotalFila) / 2);
             const yMiniatura = yTexto;
             
-            for (let i = 0; i < Math.min(evidencias.length, 3); i++) {
+            // Mostrar imágenes en filas de 2
+            for (let i = 0; i < imagenesAMostrar; i++) {
                 const evidencia = evidencias[i];
                 const url = typeof evidencia === 'string' ? evidencia : this.extraerUrlImagen(evidencia);
+                const numImagen = i + 1;
                 
                 if (url) {
                     try {
                         const imgData = await this.obtenerImagen(url);
                         if (imgData) {
-                            pdf.addImage(imgData, 'JPEG', xMiniatura, yMiniatura, anchoMiniatura, altoMiniatura, undefined, 'FAST');
-                            pdf.setDrawColor(150, 150, 150);
-                            pdf.setLineWidth(0.2);
+                            // Dibujar borde y sombra suave
+                            pdf.setDrawColor(180, 180, 180);
+                            pdf.setLineWidth(0.3);
                             pdf.rect(xMiniatura, yMiniatura, anchoMiniatura, altoMiniatura, 'S');
+                            
+                            pdf.addImage(imgData, 'JPEG', xMiniatura + 1, yMiniatura + 1, anchoMiniatura - 2, altoMiniatura - 2, undefined, 'FAST');
+                            
+                            // Número de imagen
+                            pdf.setFont('helvetica', 'bold');
+                            pdf.setFontSize(7);
+                            pdf.setTextColor(80, 80, 80);
+                            pdf.text(`${numImagen}`, xMiniatura + 3, yMiniatura + 5);
                         } else {
-                            this.dibujarMiniaturaPlaceholder(pdf, xMiniatura, yMiniatura, anchoMiniatura, altoMiniatura, i + 1);
+                            this.dibujarMiniaturaPlaceholder(pdf, xMiniatura, yMiniatura, anchoMiniatura, altoMiniatura, numImagen);
                         }
                     } catch (e) {
-                        this.dibujarMiniaturaPlaceholder(pdf, xMiniatura, yMiniatura, anchoMiniatura, altoMiniatura, i + 1);
+                        this.dibujarMiniaturaPlaceholder(pdf, xMiniatura, yMiniatura, anchoMiniatura, altoMiniatura, numImagen);
                     }
                 } else {
-                    this.dibujarMiniaturaPlaceholder(pdf, xMiniatura, yMiniatura, anchoMiniatura, altoMiniatura, i + 1);
+                    this.dibujarMiniaturaPlaceholder(pdf, xMiniatura, yMiniatura, anchoMiniatura, altoMiniatura, numImagen);
                 }
                 
                 xMiniatura += anchoMiniatura + espaciadoMiniatura;
+                
+                // Salto de línea después de 2 imágenes
+                if ((i + 1) % maxPorFila === 0 && i + 1 < imagenesAMostrar) {
+                    xMiniatura = x + ((ancho - anchoTotalFila) / 2);
+                    yTexto += altoMiniatura + espaciadoMiniatura;
+                }
             }
         }
         
@@ -593,14 +618,15 @@ class IPHGeneratorSeguimiento extends PDFBaseGenerator {
     }
     
     dibujarMiniaturaPlaceholder(pdf, x, y, ancho, alto, numero) {
-        pdf.setFillColor(230, 230, 230);
+        pdf.setFillColor(240, 240, 240);
         pdf.rect(x, y, ancho, alto, 'F');
-        pdf.setDrawColor(180, 180, 180);
+        pdf.setDrawColor(200, 200, 200);
+        pdf.setLineWidth(0.3);
         pdf.rect(x, y, ancho, alto, 'S');
         pdf.setFont('helvetica', 'normal');
-        pdf.setFontSize(5);
-        pdf.setTextColor(120, 120, 120);
-        pdf.text(`[${numero}]`, x + ancho / 2, y + alto / 2, { align: 'center' });
+        pdf.setFontSize(8);
+        pdf.setTextColor(150, 150, 150);
+        pdf.text(`📷 ${numero}`, x + ancho / 2, y + alto / 2, { align: 'center' });
     }
 
     async generarIPHSeguimiento(incidencia, opciones = {}) {
@@ -1086,7 +1112,7 @@ class IPHGeneratorSeguimiento extends PDFBaseGenerator {
                 }
                 
                 const alturaSeguimiento = await this.dibujarSeguimiento(pdf, seguimiento, margen, yPos, anchoContenido, i + 1);
-                yPos += alturaSeguimiento + 4;
+                yPos += alturaSeguimiento + 6;
             }
             
             yPos += 2;
