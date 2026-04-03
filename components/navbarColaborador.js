@@ -1,6 +1,6 @@
-// [file name]: navbarColaborador.js
-// [file path]: /components/navbarColaborador.js
-// VERSIÓN CORREGIDA - Filtra notificaciones por área Y sucursal
+// ========== navbarColaborador.js - VERSIÓN CON MENÚ MONITOREO Y PERMISOS ==========
+// Se agregó nuevo menú "Monitoreo" con Mapa de Alertas y Login Monitoreo
+// Se agregó opción "Permisos" dentro de Gestionar con filtro dinámico
 
 class NavbarComplete {
     constructor() {
@@ -8,6 +8,7 @@ class NavbarComplete {
         this.isGestionarDropdownOpen = false;
         this.isIncidenciasDropdownOpen = false;
         this.isConfiguracionDropdownOpen = false;
+        this.isMonitoreoDropdownOpen = false;
         this.currentUser = null;
         this.userRole = null;
         this.permisos = null;
@@ -247,53 +248,31 @@ class NavbarComplete {
             const areaUsuario = this.currentUser.areaId;
             const sucursalUsuario = this.currentUser.sucursalAsignadaId;
 
-            console.log('👤 Usuario:', this.currentUser.nombreCompleto);
-            console.log('📌 Área asignada:', areaUsuario);
-            console.log('🏪 Sucursal asignada:', sucursalUsuario);
-            console.log('📬 Total notificaciones sin filtrar:', todasNotificaciones.length);
-
             if (!areaUsuario && !sucursalUsuario) {
-                console.log('⚠️ Usuario sin área ni sucursal asignada');
                 this.notificaciones = [];
                 this.notificacionesNoLeidas = 0;
             } else {
                 const notificacionesFiltradas = todasNotificaciones.filter(notif => {
-                    // Obtener datos de la notificación
                     const sucursalesIds = notif.sucursalesIds || [];
                     const sucursalId = notif.sucursalId;
                     const areasIds = notif.areasIds || [];
                     const areasDestino = notif.areasDestino || [];
                     const sucursalesDestino = notif.sucursalesDestino || [];
 
-                    // Verificar si la notificación es para el área del usuario
                     let esParaArea = false;
                     if (areaUsuario) {
-                        esParaArea = areasIds.includes(areaUsuario) || 
-                                    areasDestino.some(a => a.id === areaUsuario);
+                        esParaArea = areasIds.includes(areaUsuario) ||
+                            areasDestino.some(a => a.id === areaUsuario);
                     }
 
-                    // Verificar si la notificación es para la sucursal del usuario
                     let esParaSucursal = false;
                     if (sucursalUsuario) {
-                        esParaSucursal = sucursalesIds.includes(sucursalUsuario) || 
-                                        sucursalId === sucursalUsuario ||
-                                        (sucursalesDestino && sucursalesDestino.some(s => s.id === sucursalUsuario));
+                        esParaSucursal = sucursalesIds.includes(sucursalUsuario) ||
+                            sucursalId === sucursalUsuario ||
+                            (sucursalesDestino && sucursalesDestino.some(s => s.id === sucursalUsuario));
                     }
 
-                    const esVisible = esParaArea || esParaSucursal;
-                    
-                    if (esVisible) {
-                        console.log(`✅ Notificación ${notif.id} visible para usuario:`, {
-                            titulo: notif.titulo,
-                            sucursalesIds,
-                            sucursalId,
-                            areasIds,
-                            esParaArea,
-                            esParaSucursal
-                        });
-                    }
-                    
-                    return esVisible;
+                    return esParaArea || esParaSucursal;
                 });
 
                 const nuevasNoLeidas = notificacionesFiltradas.filter(n => !n.leida);
@@ -308,8 +287,6 @@ class NavbarComplete {
 
                 this.notificaciones = notificacionesFiltradas;
                 this.notificacionesNoLeidas = this.notificaciones.filter(n => !n.leida).length;
-
-                console.log(`📬 Notificaciones visibles: ${this.notificaciones.length}, No leídas: ${this.notificacionesNoLeidas}`);
             }
 
             this._actualizarBadgeNotificaciones();
@@ -1195,7 +1172,8 @@ class NavbarComplete {
             
             .gestionar-dropdown-btn,
             .incidencias-dropdown-btn,
-            .configuracion-dropdown-btn {
+            .configuracion-dropdown-btn,
+            .monitoreo-dropdown-btn {
                 display: flex;
                 align-items: center;
                 justify-content: space-between;
@@ -1216,7 +1194,8 @@ class NavbarComplete {
             
             .gestionar-dropdown-btn:hover,
             .incidencias-dropdown-btn:hover,
-            .configuracion-dropdown-btn:hover {
+            .configuracion-dropdown-btn:hover,
+            .monitoreo-dropdown-btn:hover {
                 background-color: var(--color-bg-secondary);
                 transform: translateY(-2px);
                 box-shadow: 0 5px 12px rgba(0, 0, 0, 0.15);
@@ -1224,20 +1203,23 @@ class NavbarComplete {
             
             .gestionar-dropdown-btn i,
             .incidencias-dropdown-btn i,
-            .configuracion-dropdown-btn i {
+            .configuracion-dropdown-btn i,
+            .monitoreo-dropdown-btn i {
                 transition: transform 0.3s ease;
                 font-size: 14px;
             }
             
             .gestionar-dropdown-btn.active i,
             .incidencias-dropdown-btn.active i,
-            .configuracion-dropdown-btn.active i {
+            .configuracion-dropdown-btn.active i,
+            .monitoreo-dropdown-btn.active i {
                 transform: rotate(180deg);
             }
             
             .gestionar-dropdown-options,
             .incidencias-dropdown-options,
-            .configuracion-dropdown-options {
+            .configuracion-dropdown-options,
+            .monitoreo-dropdown-options {
                 display: none;
                 flex-direction: column;
                 gap: 10px;
@@ -1253,7 +1235,8 @@ class NavbarComplete {
             
             .gestionar-dropdown-options.active,
             .incidencias-dropdown-options.active,
-            .configuracion-dropdown-options.active {
+            .configuracion-dropdown-options.active,
+            .monitoreo-dropdown-options.active {
                 display: flex;
                 opacity: 1;
                 overflow: clip;
@@ -1265,7 +1248,8 @@ class NavbarComplete {
             
             .gestionar-dropdown-option,
             .incidencias-dropdown-option,
-            .configuracion-dropdown-option {
+            .configuracion-dropdown-option,
+            .monitoreo-dropdown-option {
                 display: flex;
                 align-items: center;
                 gap: 12px;
@@ -1287,7 +1271,8 @@ class NavbarComplete {
             
             .gestionar-dropdown-option:hover,
             .incidencias-dropdown-option:hover,
-            .configuracion-dropdown-option:hover {
+            .configuracion-dropdown-option:hover,
+            .monitoreo-dropdown-option:hover {
                 background-color: var(--color-bg-secondary);
                 transform: translateX(5px);
                 box-shadow: 0 3px 6px rgba(0, 0, 0, 0.1);
@@ -1295,7 +1280,8 @@ class NavbarComplete {
             
             .gestionar-dropdown-option i,
             .incidencias-dropdown-option i,
-            .configuracion-dropdown-option i {
+            .configuracion-dropdown-option i,
+            .monitoreo-dropdown-option i {
                 width: 20px;
                 text-align: center;
                 font-size: 16px;
@@ -1305,7 +1291,8 @@ class NavbarComplete {
             
             .gestionar-dropdown-option span,
             .incidencias-dropdown-option span,
-            .configuracion-dropdown-option span {
+            .configuracion-dropdown-option span,
+            .monitoreo-dropdown-option span {
                 flex: 1;
                 white-space: normal;
                 word-break: break-word;
@@ -1377,7 +1364,8 @@ class NavbarComplete {
 
             .gestionar-dropdown-options,
             .incidencias-dropdown-options,
-            .configuracion-dropdown-options {
+            .configuracion-dropdown-options,
+            .monitoreo-dropdown-options {
                 overflow: clip !important;
                 max-height: none !important;
                 height: auto !important;
@@ -1385,7 +1373,8 @@ class NavbarComplete {
 
             .gestionar-dropdown-options.active,
             .incidencias-dropdown-options.active,
-            .configuracion-dropdown-options.active {
+            .configuracion-dropdown-options.active,
+            .monitoreo-dropdown-options.active {
                 overflow: clip !important;
                 max-height: none !important;
                 height: auto !important;
@@ -1478,7 +1467,8 @@ class NavbarComplete {
                 
                 .gestionar-dropdown-btn,
                 .incidencias-dropdown-btn,
-                .configuracion-dropdown-btn {
+                .configuracion-dropdown-btn,
+                .monitoreo-dropdown-btn {
                     padding: 12px 14px;
                     font-size: 15px;
                 }
@@ -1495,33 +1485,38 @@ class NavbarComplete {
                 
                 .gestionar-dropdown-options,
                 .incidencias-dropdown-options,
-                .configuracion-dropdown-options {
+                .configuracion-dropdown-options,
+                .monitoreo-dropdown-options {
                     padding: 12px;
                 }
                 
                 .gestionar-dropdown-options.active,
                 .incidencias-dropdown-options.active,
-                .configuracion-dropdown-options.active {
+                .configuracion-dropdown-options.active,
+                .monitoreo-dropdown-options.active {
                     max-height: 1500px;
                 }
                 
                 .gestionar-dropdown-option,
                 .incidencias-dropdown-option,
-                .configuracion-dropdown-option {
+                .configuracion-dropdown-option,
+                .monitoreo-dropdown-option {
                     padding: 14px 12px;
                     gap: 12px;
                 }
                 
                 .gestionar-dropdown-option i,
                 .incidencias-dropdown-option i,
-                .configuracion-dropdown-option i {
+                .configuracion-dropdown-option i,
+                .monitoreo-dropdown-option i {
                     font-size: 16px;
                     width: 24px;
                 }
                 
                 .gestionar-dropdown-option span,
                 .incidencias-dropdown-option span,
-                .configuracion-dropdown-option span {
+                .configuracion-dropdown-option span,
+                .monitoreo-dropdown-option span {
                     font-size: 15px;
                     line-height: 1.4;
                 }
@@ -1574,13 +1569,15 @@ class NavbarComplete {
                 
                 .gestionar-dropdown-option,
                 .incidencias-dropdown-option,
-                .configuracion-dropdown-option {
+                .configuracion-dropdown-option,
+                .monitoreo-dropdown-option {
                     padding: 12px 10px;
                 }
                 
                 .gestionar-dropdown-option span,
                 .incidencias-dropdown-option span,
-                .configuracion-dropdown-option span {
+                .configuracion-dropdown-option span,
+                .monitoreo-dropdown-option span {
                     font-size: 14px;
                 }
                 
@@ -1689,9 +1686,7 @@ class NavbarComplete {
                                 <span>Usuario</span>
                             </div>
                         </div>
-                        <a href="../perfil/perfil.html" class="edit-profile-icon" id="editProfileIcon">
-                            <i class="fas fa-pencil-alt"></i>
-                        </a>
+                       
                     </div>
 
                     <div class="admin-info">
@@ -1726,6 +1721,10 @@ class NavbarComplete {
                             <i class="fa-solid fa-map-marked-alt"></i>
                             <span>Regiones</span>
                         </a>
+                        <a href="../permisos/permisos.html" class="gestionar-dropdown-option" id="permisosBtn">
+                            <i class="fa-solid fa-user-shield"></i>
+                            <span>Permisos</span>
+                        </a>
                         <a href="../usuarios/usuarios.html" class="gestionar-dropdown-option" id="usuariosBtn">
                             <i class="fa-solid fa-users"></i>
                             <span>Usuarios</span>
@@ -1733,14 +1732,6 @@ class NavbarComplete {
                         <a href="../tareas/tareas.html" class="gestionar-dropdown-option" id="tareasBtn">
                             <i class="fa-solid fa-tasks"></i>
                             <span>Tareas</span>
-                        </a>
-                        <a href="../mapa/mapa.html" class="gestionar-dropdown-option" id="mapaBtn">
-                            <i class="fa-solid fa-map-location-dot"></i>
-                            <span>Mapa de Alertas</span>
-                        </a>
-                        <a href="../estadisticas/estadisticas.html" class="gestionar-dropdown-option" id="estadisticasBtn">
-                            <i class="fa-solid fa-chart-line"></i>
-                            <span>Estadísticas</span>
                         </a>
                     </div>
                 </div>
@@ -1766,6 +1757,37 @@ class NavbarComplete {
                             <span>Incidencias Canalizadas</span>
                         </a>
                     </div>
+                </div>
+
+                <!-- SECCIÓN MONITOREO (NUEVO) -->
+                <div class="nav-section" id="monitoreoNavSection">
+                    <button class="monitoreo-dropdown-btn" id="monitoreoDropdownBtn">
+                        <span>Monitoreo</span>
+                        <i class="fa-solid fa-chevron-down"></i>
+                    </button>
+
+                    <div class="monitoreo-dropdown-options" id="monitoreoDropdownOptions">
+                        <a href="../mapaAlertas/mapaAlertas.html" class="monitoreo-dropdown-option" id="mapaAlertasBtn">
+                            <i class="fa-solid fa-map-location-dot"></i>
+                            <span>Mapa de Alertas</span>
+                        </a>
+                        <a href="../loginMonitoreo/loginMonitoreo.html" class="monitoreo-dropdown-option" id="loginMonitoreoBtn">
+                            <i class="fa-solid fa-sign-in-alt"></i>
+                            <span>Login Monitoreo</span>
+                        </a>
+                    </div>
+                </div>
+
+                <!-- SECCIÓN ESTADÍSTICAS -->
+                <div class="nav-section">
+                    <div class="nav-section-title">
+                        <i class="fa-solid fa-chart-line"></i>
+                        <span>Estadísticas</span>
+                    </div>
+                    <a href="../estadisticas/estadisticas.html" class="gestionar-dropdown-option" id="estadisticasBtn" style="width: 100%;">
+                        <i class="fa-solid fa-chart-simple"></i>
+                        <span>Ver Estadísticas</span>
+                    </a>
                 </div>
 
                 <!-- SECCIÓN BITÁCORA -->
@@ -1860,8 +1882,8 @@ class NavbarComplete {
                     fotoUsuario: fotoUsuario,
                     fotoOrganizacion: fotoOrganizacion,
                     areaId: userData.areaAsignadaId || userData.areaId || localStorage.getItem('userAreaId') || '',
-                    areaAsignadaId: userData.areaAsignadaId || userData.areaId || localStorage.getItem('userAreaId') || '',  // 👈 Agregar
-                    cargoId: userData.cargoId || localStorage.getItem('userCargoId') || '',  // 👈 Agregar
+                    areaAsignadaId: userData.areaAsignadaId || userData.areaId || localStorage.getItem('userAreaId') || '',
+                    cargoId: userData.cargoId || localStorage.getItem('userCargoId') || '',
                     sucursalAsignadaId: userData.sucursalAsignadaId || localStorage.getItem('userSucursalId') || '',
                     sucursalAsignadaNombre: userData.sucursalAsignadaNombre || localStorage.getItem('userSucursalNombre') || '',
                     status: userData.status || 'activo',
@@ -1871,9 +1893,6 @@ class NavbarComplete {
                 };
 
                 this.userRole = this.currentUser.rol?.toLowerCase() || 'colaborador';
-
-                console.log('👤 Usuario cargado:', this.currentUser.nombreCompleto);
-                console.log('🏪 Sucursal asignada:', this.currentUser.sucursalAsignadaId);
 
                 return true;
             }
@@ -1936,6 +1955,7 @@ class NavbarComplete {
                     tareas: true,
                     monitoreo: true,
                     permisos: true,
+                    loginMonitoreo: true,
                     crearIncidencias: true,
                     incidenciasCanalizadas: true,
                     verIncidencias: true,
@@ -1960,6 +1980,7 @@ class NavbarComplete {
                     tareas: false,
                     monitoreo: false,
                     permisos: false,
+                    loginMonitoreo: false,
                     crearIncidencias: false,
                     incidenciasCanalizadas: false,
                     verIncidencias: false,
@@ -1982,6 +2003,8 @@ class NavbarComplete {
 
                     if (permiso) {
                         const tieneIncidencias = permiso.puedeAcceder('incidencias');
+                        const tieneMonitoreo = permiso.puedeAcceder('monitoreo');
+                        const tieneLoginMonitoreo = permiso.puedeAcceder('loginMonitoreo');
 
                         this.permisos = {
                             areas: permiso.puedeAcceder('areas'),
@@ -1992,8 +2015,9 @@ class NavbarComplete {
                             usuarios: permiso.puedeAcceder('usuarios'),
                             estadisticas: permiso.puedeAcceder('estadisticas'),
                             tareas: permiso.puedeAcceder('tareas'),
-                            monitoreo: permiso.puedeAcceder('monitoreo'),
-                            permisos: false,
+                            monitoreo: tieneMonitoreo,
+                            permisos: permiso.puedeAcceder('permisos'),
+                            loginMonitoreo: tieneLoginMonitoreo,
                             crearIncidencias: tieneIncidencias,
                             incidenciasCanalizadas: tieneIncidencias,
                             verIncidencias: tieneIncidencias,
@@ -2021,6 +2045,7 @@ class NavbarComplete {
                 tareas: false,
                 monitoreo: false,
                 permisos: false,
+                loginMonitoreo: false,
                 crearIncidencias: false,
                 incidenciasCanalizadas: false,
                 verIncidencias: false,
@@ -2042,6 +2067,7 @@ class NavbarComplete {
                 tareas: false,
                 monitoreo: false,
                 permisos: false,
+                loginMonitoreo: false,
                 crearIncidencias: false,
                 incidenciasCanalizadas: false,
                 verIncidencias: false,
@@ -2059,46 +2085,71 @@ class NavbarComplete {
             return;
         }
 
-        const menuItems = [
-            { id: 'areasBtn', modulo: 'areas', elemento: document.getElementById('areasBtn'), texto: 'Áreas' },
-            { id: 'categoriasBtn', modulo: 'categorias', elemento: document.getElementById('categoriasBtn'), texto: 'Categorías' },
-            { id: 'sucursalesBtn', modulo: 'sucursales', elemento: document.getElementById('sucursalesBtn'), texto: 'Sucursales' },
-            { id: 'regionesBtn', modulo: 'regiones', elemento: document.getElementById('regionesBtn'), texto: 'Regiones' },
-            { id: 'usuariosBtn', modulo: 'usuarios', elemento: document.getElementById('usuariosBtn'), texto: 'Usuarios' },
-            { id: 'tareasBtn', modulo: 'tareas', elemento: document.getElementById('tareasBtn'), texto: 'Tareas' },
-            { id: 'mapaBtn', modulo: 'monitoreo', elemento: document.getElementById('mapaBtn'), texto: 'Mapa de Alertas' },
-            { id: 'estadisticasBtn', modulo: 'estadisticas', elemento: document.getElementById('estadisticasBtn'), texto: 'Estadísticas' },
-            { id: 'incidenciasBtn', modulo: 'incidencias', elemento: document.getElementById('incidenciasBtn'), texto: 'Lista de Incidencias' },
-            { id: 'crearIncidenciasBtn', modulo: 'incidencias', elemento: document.getElementById('crearIncidenciasBtn'), texto: 'Crear Incidencia' },
-            { id: 'incidenciasCanalizadasBtn', modulo: 'incidencias', elemento: document.getElementById('incidenciasCanalizadasBtn'), texto: 'Incidencias Canalizadas' },
-            { id: 'permisosBtn', modulo: 'permisos', elemento: document.getElementById('permisosBtn'), texto: 'Roles y Permisos' },
+        // Elementos dentro de Gestionar
+        const gestionarItems = [
+            { id: 'areasBtn', modulo: 'areas', elemento: document.getElementById('areasBtn') },
+            { id: 'categoriasBtn', modulo: 'categorias', elemento: document.getElementById('categoriasBtn') },
+            { id: 'sucursalesBtn', modulo: 'sucursales', elemento: document.getElementById('sucursalesBtn') },
+            { id: 'regionesBtn', modulo: 'regiones', elemento: document.getElementById('regionesBtn') },
+            { id: 'permisosBtn', modulo: 'permisos', elemento: document.getElementById('permisosBtn') },
+            { id: 'usuariosBtn', modulo: 'usuarios', elemento: document.getElementById('usuariosBtn') },
+            { id: 'tareasBtn', modulo: 'tareas', elemento: document.getElementById('tareasBtn') }
         ];
 
-        let itemsVisibles = 0;
-
-        menuItems.forEach(item => {
+        gestionarItems.forEach(item => {
             if (!item.elemento) return;
-
-            let debeMostrarse = false;
-
-            if (item.modulo === 'incidencias') {
-                debeMostrarse = this.permisos.incidencias === true;
-            } else if (item.modulo === 'permisos') {
-                debeMostrarse = this.permisos.permisos === true;
-            } else {
-                debeMostrarse = this.permisos[item.modulo] === true;
-            }
-
-            if (debeMostrarse) {
-                item.elemento.style.display = 'flex';
-                itemsVisibles++;
-            } else {
-                item.elemento.style.display = 'none';
-            }
+            const debeMostrarse = this.permisos[item.modulo] === true;
+            item.elemento.style.display = debeMostrarse ? 'flex' : 'none';
         });
 
-        this.checkEmptySections(itemsVisibles);
+        // Elementos dentro de Incidencias
+        const incidenciasItems = [
+            { id: 'incidenciasBtn', modulo: 'incidencias', elemento: document.getElementById('incidenciasBtn') },
+            { id: 'crearIncidenciasBtn', modulo: 'incidencias', elemento: document.getElementById('crearIncidenciasBtn') },
+            { id: 'incidenciasCanalizadasBtn', modulo: 'incidencias', elemento: document.getElementById('incidenciasCanalizadasBtn') }
+        ];
+
+        incidenciasItems.forEach(item => {
+            if (!item.elemento) return;
+            const debeMostrarse = this.permisos.incidencias === true;
+            item.elemento.style.display = debeMostrarse ? 'flex' : 'none';
+        });
+
+        // Elementos dentro de Monitoreo
+        const monitoreoItems = [
+            { id: 'mapaAlertasBtn', modulo: 'monitoreo', elemento: document.getElementById('mapaAlertasBtn') },
+            { id: 'loginMonitoreoBtn', modulo: 'loginMonitoreo', elemento: document.getElementById('loginMonitoreoBtn') }
+        ];
+
+        monitoreoItems.forEach(item => {
+            if (!item.elemento) return;
+            let debeMostrarse = false;
+            if (item.modulo === 'monitoreo') {
+                debeMostrarse = this.permisos.monitoreo === true;
+            } else if (item.modulo === 'loginMonitoreo') {
+                debeMostrarse = this.permisos.loginMonitoreo === true;
+            }
+            item.elemento.style.display = debeMostrarse ? 'flex' : 'none';
+        });
+
+        // Elementos individuales
+        const estadisticasBtn = document.getElementById('estadisticasBtn');
+        if (estadisticasBtn) {
+            estadisticasBtn.style.display = this.permisos.estadisticas === true ? 'flex' : 'none';
+        }
+
+        // Ocultar sección Monitoreo si no hay permisos
+        this.ocultarSeccionMonitoreo();
         this.ocultarSeccionIncidencias();
+    }
+
+    ocultarSeccionMonitoreo() {
+        const tieneMonitoreo = this.permisos?.monitoreo === true || this.permisos?.loginMonitoreo === true;
+        const monitoreoSection = document.getElementById('monitoreoNavSection');
+
+        if (monitoreoSection) {
+            monitoreoSection.style.display = tieneMonitoreo ? 'block' : 'none';
+        }
     }
 
     ocultarSeccionIncidencias() {
@@ -2106,22 +2157,7 @@ class NavbarComplete {
         const incidenciasSection = document.getElementById('incidenciasNavSection');
 
         if (incidenciasSection) {
-            if (!tienePermisoIncidencias) {
-                incidenciasSection.style.display = 'none';
-            } else {
-                incidenciasSection.style.display = 'block';
-            }
-        }
-    }
-
-    checkEmptySections(itemsVisibles) {
-        const navSection = document.querySelector('.nav-section');
-        if (!navSection) return;
-
-        if (itemsVisibles === 0) {
-            navSection.style.display = 'none';
-        } else {
-            navSection.style.display = 'block';
+            incidenciasSection.style.display = tienePermisoIncidencias ? 'block' : 'none';
         }
     }
 
@@ -2187,49 +2223,45 @@ class NavbarComplete {
     }
 
     updateUserMenuInfo() {
-    const userName = document.getElementById('userName');
-    if (userName) userName.textContent = this.currentUser.nombreCompleto || 'Usuario';
+        const userName = document.getElementById('userName');
+        if (userName) userName.textContent = this.currentUser.nombreCompleto || 'Usuario';
 
-    // CAMBIO: En lugar de mostrar el rol, mostrar área y cargo
-    const userRole = document.getElementById('userRole');
-    if (userRole) {
-        this.cargarAreaYCargo().then(info => {
-            if (info.cargoNombre) {
-                userRole.textContent = `${info.cargoNombre}`;
-            } else if (info.cargoNombre) {
-                userRole.textContent = info.cargoNombre;
-            } else {
+        const userRole = document.getElementById('userRole');
+        if (userRole) {
+            this.cargarAreaYCargo().then(info => {
+                if (info.cargoNombre) {
+                    userRole.textContent = `${info.cargoNombre}`;
+                } else {
+                    const rol = this.currentUser.rol || 'colaborador';
+                    userRole.textContent = rol.charAt(0).toUpperCase() + rol.slice(1).toLowerCase();
+                }
+            }).catch(() => {
                 const rol = this.currentUser.rol || 'colaborador';
                 userRole.textContent = rol.charAt(0).toUpperCase() + rol.slice(1).toLowerCase();
+            });
+        }
+
+        const userEmail = document.getElementById('userEmail');
+        if (userEmail) userEmail.textContent = this.currentUser.correoElectronico || 'No especificado';
+
+        const userOrganization = document.getElementById('userOrganization');
+        if (userOrganization) userOrganization.textContent = this.currentUser.organizacion || 'Sin organización';
+
+        const userProfileImg = document.getElementById('userProfileImg');
+        const profilePlaceholder = document.getElementById('profilePlaceholder');
+
+        if (userProfileImg && profilePlaceholder) {
+            if (this.currentUser.fotoUsuario && this.currentUser.fotoUsuario.length > 10) {
+                userProfileImg.src = this.currentUser.fotoUsuario;
+                userProfileImg.style.display = 'block';
+                profilePlaceholder.style.display = 'none';
+                userProfileImg.alt = `Foto de ${this.currentUser.nombreCompleto}`;
+            } else {
+                this.showProfilePlaceholder();
             }
-        }).catch(() => {
-            const rol = this.currentUser.rol || 'colaborador';
-            userRole.textContent = rol.charAt(0).toUpperCase() + rol.slice(1).toLowerCase();
-        });
-    }
-
-    const userEmail = document.getElementById('userEmail');
-    if (userEmail) userEmail.textContent = this.currentUser.correoElectronico || 'No especificado';
-
-    const userOrganization = document.getElementById('userOrganization');
-    if (userOrganization) userOrganization.textContent = this.currentUser.organizacion || 'Sin organización';
-
-    const userProfileImg = document.getElementById('userProfileImg');
-    const profilePlaceholder = document.getElementById('profilePlaceholder');
-
-    if (userProfileImg && profilePlaceholder) {
-        if (this.currentUser.fotoUsuario && this.currentUser.fotoUsuario.length > 10) {
-            userProfileImg.src = this.currentUser.fotoUsuario;
-            userProfileImg.style.display = 'block';
-            profilePlaceholder.style.display = 'none';
-            userProfileImg.alt = `Foto de ${this.currentUser.nombreCompleto}`;
-        } else {
-            this.showProfilePlaceholder();
         }
     }
-}
 
-    // NUEVO MÉTODO: Cargar área y cargo desde Firestore
     async cargarAreaYCargo() {
         try {
             const areaId = this.currentUser.areaAsignadaId || this.currentUser.areaId || '';
@@ -2238,7 +2270,6 @@ class NavbarComplete {
             let areaNombre = '';
             let cargoNombre = '';
 
-            // Cargar área si existe
             if (areaId && this.currentUser.organizacionCamelCase) {
                 const { AreaManager } = await import('/clases/area.js');
                 const areaManager = new AreaManager();
@@ -2246,7 +2277,6 @@ class NavbarComplete {
                 if (area) {
                     areaNombre = area.nombreArea;
 
-                    // Cargar cargo específico si existe
                     if (cargoId && area.cargos && area.cargos[cargoId]) {
                         cargoNombre = area.cargos[cargoId].nombre;
                     }
@@ -2255,7 +2285,6 @@ class NavbarComplete {
 
             return { areaNombre, cargoNombre };
         } catch (error) {
-            console.error('Error cargando área/cargo:', error);
             return { areaNombre: '', cargoNombre: '' };
         }
     }
@@ -2288,6 +2317,7 @@ class NavbarComplete {
         this.loadFontAwesome();
         this.setupGestionarDropdown();
         this.setupIncidenciasDropdown();
+        this.setupMonitoreoDropdown();
         this.setupConfiguracionDropdown();
         this.loadOrbitronFont();
         this.setupLogout();
@@ -2325,6 +2355,9 @@ class NavbarComplete {
                 if (this.isIncidenciasDropdownOpen) {
                     this.toggleIncidenciasDropdown(false);
                 }
+                if (this.isMonitoreoDropdownOpen) {
+                    this.toggleMonitoreoDropdown(false);
+                }
                 if (this.isConfiguracionDropdownOpen) {
                     this.toggleConfiguracionDropdown(false);
                 }
@@ -2344,6 +2377,9 @@ class NavbarComplete {
                 }
                 if (this.isIncidenciasDropdownOpen) {
                     this.toggleIncidenciasDropdown(false);
+                }
+                if (this.isMonitoreoDropdownOpen) {
+                    this.toggleMonitoreoDropdown(false);
                 }
                 if (this.isConfiguracionDropdownOpen) {
                     this.toggleConfiguracionDropdown(false);
@@ -2372,6 +2408,9 @@ class NavbarComplete {
         const toggleDropdown = () => {
             if (this.isIncidenciasDropdownOpen) {
                 this.toggleIncidenciasDropdown(false);
+            }
+            if (this.isMonitoreoDropdownOpen) {
+                this.toggleMonitoreoDropdown(false);
             }
             if (this.isConfiguracionDropdownOpen) {
                 this.toggleConfiguracionDropdown(false);
@@ -2420,6 +2459,9 @@ class NavbarComplete {
             if (this.isGestionarDropdownOpen) {
                 this.toggleGestionarDropdown(false);
             }
+            if (this.isMonitoreoDropdownOpen) {
+                this.toggleMonitoreoDropdown(false);
+            }
             if (this.isConfiguracionDropdownOpen) {
                 this.toggleConfiguracionDropdown(false);
             }
@@ -2457,6 +2499,56 @@ class NavbarComplete {
         });
     }
 
+    setupMonitoreoDropdown() {
+        const dropdownBtn = document.getElementById('monitoreoDropdownBtn');
+        const dropdownOptions = document.getElementById('monitoreoDropdownOptions');
+
+        if (!dropdownBtn || !dropdownOptions) return;
+
+        const toggleDropdown = () => {
+            if (this.isGestionarDropdownOpen) {
+                this.toggleGestionarDropdown(false);
+            }
+            if (this.isIncidenciasDropdownOpen) {
+                this.toggleIncidenciasDropdown(false);
+            }
+            if (this.isConfiguracionDropdownOpen) {
+                this.toggleConfiguracionDropdown(false);
+            }
+
+            this.isMonitoreoDropdownOpen = !this.isMonitoreoDropdownOpen;
+            this.toggleMonitoreoDropdown(this.isMonitoreoDropdownOpen);
+        };
+
+        dropdownBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            toggleDropdown();
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!dropdownBtn.contains(e.target) &&
+                !dropdownOptions.contains(e.target) &&
+                this.isMonitoreoDropdownOpen) {
+                this.toggleMonitoreoDropdown(false);
+            }
+        });
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && this.isMonitoreoDropdownOpen) {
+                this.toggleMonitoreoDropdown(false);
+            }
+        });
+
+        const options = dropdownOptions.querySelectorAll('.monitoreo-dropdown-option');
+        options.forEach(option => {
+            option.addEventListener('click', () => {
+                setTimeout(() => {
+                    this.toggleMonitoreoDropdown(false);
+                }, 100);
+            });
+        });
+    }
+
     setupConfiguracionDropdown() {
         const dropdownBtn = document.getElementById('configuracionDropdownBtn');
         const dropdownOptions = document.getElementById('configuracionDropdownOptions');
@@ -2469,6 +2561,9 @@ class NavbarComplete {
             }
             if (this.isIncidenciasDropdownOpen) {
                 this.toggleIncidenciasDropdown(false);
+            }
+            if (this.isMonitoreoDropdownOpen) {
+                this.toggleMonitoreoDropdown(false);
             }
 
             this.isConfiguracionDropdownOpen = !this.isConfiguracionDropdownOpen;
@@ -2641,6 +2736,17 @@ class NavbarComplete {
             dropdownBtn.classList.toggle('active', show);
             dropdownOptions.classList.toggle('active', show);
             this.isIncidenciasDropdownOpen = show;
+        }
+    }
+
+    toggleMonitoreoDropdown(show) {
+        const dropdownBtn = document.getElementById('monitoreoDropdownBtn');
+        const dropdownOptions = document.getElementById('monitoreoDropdownOptions');
+
+        if (dropdownBtn && dropdownOptions) {
+            dropdownBtn.classList.toggle('active', show);
+            dropdownOptions.classList.toggle('active', show);
+            this.isMonitoreoDropdownOpen = show;
         }
     }
 

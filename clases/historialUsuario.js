@@ -102,7 +102,6 @@ class Actividad {
 
 class HistorialUsuarioManager {
     constructor() {
-        console.log('📋 HistorialUsuarioManager inicializado');
     }
 
     _getCollectionName(organizacionCamelCase) {
@@ -160,7 +159,6 @@ class HistorialUsuarioManager {
                 await consumo.registrarFirestoreEscritura(collectionName, docId);
                 
                 await setDoc(docRef, nuevoDoc);
-                console.log('📄 Documento creado:', docId);
                 return docRef;
             }
         } catch (error) {
@@ -234,8 +232,6 @@ class HistorialUsuarioManager {
             };
 
             await updateDoc(docRef, updateData);
-            console.log('✅ Actividad registrada:', actividadId);
-
             return new Actividad(actividadId, {
                 ...actividad,
                 organizacionCamelCase: organizacion

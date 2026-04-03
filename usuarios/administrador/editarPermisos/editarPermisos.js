@@ -1,5 +1,5 @@
 // editarPermisos.js - EDICIÓN DE PERMISOS
-// CON MÓDULOS COMPLETOS (Áreas, Categorías, Sucursales, Regiones, Incidencias, Mapa Alertas, Usuarios, Estadísticas, Tareas)
+// CON MÓDULOS COMPLETOS (Áreas, Categorías, Sucursales, Regiones, Incidencias, Mapa Alertas, Usuarios, Estadísticas, Tareas, Permisos, Login/Monitoreo)
 
 // =============================================
 // CLASE PRINCIPAL - EditarPermisoController
@@ -317,25 +317,39 @@ class EditarPermisoController {
             this._actualizarEstiloCard(document.getElementById('permisoMonitoreoCard'), chkMonitoreo.checked);
         }
 
-        // NUEVO Módulo: Usuarios
+        // Módulo: Usuarios
         const chkUsuarios = document.getElementById('permisoUsuarios');
         if (chkUsuarios) {
             chkUsuarios.checked = permisos.usuarios || false;
             this._actualizarEstiloCard(document.getElementById('permisoUsuariosCard'), chkUsuarios.checked);
         }
 
-        // NUEVO Módulo: Estadísticas
+        // Módulo: Estadísticas
         const chkEstadisticas = document.getElementById('permisoEstadisticas');
         if (chkEstadisticas) {
             chkEstadisticas.checked = permisos.estadisticas || false;
             this._actualizarEstiloCard(document.getElementById('permisoEstadisticasCard'), chkEstadisticas.checked);
         }
 
-        // NUEVO Módulo: Tareas
+        // Módulo: Tareas
         const chkTareas = document.getElementById('permisoTareas');
         if (chkTareas) {
             chkTareas.checked = permisos.tareas || false;
             this._actualizarEstiloCard(document.getElementById('permisoTareasCard'), chkTareas.checked);
+        }
+
+        // NUEVO Módulo: Permisos
+        const chkPermisos = document.getElementById('permisoPermisos');
+        if (chkPermisos) {
+            chkPermisos.checked = permisos.permisos || false;
+            this._actualizarEstiloCard(document.getElementById('permisoPermisosCard'), chkPermisos.checked);
+        }
+
+        // NUEVO Módulo: Login/Monitoreo
+        const chkLoginMonitoreo = document.getElementById('permisoLoginMonitoreo');
+        if (chkLoginMonitoreo) {
+            chkLoginMonitoreo.checked = permisos.loginMonitoreo || false;
+            this._actualizarEstiloCard(document.getElementById('permisoLoginMonitoreoCard'), chkLoginMonitoreo.checked);
         }
     }
 
@@ -380,8 +394,12 @@ class EditarPermisoController {
     }
 
     _configurarCheckboxesPermisos() {
-        // TODOS los módulos disponibles
-        const todosModulos = ['Areas', 'Categorias', 'Sucursales', 'Regiones', 'Incidencias', 'Monitoreo', 'Usuarios', 'Estadisticas', 'Tareas'];
+        // TODOS los módulos disponibles (incluyendo Permisos y Login/Monitoreo)
+        const todosModulos = [
+            'Areas', 'Categorias', 'Sucursales', 'Regiones', 
+            'Incidencias', 'Monitoreo', 'Usuarios', 'Estadisticas', 
+            'Tareas', 'Permisos', 'LoginMonitoreo'
+        ];
 
         todosModulos.forEach(modulo => {
             const checkbox = document.getElementById(`permiso${modulo}`);
@@ -456,10 +474,11 @@ class EditarPermisoController {
             regiones: document.getElementById('permisoRegiones')?.checked || false,
             incidencias: document.getElementById('permisoIncidencias')?.checked || false,
             monitoreo: document.getElementById('permisoMonitoreo')?.checked || false,
-            // NUEVOS MÓDULOS
             usuarios: document.getElementById('permisoUsuarios')?.checked || false,
             estadisticas: document.getElementById('permisoEstadisticas')?.checked || false,
-            tareas: document.getElementById('permisoTareas')?.checked || false
+            tareas: document.getElementById('permisoTareas')?.checked || false,
+            permisos: document.getElementById('permisoPermisos')?.checked || false,
+            loginMonitoreo: document.getElementById('permisoLoginMonitoreo')?.checked || false
         };
 
         return permisos;

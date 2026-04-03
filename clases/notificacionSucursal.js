@@ -289,8 +289,6 @@ class NotificacionSucursalManager extends NotificacionAreaManager {
                 }
             }
             
-            console.log(`📬 Total destinatarios únicos: ${destinatariosUnicos.length}`);
-
             // Generar título y mensaje
             const titulo = this._generarTituloSucursal(tipo, sucursales, nivelRiesgo);
             let mensaje = mensajePersonalizado;

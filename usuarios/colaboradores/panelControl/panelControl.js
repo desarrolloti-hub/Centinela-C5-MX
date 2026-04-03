@@ -84,6 +84,16 @@ const ACCESO_RAPIDO_CONFIG = [
         url: '/usuarios/colaboradores/mapaAlertas/mapaAlertas.html',
         permiso: 'monitoreo',
         brillo: false
+    },
+    {
+        id: 'loginMonitoreo',
+        titulo: 'Login Monitoreo',
+        descripcion: 'Acceso a cuentas de monitoreo',
+        icono: 'fa-sign-in-alt',
+        color: 'green',
+        url: '/usuarios/colaboradores/loginMonitoreo/loginMonitoreo.html',
+        permiso: 'loginMonitoreo',
+        brillo: false
     }
 ];
 
@@ -170,6 +180,16 @@ const COLUMNAS_CONFIG = [
             { modulo: 'mapaAlertas', titulo: 'Mapa de Alertas', descripcion: 'Visualización en tiempo real', icono: 'fa-map', color: 'danger', url: '/usuarios/colaboradores/mapaAlertas/mapaAlertas.html' },
             { modulo: 'tableroControl', titulo: 'Tablero de Control', descripcion: 'Cuentas de monitoreo', icono: 'fa-dashboard', color: 'danger', url: '/usuarios/colaboradores/loginMonitoreo/loginMonitoreo.html' }
         ]
+    },
+    // FILA 4 - MÓDULOS DE ADMINISTRACIÓN
+    {
+        titulo: 'PANEL DE PERMISOS',
+        icono: 'fa-lock',
+        color: '#ff4d00',
+        permisos: ['permisos'],
+        tarjetas: [
+            { modulo: 'permisosLista', titulo: 'Configurar Permisos', descripcion: 'Gestionar permisos por cargo', icono: 'fa-key', color: 'danger', url: '/usuarios/colaboradores/permisos/permisos.html' }
+        ]
     }
 ];
 
@@ -243,7 +263,7 @@ async function obtenerPermisosUsuario() {
             permisosUsuario = {
                 areas: true, categorias: true, sucursales: true, regiones: true,
                 incidencias: true, usuarios: true, estadisticas: true, tareas: true,
-                monitoreo: true, permisos: true, admin: true
+                monitoreo: true, permisos: true, loginMonitoreo: true, admin: true
             };
             return;
         }
@@ -252,7 +272,7 @@ async function obtenerPermisosUsuario() {
             permisosUsuario = {
                 areas: false, categorias: false, sucursales: false, regiones: false,
                 incidencias: true, usuarios: false, estadisticas: false, tareas: false,
-                monitoreo: false, permisos: false, admin: false
+                monitoreo: false, permisos: false, loginMonitoreo: false, admin: false
             };
             return;
         }
@@ -272,7 +292,9 @@ async function obtenerPermisosUsuario() {
                     estadisticas: permiso.puedeAcceder('estadisticas'),
                     tareas: permiso.puedeAcceder('tareas'),
                     monitoreo: permiso.puedeAcceder('monitoreo'),
-                    permisos: false, admin: false
+                    permisos: permiso.puedeAcceder('permisos'),
+                    loginMonitoreo: permiso.puedeAcceder('loginMonitoreo'),
+                    admin: false
                 };
                 return;
             }
@@ -281,13 +303,13 @@ async function obtenerPermisosUsuario() {
         permisosUsuario = {
             areas: false, categorias: false, sucursales: false, regiones: false,
             incidencias: true, usuarios: false, estadisticas: false, tareas: false,
-            monitoreo: false, permisos: false, admin: false
+            monitoreo: false, permisos: false, loginMonitoreo: false, admin: false
         };
     } catch (error) {
         permisosUsuario = {
             areas: false, categorias: false, sucursales: false, regiones: false,
             incidencias: true, usuarios: false, estadisticas: false, tareas: false,
-            monitoreo: false, permisos: false, admin: false
+            monitoreo: false, permisos: false, loginMonitoreo: false, admin: false
         };
     }
 }
@@ -428,7 +450,8 @@ function renderizarColumnas() {
                     'tareas': 'tareas',
                     'monitoreo': 'monitoreo',
                     'mapa': 'monitoreo',
-                    'tablero': 'monitoreo'
+                    'tablero': 'monitoreo',
+                    'permisos': 'permisos'
                 };
 
                 const moduloKey = moduloMap[moduloBase] || moduloBase;
