@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes, viewport-fit=cover">
+    <title>Estadísticas de Pérdidas y Recuperaciones | Centinela C5</title>
+
+    <!-- Estilos -->
+    <link rel="stylesheet" href="/components/personalization/personalization.css">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Rajdhani:wght@400;500;600;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="icon" href="/assets/images/logo.png" type="image/png">
+    <link rel="manifest" href="/manifest.json">
+    <link rel="stylesheet" href="/usuarios/administrador/estadisticasExtravios/estadisticasExtravios.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script
+        src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0/dist/chartjs-plugin-datalabels.min.js"></script>
+
+    <!-- SEO Básico -->
+    <meta name="description"
+        content="Centinela es un sistema inteligente de seguridad para almacenamiento, monitoreo y predicción de incidencias. Plataforma confiable para prevención y análisis en tiempo real.">
+    <meta name="keywords"
+        content="centinela, centinela, sistema de seguridad, seguridad inteligente, predicción de incidencias, monitoreo de seguridad, plataforma de seguridad, análisis de riesgos, prevención de incidentes">
+    <meta name="author" content="Centinela">
+    <link rel="canonical" href="https://centinela-c5.web.app/" />
+
+    <!-- Open Graph / Facebook / WhatsApp / LinkedIn -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://centinela-c5.web.app">
+    <meta property="og:title" content="Centinela-C5 | Sistema Inteligente de Seguridad y Predicción">
+    <meta property="og:description"
+        content="Centinela-C5 es una plataforma avanzada de seguridad para almacenamiento, monitoreo y predicción de incidencias en tiempo real.">
+    <meta property="og:image" content="https://centinela-c5.web.app/assets/images/logo.png">
+    <meta property="og:image:width" content="500">
+    <meta property="og:image:height" content="500">
+    <meta property="og:image:alt" content="Vista previa oficial de Centinela-C5">
+    <meta property="og:image" content="https://centinela-c5.web.app/assets/images/logo.png">
+    <meta property="og:image:width" content="500">
+    <meta property="og:image:height" content="500">
+    <meta property="og:image:alt" content="Logo oficial de Centinela">
+    <meta property="og:site_name" content="Centinela">
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:url" content="https://centinela-c5.web.app">
+    <meta name="twitter:title" content="Centinela-C5 | Seguridad Inteligente">
+    <meta name="twitter:description"
+        content="Sistema de seguridad inteligente para monitoreo, almacenamiento y predicción de incidencias.">
+    <meta name="twitter:image" content="https://centinela-c5.web.app/assets/images/logo.png">
+    <meta name="twitter:creator" content="">
+
+    <!-- Schema.org / JSON-LD -->
+    <script type="application/ld+json">
+    {
+    "@context": "https://schema.org",
+    "@type": "LocalBusiness",
+    "name": "Centinela",
+    "operatingSystem": "Web",
+    "applicationCategory": "SecurityApplication",
+    "description": "Centinela es un sistema inteligente de seguridad para el almacenamiento, monitoreo y predicción de incidencias en tiempo real.",
+    "url": "https://centinela-c5.web.app",
+    "image": "https://centinela-c5.web.app/assets/images/logo.png",
+    "publisher": {
+        "@type": "Organization",
+        "name": "Centinela",
+        "logo": {
+        "@type": "ImageObject",
+        "url": "https://centinela-c5.web.app/assets/images/logo.png"
+        }
+    },
+    "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "MXN"
+    }
+    }
+    </script>
+</head>
+
+<body>
+    <canvas id="particle-canvas"></canvas>
+
+    <div class="dashboard-container">
+        <!-- Page Header -->
+        <div class="page-header">
+            <h1>
+                <i class="fas fa-chart-line"></i>
+                Pérdidas y Recuperaciones
+            </h1>
+            <div class="header-description">
+                Panel estadístico para visualizar el impacto de pérdidas y efectividad de recuperaciones.
+                Selecciona los filtros para comenzar a analizar los datos.
+            </div>
+        </div>
+
+        <!-- Panel de Filtros -->
+        <div class="filtros-container">
+            <div class="filtros-header">
+                <h5><i class="fas fa-filter"></i> Filtros de análisis</h5>
+                <div class="filtros-actions">
+                    <button class="btn-pdf" id="btnGenerarPDF">
+                        <i class="fas fa-file-pdf"></i> PDF
+                    </button>
+                    <button class="btn-limpiar-filtros" id="btnLimpiarFiltros">
+                        <i class="fas fa-eraser"></i> Limpiar filtros
+                    </button>
+                </div>
+            </div>
+            <div class="filtros-body">
+                <div class="filtro-grupo">
+                    <label><i class="fas fa-store"></i> Sucursal / Empresa</label>
+                    <select id="filtroSucursal" class="filtro-select">
+                        <option value="todas">Todas las sucursales</option>
+                    </select>
+                </div>
+
+                <div class="filtro-grupo">
+                    <label><i class="fas fa-calendar-alt"></i> Rango de fechas</label>
+                    <div class="fecha-rango">
+                        <input type="date" id="fechaInicio" class="filtro-input" placeholder="Fecha inicio">
+                        <span class="fecha-separador">—</span>
+                        <input type="date" id="fechaFin" class="filtro-input" placeholder="Fecha fin">
+                    </div>
+                </div>
+
+                <div class="filtro-grupo">
+                    <label><i class="fas fa-exclamation-triangle"></i> Tipo de evento</label>
+                    <select id="filtroTipoEvento" class="filtro-select">
+                        <option value="todos">Todos los tipos</option>
+                        <option value="robo">Robo</option>
+                        <option value="extravio">Extravío</option>
+                        <option value="accidente">Accidente</option>
+                        <option value="otro">Otro</option>
+                    </select>
+                </div>
+
+                <div class="filtro-acciones">
+                    <button class="btn-aplicar-filtros" id="btnAplicarFiltros">
+                        <i class="fas fa-chart-simple"></i> Aplicar filtros
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Contenedor de KPI Cards -->
+        <div class="kpis-container" id="kpisContainer" style="display: none;">
+            <div class="kpi-card">
+                <div class="kpi-icon perdida-icon">
+                    <i class="fas fa-box-open"></i>
+                </div>
+                <div class="kpi-info">
+                    <h3 id="totalPerdidas">$0</h3>
+                    <p>Total perdido</p>
+                </div>
+            </div>
+
+            <div class="kpi-card">
+                <div class="kpi-icon recuperado-icon">
+                    <i class="fas fa-undo-alt"></i>
+                </div>
+                <div class="kpi-info">
+                    <h3 id="totalRecuperado">$0</h3>
+                    <p>Total recuperado</p>
+                </div>
+            </div>
+
+            <div class="kpi-card">
+                <div class="kpi-icon neto-icon">
+                    <i class="fas fa-chart-line"></i>
+                </div>
+                <div class="kpi-info">
+                    <h3 id="totalNeto">$0</h3>
+                    <p>Pérdida neta</p>
+                </div>
+            </div>
+
+            <div class="kpi-card">
+                <div class="kpi-icon porcentaje-icon">
+                    <i class="fas fa-percent"></i>
+                </div>
+                <div class="kpi-info">
+                    <h3 id="porcentajeRecuperacion">0%</h3>
+                    <p>Tasa de recuperación</p>
+                </div>
+            </div>
+
+            <div class="kpi-card">
+                <div class="kpi-icon eventos-icon">
+                    <i class="fas fa-calendar-week"></i>
+                </div>
+                <div class="kpi-info">
+                    <h3 id="totalEventos">0</h3>
+                    <p>Total eventos</p>
+                </div>
+            </div>
+
+            <div class="kpi-card">
+                <div class="kpi-icon promedio-icon">
+                    <i class="fas fa-chart-line"></i>
+                </div>
+                <div class="kpi-info">
+                    <h3 id="promedioPerdida">$0</h3>
+                    <p>Promedio por evento</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Gráficas -->
+        <div class="graficas-container" id="graficasContainer" style="display: none;">
+            <!-- Fila 1: Gráficas principales -->
+            <div class="graficas-row">
+                <div class="card-grafica">
+                    <div class="card-header">
+                        <h5><i class="fas fa-chart-pie"></i> Distribución por tipo de evento</h5>
+                    </div>
+                    <div class="card-body">
+                        <canvas id="graficoTipoEvento"></canvas>
+                    </div>
+                </div>
+
+                <div class="card-grafica">
+                    <div class="card-header">
+                        <h5><i class="fas fa-chart-line"></i> Evolución mensual</h5>
+                    </div>
+                    <div class="card-body">
+                        <canvas id="graficoEvolucionMensual"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Fila 2: Gráficas secundarias -->
+            <div class="graficas-row">
+                <div class="card-grafica">
+                    <div class="card-header">
+                        <h5><i class="fas fa-chart-bar"></i> Top sucursales con más pérdidas</h5>
+                    </div>
+                    <div class="card-body">
+                        <canvas id="graficoTopSucursales"></canvas>
+                    </div>
+                </div>
+
+                <div class="card-grafica">
+                    <div class="card-header">
+                        <h5><i class="fas fa-chart-simple"></i> Pérdida vs Recuperación</h5>
+                    </div>
+                    <div class="card-body">
+                        <canvas id="graficoComparativa"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Fila 3: Tabla de resumen -->
+            <div class="card-grafica full-width">
+                <div class="card-header">
+                    <h5><i class="fas fa-table"></i> Resumen por sucursal</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="resumen-tabla" id="tablaResumen">
+                            <thead>
+                                <tr>
+                                    <th>Sucursal</th>
+                                    <th>Eventos</th>
+                                    <th>Total perdido</th>
+                                    <th>Total recuperado</th>
+                                    <th>Pérdida neta</th>
+                                    <th>% Recuperación</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tablaResumenBody">
+                                <tr>
+                                    <td colspan="6" class="text-center">Aplica filtros para ver los datos</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Estado sin datos -->
+        <div class="empty-state" id="emptyState">
+            <div class="empty-state-content">
+                <i class="fas fa-chart-line"></i>
+                <h3>Sin datos para mostrar</h3>
+                <p>Selecciona los filtros que deseas aplicar y presiona "Aplicar filtros" para visualizar las
+                    estadísticas.</p>
+                <button class="btn-primary-empty" id="btnEmptyAplicar">
+                    <i class="fas fa-chart-simple"></i> Aplicar filtros
+                </button>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer-datetime">
+            <i class="fas fa-sync-alt"></i>
+            Última actualización: <span id="fechaActualizacion">-</span>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script type="module" src="/components/autenticador.j"></script>
+    <script type="module" src="/components/cargadorTemas.js"></script>
+    <script type="module" src="/components/particulas.js"></script>
+    <script type="module" src="/components/navbarColaborador.js"></script>
+    <script src="/components/footerColaborador.js"></script>
+    <script type="module" src="/usuarios/colaboradores/estadisticasExtravios/estadisticasExtravios.js"></script>
+        <script type="module" src="/components/autenticador.js"></script>
+    <script src="/components/protector-admin.js"> </script>
+
+</body>
+
+</html>

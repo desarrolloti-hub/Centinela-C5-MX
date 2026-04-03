@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mercancía Perdida | Centinela C5</title>
+
+    <!-- Estilos -->
+    <link rel="stylesheet" href="/components/personalization/personalization.css">
+
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="icon" href="/assets/images/logo.png" type="image/png">
+    <link rel="manifest" href="/manifest.json">
+    <link rel="stylesheet" href="/usuarios/administrador/MercanciaPerdida/MercanciaPerdida.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <!-- SEO Básico -->
+    <meta name="description" content="Centinela es un sistema inteligente de seguridad para almacenamiento, monitoreo y predicción de incidencias. Plataforma confiable para prevención y análisis en tiempo real.">
+    <meta name="keywords" content="centinela, centinela, sistema de seguridad, seguridad inteligente, predicción de incidencias, monitoreo de seguridad, plataforma de seguridad, análisis de riesgos, prevención de incidentes">
+    <meta name="author" content="Centinela">
+    <link rel="canonical" href="https://centinela-c5.web.app/" />
+
+    <!-- Open Graph / Facebook / WhatsApp / LinkedIn -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://centinela-c5.web.app">
+    <meta property="og:title" content="Centinela-C5 | Sistema Inteligente de Seguridad y Predicción">
+    <meta property="og:description" content="Centinela-C5 es una plataforma avanzada de seguridad para almacenamiento, monitoreo y predicción de incidencias en tiempo real.">
+    <meta property="og:image" content="https://centinela-c5.web.app/assets/images/logo.png">
+    <meta property="og:image:width" content="500">
+    <meta property="og:image:height" content="500">
+    <meta property="og:image:alt" content="Vista previa oficial de Centinela-C5">
+    <meta property="og:image" content="https://centinela-c5.web.app/assets/images/logo.png">
+    <meta property="og:image:width" content="500">
+    <meta property="og:image:height" content="500">
+    <meta property="og:image:alt" content="Logo oficial de Centinela">
+    <meta property="og:site_name" content="Centinela">
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:url" content="https://centinela-c5.web.app">
+    <meta name="twitter:title" content="Centinela-C5 | Seguridad Inteligente">
+    <meta name="twitter:description" content="Sistema de seguridad inteligente para monitoreo, almacenamiento y predicción de incidencias.">
+    <meta name="twitter:image" content="https://centinela-c5.web.app/assets/images/logo.png">
+    <meta name="twitter:creator" content="">
+
+    <!-- Schema.org / JSON-LD -->
+    <script type="application/ld+json">
+    {
+    "@context": "https://schema.org",
+    "@type": "LocalBusiness",
+    "name": "Centinela",
+    "operatingSystem": "Web",
+    "applicationCategory": "SecurityApplication",
+    "description": "Centinela es un sistema inteligente de seguridad para el almacenamiento, monitoreo y predicción de incidencias en tiempo real.",
+    "url": "https://centinela-c5.web.app",
+    "image": "https://centinela-c5.web.app/assets/images/logo.png",
+    "publisher": {
+        "@type": "Organization",
+        "name": "Centinela",
+        "logo": {
+        "@type": "ImageObject",
+        "url": "https://centinela-c5.web.app/assets/images/logo.png"
+        }
+    },
+    "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "MXN"
+    }
+    }
+    </script>
+
+</head>
+
+<body>
+    <canvas id="particle-canvas"></canvas>
+
+    <div class="admin-container">
+        <!-- Page Header -->
+        <div class="page-header">
+            <h1>
+                <i class="fas fa-box-open"></i>
+                Mercancía Perdida / Robada
+            </h1>
+            <div class="header-description">
+                Registra y da seguimiento a incidentes de mercancía perdida, robada o extraviada.
+                Mantén un control detallado de montos, recuperaciones y evidencias.
+            </div>
+        </div>
+
+        <!-- Filtros rápidos -->
+        <div class="filtros-container">
+            <div class="filtros-header">
+                <h5><i class="fas fa-filter"></i> Filtrar por:</h5>
+            </div>
+            <div class="filtros-body">
+                <div class="filtro-grupo">
+                    <label for="filtroEstado">Estado</label>
+                    <select id="filtroEstado" class="filtro-select">
+                        <option value="todos">Todos</option>
+                        <option value="activo">Activos</option>
+                        <option value="recuperado">Recuperados</option>
+                        <option value="cerrado">Cerrados</option>
+                    </select>
+                </div>
+                <div class="filtro-grupo">
+                    <label for="filtroTipoEvento">Tipo de Evento</label>
+                    <select id="filtroTipoEvento" class="filtro-select">
+                        <option value="todos">Todos</option>
+                        <option value="robo">Robo</option>
+                        <option value="extravio">Extravío</option>
+                        <option value="accidente">Accidente</option>
+                        <option value="otro">Otro</option>
+                    </select>
+                </div>
+                <div class="filtro-grupo">
+                    <label for="filtroEmpresa">Empresa/CC</label>
+                    <select id="filtroEmpresa" class="filtro-select">
+                        <option value="todos">Todas</option>
+                    </select>
+                </div>
+                <div class="filtro-grupo filtro-acciones">
+                    <button class="btn-filtrar" id="btnFiltrar">
+                        <i class="fas fa-search"></i> Filtrar
+                    </button>
+                    <button class="btn-limpiar" id="btnLimpiarFiltros">
+                        <i class="fas fa-times"></i> Limpiar
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tabla de Registros -->
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-list"></i> Lista de Registros</h5>
+                <a href="/usuarios/administrador/crearIncidenciasRecuperacion/crearIncidenciasRecuperacion.html" class="btn-nuevo-registro-header">
+                    <i class="fas fa-plus"></i> Nuevo Registro
+                </a>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table" id="tablaRegistros">
+                        <thead>
+                            <tr>
+                                <th>ID / Folio</th>
+                                <th>Empresa/CC</th>
+                                <th>Tipo</th>
+                                <th>Monto Perdido</th>
+                                <th>Monto Recuperado</th>
+                                <th>Fecha</th>
+                                <th style="width: 140px;">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tablaRegistrosBody">
+                            <!-- Se llenará dinámicamente -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Paginación -->
+                <div class="pagination-container">
+                    <div class="pagination-info" id="paginationInfo"></div>
+                    <nav>
+                        <ul class="pagination" id="pagination">
+                            <!-- Se llenará dinámicamente -->
+                        </ul>
+                    </nav>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Detalles -->
+    <div id="modalDetalles" class="modal">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5><i class="fas fa-box-open"></i> Detalles del Registro</h5>
+                    <button type="button" class="btn-close" onclick="cerrarModalDetalles()">×</button>
+                </div>
+                <div class="modal-body" id="modalDetallesBody">
+                    <!-- Contenido dinámico -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="/components/autenticador.js"></script>
+    <script type="module" src="/components/cargadorTemas.js"></script>
+    <script type="module" src="/components/particulas.js"></script>
+    <script type="module" src="/components/navbarColaborador.js"></script>
+    <script src="/components/footerColaborador.js"></script>
+    <script type="module" src="/usuarios/administrador/MercanciaPerdida/MercanciaPerdida.js"></script>
+    <script src="/components/visualizadorPDF.js"></script>
+    <script type="module" src="/components/autenticador.js"></script>
+    <script src="/components/protector-admin.js"> </script>
+
+</body>
+
+</html>
