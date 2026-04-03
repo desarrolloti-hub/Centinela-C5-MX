@@ -1071,7 +1071,7 @@ class CrearIncidenciaController {
         });
         
         return {
-            id: `PREVIEW_${Date.now()}`,
+            id: `INC_${Date.now()}`,
             sucursalId: datos.sucursalId,
             sucursalNombre: datos.sucursalNombre,
             categoriaId: datos.categoriaId,
