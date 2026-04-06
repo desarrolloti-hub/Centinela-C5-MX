@@ -94,15 +94,12 @@ async function iniciarEditor(userManager) {
     try {
         await loadUserData(userManager, elements);
         setupBasicHandlers(elements);
-        setupPhotoHandlers(elements, userManager); // MODIFICADO: pasamos userManager
+        setupPhotoHandlers(elements, userManager);
         setupSaveHandler(elements, userManager);
         setupPasswordChangeHandler(elements, userManager);
-        // ===== NUEVO: Configurar selectores de área y cargo =====
+        setupFiltroNumerico(elements); // ✅ Configurar filtro para teléfono
         await setupAreaAndCargoHandlers(elements, userManager);
-
-        showMessage(elements.mainMessage, 'success',
-            `Editando perfil de: ${userManager.currentUser.email}`);
-
+        
     } catch (error) {
         console.error('❌ Error inicializando editor:', error);
         showMessage(elements.mainMessage, 'error',
@@ -130,10 +127,11 @@ function getElements() {
         // Formulario
         fullName: document.getElementById('fullName'),
         email: document.getElementById('email'),
+        telefono: document.getElementById('telefono'), // ✅ Elemento teléfono
         organizationName: document.getElementById('organizationName'),
         position: document.getElementById('position'),
 
-        // ===== NUEVO: Selectores de área y cargo =====
+        // Selectores de área y cargo
         areaSelect: document.getElementById('areaSelect'),
         cargoEnAreaSelect: document.getElementById('cargoEnAreaSelect'),
 
@@ -143,6 +141,46 @@ function getElements() {
         backToDashboard: document.getElementById('backToDashboard'),
         mainMessage: document.getElementById('mainMessage')
     };
+}
+
+// ✅ Filtro solo números para teléfono
+function setupFiltroNumerico(elements) {
+    if (elements.telefono) {
+        // Evento input - filtra cualquier caracter no numérico
+        elements.telefono.addEventListener('input', function (e) {
+            let originalValue = this.value;
+            let filteredValue = originalValue.replace(/[^0-9]/g, '');
+            if (filteredValue.length > 15) {
+                filteredValue = filteredValue.slice(0, 15);
+            }
+            if (originalValue !== filteredValue) {
+                this.value = filteredValue;
+            }
+        });
+
+        // Evento paste - solo pega números
+        elements.telefono.addEventListener('paste', function (e) {
+            e.preventDefault();
+            const pastedText = (e.clipboardData || window.clipboardData).getData('text');
+            const numericOnly = pastedText.replace(/[^0-9]/g, '');
+            if (numericOnly) {
+                this.value = numericOnly.slice(0, 15);
+                const inputEvent = new Event('input', { bubbles: true });
+                this.dispatchEvent(inputEvent);
+            }
+        });
+
+        // Evento keypress - solo permite teclas numéricas
+        elements.telefono.addEventListener('keypress', function (e) {
+            if (e.ctrlKey || e.altKey || e.metaKey) return;
+            if (e.key === 'Backspace' || e.key === 'Delete' || e.key === 'Tab' || 
+                e.key === 'ArrowLeft' || e.key === 'ArrowRight' || e.key === 'Home' || 
+                e.key === 'End' || e.key === 'Enter') return;
+            if (!/^[0-9]$/.test(e.key)) {
+                e.preventDefault();
+            }
+        });
+    }
 }
 
 function validateFile(file, type, elements) {
@@ -214,6 +252,12 @@ function updateUI(elements, user) {
 
     if (elements.email && user.correoElectronico) {
         elements.email.value = user.correoElectronico;
+    }
+
+    // ✅ ACTUALIZAR TELÉFONO - SIEMPRE MUESTRA EL CAMPO (aunque esté vacío)
+    if (elements.telefono) {
+        elements.telefono.value = user.telefono || '';
+        console.log('📞 Teléfono cargado para administrador:', user.telefono || '(vacío)');
     }
 
     if (elements.organizationName && user.organizacion) {
@@ -543,7 +587,7 @@ async function guardarFoto(imageBase64, type, elements, userManager) {
     }
 }
 
-// ========== NUEVAS FUNCIONES PARA ÁREA Y CARGO ==========
+// ========== FUNCIONES PARA ÁREA Y CARGO ==========
 
 async function setupAreaAndCargoHandlers(elements, userManager) {
     if (!elements.areaSelect) return;
@@ -663,7 +707,7 @@ function cargarCargosPorArea(elements) {
     elements.cargoEnAreaSelect.disabled = false;
 }
 
-// ========== HANDLER DE GUARDADO MODIFICADO ==========
+// ========== HANDLER DE GUARDADO MODIFICADO (CON TELÉFONO) ==========
 
 function setupSaveHandler(elements, userManager) {
     if (!elements.saveChangesBtn) return;
@@ -694,7 +738,10 @@ function setupSaveHandler(elements, userManager) {
         });
 
         try {
-            const updateData = { nombreCompleto: nombre };
+            const updateData = { 
+                nombreCompleto: nombre,
+                telefono: elements.telefono?.value.trim() || ''  // ✅ Guardar teléfono
+            };
 
             if (elements.areaSelect && elements.areaSelect.value) {
                 updateData.areaAsignadaId = elements.areaSelect.value;
@@ -722,6 +769,7 @@ function setupSaveHandler(elements, userManager) {
                 currentUser.organizacionCamelCase
             );
 
+            // Actualizar objeto local
             Object.assign(currentUser, updateData);
 
             Swal.close();
@@ -731,8 +779,6 @@ function setupSaveHandler(elements, userManager) {
                 text: 'Datos actualizados correctamente',
                 timer: 3000,
                 showConfirmButton: false
-            }).then(() => {
-                window.location.href = '../usuarios/usuarios.html';
             });
 
             showMessage(elements.mainMessage, 'success', 'Cambios guardados exitosamente');
