@@ -344,30 +344,60 @@ class BitacoraController {
             spanTotal.textContent = `${total} ${total === 1 ? 'actividad' : 'actividades'}`;
         }
     }
-
-    async generarPDF() {
-        if (!this.actividades || this.actividades.length === 0) {
-            this._mostrarError('No hay actividades para generar el PDF');
-            return;
-        }
-
-        if (!this.generadorPDF) {
-            this._mostrarError('El generador de PDF no está disponible');
-            return;
-        }
-
-        try {
-            await this.generadorPDF.generarBitacoraPDF(
-                this.actividades,
-                this.fechaSeleccionada,
-                { mostrarAlerta: true }
-            );
-        } catch (error) {
-            console.error('Error generando PDF:', error);
-            this._mostrarError('Error al generar el PDF: ' + error.message);
-        }
+async generarPDF() {
+    if (!this.actividades || this.actividades.length === 0) {
+        this._mostrarError('No hay actividades para generar el PDF');
+        return;
     }
 
+    if (!this.generadorPDF) {
+        this._mostrarError('El generador de PDF no está disponible');
+        return;
+    }
+
+    try {
+        // Mostrar loading
+        Swal.fire({
+            title: 'Generando PDF...',
+            text: 'Por favor espera',
+            allowOutsideClick: false,
+            didOpen: () => Swal.showLoading()
+        });
+
+        // Generar el PDF y obtener la URL
+        const pdfUrl = await this.generadorPDF.generarBitacoraPDF(
+            this.actividades,
+            this.fechaSeleccionada,
+            { mostrarAlerta: false } // Cambiado a false para manejar nosotros la apertura
+        );
+
+        Swal.close();
+
+        // Abrir PDF en nueva pestaña con visor nativo del navegador
+        if (pdfUrl) {
+            window.open(pdfUrl, '_blank');
+            
+            Swal.fire({
+                icon: 'success',
+                title: 'PDF generado',
+                text: 'El PDF se abrirá en el visor del navegador',
+                timer: 2000,
+                showConfirmButton: false,
+                toast: true,
+                position: 'top-end',
+                background: '#1a1a1a',
+                color: '#fff'
+            });
+        } else {
+            throw new Error('No se pudo obtener la URL del PDF');
+        }
+        
+    } catch (error) {
+        Swal.close();
+        console.error('Error generando PDF:', error);
+        this._mostrarError('Error al generar el PDF: ' + error.message);
+    }
+}
     _configurarEventos() {
         try {
             document.getElementById('btnVolverDashboard')?.addEventListener('click', () => {

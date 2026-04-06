@@ -138,7 +138,7 @@ class CrearMercanciaPerdidaController {
 
         // 👈 USAR LA SUCURSAL COMPLETA QUE SE SELECCIONÓ
         return {
-            id: `Vista Previa`,
+            id: `PDF extravio`,
             nombreEmpresaCC: datos.nombreEmpresaCC,
             tipoEvento: datos.tipoEvento,
             montoPerdido: datos.montoPerdido,

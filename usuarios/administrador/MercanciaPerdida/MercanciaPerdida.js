@@ -327,9 +327,20 @@ window.verPDF = async function (registroId, event) {
             throw new Error('Registro no encontrado');
         }
         
-        if (registro.pdfUrl) {
+        if (registro.pdfUrl && registro.pdfUrl.trim() !== '') {
             // Abrir PDF en nueva pestaña con el visor nativo del navegador
             window.open(registro.pdfUrl, '_blank');
+            
+            // Notificación opcional
+            Swal.fire({
+                icon: 'success',
+                title: 'Abriendo PDF',
+                text: 'El PDF se abrirá en el visor del navegador',
+                timer: 1500,
+                showConfirmButton: false,
+                toast: true,
+                position: 'top-end'
+            });
         } else if (registro.estadoGeneracion === 'generando') {
             Swal.fire({
                 icon: 'info',
