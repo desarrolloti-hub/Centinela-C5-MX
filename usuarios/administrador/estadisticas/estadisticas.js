@@ -1,6 +1,6 @@
 // =============================================
 // estadisticas.js - VERSIÓN FINAL CON FILTROS FUNCIONALES Y PDF GENERATOR
-// CON REGISTRO DE BITÁCORA
+// CON REGISTRO DE BITÁCORA - VERSIÓN CON CONSOLA LIMPIA
 // =============================================
 
 // =============================================
@@ -15,8 +15,8 @@ let sucursalesCache = [];
 let categoriasCache = [];
 let charts = {};
 let authToken = null;
-let historialManager = null; // ✅ NUEVO: Para registrar actividades
-let accesoVistaRegistrado = false; // ✅ NUEVO: Para evitar registros duplicados
+let historialManager = null;
+let accesoVistaRegistrado = false;
 
 // Filtros activos
 let filtrosActivos = {
@@ -33,50 +33,32 @@ let filtrosActivos = {
 //==============================================
 document.addEventListener('DOMContentLoaded', async function () {
     try {
-        console.log('🎯 Iniciando estadísticas...');
-
-        // ✅ NUEVO: Inicializar historialManager
         await inicializarHistorial();
-
-        // Mostrar estado de carga
         mostrarLoadingInicial();
-
         await inicializarEstadisticasManager();
         await obtenerTokenAuth();
-
-        // Configurar filtros PRIMERO
         configurarFiltros();
-
-        // Cargar datos iniciales
         await Promise.all([
             cargarSucursales(),
             cargarCategorias()
         ]);
-
-        // NO cargar incidencias automáticamente - esperar a que el usuario aplique filtros
         mostrarMensajeEsperaFiltros();
-
-        // ✅ NUEVO: Registrar acceso a la vista de estadísticas
         await registrarAccesoVistaEstadisticas();
-
     } catch (error) {
-        console.error('❌ Error al inicializar estadísticas:', error);
+        console.error('Error al inicializar estadísticas:', error);
         mostrarError('Error al cargar la página: ' + error.message);
     }
 });
 
-// ✅ NUEVO: Inicializar historialManager
 async function inicializarHistorial() {
     try {
         const { HistorialUsuarioManager } = await import('/clases/historialUsuario.js');
         historialManager = new HistorialUsuarioManager();
-        console.log('📋 HistorialManager inicializado para estadísticas');
     } catch (error) {
         console.error('Error inicializando historialManager:', error);
     }
 }
 
-// ✅ NUEVO: Obtener usuario actual
 function obtenerUsuarioActual() {
     try {
         const adminInfo = localStorage.getItem('adminInfo');
@@ -111,7 +93,6 @@ function obtenerUsuarioActual() {
     }
 }
 
-// ✅ NUEVO: Registrar acceso a la vista de estadísticas
 async function registrarAccesoVistaEstadisticas() {
     if (!historialManager) return;
     if (accesoVistaRegistrado) return;
@@ -135,13 +116,11 @@ async function registrarAccesoVistaEstadisticas() {
             }
         });
         accesoVistaRegistrado = true;
-        console.log('✅ Acceso a estadísticas registrado en bitácora');
     } catch (error) {
         console.error('Error registrando acceso a estadísticas:', error);
     }
 }
 
-// ✅ NUEVO: Registrar aplicación de filtros
 async function registrarAplicacionFiltros(filtrosAplicados, totalIncidencias) {
     if (!historialManager) return;
 
@@ -184,13 +163,11 @@ async function registrarAplicacionFiltros(filtrosAplicados, totalIncidencias) {
                 fechaAplicacion: new Date().toISOString()
             }
         });
-        console.log('✅ Aplicación de filtros registrada en bitácora');
     } catch (error) {
         console.error('Error registrando aplicación de filtros:', error);
     }
 }
 
-// ✅ NUEVO: Registrar generación de reporte PDF
 async function registrarGeneracionPDFReporte(totalIncidencias, filtrosAplicados) {
     if (!historialManager) return;
 
@@ -217,13 +194,11 @@ async function registrarGeneracionPDFReporte(totalIncidencias, filtrosAplicados)
                 fechaGeneracion: new Date().toISOString()
             }
         });
-        console.log('✅ Generación de reporte PDF registrada en bitácora');
     } catch (error) {
         console.error('Error registrando generación de PDF:', error);
     }
 }
 
-// ✅ NUEVO: Registrar limpieza de filtros
 async function registrarLimpiezaFiltros() {
     if (!historialManager) return;
 
@@ -240,7 +215,6 @@ async function registrarLimpiezaFiltros() {
                 fechaLimpieza: new Date().toISOString()
             }
         });
-        console.log('✅ Limpieza de filtros registrada en bitácora');
     } catch (error) {
         console.error('Error registrando limpieza de filtros:', error);
     }
@@ -266,7 +240,6 @@ async function obtenerTokenAuth() {
             }
         }
     } catch (error) {
-        console.warn('Error obteniendo token:', error);
         authToken = null;
     }
 }
@@ -275,7 +248,6 @@ async function obtenerTokenAuth() {
 // MOSTRAR MENSAJE DE ESPERA
 // =============================================
 function mostrarMensajeEsperaFiltros() {
-    // Limpiar todas las gráficas y mostrar mensaje
     const graficas = [
         'graficoActualizadores', 'graficoReportadores', 'graficoSeguimientos',
         'graficoEstado', 'graficoRiesgo', 'graficoCategorias',
@@ -294,7 +266,6 @@ function mostrarMensajeEsperaFiltros() {
         }
     });
 
-    // Limpiar tablas
     const tablaColab = document.getElementById('tablaColaboradoresBody');
     if (tablaColab) {
         tablaColab.innerHTML = '<td colspan="6" style="text-align:center; padding:40px;"><i class="fas fa-filter" style="font-size: 32px; opacity: 0.3; margin-bottom: 10px;"></i><br>Selecciona filtros y presiona APLICAR</div>';
@@ -305,7 +276,6 @@ function mostrarMensajeEsperaFiltros() {
         tablaCat.innerHTML = '<td colspan="2" style="text-align:center; padding:40px;"><i class="fas fa-filter" style="font-size: 32px; opacity: 0.3; margin-bottom: 10px;"></i><br>Selecciona filtros y presiona APLICAR</div>';
     }
 
-    // Resetear métricas
     setElementText('metricCriticas', '0');
     setElementText('metricAltas', '0');
     setElementText('metricPendientes', '0');
@@ -414,7 +384,6 @@ async function cargarCategorias() {
 // CONFIGURAR FILTROS
 // =============================================
 function configurarFiltros() {
-    // Establecer fechas por defecto (últimos 30 días)
     const hoy = new Date();
     const hace30Dias = new Date();
     hace30Dias.setDate(hoy.getDate() - 30);
@@ -425,25 +394,21 @@ function configurarFiltros() {
     if (fechaInicio) fechaInicio.value = hace30Dias.toISOString().split('T')[0];
     if (fechaFin) fechaFin.value = hoy.toISOString().split('T')[0];
 
-    // Guardar valores en filtros activos
     filtrosActivos.fechaInicio = hace30Dias.toISOString().split('T')[0];
     filtrosActivos.fechaFin = hoy.toISOString().split('T')[0];
 
-    // Event listeners
     document.getElementById('btnAplicarFiltros')?.addEventListener('click', aplicarFiltros);
     document.getElementById('btnLimpiarFiltros')?.addEventListener('click', limpiarFiltros);
 
-    // Búsqueda con debounce
     let timeout;
     document.getElementById('buscarIncidencias')?.addEventListener('input', (e) => {
         clearTimeout(timeout);
         timeout = setTimeout(() => {
             filtrosActivos.busqueda = e.target.value;
-            aplicarFiltros(); // Aplicar filtros automáticamente después de la búsqueda
+            aplicarFiltros();
         }, 500);
     });
 
-    // Botón PDF
     document.getElementById('btnGenerarPDF')?.addEventListener('click', generarReportePDF);
 }
 
@@ -451,10 +416,8 @@ function configurarFiltros() {
 // APLICAR FILTROS (FUNCIÓN PRINCIPAL)
 // =============================================
 async function aplicarFiltros() {
-    // Mostrar loading
     mostrarLoadingGraficas();
 
-    // Actualizar filtros activos con los valores del formulario
     const nuevosFiltros = {
         fechaInicio: document.getElementById('filtroFechaInicio')?.value || null,
         fechaFin: document.getElementById('filtroFechaFin')?.value || null,
@@ -466,12 +429,8 @@ async function aplicarFiltros() {
 
     filtrosActivos = nuevosFiltros;
 
-    console.log('🔍 Aplicando filtros:', filtrosActivos);
-
-    // Cargar incidencias con los filtros aplicados
     await cargarIncidencias();
 
-    // ✅ NUEVO: Registrar aplicación de filtros después de cargar incidencias
     if (incidenciasFiltradas) {
         await registrarAplicacionFiltros(filtrosActivos, incidenciasFiltradas.length);
     }
@@ -482,7 +441,6 @@ async function limpiarFiltros() {
     const hace30Dias = new Date();
     hace30Dias.setDate(hoy.getDate() - 30);
 
-    // Resetear todos los campos del formulario
     const fechaInicio = document.getElementById('filtroFechaInicio');
     const fechaFin = document.getElementById('filtroFechaFin');
     const filtroCategoria = document.getElementById('filtroCategoria');
@@ -497,7 +455,6 @@ async function limpiarFiltros() {
     if (filtroColaborador) filtroColaborador.value = 'todos';
     if (buscar) buscar.value = '';
 
-    // Actualizar filtros activos
     filtrosActivos = {
         fechaInicio: hace30Dias.toISOString().split('T')[0],
         fechaFin: hoy.toISOString().split('T')[0],
@@ -507,18 +464,12 @@ async function limpiarFiltros() {
         busqueda: ''
     };
 
-    console.log('🧹 Filtros limpiados');
-
-    // ✅ NUEVO: Registrar limpieza de filtros
     await registrarLimpiezaFiltros();
-
-    // Cargar incidencias con los filtros por defecto
     await cargarIncidencias();
 }
 
 function filtrarIncidencias(incidencias) {
     return incidencias.filter(inc => {
-        // Filtro por fecha
         if (filtrosActivos.fechaInicio) {
             const fechaInc = inc.fechaInicio instanceof Date ? inc.fechaInicio : new Date(inc.fechaInicio);
             if (fechaInc < new Date(filtrosActivos.fechaInicio)) return false;
@@ -531,17 +482,14 @@ function filtrarIncidencias(incidencias) {
             if (fechaInc > fechaFin) return false;
         }
 
-        // Filtro por categoría
         if (filtrosActivos.categoriaId !== 'todas' && inc.categoriaId !== filtrosActivos.categoriaId) {
             return false;
         }
 
-        // Filtro por sucursal
         if (filtrosActivos.sucursalId !== 'todas' && inc.sucursalId !== filtrosActivos.sucursalId) {
             return false;
         }
 
-        // Filtro por colaborador
         if (filtrosActivos.colaboradorId !== 'todos') {
             const coincideColaborador =
                 inc.creadoPorNombre === filtrosActivos.colaboradorId ||
@@ -550,7 +498,6 @@ function filtrarIncidencias(incidencias) {
             if (!coincideColaborador) return false;
         }
 
-        // Filtro por búsqueda
         if (filtrosActivos.busqueda) {
             const busqueda = filtrosActivos.busqueda.toLowerCase();
             const coincide =
@@ -575,35 +522,23 @@ async function cargarIncidencias() {
     }
 
     try {
-        // Mostrar loading
         mostrarLoadingGraficas();
 
-        // Obtener incidencias (solo una vez, usar cache)
         if (incidenciasCache.length === 0) {
             incidenciasCache = await incidenciaManager.getIncidenciasByOrganizacion(organizacionActual.camelCase);
-            console.log(`✅ ${incidenciasCache.length} incidencias cargadas en caché`);
         }
 
-        // Aplicar filtros
         incidenciasFiltradas = filtrarIncidencias(incidenciasCache);
-
-        console.log(`📊 ${incidenciasFiltradas.length} incidencias después de filtros`);
 
         if (incidenciasFiltradas.length === 0) {
             mostrarMensajeSinResultados();
             return;
         }
 
-        // Procesar datos para las 8 gráficas
         const datos = procesarDatosGraficas(incidenciasFiltradas);
-
-        // Actualizar métricas principales
         actualizarMetricasPrincipales(datos.metricas);
-
-        // Renderizar todas las gráficas
         renderizarTodasLasGraficas(datos);
 
-        // Actualizar tablas
         if (datos.colaboradores && datos.colaboradores.length > 0) {
             renderizarTablaColaboradores(datos.colaboradores);
         } else {
@@ -616,12 +551,10 @@ async function cargarIncidencias() {
             renderizarTablaCategorias([]);
         }
 
-        // Cargar filtro de colaboradores
         if (datos.colaboradores && datos.colaboradores.length > 0) {
             cargarFiltroColaboradores(datos.colaboradores);
         }
 
-        // Actualizar fecha
         const fechaEl = document.getElementById('fechaActualizacion');
         if (fechaEl) {
             fechaEl.textContent = new Date().toLocaleString('es-MX');
@@ -665,7 +598,6 @@ function mostrarMensajeSinResultados() {
         tablaCat.innerHTML = '<td colspan="2" style="text-align:center; padding:40px;"><i class="fas fa-search" style="font-size: 32px; opacity: 0.3; margin-bottom: 10px;"></i><br>No hay incidencias que coincidan con los filtros</div>';
     }
 
-    // Resetear métricas a 0
     setElementText('metricCriticas', '0');
     setElementText('metricAltas', '0');
     setElementText('metricPendientes', '0');
@@ -681,7 +613,6 @@ function mostrarMensajeSinResultados() {
 // =============================================
 function procesarDatosGraficas(incidencias) {
 
-    // 1. Métricas principales
     const metricas = {
         total: incidencias.length,
         pendientes: incidencias.filter(i => i.estado === 'pendiente').length,
@@ -692,7 +623,6 @@ function procesarDatosGraficas(incidencias) {
         bajas: incidencias.filter(i => i.nivelRiesgo === 'bajo').length
     };
 
-    // 2. GRÁFICA 1: Colaboradores que más actualizan
     const actualizacionesPorColaborador = new Map();
     incidencias.forEach(inc => {
         if (inc.actualizadoPorNombre) {
@@ -706,7 +636,6 @@ function procesarDatosGraficas(incidencias) {
         .sort((a, b) => b.cantidad - a.cantidad)
         .slice(0, 5);
 
-    // 3. GRÁFICA 2: Colaboradores con más reportes
     const reportesPorColaborador = new Map();
     incidencias.forEach(inc => {
         if (inc.creadoPorNombre) {
@@ -720,7 +649,6 @@ function procesarDatosGraficas(incidencias) {
         .sort((a, b) => b.cantidad - a.cantidad)
         .slice(0, 5);
 
-    // 4. GRÁFICA 3: Colaboradores con más seguimientos
     const seguimientosPorColaborador = new Map();
     incidencias.forEach(inc => {
         if (inc.seguimiento) {
@@ -738,13 +666,11 @@ function procesarDatosGraficas(incidencias) {
         .sort((a, b) => b.cantidad - a.cantidad)
         .slice(0, 5);
 
-    // 5. GRÁFICA 4: Estado de incidencias
     const estadoData = {
         pendientes: metricas.pendientes,
         finalizadas: metricas.finalizadas
     };
 
-    // 6. GRÁFICA 5: Niveles de riesgo
     const riesgoData = {
         critico: metricas.criticas,
         alto: metricas.altas,
@@ -752,7 +678,6 @@ function procesarDatosGraficas(incidencias) {
         bajo: metricas.bajas
     };
 
-    // 7. GRÁFICA 6: Incidencias por categoría
     const categoriasMap = new Map();
     incidencias.forEach(inc => {
         if (inc.categoriaId) {
@@ -766,7 +691,6 @@ function procesarDatosGraficas(incidencias) {
         .sort((a, b) => b.cantidad - a.cantidad)
         .slice(0, 5);
 
-    // 8. GRÁFICA 7: Incidencias por sucursal
     const sucursalesMap = new Map();
     incidencias.forEach(inc => {
         if (inc.sucursalId) {
@@ -780,7 +704,6 @@ function procesarDatosGraficas(incidencias) {
         .sort((a, b) => b.cantidad - a.cantidad)
         .slice(0, 5);
 
-    // 9. GRÁFICA 8: Tiempo promedio de resolución
     const tiemposResolucion = new Map();
     incidencias.filter(i => i.estado === 'finalizada' && i.fechaFinalizacion).forEach(inc => {
         if (inc.actualizadoPorNombre) {
@@ -810,11 +733,9 @@ function procesarDatosGraficas(incidencias) {
         .sort((a, b) => a.promedio - b.promedio)
         .slice(0, 5);
 
-    // Datos completos de colaboradores para la tabla
     const colaboradoresMap = new Map();
 
     incidencias.forEach(inc => {
-        // Por creación
         if (inc.creadoPorNombre) {
             if (!colaboradoresMap.has(inc.creadoPorNombre)) {
                 colaboradoresMap.set(inc.creadoPorNombre, {
@@ -829,7 +750,6 @@ function procesarDatosGraficas(incidencias) {
             colaboradoresMap.get(inc.creadoPorNombre).reportados++;
         }
 
-        // Por actualización
         if (inc.actualizadoPorNombre) {
             if (!colaboradoresMap.has(inc.actualizadoPorNombre)) {
                 colaboradoresMap.set(inc.actualizadoPorNombre, {
@@ -849,7 +769,6 @@ function procesarDatosGraficas(incidencias) {
             }
         }
 
-        // Por seguimiento
         if (inc.seguimiento) {
             Object.values(inc.seguimiento).forEach(seg => {
                 if (seg.usuarioNombre) {
@@ -868,7 +787,6 @@ function procesarDatosGraficas(incidencias) {
             });
         }
 
-        // Tiempo de resolución
         if (inc.estado === 'finalizada' && inc.fechaFinalizacion && inc.actualizadoPorNombre) {
             const inicio = inc.fechaInicio instanceof Date ? inc.fechaInicio : new Date(inc.fechaInicio);
             const fin = inc.fechaFinalizacion instanceof Date ? inc.fechaFinalizacion : new Date(inc.fechaFinalizacion);
@@ -915,12 +833,10 @@ function actualizarMetricasPrincipales(metricas) {
 // RENDERIZAR TODAS LAS GRÁFICAS
 // =============================================
 function renderizarTodasLasGraficas(datos) {
-    // Destruir gráficas anteriores
     Object.values(charts).forEach(chart => {
         if (chart && typeof chart.destroy === 'function') chart.destroy();
     });
 
-    // Crear nuevas gráficas
     crearGraficoActualizadores(datos.topActualizadores);
     crearGraficoReportadores(datos.topReportadores);
     crearGraficoSeguimientos(datos.topSeguimientos);
@@ -931,9 +847,6 @@ function renderizarTodasLasGraficas(datos) {
     crearGraficoTiempoResolucion(datos.tiemposPromedio);
 }
 
-// =============================================
-// GRÁFICA 1: Colaboradores que más actualizan
-// =============================================
 function crearGraficoActualizadores(actualizadores) {
     const canvas = document.getElementById('graficoActualizadores');
     if (!canvas) return;
@@ -982,9 +895,6 @@ function crearGraficoActualizadores(actualizadores) {
     });
 }
 
-// =============================================
-// GRÁFICA 2: Colaboradores con más reportes
-// =============================================
 function crearGraficoReportadores(reportadores) {
     const canvas = document.getElementById('graficoReportadores');
     if (!canvas) return;
@@ -1028,9 +938,6 @@ function crearGraficoReportadores(reportadores) {
     });
 }
 
-// =============================================
-// GRÁFICA 3: Colaboradores con más seguimientos
-// =============================================
 function crearGraficoSeguimientos(seguimientos) {
     const canvas = document.getElementById('graficoSeguimientos');
     if (!canvas) return;
@@ -1074,9 +981,6 @@ function crearGraficoSeguimientos(seguimientos) {
     });
 }
 
-// =============================================
-// GRÁFICA 4: Estado de incidencias
-// =============================================
 function crearGraficoEstado(estado) {
     const canvas = document.getElementById('graficoEstado');
     if (!canvas) return;
@@ -1120,9 +1024,6 @@ function crearGraficoEstado(estado) {
     });
 }
 
-// =============================================
-// GRÁFICA 5: Niveles de riesgo
-// =============================================
 function crearGraficoRiesgo(riesgo) {
     const canvas = document.getElementById('graficoRiesgo');
     if (!canvas) return;
@@ -1169,9 +1070,6 @@ function crearGraficoRiesgo(riesgo) {
     });
 }
 
-// =============================================
-// GRÁFICA 6: Incidencias por categoría
-// =============================================
 function crearGraficoCategorias(categorias) {
     const canvas = document.getElementById('graficoCategorias');
     if (!canvas) return;
@@ -1215,9 +1113,6 @@ function crearGraficoCategorias(categorias) {
     });
 }
 
-// =============================================
-// GRÁFICA 7: Incidencias por sucursal
-// =============================================
 function crearGraficoSucursales(sucursales) {
     const canvas = document.getElementById('graficoSucursales');
     if (!canvas) return;
@@ -1261,9 +1156,6 @@ function crearGraficoSucursales(sucursales) {
     });
 }
 
-// =============================================
-// GRÁFICA 8: Tiempo promedio de resolución
-// =============================================
 function crearGraficoTiempoResolucion(tiempos) {
     const canvas = document.getElementById('graficoTiempo');
     if (!canvas) return;
@@ -1340,8 +1232,8 @@ function renderizarTablaColaboradores(colaboradores) {
                         </div>
                         <span style="color: white; min-width: 40px;">${eficiencia}%</span>
                     </div>
-                </td>
-            </tr>
+                 </td>
+             </tr>
         `;
     }).join('');
 }
@@ -1362,7 +1254,7 @@ function renderizarTablaCategorias(categorias) {
         <tr>
             <td>${escapeHTML(cat.nombre)}</td>
             <td><span class="badge-value badge-info">${cat.cantidad}</span></td>
-        </tr>
+         </tr>
     `).join('');
 }
 
@@ -1416,7 +1308,6 @@ async function generarReportePDF() {
             return;
         }
 
-        // Mostrar loading
         Swal.fire({
             title: 'Preparando datos...',
             text: 'Generando reporte estadístico',
@@ -1426,10 +1317,8 @@ async function generarReportePDF() {
             }
         });
 
-        // Procesar datos para las gráficas
         const datos = procesarDatosGraficas(incidenciasFiltradas);
 
-        // Agregar métricas al objeto datos
         datos.metricas = {
             total: incidenciasFiltradas.length,
             pendientes: incidenciasFiltradas.filter(i => i.estado === 'pendiente').length,
@@ -1442,22 +1331,18 @@ async function generarReportePDF() {
 
         Swal.close();
 
-        // ✅ NUEVO: Registrar generación de PDF
         await registrarGeneracionPDFReporte(incidenciasFiltradas.length, filtrosActivos);
 
-        // Importar el generador de estadísticas
         const { generadorPDFEstadisticas } = await import('/components/pdf-estadisticas-generator.js');
 
-        // Configurar el generador
         generadorPDFEstadisticas.configurar({
             organizacionActual,
             sucursalesCache,
             categoriasCache,
-            usuariosCache: [], // Si no tienes usuariosCache en estadísticas, pasa array vacío
+            usuariosCache: [],
             authToken
         });
 
-        // Generar PDF
         await generadorPDFEstadisticas.generarReporte(datos, {
             mostrarAlerta: true,
             fechaInicio: filtrosActivos.fechaInicio,

@@ -67,33 +67,31 @@ let accesoVistaRegistrado = false;
 // =============================================
 async function obtenerAreaUsuario() {
     try {
-        console.log('🔍 Obteniendo área del usuario...');
-
         // Opción 1: Desde userData
         const userData = JSON.parse(localStorage.getItem('userData') || '{}');
-        
+
         // Opción 2: Desde adminInfo
         const adminInfo = JSON.parse(localStorage.getItem('adminInfo') || '{}');
-        
+
         // Opción 3: Desde sessionStorage
         const sessionData = JSON.parse(sessionStorage.getItem('usuarioActual') || '{}');
-        
-        // Buscar área en múltiples ubicaciones
-        let areaId = userData.areaAsignadaId || 
-                     userData.areaId || 
-                     userData.area || 
-                     userData.departamento ||
-                     adminInfo.areaAsignadaId ||
-                     adminInfo.areaId ||
-                     adminInfo.area ||
-                     sessionData.areaAsignadaId ||
-                     sessionData.areaId;
 
-        let areaNombre = userData.areaAsignadaNombre || 
-                         userData.areaNombre ||
-                         adminInfo.areaAsignadaNombre ||
-                         adminInfo.areaNombre ||
-                         sessionData.areaAsignadaNombre;
+        // Buscar área en múltiples ubicaciones
+        let areaId = userData.areaAsignadaId ||
+            userData.areaId ||
+            userData.area ||
+            userData.departamento ||
+            adminInfo.areaAsignadaId ||
+            adminInfo.areaId ||
+            adminInfo.area ||
+            sessionData.areaAsignadaId ||
+            sessionData.areaId;
+
+        let areaNombre = userData.areaAsignadaNombre ||
+            userData.areaNombre ||
+            adminInfo.areaAsignadaNombre ||
+            adminInfo.areaNombre ||
+            sessionData.areaAsignadaNombre;
 
         // Si no hay área, intentar obtener desde Firestore
         if (!areaId) {
@@ -105,7 +103,6 @@ async function obtenerAreaUsuario() {
         }
 
         if (!areaId) {
-            console.warn('⚠️ Usuario sin área asignada - Mostrando TODAS las incidencias canalizadas');
             areaActual.nombre = 'Todas las áreas (Admin)';
             areaActual.id = 'todas';
             areaActual.icono = 'fa-globe';
@@ -115,13 +112,10 @@ async function obtenerAreaUsuario() {
             areaActual.icono = ICONOS_AREA[areaId.toLowerCase()] || ICONOS_AREA['default'];
         }
 
-        console.log('✅ Área actual:', areaActual);
-        
         // Actualizar UI
         actualizarInterfazArea();
 
     } catch (error) {
-        console.error('Error obteniendo área del usuario:', error);
         areaActual.nombre = 'Error al cargar área';
         areaActual.id = null;
     }
@@ -132,11 +126,11 @@ async function obtenerAreaDesdeBackend() {
     try {
         const usuario = obtenerUsuarioActual();
         if (!usuario || !usuario.id) return null;
-        
+
         // Intentar importar UserManager
         const { UsuarioManager } = await import('/clases/user.js');
         const userManager = new UsuarioManager();
-        
+
         const userData = await userManager.obtenerUsuarioPorId(usuario.id, usuario.organizacionCamelCase);
         if (userData && userData.areaAsignadaId) {
             return {
@@ -146,7 +140,6 @@ async function obtenerAreaDesdeBackend() {
         }
         return null;
     } catch (error) {
-        console.error('Error obteniendo área desde backend:', error);
         return null;
     }
 }
@@ -156,7 +149,6 @@ async function obtenerAreaDesdeBackend() {
 // =============================================
 async function cargarIncidenciasCanalizadas() {
     if (!incidenciaManager || !organizacionActual?.camelCase) {
-        console.error('No se puede cargar: falta incidenciaManager u organización');
         mostrarError('No se pudo cargar el gestor de incidencias');
         return;
     }
@@ -173,20 +165,8 @@ async function cargarIncidenciasCanalizadas() {
             { orderByFecha: true }
         );
 
-        console.log(`📊 Total incidencias en organización: ${todasIncidencias.length}`);
-
         // Filtrar solo las que tienen canalizaciones y están dirigidas al área actual
         incidenciasCache = filtrarPorAreaCanalizada(todasIncidencias);
-
-        console.log(`📌 Incidencias canalizadas a ${areaActual.nombre}: ${incidenciasCache.length}`);
-
-        // DEBUG: Mostrar detalles de canalización
-        incidenciasCache.forEach(inc => {
-            const canalizaciones = inc.getCanalizacionesArray ? 
-                inc.getCanalizacionesArray() : 
-                Object.values(inc.canalizaciones || {});
-            console.log(`  - ${inc.id}: canalizada a ${canalizaciones.map(c => c.areaNombre).join(', ')}`);
-        });
 
         if (!incidenciasCache || incidenciasCache.length === 0) {
             tbody.innerHTML = `
@@ -216,7 +196,6 @@ async function cargarIncidenciasCanalizadas() {
         await registrarAccesoVistaIncidenciasCanalizadas();
 
     } catch (error) {
-        console.error('Error al cargar incidencias canalizadas:', error);
         mostrarError('Error al cargar incidencias: ' + error.message);
     }
 }
@@ -230,8 +209,8 @@ function filtrarPorAreaCanalizada(incidencias) {
     // Si el usuario es admin (área 'todas'), mostrar TODAS las canalizadas
     if (areaActual.id === 'todas' || !areaActual.id) {
         return incidencias.filter(inc => {
-            const canalizaciones = inc.getCanalizacionesArray ? 
-                inc.getCanalizacionesArray() : 
+            const canalizaciones = inc.getCanalizacionesArray ?
+                inc.getCanalizacionesArray() :
                 Object.values(inc.canalizaciones || {});
             return canalizaciones.length > 0;
         });
@@ -239,33 +218,29 @@ function filtrarPorAreaCanalizada(incidencias) {
 
     // Filtrar por área específica (case-insensitive)
     const areaIdLower = areaActual.id.toLowerCase();
-    
+
     return incidencias.filter(inc => {
         // Obtener canalizaciones en formato array
         let canalizaciones = [];
-        
+
         if (inc.getCanalizacionesArray) {
             canalizaciones = inc.getCanalizacionesArray();
         } else if (inc.canalizaciones) {
             canalizaciones = Object.values(inc.canalizaciones);
         }
-        
+
         if (canalizaciones.length === 0) return false;
-        
+
         // Buscar si alguna canalización corresponde al área actual
         const canalizada = canalizaciones.some(canal => {
             const canalAreaId = (canal.areaId || '').toLowerCase();
             const canalAreaNombre = (canal.areaNombre || '').toLowerCase();
-            
-            return canalAreaId === areaIdLower || 
-                   canalAreaNombre === areaIdLower ||
-                   canalAreaNombre === areaActual.nombre.toLowerCase();
+
+            return canalAreaId === areaIdLower ||
+                canalAreaNombre === areaIdLower ||
+                canalAreaNombre === areaActual.nombre.toLowerCase();
         });
-        
-        if (canalizada) {
-            console.log(`✅ Incidencia ${inc.id} canalizada al área ${areaActual.nombre}`);
-        }
-        
+
         return canalizada;
     });
 }
@@ -278,19 +253,19 @@ function obtenerCanalizacionParaArea(incidencia) {
 
     const areaIdLower = areaActual.id.toLowerCase();
     let canalizaciones = [];
-    
+
     if (incidencia.getCanalizacionesArray) {
         canalizaciones = incidencia.getCanalizacionesArray();
     } else if (incidencia.canalizaciones) {
         canalizaciones = Object.values(incidencia.canalizaciones);
     }
-    
+
     return canalizaciones.find(c => {
         const canalAreaId = (c.areaId || '').toLowerCase();
         const canalAreaNombre = (c.areaNombre || '').toLowerCase();
-        return canalAreaId === areaIdLower || 
-               canalAreaNombre === areaIdLower ||
-               canalAreaNombre === areaActual.nombre.toLowerCase();
+        return canalAreaId === areaIdLower ||
+            canalAreaNombre === areaIdLower ||
+            canalAreaNombre === areaActual.nombre.toLowerCase();
     });
 }
 
@@ -372,10 +347,10 @@ function crearFilaIncidencia(incidencia, tbody) {
     }
 
     // Contar cuántas áreas están canalizadas
-    const totalCanalizaciones = incidencia.getCanalizacionesArray ? 
-        incidencia.getCanalizacionesArray().length : 
+    const totalCanalizaciones = incidencia.getCanalizacionesArray ?
+        incidencia.getCanalizacionesArray().length :
         Object.keys(incidencia.canalizaciones || {}).length;
-    
+
     const multiCanalizada = totalCanalizaciones > 1 ?
         `<span class="origen-badge" style="margin-left: 5px;" title="Canalizada a ${totalCanalizaciones} áreas"><i class="fas fa-layer-group"></i> ${totalCanalizaciones}</span>` : '';
 
@@ -477,22 +452,22 @@ function actualizarEstadisticas() {
     const areaNombreEl = document.getElementById('areaNombreEstadisticas');
 
     if (totalEl) totalEl.textContent = incidenciasCache.length;
-    
+
     if (pendientesEl) {
         const pendientes = incidenciasCache.filter(inc => inc.estado === 'pendiente').length;
         pendientesEl.textContent = pendientes;
     }
-    
+
     if (enProcesoEl) {
         const enProceso = incidenciasCache.filter(inc => inc.estado === 'en_proceso').length;
         enProcesoEl.textContent = enProceso;
     }
-    
+
     if (completadasEl) {
         const completadas = incidenciasCache.filter(inc => inc.estado === 'finalizada').length;
         completadasEl.textContent = completadas;
     }
-    
+
     if (areaNombreEl) {
         areaNombreEl.textContent = areaActual.nombre;
     }
@@ -511,7 +486,7 @@ async function refrescarIncidencias() {
     if (incidenciaManager && incidenciaManager.limpiarCache) {
         incidenciaManager.limpiarCache();
     }
-    
+
     await cargarIncidenciasCanalizadas();
 
     setTimeout(() => {
@@ -526,12 +501,12 @@ async function refrescarIncidencias() {
 // =============================================
 window.verDetallesIncidencia = async function (incidenciaId, event) {
     event?.stopPropagation();
-    
+
     const incidencia = incidenciasCache.find(i => i.id === incidenciaId);
     if (incidencia) {
         await registrarVisualizacionIncidencia(incidencia);
     }
-    
+
     window.location.href = `../verIncidencias/verIncidencias.html?id=${incidenciaId}`;
 };
 
@@ -567,12 +542,12 @@ async function mostrarDetallesCanalizacion(incidenciaId, event) {
         timelineHtml = '<p style="text-align:center; color: var(--color-text-dim);">No hay información de canalización disponible</p>';
     } else {
         timelineHtml = '<div class="canalizacion-timeline" style="max-height: 400px; overflow-y: auto; padding-right: 10px;">';
-        
+
         canalizaciones.forEach((canal, index) => {
             const esActual = (canal.areaId && canal.areaId.toLowerCase() === (areaActual.id || '').toLowerCase()) ||
-                            (canal.areaNombre && canal.areaNombre.toLowerCase() === (areaActual.nombre || '').toLowerCase());
+                (canal.areaNombre && canal.areaNombre.toLowerCase() === (areaActual.nombre || '').toLowerCase());
             const fecha = canal.fechaCanalizacion ? new Date(canal.fechaCanalizacion).toLocaleString('es-MX') : 'Fecha no disponible';
-            
+
             // Determinar estado de la canalización
             let estadoCanalizacion = canal.estado || 'pendiente';
             let estadoColor = estadoCanalizacion === 'atendida' ? '#28a745' : '#ffc107';
@@ -590,7 +565,7 @@ async function mostrarDetallesCanalizacion(incidenciaId, event) {
                 </div>
             `;
         });
-        
+
         timelineHtml += '</div>';
     }
 
@@ -610,7 +585,7 @@ async function mostrarDetallesCanalizacion(incidenciaId, event) {
 }
 
 // =============================================
-// VER PDF
+// FUNCIÓN PARA VER PDF EN VISOR NATIVO DEL NAVEGADOR
 // =============================================
 window.verPDF = async function (incidenciaId, event) {
     event?.stopPropagation();
@@ -621,10 +596,12 @@ window.verPDF = async function (incidenciaId, event) {
             throw new Error('Incidencia no encontrada');
         }
 
+        // ✅ Registrar apertura de PDF
         await registrarAperturaPDF(incidencia);
 
         if (incidencia.pdfUrl) {
-            window.visualizadorPDF?.abrir(incidencia.pdfUrl, `Incidencia ${incidencia.id}`);
+            // Abrir PDF en nueva pestaña con visor nativo del navegador
+            window.open(incidencia.pdfUrl, '_blank');
         } else {
             Swal.fire({
                 icon: 'info',
@@ -633,7 +610,6 @@ window.verPDF = async function (incidenciaId, event) {
             });
         }
     } catch (error) {
-        console.error('Error al abrir PDF:', error);
         Swal.fire({
             icon: 'error',
             title: 'Error',
@@ -647,8 +623,6 @@ window.verPDF = async function (incidenciaId, event) {
 // =============================================
 async function inicializarIncidenciaManager() {
     try {
-        console.log('🚀 Inicializando módulo de incidencias canalizadas...');
-
         await obtenerDatosOrganizacion();
         await obtenerTokenAuth();
         await obtenerAreaUsuario();
@@ -661,9 +635,9 @@ async function inicializarIncidenciaManager() {
 
         // Cargar datos en paralelo
         await Promise.all([
-            cargarSucursales().catch(() => {}),
-            cargarCategorias().catch(() => {}),
-            cargarUsuarios().catch(() => {})
+            cargarSucursales().catch(() => { }),
+            cargarCategorias().catch(() => { }),
+            cargarUsuarios().catch(() => { })
         ]);
 
         await procesarSubcategoriasDesdeCategorias();
@@ -672,12 +646,9 @@ async function inicializarIncidenciaManager() {
         configurarEventListeners();
         actualizarEstadisticas();
 
-        console.log('✅ Módulo de incidencias canalizadas inicializado correctamente');
-
         return true;
 
     } catch (error) {
-        console.error('❌ Error al inicializar:', error);
         mostrarErrorInicializacion();
         return false;
     }
@@ -766,7 +737,7 @@ function obtenerUsuarioActual() {
     try {
         const userData = JSON.parse(localStorage.getItem('userData') || '{}');
         const adminInfo = JSON.parse(localStorage.getItem('adminInfo') || '{}');
-        
+
         return {
             id: userData.id || adminInfo.id || userData.uid || adminInfo.uid,
             nombreCompleto: userData.nombreCompleto || adminInfo.nombreCompleto || 'Usuario',
@@ -775,7 +746,6 @@ function obtenerUsuarioActual() {
             correoElectronico: userData.correoElectronico || adminInfo.correoElectronico || ''
         };
     } catch (error) {
-        console.error('Error obteniendo usuario actual:', error);
         return null;
     }
 }
@@ -838,7 +808,6 @@ async function cargarSucursales() {
             }
         }
     } catch (error) {
-        console.error('Error cargando sucursales:', error);
         sucursalesCache = [];
     }
 }
@@ -849,7 +818,6 @@ async function cargarCategorias() {
         const categoriaManager = new CategoriaManager();
         categoriasCache = await categoriaManager.obtenerTodasCategorias();
     } catch (error) {
-        console.error('Error cargando categorías:', error);
         categoriasCache = [];
     }
 }
@@ -890,7 +858,6 @@ async function procesarSubcategoriasDesdeCategorias() {
             }
         });
     } catch (error) {
-        console.error('Error procesando subcategorías:', error);
         subcategoriasCache = [];
     }
 }
@@ -906,7 +873,6 @@ async function cargarUsuarios() {
             usuariosCache = await usuarioManager.obtenerUsuariosPorOrganizacion(organizacionActual.camelCase);
         } else { usuariosCache = []; }
     } catch (error) {
-        console.error('Error cargando usuarios:', error);
         usuariosCache = [];
     }
 }

@@ -36,13 +36,12 @@ async function inicializarCategoriaManager() {
 
         await cargarTodasLasCategorias(); // Carga todas para búsqueda
         configurarEventListeners();
-        
+
         // ✅ NUEVO: Registrar acceso a la vista de categorías
         await registrarAccesoVistaCategorias();
-        
+
         return true;
     } catch (error) {
-        console.error('Error al inicializar categorías:', error);
         mostrarErrorInicializacion();
         return false;
     }
@@ -54,18 +53,18 @@ async function inicializarHistorial() {
         const { HistorialUsuarioManager } = await import('/clases/historialUsuario.js');
         historialManager = new HistorialUsuarioManager();
     } catch (error) {
-        console.error('Error inicializando historialManager:', error);
+        // Error handling without console
     }
 }
 
 // ✅ NUEVO: Registrar acceso a la vista de categorías
 async function registrarAccesoVistaCategorias() {
     if (!historialManager) return;
-    
+
     try {
         const usuario = obtenerUsuarioActual();
         if (!usuario) return;
-        
+
         await historialManager.registrarActividad({
             usuario: usuario,
             tipo: 'leer',
@@ -75,20 +74,19 @@ async function registrarAccesoVistaCategorias() {
                 totalCategorias: todasLasCategorias.length || 0
             }
         });
-        console.log('✅ Acceso a categorías registrado en bitácora');
     } catch (error) {
-        console.error('Error registrando acceso a categorías:', error);
+        // Error handling without console
     }
 }
 
 // ✅ NUEVO: Registrar visualización de detalles de categoría
 async function registrarVisualizacionCategoria(categoria, tipo = 'verDetalles') {
     if (!historialManager) return;
-    
+
     try {
         const usuario = obtenerUsuarioActual();
         if (!usuario) return;
-        
+
         let numSub = 0;
         if (categoria.subcategorias) {
             if (categoria.subcategorias.size !== undefined) {
@@ -97,7 +95,7 @@ async function registrarVisualizacionCategoria(categoria, tipo = 'verDetalles') 
                 numSub = Object.keys(categoria.subcategorias).length;
             }
         }
-        
+
         await historialManager.registrarActividad({
             usuario: usuario,
             tipo: 'leer',
@@ -110,9 +108,8 @@ async function registrarVisualizacionCategoria(categoria, tipo = 'verDetalles') 
                 accion: tipo
             }
         });
-        console.log(`✅ Visualización de categoría "${categoria.nombre}" registrada en bitácora`);
     } catch (error) {
-        console.error('Error registrando visualización de categoría:', error);
+        // Error handling without console
     }
 }
 
@@ -148,7 +145,6 @@ function obtenerUsuarioActual() {
 
         return null;
     } catch (error) {
-        console.error('Error obteniendo usuario actual:', error);
         return null;
     }
 }
@@ -225,14 +221,13 @@ async function buscarCategoriasEnDB(termino) {
         // Obtener todas las categorías y filtrar en memoria por ahora
         // Si tu CategoriaManager tuviera un método de búsqueda en Firestore, sería mejor
         const todas = await categoriaManager.obtenerTodasCategorias();
-        
+
         const terminoLower = termino.toLowerCase();
-        return todas.filter(cat => 
+        return todas.filter(cat =>
             cat.nombre?.toLowerCase().includes(terminoLower) ||
             cat.descripcion?.toLowerCase().includes(terminoLower)
         );
     } catch (error) {
-        console.error('Error en búsqueda:', error);
         return [];
     }
 }
@@ -256,13 +251,12 @@ async function cargarTodasLasCategorias() {
 
         // Ordenar alfabéticamente
         todasLasCategorias.sort((a, b) => (a.nombre || '').localeCompare(b.nombre || ''));
-        
+
         // Inicializar la vista con todas las categorías
         categoriasCache = [...todasLasCategorias];
         renderizarCategorias();
 
     } catch (error) {
-        console.error('Error al cargar categorías:', error);
         mostrarError('Error al cargar categorías: ' + error.message);
     }
 }
@@ -279,7 +273,7 @@ function filtrarYRenderizar() {
     } else {
         // Filtrar en memoria
         const terminoLower = terminoBusqueda.toLowerCase();
-        categoriasCache = todasLasCategorias.filter(cat => 
+        categoriasCache = todasLasCategorias.filter(cat =>
             (cat.nombre && cat.nombre.toLowerCase().includes(terminoLower)) ||
             (cat.descripcion && cat.descripcion.toLowerCase().includes(terminoLower))
         );
@@ -306,7 +300,7 @@ function mostrarMensajeVacio() {
 
     const paginationInfo = document.getElementById('paginationInfo');
     if (paginationInfo) paginationInfo.textContent = 'Mostrando 0-0 de 0 categorías';
-    
+
     const pagination = document.getElementById('pagination');
     if (pagination) pagination.innerHTML = '';
 }
@@ -317,12 +311,12 @@ function renderizarCategorias() {
 
     const totalItems = categoriasCache.length;
     const totalPaginas = Math.ceil(totalItems / ITEMS_POR_PAGINA);
-    
+
     // Ajustar página actual si está fuera de rango
     if (paginaActual > totalPaginas && totalPaginas > 0) {
         paginaActual = totalPaginas;
     }
-    
+
     const inicio = (paginaActual - 1) * ITEMS_POR_PAGINA;
     const fin = Math.min(inicio + ITEMS_POR_PAGINA, totalItems);
     const categoriasPagina = categoriasCache.slice(inicio, fin);
@@ -385,10 +379,10 @@ function renderizarPaginacion(totalPaginas) {
 }
 
 // Hacer irPagina global para que funcione desde los botones
-window.irPagina = function(pagina) {
+window.irPagina = function (pagina) {
     paginaActual = pagina;
     renderizarCategorias();
-    
+
     // Scroll suave hacia arriba
     document.querySelector('.card-body')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 };
@@ -414,9 +408,9 @@ async function crearFilaCategoria(categoria, tbody) {
     }
 
     const color = categoria.color || '#2f8cff';
-    
-    const nombreTruncado = categoria.nombre && categoria.nombre.length > 30 
-        ? categoria.nombre.substring(0, 27) + '...' 
+
+    const nombreTruncado = categoria.nombre && categoria.nombre.length > 30
+        ? categoria.nombre.substring(0, 27) + '...'
         : categoria.nombre;
 
     tr.innerHTML = `
@@ -498,7 +492,7 @@ async function crearFilaCategoria(categoria, tbody) {
                 else if (action === 'eliminar') window.eliminarCategoria(id, e);
             });
         });
-        
+
         const badge = tr.querySelector('.subcategoria-count-badge');
         if (badge) {
             badge.addEventListener('click', (e) => {
@@ -506,7 +500,7 @@ async function crearFilaCategoria(categoria, tbody) {
                 toggleSubcategorias(categoria.id);
             });
         }
-        
+
         const toggleIcon = tr.querySelector('.toggle-icon');
         if (toggleIcon) {
             toggleIcon.addEventListener('click', (e) => {
@@ -543,8 +537,8 @@ window.editarSubcategoria = function (catId, subId, event) {
 window.verDetalles = async function (categoriaId, event) {
     event?.stopPropagation();
 
-    const categoria = categoriasCache.find(c => c.id === categoriaId) || 
-                     todasLasCategorias.find(c => c.id === categoriaId);
+    const categoria = categoriasCache.find(c => c.id === categoriaId) ||
+        todasLasCategorias.find(c => c.id === categoriaId);
     if (!categoria) return;
 
     // ✅ NUEVO: Registrar visualización de categoría
@@ -580,7 +574,7 @@ window.verDetalles = async function (categoriaId, event) {
         subcategoriasHTML = subcategoriasArray.map(sub => {
             const subNombre = sub.nombre || 'Sin nombre';
             const subDesc = sub.descripcion || 'Sin descripción';
-            
+
             return `
                 <div style="margin-bottom: 15px; padding: 10px; background: rgba(255,255,255,0.02); border-radius: 6px;">
                     <strong style="color: var(--color-text-primary); display: block; margin-bottom: 5px;">
@@ -641,8 +635,8 @@ window.verDetalles = async function (categoriaId, event) {
 window.verDetallesSubcategoria = async function (categoriaId, subcategoriaId, event) {
     event?.stopPropagation();
 
-    const categoria = categoriasCache.find(c => c.id === categoriaId) || 
-                     todasLasCategorias.find(c => c.id === categoriaId);
+    const categoria = categoriasCache.find(c => c.id === categoriaId) ||
+        todasLasCategorias.find(c => c.id === categoriaId);
     if (!categoria) return;
 
     let subcategoria = null;
@@ -687,10 +681,9 @@ window.verDetallesSubcategoria = async function (categoriaId, subcategoriaId, ev
                         subcategoriaNombre: subcategoriaNombre
                     }
                 });
-                console.log(`✅ Visualización de subcategoría "${subcategoriaNombre}" registrada en bitácora`);
             }
         } catch (error) {
-            console.error('Error registrando visualización de subcategoría:', error);
+            // Error handling without console
         }
     }
 
@@ -766,8 +759,8 @@ window.verDetallesSubcategoria = async function (categoriaId, subcategoriaId, ev
 window.eliminarCategoria = async function (categoriaId, event) {
     event?.stopPropagation();
 
-    const categoria = categoriasCache.find(c => c.id === categoriaId) || 
-                     todasLasCategorias.find(c => c.id === categoriaId);
+    const categoria = categoriasCache.find(c => c.id === categoriaId) ||
+        todasLasCategorias.find(c => c.id === categoriaId);
     if (!categoria) return;
 
     // Contar subcategorías
@@ -848,8 +841,8 @@ window.eliminarCategoria = async function (categoriaId, event) {
 window.eliminarSubcategoria = async function (categoriaId, subcategoriaId, event) {
     event?.stopPropagation();
 
-    const categoria = categoriasCache.find(c => c.id === categoriaId) || 
-                     todasLasCategorias.find(c => c.id === categoriaId);
+    const categoria = categoriasCache.find(c => c.id === categoriaId) ||
+        todasLasCategorias.find(c => c.id === categoriaId);
     if (!categoria) {
         Swal.fire({
             icon: 'error',
@@ -928,11 +921,11 @@ window.eliminarSubcategoria = async function (categoriaId, subcategoriaId, event
             });
 
             const categoriaActualizada = await categoriaManager.obtenerCategoriaPorId(categoriaId);
-            
+
             // Actualizar en ambos cachés
             const indexCache = categoriasCache.findIndex(c => c.id === categoriaId);
             if (indexCache !== -1) categoriasCache[indexCache] = categoriaActualizada;
-            
+
             const indexAll = todasLasCategorias.findIndex(c => c.id === categoriaId);
             if (indexAll !== -1) todasLasCategorias[indexAll] = categoriaActualizada;
 
@@ -942,8 +935,8 @@ window.eliminarSubcategoria = async function (categoriaId, subcategoriaId, event
             if (categoriaRow) {
                 let numSub = 0;
                 if (categoriaActualizada.subcategorias) {
-                    numSub = categoriaActualizada.subcategorias.size || 
-                            Object.keys(categoriaActualizada.subcategorias).length;
+                    numSub = categoriaActualizada.subcategorias.size ||
+                        Object.keys(categoriaActualizada.subcategorias).length;
                 }
                 const badge = categoriaRow.querySelector('td[data-label="Subcategorías"] span');
                 if (badge) {
@@ -966,8 +959,8 @@ window.eliminarSubcategoria = async function (categoriaId, subcategoriaId, event
 // CARGAR SUBCATEGORÍAS (se mantiene igual)
 // =============================================
 async function cargarSubcategorias(categoriaId) {
-    const categoria = categoriasCache.find(c => c.id === categoriaId) || 
-                     todasLasCategorias.find(c => c.id === categoriaId);
+    const categoria = categoriasCache.find(c => c.id === categoriaId) ||
+        todasLasCategorias.find(c => c.id === categoriaId);
     if (!categoria) return;
 
     const container = document.getElementById(`sub-content-${categoriaId}`);
@@ -1028,13 +1021,13 @@ async function cargarSubcategorias(categoriaId) {
     subcategoriasArray.forEach((sub, index) => {
         const colorSub = sub.color || categoria.color || '#2f8cff';
         const hereda = sub.heredaColor || false;
-        
-        const descripcionTruncada = sub.descripcion && sub.descripcion.length > 40 
-            ? sub.descripcion.substring(0, 37) + '...' 
+
+        const descripcionTruncada = sub.descripcion && sub.descripcion.length > 40
+            ? sub.descripcion.substring(0, 37) + '...'
             : sub.descripcion || '';
-            
-        const nombreTruncado = sub.nombre && sub.nombre.length > 18 
-            ? sub.nombre.substring(0, 15) + '...' 
+
+        const nombreTruncado = sub.nombre && sub.nombre.length > 18
+            ? sub.nombre.substring(0, 15) + '...'
             : sub.nombre || 'Sin nombre';
 
         html += `

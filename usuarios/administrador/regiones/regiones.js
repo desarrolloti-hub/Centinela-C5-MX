@@ -11,22 +11,21 @@ let todasLasRegiones = []; // Almacena todas las regiones para búsqueda
 let regionesFiltradas = []; // Regiones filtradas para mostrar
 
 // ========== INICIALIZACIÓN ==========
-document.addEventListener('DOMContentLoaded', async function() {    
+document.addEventListener('DOMContentLoaded', async function () {
     try {
         // ✅ NUEVO: Inicializar historialManager
         await inicializarHistorial();
-        
+
         const { RegionManager } = await import('/clases/region.js');
-        
+
         regionManager = new RegionManager();
-        
+
         await new Promise(resolve => setTimeout(resolve, 1500));
-        
+
         // Obtener información del usuario actual (temporal - será reemplazado por componente Auth)
         usuarioActual = obtenerUsuarioActual();
-        
+
         if (!usuarioActual) {
-            console.warn('No hay información de usuario, usando valores por defecto');
             usuarioActual = {
                 id: `usuario_${Date.now()}`,
                 nombreCompleto: 'Usuario',
@@ -35,7 +34,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                 correoElectronico: 'usuario@ejemplo.com'
             };
         }
-        
+
         // Guardar info en localStorage para otros componentes (temporal)
         localStorage.setItem('userInfo', JSON.stringify({
             id: usuarioActual.id,
@@ -45,16 +44,15 @@ document.addEventListener('DOMContentLoaded', async function() {
             correoElectronico: usuarioActual.correoElectronico,
             timestamp: new Date().toISOString()
         }));
-        
+
         await loadRegions();
         configurarBusqueda();
         setupEvents();
-        
+
         // ✅ NUEVO: Registrar acceso a la vista de regiones
         await registrarAccesoVistaRegiones();
-        
+
     } catch (error) {
-        console.error('❌ Error inicializando:', error);
         showError(error.message || 'Error al cargar la página');
     }
 });
@@ -64,20 +62,19 @@ async function inicializarHistorial() {
     try {
         const { HistorialUsuarioManager } = await import('/clases/historialUsuario.js');
         historialManager = new HistorialUsuarioManager();
-        console.log('📋 HistorialManager inicializado para regiones');
     } catch (error) {
-        console.error('Error inicializando historialManager:', error);
+        // Error handling without console
     }
 }
 
 // ✅ NUEVO: Registrar acceso a la vista de regiones
 async function registrarAccesoVistaRegiones() {
     if (!historialManager) return;
-    
+
     try {
         const usuario = obtenerUsuarioActual();
         if (!usuario) return;
-        
+
         await historialManager.registrarActividad({
             usuario: usuario,
             tipo: 'leer',
@@ -88,20 +85,19 @@ async function registrarAccesoVistaRegiones() {
                 organizacion: usuarioActual?.organizacion
             }
         });
-        console.log('✅ Acceso a regiones registrado en bitácora');
     } catch (error) {
-        console.error('Error registrando acceso a regiones:', error);
+        // Error handling without console
     }
 }
 
 // ✅ NUEVO: Registrar visualización de detalles de región
 async function registrarVisualizacionRegion(region) {
     if (!historialManager) return;
-    
+
     try {
         const usuario = obtenerUsuarioActual();
         if (!usuario) return;
-        
+
         await historialManager.registrarActividad({
             usuario: usuario,
             tipo: 'leer',
@@ -114,20 +110,19 @@ async function registrarVisualizacionRegion(region) {
                 fechaVisualizacion: new Date().toISOString()
             }
         });
-        console.log(`✅ Visualización de región "${region.nombre}" registrada en bitácora`);
     } catch (error) {
-        console.error('Error registrando visualización de región:', error);
+        // Error handling without console
     }
 }
 
 // ✅ NUEVO: Registrar eliminación de región
 async function registrarEliminacionRegion(region) {
     if (!historialManager) return;
-    
+
     try {
         const usuario = obtenerUsuarioActual();
         if (!usuario) return;
-        
+
         await historialManager.registrarActividad({
             usuario: usuario,
             tipo: 'eliminar',
@@ -140,9 +135,8 @@ async function registrarEliminacionRegion(region) {
                 fechaEliminacion: new Date().toISOString()
             }
         });
-        console.log(`✅ Eliminación de región "${region.nombre}" registrada en bitácora`);
     } catch (error) {
-        console.error('Error registrando eliminación de región:', error);
+        // Error handling without console
     }
 }
 
@@ -161,7 +155,7 @@ function obtenerUsuarioActual() {
                 correoElectronico: userData.correo || userData.email || 'usuario@ejemplo.com'
             };
         }
-        
+
         // Intentar obtener adminInfo
         const adminInfo = JSON.parse(localStorage.getItem('adminInfo') || '{}');
         if (adminInfo && Object.keys(adminInfo).length > 0) {
@@ -173,12 +167,11 @@ function obtenerUsuarioActual() {
                 correoElectronico: adminInfo.correoElectronico || ''
             };
         }
-        
+
         // Si no hay datos, retornar null para usar valores por defecto
         return null;
-        
+
     } catch (error) {
-        console.error('Error obteniendo usuario:', error);
         return null;
     }
 }
@@ -250,7 +243,7 @@ function filtrarYRenderizar() {
     } else {
         // Filtrar en memoria
         const terminoLower = terminoBusqueda.toLowerCase();
-        regionesFiltradas = todasLasRegiones.filter(reg => 
+        regionesFiltradas = todasLasRegiones.filter(reg =>
             (reg.nombre && reg.nombre.toLowerCase().includes(terminoLower)) ||
             (reg.color && reg.color.toLowerCase().includes(terminoLower))
         );
@@ -263,7 +256,7 @@ function filtrarYRenderizar() {
 function irPagina(pagina) {
     paginaActual = pagina;
     renderizarConPaginacion();
-    
+
     // Scroll suave hacia arriba
     document.querySelector('.card-body')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
@@ -291,10 +284,10 @@ function renderizarPaginacion(totalPaginas) {
 }
 
 // Hacer la función global para que funcionen los botones
-window.irPaginaRegion = function(pagina) {
+window.irPaginaRegion = function (pagina) {
     paginaActual = pagina;
     renderizarConPaginacion();
-    
+
     // Scroll suave hacia arriba
     document.querySelector('.card-body')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 };
@@ -306,12 +299,12 @@ function renderizarConPaginacion() {
 
     const totalItems = regionesFiltradas.length;
     const totalPaginas = Math.ceil(totalItems / ITEMS_POR_PAGINA);
-    
+
     // Ajustar página actual si está fuera de rango
     if (paginaActual > totalPaginas && totalPaginas > 0) {
         paginaActual = totalPaginas;
     }
-    
+
     const inicio = (paginaActual - 1) * ITEMS_POR_PAGINA;
     const fin = Math.min(inicio + ITEMS_POR_PAGINA, totalItems);
     const regionesPagina = regionesFiltradas.slice(inicio, fin);
@@ -347,7 +340,7 @@ function renderizarConPaginacion() {
                             </p>
                         </div>
                     </div>
-                </tr>
+                </td>
             `;
         }
         renderizarPaginacion(0);
@@ -362,11 +355,11 @@ function renderizarConPaginacion() {
 async function loadRegions() {
     try {
         showLoadingState();
-        
+
         todasLasRegiones = await regionManager.getRegionesByOrganizacion(
             usuarioActual.organizacionCamelCase
         );
-        
+
         localStorage.setItem('regionesList', JSON.stringify(
             todasLasRegiones.map(reg => ({
                 id: reg.id,
@@ -376,14 +369,13 @@ async function loadRegions() {
                 fechaCreacion: reg.fechaCreacion
             }))
         ));
-        
+
         // Inicializar filtradas
         regionesFiltradas = [...todasLasRegiones];
-        
+
         renderizarConPaginacion();
-        
+
     } catch (error) {
-        console.error('❌ Error cargando regiones:', error);
         showFirebaseError(error);
     }
 }
@@ -392,12 +384,12 @@ async function loadRegions() {
 function renderRegionsTable(regiones) {
     const tbody = document.getElementById('regionsTableBody');
     if (!tbody) return;
-    
+
     tbody.innerHTML = '';
-    
+
     regiones.forEach(reg => {
         const row = document.createElement('tr');
-        
+
         let fechaCreacion = 'No disponible';
         if (reg.fechaCreacion) {
             if (reg.fechaCreacion.toDate) {
@@ -430,13 +422,13 @@ function renderRegionsTable(regiones) {
                         <strong style="color:white;" title="${escapeHTML(reg.nombre || '')}">${escapeHTML(reg.nombre)}</strong>
                     </div>
                 </div>
-             </td>
+              </td>
             <td data-label="Color">
                 <div class="color-display">
                     <span class="color-indicator" style="background-color: ${reg.color};"></span>
                     <span>${reg.color}</span>
                 </div>
-             </td>
+              </td>
             <td data-label="Fecha Creación">${fechaCreacion}</td>
             <td data-label="Acciones">
                 <div class="btn-group" style="display: flex; gap: 6px; flex-wrap: wrap;">
@@ -450,9 +442,9 @@ function renderRegionsTable(regiones) {
                         <i class="fas fa-trash-alt"></i>
                     </button>
                 </div>
-             </td>
+              </td>
         `;
-        
+
         tbody.appendChild(row);
     });
 }
@@ -463,16 +455,16 @@ function setupEvents() {
     if (tableBody) {
         tableBody.addEventListener('click', async (e) => {
             const button = e.target.closest('button');
-            
+
             if (!button) return;
-            
+
             const regionId = button.getAttribute('data-region-id');
             const regionName = button.getAttribute('data-region-name');
             const action = button.getAttribute('data-action');
-            
+
             if (action === 'edit' || button.classList.contains('btn-warning')) {
                 await editRegion(regionId, regionName);
-            } 
+            }
             else if (action === 'view' || (button.classList.contains('btn') && !button.classList.contains('btn-warning') && !button.classList.contains('btn-danger'))) {
                 await viewRegionDetails(regionId, regionName);
             }
@@ -484,7 +476,7 @@ function setupEvents() {
 }
 
 // ========== EDITAR REGIÓN ==========
-async function editRegion(regionId, regionName) {    
+async function editRegion(regionId, regionName) {
     const selectedRegion = {
         id: regionId,
         nombre: regionName,
@@ -493,9 +485,9 @@ async function editRegion(regionId, regionName) {
         fechaSeleccion: new Date().toISOString(),
         usuario: usuarioActual.nombreCompleto
     };
-    
+
     localStorage.setItem('selectedRegion', JSON.stringify(selectedRegion));
-    
+
     window.location.href = `../editarRegiones/editarRegiones.html?id=${regionId}&org=${usuarioActual.organizacionCamelCase}`;
 }
 
@@ -503,23 +495,22 @@ async function editRegion(regionId, regionName) {
 async function viewRegionDetails(regionId, regionName) {
     try {
         const region = await regionManager.getRegionById(regionId, usuarioActual.organizacionCamelCase);
-        
+
         if (!region) {
             throw new Error('Región no encontrada');
         }
-        
+
         // Asegurarse de que la región tenga organizacionCamelCase
         if (!region.organizacionCamelCase) {
             region.organizacionCamelCase = usuarioActual.organizacionCamelCase;
         }
-        
+
         // ✅ NUEVO: Registrar visualización de región
         await registrarVisualizacionRegion(region);
-        
+
         showRegionDetails(region, regionName);
-        
+
     } catch (error) {
-        console.error('Error obteniendo detalles:', error);
         Swal.fire({
             icon: 'error',
             title: 'Error',
@@ -532,7 +523,7 @@ async function viewRegionDetails(regionId, regionName) {
 function showRegionDetails(region, regionName) {
     const fechaCreacion = region.getFechaCreacionFormateada ? region.getFechaCreacionFormateada() : (region.fechaCreacion || 'No disponible');
     const fechaActualizacion = region.getFechaActualizacionFormateada ? region.getFechaActualizacionFormateada() : (region.fechaActualizacion || 'No disponible');
-    
+
     Swal.fire({
         title: regionName,
         html:/*html*/ `
@@ -604,11 +595,10 @@ async function deleteRegion(regionId, regionName) {
     try {
         regionCompleta = await regionManager.getRegionById(regionId, usuarioActual.organizacionCamelCase);
     } catch (error) {
-        console.warn('No se pudo obtener región completa para registro:', error);
         // Si no se puede obtener, crear un objeto mínimo con la información disponible
         regionCompleta = { id: regionId, nombre: regionName };
     }
-    
+
     const confirmResult = await Swal.fire({
         title: '¿Eliminar región?',
         html: `
@@ -633,12 +623,12 @@ async function deleteRegion(regionId, regionName) {
 
     try {
         await regionManager.deleteRegion(regionId, usuarioActual.organizacionCamelCase);
-        
+
         // ✅ NUEVO: Registrar eliminación en bitácora
         await registrarEliminacionRegion(regionCompleta);
-        
+
         Swal.close();
-        
+
         await Swal.fire({
             icon: 'success',
             title: '¡Región eliminada!',
@@ -646,13 +636,12 @@ async function deleteRegion(regionId, regionName) {
             timer: 2000,
             showConfirmButton: false
         });
-        
+
         await loadRegions();
-        
+
     } catch (error) {
-        console.error('❌ Error eliminando región:', error);
         Swal.close();
-        
+
         if (error.message.includes('tiene') && error.message.includes('sucursal')) {
             Swal.fire({
                 icon: 'error',
@@ -681,7 +670,7 @@ async function deleteRegion(regionId, regionName) {
 function showLoadingState() {
     const tbody = document.getElementById('regionsTableBody');
     if (!tbody) return;
-    
+
     tbody.innerHTML = `
          <tr>
             <td colspan="4" style="text-align:center; padding:60px 20px;">
@@ -690,8 +679,8 @@ function showLoadingState() {
                     <h5 style="color:white;">Cargando regiones...</h5>
                     <p style="color:var(--color-text-dim);">Obteniendo datos de Firebase</p>
                 </div>
-             </td>
-         </tr>
+              </td>
+          </tr>
     `;
 
     // Ocultar paginación mientras carga
@@ -704,7 +693,7 @@ function showLoadingState() {
 function showEmptyState() {
     const tbody = document.getElementById('regionsTableBody');
     if (!tbody) return;
-    
+
     tbody.innerHTML = /*html*/ `
          <tr>
             <td colspan="4" style="text-align:center; padding:60px 20px;">
@@ -715,8 +704,8 @@ function showEmptyState() {
                         <i class="fas fa-plus-circle"></i> Crear Primera Región
                     </a>
                 </div>
-             </td>
-         </tr>
+              </td>
+          </tr>
     `;
 
     // Ocultar paginación
@@ -729,7 +718,7 @@ function showEmptyState() {
 function showFirebaseError(error) {
     const tbody = document.getElementById('regionsTableBody');
     if (!tbody) return;
-    
+
     tbody.innerHTML = `
          <tr>
             <td colspan="4" style="text-align:center; padding:60px 20px;">
@@ -741,8 +730,8 @@ function showFirebaseError(error) {
                         <i class="fas fa-sync-alt"></i> Recargar
                     </button>
                 </div>
-             </td>
-         </tr>
+              </td>
+          </tr>
     `;
 
     // Ocultar paginación
@@ -755,7 +744,7 @@ function showFirebaseError(error) {
 function showError(message) {
     const tbody = document.getElementById('regionsTableBody');
     if (!tbody) return;
-    
+
     tbody.innerHTML = `
          <tr>
             <td colspan="4" style="text-align:center; padding:60px 20px;">
@@ -766,8 +755,8 @@ function showError(message) {
                         <i class="fas fa-sync-alt"></i> Reintentar
                     </button>
                 </div>
-             </td>
-         </tr>
+              </td>
+          </tr>
     `;
 
     // Ocultar paginación

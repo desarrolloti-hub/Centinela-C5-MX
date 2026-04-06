@@ -63,7 +63,7 @@ const MODULOS_CONFIG = {
     },
     'listaExtravios': {
         selector: '#card-lista-extravios',
-        url: '/usuarios/administrador/mercanciaPerdida/mercanciaPerdida.html',
+        url: '/usuarios/administrador/incidenciasRecuperacion/incidenciasRecuperacion.html',
         titulo: 'Lista de Extravíos',
         permisoRequerido: 'incidencias',
         subPermisoRequerido: 'listaIncidencias',

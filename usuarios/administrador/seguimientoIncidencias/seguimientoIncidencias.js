@@ -1,5 +1,5 @@
-// seguimientoIncidencia.js - CONTROLADOR
-// NO IMPORTA FIRESTORE DIRECTAMENTE, USA SOLO LA CLASE
+// seguimientoIncidencias.js - CONTROLADOR CON DRAG & DROP Y PASTE
+// VERSIÓN COMPLETA CON MEJORAS Y DESCARGA DE PDF
 
 import '/components/visualizadorImagen.js';
 
@@ -103,6 +103,175 @@ function limpiarTodaCache() {
 }
 
 // =============================================
+// MOSTRAR INDICADOR DE PASTE
+// =============================================
+function mostrarPasteIndicator() {
+    let indicator = document.querySelector('.paste-indicator');
+    if (indicator) indicator.remove();
+    
+    indicator = document.createElement('div');
+    indicator.className = 'paste-indicator';
+    indicator.innerHTML = '<i class="fas fa-paste"></i> Imagen pegada correctamente';
+    document.body.appendChild(indicator);
+    
+    setTimeout(() => {
+        if (indicator) indicator.remove();
+    }, 2000);
+}
+
+// =============================================
+// PROCESAR ARCHIVOS DE IMAGEN (UNIFICADO)
+// =============================================
+function procesarArchivosImagen(files) {
+    if (!files || files.length === 0) return;
+
+    const nuevosArchivos = Array.from(files);
+    const maxSize = 5 * 1024 * 1024;
+    const maxImages = 20;
+
+    if (evidenciasSeleccionadas.length + nuevosArchivos.length > maxImages) {
+        mostrarError(`Máximo ${maxImages} imágenes permitidas`);
+        return;
+    }
+
+    const archivosValidos = nuevosArchivos.filter(file => {
+        if (file.size > maxSize) {
+            mostrarNotificacion(`La imagen ${file.name} excede 5MB`, 'warning');
+            return false;
+        }
+
+        const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
+        if (!validTypes.includes(file.type)) {
+            mostrarNotificacion(`Formato no válido: ${file.name}. Usa JPG, PNG, GIF o WEBP`, 'warning');
+            return false;
+        }
+
+        return true;
+    });
+
+    archivosValidos.forEach(file => {
+        evidenciasSeleccionadas.push({
+            file: file,
+            preview: URL.createObjectURL(file),
+            comentario: '',
+            elementos: [],
+            edited: false
+        });
+    });
+
+    actualizarVistaPreviaEvidencias();
+}
+
+// =============================================
+// PROCESAR IMAGEN DESDE CLIPBOARD (Ctrl+V)
+// =============================================
+async function procesarImagenDesdeClipboard(items) {
+    const imageItems = [];
+    
+    for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        if (item.type.indexOf('image') !== -1) {
+            const file = item.getAsFile();
+            if (file) imageItems.push(file);
+        }
+    }
+    
+    if (imageItems.length === 0) return false;
+    
+    procesarArchivosImagen(imageItems);
+    mostrarPasteIndicator();
+    return true;
+}
+
+// =============================================
+// PROCESAR DRAG & DROP
+// =============================================
+function procesarDragAndDrop(files) {
+    if (!files || files.length === 0) return;
+    
+    const imageFiles = Array.from(files).filter(file => file.type.startsWith('image/'));
+    
+    if (imageFiles.length === 0) {
+        mostrarNotificacion('Solo se permiten imágenes', 'warning', 2000);
+        return;
+    }
+    
+    procesarArchivosImagen(imageFiles);
+    mostrarNotificacion(`${imageFiles.length} imagen(es) agregadas`, 'success', 1500);
+}
+
+// =============================================
+// CONFIGURAR DRAG & DROP Y PASTE
+// =============================================
+function configurarDragDropYPaste() {
+    const uploadSection = document.querySelector('.image-upload-section');
+    
+    if (!uploadSection) return;
+    
+    // Drag & Drop
+    uploadSection.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        uploadSection.classList.add('drag-over');
+    });
+    
+    uploadSection.addEventListener('dragleave', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        uploadSection.classList.remove('drag-over');
+    });
+    
+    uploadSection.addEventListener('drop', async (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        uploadSection.classList.remove('drag-over');
+        
+        const files = e.dataTransfer.files;
+        if (files && files.length > 0) {
+            procesarDragAndDrop(files);
+        }
+    });
+    
+    // Ctrl+V / Paste
+    document.addEventListener('paste', async (e) => {
+        const items = e.clipboardData.items;
+        const processed = await procesarImagenDesdeClipboard(items);
+        
+        if (processed) {
+            e.preventDefault();
+        }
+    });
+    
+    console.log(' Drag & Drop y Paste configurados para seguimiento');
+}
+
+// =============================================
+// FUNCIÓN PARA DESCARGAR PDF
+// =============================================
+async function descargarPDF(pdfBlob, incidenciaId) {
+    try {
+        const url = URL.createObjectURL(pdfBlob);
+        const link = document.createElement('a');
+        link.href = url;
+        
+        const ahora = new Date();
+        const fechaFormateada = ahora.toISOString().slice(0, 19).replace(/:/g, '-');
+        link.download = `incidencia_${incidenciaId}_seguimiento_${fechaFormateada}.pdf`;
+        
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+        
+        console.log('📥 PDF descargado correctamente');
+        return true;
+    } catch (error) {
+        console.error('Error descargando PDF:', error);
+        return false;
+    }
+}
+
+// =============================================
 // INICIALIZACIÓN OPTIMIZADA
 // =============================================
 async function inicializarSeguimiento() {
@@ -137,6 +306,9 @@ async function inicializarSeguimiento() {
         configurarEventos();
         inicializarValidaciones();
         configurarCollapsible();
+        
+        // Configurar Drag & Drop y Paste
+        configurarDragDropYPaste();
 
         imageEditorModal = new window.ImageEditorModal();
 
@@ -186,7 +358,6 @@ async function cargarAreas(forceReload = false) {
     try {
         const now = Date.now();
         
-        // Verificar caché
         if (!forceReload && areasCache && areasCacheOrg === usuarioActual.organizacionCamelCase && 
             areasCacheTimestamp && (now - areasCacheTimestamp) < CACHE_TTL) {
             areas = areasCache;
@@ -200,12 +371,11 @@ async function cargarAreas(forceReload = false) {
         if (usuarioActual && usuarioActual.organizacionCamelCase) {
             const areasObtenidas = await areaManager.getAreasByOrganizacion(
                 usuarioActual.organizacionCamelCase,
-                true // solo activas
+                true
             );
 
             areas = areasObtenidas.filter(area => area.estado === 'activa');
             
-            // Guardar en caché
             areasCache = areas;
             areasCacheOrg = usuarioActual.organizacionCamelCase;
             areasCacheTimestamp = now;
@@ -318,7 +488,6 @@ async function cargarDatosRelacionados(forceReload = false) {
     try {
         const now = Date.now();
         
-        // Verificar caché
         if (!forceReload && sucursalesCacheData && categoriasCacheData && 
             datosCacheTimestamp && (now - datosCacheTimestamp) < CACHE_TTL) {
             sucursalesMap = sucursalesCacheData;
@@ -350,7 +519,6 @@ async function cargarDatosRelacionados(forceReload = false) {
         sucursalesMap = nuevaSucursalesMap;
         categoriasMap = nuevaCategoriasMap;
         
-        // Guardar en caché
         sucursalesCacheData = nuevaSucursalesMap;
         categoriasCacheData = nuevaCategoriasMap;
         datosCacheTimestamp = now;
@@ -701,7 +869,7 @@ function configurarEventos() {
             document.getElementById('inputEvidencias').click();
         });
 
-        document.getElementById('inputEvidencias')?.addEventListener('change', (e) => procesarEvidencias(e.target.files));
+        document.getElementById('inputEvidencias')?.addEventListener('change', (e) => procesarArchivosImagen(e.target.files));
 
         document.getElementById('formSeguimiento')?.addEventListener('submit', (e) => {
             e.preventDefault();
@@ -716,34 +884,6 @@ function configurarEventos() {
 // =============================================
 // EVIDENCIAS
 // =============================================
-function procesarEvidencias(files) {
-    if (!files || files.length === 0) return;
-
-    const nuevosArchivos = Array.from(files);
-    const maxSize = 5 * 1024 * 1024;
-
-    const archivosValidos = nuevosArchivos.filter(file => {
-        if (file.size > maxSize) {
-            mostrarNotificacion(`La imagen ${file.name} excede 5MB`, 'warning');
-            return false;
-        }
-        return true;
-    });
-
-    archivosValidos.forEach(file => {
-        evidenciasSeleccionadas.push({
-            file: file,
-            preview: URL.createObjectURL(file),
-            comentario: '',
-            elementos: [],
-            edited: false
-        });
-    });
-
-    actualizarVistaPreviaEvidencias();
-    document.getElementById('inputEvidencias').value = '';
-}
-
 function actualizarVistaPreviaEvidencias() {
     const container = document.getElementById('evidenciasPreview');
     const containerParent = document.getElementById('evidenciasPreviewContainer');
@@ -935,6 +1075,9 @@ function validarYGuardar() {
     });
 }
 
+// =============================================
+// CONFIRMAR Y GUARDAR (SweetAlert MEJORADA)
+// =============================================
 async function confirmarYGuardar(datos) {
     const estadoAnterior = incidenciaActual.estado;
     const estadoTexto = {
@@ -943,22 +1086,28 @@ async function confirmarYGuardar(datos) {
     }[datos.nuevoEstado] || datos.nuevoEstado;
 
     const confirmResult = await Swal.fire({
-        title: '¿Guardar seguimiento?',
+        title: 'Confirmar seguimiento',
         html: `
             <div style="text-align: left;">
-                <p><strong>Fecha:</strong> ${formatearFecha(datos.fecha)}</p>
-                <p><strong>Estado:</strong> <span style="color: ${estadoAnterior === datos.nuevoEstado ? 'var(--color-warning)' : 'var(--color-success)'};">${estadoTexto}</span></p>
-                <p><strong>Evidencias:</strong> ${datos.evidencias.length} imagen(es)</p>
-                <p><strong>Descripción:</strong><br>
-                    <span style="color: var(--color-text-secondary);">${escapeHTML(datos.descripcion.substring(0, 200))}${datos.descripcion.length > 200 ? '...' : ''}</span>
+                <p><strong><i class="fas fa-calendar-alt"></i> Fecha:</strong> ${formatearFecha(datos.fecha)}</p>
+                <p><strong><i class="fas fa-check-circle"></i> Estado:</strong> 
+                    <span style="color: ${estadoAnterior === datos.nuevoEstado ? 'var(--color-warning)' : 'var(--color-success)'};">
+                        ${estadoTexto}
+                    </span>
+                </p>
+                <p><strong><i class="fas fa-images"></i> Evidencias:</strong> ${datos.evidencias.length} imagen(es)</p>
+                <p><strong><i class="fas fa-align-left"></i> Descripción:</strong><br>
+                    <span style="color: var(--color-text-secondary); font-size: 13px;">${escapeHTML(datos.descripcion.substring(0, 200))}${datos.descripcion.length > 200 ? '...' : ''}</span>
                 </p>
             </div>
         `,
         icon: 'question',
         showCancelButton: true,
-        confirmButtonText: 'GUARDAR SEGUIMIENTO',
-        cancelButtonText: 'CANCELAR',
-        confirmButtonColor: '#28a745'
+        showDenyButton: false,
+        confirmButtonText: '<i class="fas fa-save"></i> GUARDAR SEGUIMIENTO',
+        cancelButtonText: '<i class="fas fa-times"></i> CANCELAR',
+        confirmButtonColor: '#28a745',
+        cancelButtonColor: '#6c757d'
     });
 
     if (confirmResult.isConfirmed) {
@@ -967,7 +1116,7 @@ async function confirmarYGuardar(datos) {
 }
 
 // =============================================
-// FUNCIONES DE CANALIZACIÓN (USANDO LA CLASE)
+// FUNCIONES DE CANALIZACIÓN
 // =============================================
 async function _canalizarAreas(incidenciaId, incidenciaTitulo = '') {
     let continuar = true;
@@ -1028,7 +1177,6 @@ async function _canalizarAreas(incidenciaId, incidenciaTitulo = '') {
                 });
 
                 try {
-                    // USAR EL MÉTODO CORRECTO DEL MANAGER
                     const resultado = await incidenciaManager.agregarCanalizacion(
                         incidenciaId,
                         area.id,
@@ -1138,7 +1286,7 @@ async function _enviarNotificacionesCanalizacion(areas, incidenciaId, incidencia
 }
 
 // =============================================
-// GUARDAR SEGUIMIENTO (USANDO LA CLASE)
+// GUARDAR SEGUIMIENTO CON DESCARGA DE PDF
 // =============================================
 async function guardarSeguimiento(datos) {
     const btnGuardar = document.getElementById('btnGuardarSeguimiento');
@@ -1163,7 +1311,6 @@ async function guardarSeguimiento(datos) {
 
         const archivos = datos.evidencias.map(ev => ev.file);
 
-        // 1. Guardar el seguimiento usando el manager
         await incidenciaManager.agregarSeguimiento(
             incidenciaActual.id,
             usuarioActual.id,
@@ -1176,7 +1323,6 @@ async function guardarSeguimiento(datos) {
             usuarioActual
         );
 
-        // 2. Actualizar estado si cambió
         if (datos.nuevoEstado !== incidenciaActual.estado) {
             await incidenciaManager.actualizarIncidencia(
                 incidenciaActual.id,
@@ -1187,22 +1333,23 @@ async function guardarSeguimiento(datos) {
             );
         }
 
-        // 3. Limpiar evidencias
         evidenciasSeleccionadas.forEach(ev => {
             if (ev.preview) URL.revokeObjectURL(ev.preview);
         });
         evidenciasSeleccionadas = [];
 
-        // 4. Recargar la incidencia para tener los datos actualizados
         await cargarIncidencia(incidenciaActual.id);
 
-        // 5. Generar y subir el PDF (usando el manager)
-        const pdfGenerado = await _generarYSubirPDF();
+        // Generar PDF y descargarlo automáticamente
+        const pdfBlob = await _generarYSubirPDF();
 
-        // 6. Cerrar el loading inicial
+        // Descargar PDF automáticamente si se generó correctamente
+        if (pdfBlob && pdfBlob.size > 0) {
+            await descargarPDF(pdfBlob, incidenciaActual.id);
+        }
+
         Swal.close();
 
-        // 7. Preguntar si quiere canalizar
         const quiereCanalizar = await Swal.fire({
             icon: 'question',
             title: '¿Canalizar esta incidencia?',
@@ -1224,7 +1371,6 @@ async function guardarSeguimiento(datos) {
             ? `Canalizada a ${totalCanalizaciones} ${totalCanalizaciones === 1 ? 'área' : 'áreas'}.`
             : 'No se canalizó a ninguna área.';
 
-        // 8. Actualizar la vista
         mostrarInfoIncidencia();
         mostrarEvidenciasOriginales();
         mostrarHistorialSeguimiento();
@@ -1233,15 +1379,15 @@ async function guardarSeguimiento(datos) {
         actualizarContador('descripcionSeguimiento', 'contadorCaracteres', LIMITES.DESCRIPCION_SEGUIMIENTO);
         configurarFechaSeguimiento();
 
-        // 9. Mostrar mensaje final
+        const previewContainer = document.getElementById('evidenciasPreviewContainer');
+        if (previewContainer) previewContainer.style.display = 'none';
+        const evidenciasPreview = document.getElementById('evidenciasPreview');
+        if (evidenciasPreview) evidenciasPreview.innerHTML = '';
+
         await Swal.fire({
             icon: 'success',
             title: '¡Seguimiento guardado!',
-            html: `
-                <p>El seguimiento se ha guardado correctamente.</p>
-                <p>${pdfGenerado ? '✅ PDF actualizado' : '⚠️ Hubo un problema con el PDF'}</p>
-                <p>${mensajeCanalizacion}</p>
-            `,
+          
             confirmButtonText: 'Aceptar',
             confirmButtonColor: '#28a745'
         });
@@ -1263,7 +1409,6 @@ async function _generarYSubirPDF() {
     try {
         console.log('📄 Actualizando PDF después de seguimiento para:', incidenciaActual.id);
         
-        // Recargar la incidencia más reciente
         const incidenciaActualizada = await incidenciaManager.getIncidenciaById(
             incidenciaActual.id,
             usuarioActual.organizacionCamelCase
@@ -1278,7 +1423,6 @@ async function _generarYSubirPDF() {
         const sucursalesArray = Array.from(sucursalesMap.values());
         const categoriasArray = Array.from(categoriasMap.values());
         
-        // IMPORTANTE: Usar el generador de SEGUIMIENTO
         const { generadorIPHSeguimiento } = await import('/components/iph-generator-seguimiento.js');
         
         generadorIPHSeguimiento.configurar({
@@ -1291,7 +1435,6 @@ async function _generarYSubirPDF() {
             usuariosCache: [usuarioActual]
         });
         
-        // Generar PDF con el método específico
         const pdfBlob = await generadorIPHSeguimiento.generarIPHSeguimiento(incidenciaActual, {
             mostrarAlerta: false,
             returnBlob: true
@@ -1318,12 +1461,14 @@ async function _generarYSubirPDF() {
         
         incidenciaActual.pdfUrl = resultado.url;
         
-        console.log('✅ PDF actualizado exitosamente:', resultado.url);
-        return true;
+        console.log(' PDF actualizado exitosamente:', resultado.url);
+        
+        // Devolver el blob para la descarga automática
+        return pdfBlob;
         
     } catch (error) {
         console.error('❌ Error actualizando PDF:', error);
-        return false;
+        return null;
     }
 }
 
@@ -1387,7 +1532,6 @@ function mostrarCargando(mensaje = 'Guardando...') {
         <div class="spinner"></div>
         <div class="loading-text">${mensaje}</div>
     `;
-
     document.body.appendChild(overlay);
 }
 

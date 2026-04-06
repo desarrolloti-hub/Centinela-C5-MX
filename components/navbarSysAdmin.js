@@ -1713,17 +1713,11 @@ class NavbarComplete {
     }
 
     clearAllStorage() {
-        try { localStorage.clear(); sessionStorage.clear(); this.clearSessionCookies(); this.clearIndexedDB(); } catch (error) {}
+        try { localStorage.clear(); 
+            sessionStorage.clear();
+            this.clearIndexedDB(); } catch (error) {}
     }
 
-    clearSessionCookies() {
-        try {
-            document.cookie.split(';').forEach(cookie => {
-                const name = cookie.indexOf('=') > -1 ? cookie.substr(0, cookie.indexOf('=')).trim() : cookie.trim();
-                if (name.includes('session') || name.includes('auth') || name.includes('firebase')) document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/`;
-            });
-        } catch (error) {}
-    }
 
     async clearIndexedDB() {
         try { for (const dbName of ['firebaseLocalStorageDb', 'firestore', 'centinela-db']) await indexedDB.deleteDatabase(dbName); } catch (error) {}
