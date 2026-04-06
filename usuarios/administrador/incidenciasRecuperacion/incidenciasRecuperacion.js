@@ -1,7 +1,7 @@
 // mercanciaPerdida.js - CONTROLADOR
 // VERSIÓN ACTUALIZADA - SIN BOTÓN DE ELIMINAR, SIN COLUMNA ESTADO Y CON ID COMPLETO
 
-import { MercanciaPerdidaManager } from '/clases/mercanciaPerdida.js';
+import { MercanciaPerdidaManager } from '/clases/incidenciaRecuperacion.js';
 import '/components/visualizadorPDF.js';
 
 // =============================================

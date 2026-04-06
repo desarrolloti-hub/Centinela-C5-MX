@@ -3,7 +3,7 @@
 // OPTIMIZADO - Sin scroll horizontal, gráficas mejoradas y CLICKEABLES
 // CON EXPORTACIÓN A PDF
 
-import { MercanciaPerdidaManager } from '/clases/mercanciaPerdida.js';
+import { MercanciaPerdidaManager } from '/clases/incidenciaRecuperacion.js';
 
 // =============================================
 // VARIABLES GLOBALES

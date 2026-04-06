@@ -266,7 +266,7 @@ class CrearMercanciaPerdidaController {
 
     async _inicializarManager() {
         try {
-            const { MercanciaPerdidaManager } = await import('/clases/mercanciaPerdida.js');
+            const { MercanciaPerdidaManager } = await import('/clases/incidenciaRecuperacion.js');
             this.mercanciaManager = new MercanciaPerdidaManager();
         } catch (error) {
             console.error('Error cargando MercanciaPerdidaManager:', error);
@@ -513,6 +513,7 @@ class CrearMercanciaPerdidaController {
 
             this._configurarSugerencias();
             this._configurarValidacionSecuencial();
+            this._configurarVisibilidadImagenes();  // 👈 AGREGAR ESTA LÍNEA
             
             // ========== NUEVO: Configurar Drag & Drop y Ctrl+V ==========
             this._configurarDragAndDropYPegado();
@@ -523,77 +524,97 @@ class CrearMercanciaPerdidaController {
         }
     }
 
-    _configurarValidacionSecuencial() {
-        const ordenCampos = [
-            { id: 'nombreEmpresaCC', siguiente: 'tipoEvento', validar: (valor) => valor.trim() !== '' },
-            { id: 'tipoEvento', siguiente: 'montoPerdido', validar: (valor) => valor !== '' },
-            {
-                id: 'montoPerdido', siguiente: 'montoRecuperado', validar: (valor) => {
-                    const monto = parseFloat(valor);
-                    return !isNaN(monto) && monto > 0;
-                }
-            },
-            { id: 'montoRecuperado', siguiente: 'fechaHoraEvento', validar: (valor) => true },
-            { id: 'fechaHoraEvento', siguiente: 'narracionEventos', validar: (valor) => valor.trim() !== '' },
-            {
-                id: 'narracionEventos', siguiente: 'detallesPerdida', validar: (valor) => {
-                    const texto = valor.trim();
-                    return texto.length >= 10 && texto.length <= LIMITES.NARRACION_EVENTOS;
-                }
-            },
-            { id: 'detallesPerdida', siguiente: null, validar: (valor) => true }
-        ];
+  _configurarValidacionSecuencial() {
+    const ordenCampos = [
+        { id: 'nombreEmpresaCC', siguiente: 'tipoEvento', validar: (valor) => valor.trim() !== '' },
+        { id: 'tipoEvento', siguiente: 'montoPerdido', validar: (valor) => valor !== '' },
+        { id: 'montoPerdido', siguiente: 'montoRecuperado', validar: (valor) => {
+            const monto = parseFloat(valor);
+            return !isNaN(monto) && monto > 0;
+        }},
+        { id: 'montoRecuperado', siguiente: 'fechaHoraEvento', validar: (valor) => true },
+        { id: 'fechaHoraEvento', siguiente: 'narracionEventos', validar: (valor) => valor.trim() !== '' },
+        { id: 'narracionEventos', siguiente: 'detallesPerdida', validar: (valor) => {
+            const texto = valor.trim();
+            return texto.length >= 10 && texto.length <= LIMITES.NARRACION_EVENTOS;
+        }},
+        { id: 'detallesPerdida', siguiente: null, validar: (valor) => true }
+    ];
 
-        ordenCampos.forEach((campo, index) => {
-            const elemento = document.getElementById(campo.id);
-            if (!elemento) return;
-
-            elemento._validacionSecuencial = {
-                siguienteId: campo.siguiente,
-                validar: campo.validar,
-                indice: index
-            };
-
-            if (index === 0) {
-                this._habilitarCampo(elemento);
-            } else {
-                this._deshabilitarCampo(elemento);
-            }
-
-            const eventoCambio = campo.id === 'montoPerdido' || campo.id === 'montoRecuperado' ? 'input' : 'change';
-            elemento.addEventListener(eventoCambio, () => {
+    ordenCampos.forEach((campo, index) => {
+        const elemento = document.getElementById(campo.id);
+        if (!elemento) return;
+        
+        elemento._validacionSecuencial = {
+            siguienteId: campo.siguiente,
+            validar: campo.validar,
+            indice: index
+        };
+        
+        if (index === 0) {
+            this._habilitarCampo(elemento);
+        } else {
+            this._deshabilitarCampo(elemento);
+        }
+        
+        // 👈 SOLO USAR 'change' para TODOS los campos
+        // 'change' se dispara CUANDO SALES del campo (blur + valor diferente)
+        elemento.addEventListener('change', () => {
+            this._validarYHabilitarSiguiente(campo.id);
+        });
+        
+        // Para campos de texto, también validar al perder foco por si no hubo cambio
+        if (elemento.tagName === 'INPUT' || elemento.tagName === 'TEXTAREA') {
+            elemento.addEventListener('blur', () => {
                 this._validarYHabilitarSiguiente(campo.id);
             });
-
-            if (elemento.tagName === 'INPUT' && elemento.type === 'text') {
-                elemento.addEventListener('blur', () => {
-                    this._validarYHabilitarSiguiente(campo.id);
-                });
-            }
-        });
-
-        const montoRecuperado = document.getElementById('montoRecuperado');
-        if (montoRecuperado) {
-            montoRecuperado.addEventListener('input', () => {
-                this._validarYHabilitarSiguiente('montoRecuperado');
-            });
         }
-
-        const fechaInput = document.getElementById('fechaHoraEvento');
-        if (fechaInput) {
-            fechaInput.addEventListener('change', () => {
+    });
+    
+    // Configuración especial para Flatpickr (selector de fecha)
+    const fechaInput = document.getElementById('fechaHoraEvento');
+    if (fechaInput && this.flatpickrInstance) {
+        this.flatpickrInstance.config.onClose = (selectedDates, dateStr, instance) => {
+            if (selectedDates.length > 0) {
                 this._validarYHabilitarSiguiente('fechaHoraEvento');
-            });
-        }
-
-        const narracion = document.getElementById('narracionEventos');
-        if (narracion) {
-            narracion.addEventListener('input', () => {
-                this._validarYHabilitarSiguiente('narracionEventos');
-            });
-        }
+            }
+        };
     }
+}
 
+    // Agregar después del método _configurarValidacionSecuencial() o donde prefieras
+
+_configurarVisibilidadImagenes() {
+    const detallesInput = document.getElementById('detallesPerdida');
+    const seccionImagenes = document.getElementById('seccionImagenesWrapper');
+    
+    if (!detallesInput || !seccionImagenes) return;
+    
+    // Función para verificar si debe mostrar la sección
+    const verificarMostrarSeccion = () => {
+        const valorDetalles = detallesInput.value.trim();
+        
+        if (valorDetalles.length > 0) {
+            // Mostrar sección de imágenes
+            if (!seccionImagenes.classList.contains('visible')) {
+                seccionImagenes.classList.add('visible');
+                // Scroll suave hacia la sección de imágenes
+                setTimeout(() => {
+                    seccionImagenes.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }, 300);
+            }
+        } else {
+            // Ocultar sección de imágenes
+            seccionImagenes.classList.remove('visible');
+        }
+    };
+    
+    // Escuchar cambios en el campo de detalles
+    detallesInput.addEventListener('input', verificarMostrarSeccion);
+    
+    // Verificar estado inicial (por si ya tiene contenido)
+    verificarMostrarSeccion();
+}
     _habilitarCampo(elemento) {
         if (!elemento) return;
         elemento.disabled = false;

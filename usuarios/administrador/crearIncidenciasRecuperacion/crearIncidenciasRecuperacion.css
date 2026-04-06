@@ -1081,22 +1081,7 @@ body {
     border-color: var(--color-border-light) !important;
 }
 
-.locked::after {
-    content: "🔒 Completa el campo anterior primero";
-    position: absolute;
-    right: 15px;
-    top: 50%;
-    transform: translateY(-50%);
-    font-size: 11px;
-    color: var(--color-warning);
-    background: rgba(0, 0, 0, 0.8);
-    padding: 4px 10px;
-    border-radius: 20px;
-    pointer-events: none;
-    z-index: 10;
-    white-space: nowrap;
-    font-family: var(--font-family-secondary);
-}
+
 
 .field-error-shake {
     animation: shakeWarning 0.3s ease;
@@ -1166,4 +1151,16 @@ body {
         right: 20px;
         width: auto;
     }
+}
+/* =============================================
+   SECCIÓN DE IMÁGENES (OCULTA INICIALMENTE)
+   ============================================= */
+.image-upload-section-wrapper {
+    display: none;
+    transition: all 0.3s ease;
+}
+
+.image-upload-section-wrapper.visible {
+    display: block;
+    animation: fadeInUp 0.5s ease;
 }
