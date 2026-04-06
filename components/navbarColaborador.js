@@ -1,6 +1,10 @@
 // ========== navbarColaborador.js - VERSIÓN CON MENÚ MONITOREO Y PERMISOS ==========
 // Se agregó nuevo menú "Monitoreo" con Mapa de Alertas y Login Monitoreo
 // Se agregó opción "Permisos" dentro de Gestionar con filtro dinámico
+// Se agregaron opciones de "Mercancía Perdida" dentro de Incidencias:
+//   - Lista de extravíos (incidenciasRecuperacion)
+//   - Crear extravío (crearIncidenciasRecuperacion)
+//   - Estadísticas de extravío (estadisticasIncidenciasRecuperacion)
 
 class NavbarComplete {
     constructor() {
@@ -1756,17 +1760,21 @@ class NavbarComplete {
                             <i class="fa-solid fa-check-circle"></i>
                             <span>Incidencias Canalizadas</span>
                         </a>
-                        <a href="../MercanciaPerdida/MercanciaPerdida.html" class="incidencias-dropdown-option" id="incidenciasBtn">
-                            <i class="fa-solid fa-list"></i>
-                            <span>Lista de Extravios</span>
+
+                        <!-- === NUEVAS OPCIONES DE INCIDENCIAS DE RECUPERACIÓN (MERCANCÍA PERDIDA) === -->
+            
+                        
+                        <a href="../incidenciasRecuperacion/incidenciasRecuperacion.html" class="incidencias-dropdown-option" id="incidenciasRecuperacionBtn">
+                            <i class="fa-solid fa-box-open"></i>
+                            <span>Lista de extravíos</span>
                         </a>
-                        <a href="../crearIncidenciasRecuperacion/crearIncidenciasRecuperacion.html" class="incidencias-dropdown-option" id="crearIncidenciasBtn">
+                        <a href="../crearIncidenciasRecuperacion/crearIncidenciasRecuperacion.html" class="incidencias-dropdown-option" id="crearIncidenciasRecuperacionBtn">
                             <i class="fa-solid fa-plus-circle"></i>
-                            <span>Crear Extravio</span>
+                            <span>Crear extravío</span>
                         </a>
-                        <a href="../estadisticasExtravios/estadisticasExtravios.html" class="incidencias-dropdown-option" id="incidenciasCanalizadasBtn">
-                            <i class="fa-solid fa-check-circle"></i>
-                            <span>Estadísticas Extravios</span>
+                        <a href="../estadisticasIncidenciasRecuperacion/estadisticasIncidenciasRecuperacion.html" class="incidencias-dropdown-option" id="estadisticasIncidenciasRecuperacionBtn">
+                            <i class="fa-solid fa-chart-line"></i>
+                            <span>Estadísticas de extravío</span>
                         </a>
                     </div>
                 </div>
@@ -1798,7 +1806,7 @@ class NavbarComplete {
                     </div>
                     <a href="../estadisticas/estadisticas.html" class="gestionar-dropdown-option" id="estadisticasBtn" style="width: 100%;">
                         <i class="fa-solid fa-chart-simple"></i>
-                        <span>Ver Estadísticas</span>
+                        <span>Estadísticas de Incidencias</span>
                     </a>
                 </div>
 
@@ -1974,7 +1982,11 @@ class NavbarComplete {
                     bitacora: true,
                     perfil: true,
                     configuracion: true,
-                    ayuda: true
+                    ayuda: true,
+                    // Permisos para incidencias de recuperación (extravíos)
+                    incidenciasRecuperacion: true,
+                    crearIncidenciasRecuperacion: true,
+                    estadisticasIncidenciasRecuperacion: true
                 };
                 return;
             }
@@ -1999,7 +2011,10 @@ class NavbarComplete {
                     bitacora: false,
                     perfil: true,
                     configuracion: true,
-                    ayuda: true
+                    ayuda: true,
+                    incidenciasRecuperacion: false,
+                    crearIncidenciasRecuperacion: false,
+                    estadisticasIncidenciasRecuperacion: false
                 };
                 return;
             }
@@ -2017,6 +2032,10 @@ class NavbarComplete {
                         const tieneIncidencias = permiso.puedeAcceder('incidencias');
                         const tieneMonitoreo = permiso.puedeAcceder('monitoreo');
                         const tieneLoginMonitoreo = permiso.puedeAcceder('loginMonitoreo');
+                        // Verificar permisos específicos para incidencias de recuperación
+                        const tieneIncidenciasRecuperacion = permiso.puedeAcceder('incidenciasRecuperacion') || tieneIncidencias;
+                        const tieneCrearIncidenciasRecuperacion = permiso.puedeAcceder('crearIncidenciasRecuperacion') || tieneIncidencias;
+                        const tieneEstadisticasIncidenciasRecuperacion = permiso.puedeAcceder('estadisticasIncidenciasRecuperacion') || tieneIncidencias;
 
                         this.permisos = {
                             areas: permiso.puedeAcceder('areas'),
@@ -2036,7 +2055,10 @@ class NavbarComplete {
                             bitacora: true,
                             perfil: true,
                             configuracion: true,
-                            ayuda: true
+                            ayuda: true,
+                            incidenciasRecuperacion: tieneIncidenciasRecuperacion,
+                            crearIncidenciasRecuperacion: tieneCrearIncidenciasRecuperacion,
+                            estadisticasIncidenciasRecuperacion: tieneEstadisticasIncidenciasRecuperacion
                         };
                         return;
                     }
@@ -2064,7 +2086,10 @@ class NavbarComplete {
                 bitacora: false,
                 perfil: true,
                 configuracion: true,
-                ayuda: true
+                ayuda: true,
+                incidenciasRecuperacion: false,
+                crearIncidenciasRecuperacion: false,
+                estadisticasIncidenciasRecuperacion: false
             };
 
         } catch (error) {
@@ -2086,7 +2111,10 @@ class NavbarComplete {
                 bitacora: false,
                 perfil: true,
                 configuracion: true,
-                ayuda: true
+                ayuda: true,
+                incidenciasRecuperacion: false,
+                crearIncidenciasRecuperacion: false,
+                estadisticasIncidenciasRecuperacion: false
             };
         }
     }
@@ -2118,12 +2146,16 @@ class NavbarComplete {
         const incidenciasItems = [
             { id: 'incidenciasBtn', modulo: 'incidencias', elemento: document.getElementById('incidenciasBtn') },
             { id: 'crearIncidenciasBtn', modulo: 'incidencias', elemento: document.getElementById('crearIncidenciasBtn') },
-            { id: 'incidenciasCanalizadasBtn', modulo: 'incidencias', elemento: document.getElementById('incidenciasCanalizadasBtn') }
+            { id: 'incidenciasCanalizadasBtn', modulo: 'incidencias', elemento: document.getElementById('incidenciasCanalizadasBtn') },
+            // Nuevos elementos de incidencias de recuperación
+            { id: 'incidenciasRecuperacionBtn', modulo: 'incidenciasRecuperacion', elemento: document.getElementById('incidenciasRecuperacionBtn') },
+            { id: 'crearIncidenciasRecuperacionBtn', modulo: 'crearIncidenciasRecuperacion', elemento: document.getElementById('crearIncidenciasRecuperacionBtn') },
+            { id: 'estadisticasIncidenciasRecuperacionBtn', modulo: 'estadisticasIncidenciasRecuperacion', elemento: document.getElementById('estadisticasIncidenciasRecuperacionBtn') }
         ];
 
         incidenciasItems.forEach(item => {
             if (!item.elemento) return;
-            const debeMostrarse = this.permisos.incidencias === true;
+            const debeMostrarse = this.permisos[item.modulo] === true;
             item.elemento.style.display = debeMostrarse ? 'flex' : 'none';
         });
 
