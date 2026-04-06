@@ -12,7 +12,6 @@ let sucursalManager = null; // ✅ NUEVO: Para manejo de sucursales
 // ==================== INICIALIZACIÓN ====================
 document.addEventListener('DOMContentLoaded', function () {
     if (typeof Swal === 'undefined') {
-        console.error('❌ SweetAlert2 no está cargado.');
         return;
     }
 
@@ -27,17 +26,15 @@ async function inicializarManagers() {
     try {
         const { HistorialUsuarioManager } = await import('/clases/historialUsuario.js');
         historialManager = new HistorialUsuarioManager();
-        console.log('📋 HistorialManager inicializado para crear usuarios');
     } catch (error) {
-        console.error('Error inicializando historialManager:', error);
+        // Error handling without console
     }
 
     try {
         const { SucursalManager } = await import('/clases/sucursal.js');
         sucursalManager = new SucursalManager();
-        console.log('🏢 SucursalManager inicializado para crear usuarios');
     } catch (error) {
-        console.error('Error inicializando sucursalManager:', error);
+        // Error handling without console
     }
 }
 
@@ -99,7 +96,6 @@ async function initCollaboratorForm() {
         const usuarioActual = obtenerUsuarioActual();
 
         if (!usuarioActual) {
-            console.warn('No hay información de usuario, usando valores por defecto');
             usuarioActual = {
                 id: `usuario_${Date.now()}`,
                 uid: `usuario_${Date.now()}`,
@@ -124,7 +120,6 @@ async function initCollaboratorForm() {
         configurarHandlers(elements, userManager, usuarioActual);
 
     } catch (error) {
-        console.error('❌ Error inicializando formulario:', error);
         mostrarErrorSistema(error.message);
     }
 }
@@ -150,9 +145,8 @@ async function registrarCreacionColaborador(colaboradorData, usuarioActual) {
                 fechaCreacion: new Date().toISOString()
             }
         });
-        console.log(`✅ Creación de colaborador "${colaboradorData.nombreCompleto}" registrada en bitácora`);
     } catch (error) {
-        console.error('Error registrando creación de colaborador:', error);
+        // Error handling without console
     }
 }
 
@@ -193,7 +187,6 @@ function obtenerUsuarioActual() {
         return null;
 
     } catch (error) {
-        console.error('Error obteniendo usuario:', error);
         return null;
     }
 }
@@ -257,7 +250,6 @@ function obtenerElementosDOM() {
             toggleContrasenaBtns: document.querySelectorAll('.toggle-contrasena')
         };
     } catch (error) {
-        console.error('❌ Error obteniendo elementos DOM:', error);
         Swal.fire({
             icon: 'error',
             title: 'Error de configuración',
@@ -298,7 +290,7 @@ function actualizarInterfazConUsuario(elements, usuario) {
             }
 
         } catch (error) {
-            console.warn('⚠️ No se pudo cargar el logo de organización:', error);
+            // Error handling without console
         }
     }
 
@@ -346,8 +338,6 @@ async function cargarAreas(elements, usuario) {
     try {
         const areaManager = new AreaManager();
 
-        console.log('🔍 Cargando áreas para organización:', usuario.organizacionCamelCase);
-
         elements.areaSelect.innerHTML = '<option value="">Cargando áreas...</option>';
         elements.areaSelect.disabled = true;
         elements.cargoEnAreaSelect.innerHTML = '<option value="">Primero selecciona un área</option>';
@@ -372,7 +362,6 @@ async function cargarAreas(elements, usuario) {
         elements.areaSelect.disabled = false;
 
     } catch (error) {
-        console.error('❌ Error cargando áreas:', error);
         elements.areaSelect.innerHTML = '<option value="">Error al cargar áreas</option>';
         elements.areaSelect.disabled = false;
 
@@ -434,7 +423,6 @@ function cargarCargosPorArea(elements) {
 
     // ✅ NUEVO: Verificar si el área seleccionada es "sucursales" para mostrar el campo de sucursal
     if (areaNombre.toLowerCase() === 'sucursales' || areaNombre.toLowerCase() === 'sucursal') {
-        console.log('🏢 Área "sucursales" seleccionada, cargando sucursales...');
         cargarSucursales(elements);
     }
 }
@@ -446,7 +434,6 @@ async function cargarSucursales(elements) {
     try {
         const usuarioActual = window.usuarioActual;
         if (!usuarioActual || !usuarioActual.organizacionCamelCase) {
-            console.warn('No se pudo cargar sucursales: organización no disponible');
             return;
         }
 
@@ -482,7 +469,6 @@ async function cargarSucursales(elements) {
         elements.sucursalSelect._sucursalesData = sucursales;
 
     } catch (error) {
-        console.error('❌ Error cargando sucursales:', error);
         elements.sucursalSelect.innerHTML = '<option value="">Error al cargar sucursales</option>';
         if (elements.sucursalHint) {
             elements.sucursalHint.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Error al cargar sucursales';
@@ -513,7 +499,6 @@ async function verificarLimiteSucursal(sucursalId, organizacionCamelCase) {
         return true;
 
     } catch (error) {
-        console.error('Error verificando límite de sucursal:', error);
         return true; // Si hay error, permitir continuar
     }
 }
@@ -974,7 +959,6 @@ async function registrarColaborador(event, elements, userManager, usuario) {
         await mostrarExitoRegistro(colaboradorData, esAreaSucursales, sucursalNombre);
 
     } catch (error) {
-        console.error('❌ Error creando colaborador:', error);
         Swal.close();
         manejarErrorRegistro(error);
     }

@@ -1,13 +1,13 @@
 // mapaAlertas.js - VERSIÓN COMPLETA CON MODAL FULLSCREEN, VISOR DE PDF, ID EN NOTIFICACIONES, PANEL CERRADO Y HEATMAP
-// CON REGISTRO DE BITÁCORA
+// CON REGISTRO DE BITÁCORA - VERSIÓN CON CONSOLA LIMPIA
 
 import { SucursalManager } from '/clases/sucursal.js';
 import { RegionManager } from '/clases/region.js';
 import { IncidenciaManager } from '/clases/incidencia.js';
 import { generadorIPH } from '/components/iph-generator.js';
 
-let historialManager = null; // ✅ NUEVO: Para registrar actividades
-let accesoVistaRegistrado = false; // ✅ NUEVO: Para evitar registros duplicados
+let historialManager = null;
+let accesoVistaRegistrado = false;
 
 // =============================================
 // CONFIGURACIÓN DEL MAPA
@@ -91,12 +91,9 @@ let pdfModal = null;
 // INICIALIZACIÓN
 // =============================================
 document.addEventListener('DOMContentLoaded', async () => {
-    console.log('🚀 Iniciando mapa con listener real, PDF y Heatmap...');
-
     try {
-        // ✅ NUEVO: Inicializar historialManager
         await inicializarHistorial();
-        
+
         if (!inicializarMapa()) return;
         await cargarUsuario();
         sucursalManager = new SucursalManager();
@@ -113,30 +110,24 @@ document.addEventListener('DOMContentLoaded', async () => {
         configurarPaneles();
         configurarSelectorRegion();
         agregarBotonHeatmap();
-        
-        // ✅ NUEVO: Registrar acceso al mapa de alertas
+
         await registrarAccesoMapaAlertas();
-        
-        console.log('✅ Todo listo!');
 
     } catch (error) {
-        console.error('❌ Error:', error);
+        console.error('Error:', error);
         mostrarError(error.message);
     }
 });
 
-// ✅ NUEVO: Inicializar historialManager
 async function inicializarHistorial() {
     try {
         const { HistorialUsuarioManager } = await import('/clases/historialUsuario.js');
         historialManager = new HistorialUsuarioManager();
-        console.log('📋 HistorialManager inicializado para mapa de alertas');
     } catch (error) {
-        console.error('Error inicializando historialManager:', error);
+        // Error silencioso
     }
 }
 
-// ✅ NUEVO: Obtener usuario actual
 function obtenerUsuarioActual() {
     try {
         const adminInfo = localStorage.getItem('adminInfo');
@@ -171,15 +162,14 @@ function obtenerUsuarioActual() {
     }
 }
 
-// ✅ NUEVO: Registrar acceso al mapa de alertas
 async function registrarAccesoMapaAlertas() {
     if (!historialManager) return;
     if (accesoVistaRegistrado) return;
-    
+
     try {
         const usuario = obtenerUsuarioActual();
         if (!usuario) return;
-        
+
         await historialManager.registrarActividad({
             usuario: usuario,
             tipo: 'leer',
@@ -194,22 +184,20 @@ async function registrarAccesoMapaAlertas() {
             }
         });
         accesoVistaRegistrado = true;
-        console.log('✅ Acceso al mapa de alertas registrado en bitácora');
     } catch (error) {
         console.error('Error registrando acceso al mapa:', error);
     }
 }
 
-// ✅ NUEVO: Registrar visualización de incidencia en mapa
 async function registrarVisualizacionIncidencia(incidencia, sucursal) {
     if (!historialManager) return;
-    
+
     try {
         const usuario = obtenerUsuarioActual();
         if (!usuario) return;
-        
+
         const nivel = CONFIG.nivelesRiesgo[incidencia.nivelRiesgo] || CONFIG.nivelesRiesgo.bajo;
-        
+
         await historialManager.registrarActividad({
             usuario: usuario,
             tipo: 'leer',
@@ -227,20 +215,18 @@ async function registrarVisualizacionIncidencia(incidencia, sucursal) {
                 fecha: incidencia.fecha
             }
         });
-        console.log(`✅ Visualización de incidencia "${incidencia.id}" en mapa registrada en bitácora`);
     } catch (error) {
         console.error('Error registrando visualización de incidencia:', error);
     }
 }
 
-// ✅ NUEVO: Registrar generación de PDF desde mapa
 async function registrarGeneracionPDF(incidenciaId, tipo, incidencia) {
     if (!historialManager) return;
-    
+
     try {
         const usuario = obtenerUsuarioActual();
         if (!usuario) return;
-        
+
         await historialManager.registrarActividad({
             usuario: usuario,
             tipo: 'leer',
@@ -255,20 +241,18 @@ async function registrarGeneracionPDF(incidenciaId, tipo, incidencia) {
                 fecha: new Date().toISOString()
             }
         });
-        console.log(`✅ Generación de PDF para incidencia "${incidenciaId}" registrada en bitácora`);
     } catch (error) {
         console.error('Error registrando generación de PDF:', error);
     }
 }
 
-// ✅ NUEVO: Registrar activación de heatmap
 async function registrarActivacionHeatmap(activado, puntos) {
     if (!historialManager) return;
-    
+
     try {
         const usuario = obtenerUsuarioActual();
         if (!usuario) return;
-        
+
         await historialManager.registrarActividad({
             usuario: usuario,
             tipo: 'leer',
@@ -280,20 +264,18 @@ async function registrarActivacionHeatmap(activado, puntos) {
                 fecha: new Date().toISOString()
             }
         });
-        console.log(`✅ ${activado ? 'Activación' : 'Desactivación'} de heatmap registrada en bitácora`);
     } catch (error) {
         console.error('Error registrando heatmap:', error);
     }
 }
 
-// ✅ NUEVO: Registrar filtro por región
 async function registrarFiltroRegion(regionId, regionNombre, sucursalesMostradas) {
     if (!historialManager) return;
-    
+
     try {
         const usuario = obtenerUsuarioActual();
         if (!usuario) return;
-        
+
         await historialManager.registrarActividad({
             usuario: usuario,
             tipo: 'leer',
@@ -306,7 +288,6 @@ async function registrarFiltroRegion(regionId, regionNombre, sucursalesMostradas
                 fechaFiltro: new Date().toISOString()
             }
         });
-        console.log(`✅ Filtro por región "${regionNombre}" registrado en bitácora`);
     } catch (error) {
         console.error('Error registrando filtro por región:', error);
     }
@@ -318,10 +299,9 @@ async function registrarFiltroRegion(regionId, regionNombre, sucursalesMostradas
 function agregarBotonHeatmap() {
     const controlPanel = document.querySelector('.control-panel');
     if (!controlPanel) return;
-    
-    // Verificar si ya existe
+
     if (document.getElementById('btnHeatmap')) return;
-    
+
     const btnHeatmap = document.createElement('button');
     btnHeatmap.id = 'btnHeatmap';
     btnHeatmap.className = 'control-btn';
@@ -329,9 +309,8 @@ function agregarBotonHeatmap() {
     btnHeatmap.style.background = 'linear-gradient(135deg, #ff4444, #ff8844)';
     btnHeatmap.style.border = 'none';
     btnHeatmap.onclick = toggleHeatmap;
-    
+
     controlPanel.appendChild(btnHeatmap);
-    console.log('✅ Botón de Heatmap agregado');
 }
 
 // =============================================
@@ -339,20 +318,19 @@ function agregarBotonHeatmap() {
 // =============================================
 function generarPuntosHeatmap() {
     puntosHeatmap = [];
-    
+
     incidencias.forEach(inc => {
         const sucursal = sucursalesMap.get(inc.sucursalId);
         if (sucursal && sucursal.latitud && sucursal.longitud) {
             const peso = CONFIG.nivelesRiesgo[inc.nivelRiesgo]?.peso || 1;
-            // Aumentar peso para incidencias recientes (últimas 24h)
             let pesoFinal = peso;
             const fechaInc = new Date(inc.fecha);
             const ahora = new Date();
             const horasDiff = (ahora - fechaInc) / (1000 * 60 * 60);
             if (horasDiff < 24) {
-                pesoFinal = peso * 1.5; // Incidencias recientes tienen más peso
+                pesoFinal = peso * 1.5;
             }
-            
+
             puntosHeatmap.push({
                 lat: parseFloat(sucursal.latitud),
                 lng: parseFloat(sucursal.longitud),
@@ -360,8 +338,6 @@ function generarPuntosHeatmap() {
             });
         }
     });
-    
-    console.log(`🔥 Generados ${puntosHeatmap.length} puntos para heatmap`);
 }
 
 // =============================================
@@ -369,24 +345,20 @@ function generarPuntosHeatmap() {
 // =============================================
 function crearHeatmapLayer() {
     if (typeof L.heatLayer === 'undefined') {
-        console.warn('⚠️ Leaflet.heat no está cargado, cargando...');
-        // Cargar la librería Leaflet.heat dinámicamente
         return new Promise((resolve, reject) => {
             const script = document.createElement('script');
             script.src = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet.heat/0.2.0/leaflet-heat.js';
             script.onload = () => {
-                console.log('✅ Leaflet.heat cargado');
                 const layer = L.heatLayer(puntosHeatmap, CONFIG.heatmapConfig);
                 resolve(layer);
             };
             script.onerror = () => {
-                console.error('❌ Error cargando Leaflet.heat');
                 reject();
             };
             document.head.appendChild(script);
         });
     }
-    
+
     return L.heatLayer(puntosHeatmap, CONFIG.heatmapConfig);
 }
 
@@ -395,15 +367,12 @@ function crearHeatmapLayer() {
 // =============================================
 async function toggleHeatmap() {
     const btn = document.getElementById('btnHeatmap');
-    
+
     if (!heatmapVisible) {
-        // Activar heatmap
-        console.log('🔥 Activando mapa de calor...');
-        
         if (puntosHeatmap.length === 0) {
             generarPuntosHeatmap();
         }
-        
+
         if (puntosHeatmap.length === 0) {
             Swal.fire({
                 icon: 'info',
@@ -418,22 +387,21 @@ async function toggleHeatmap() {
             });
             return;
         }
-        
+
         try {
             if (!heatmapLayer) {
                 heatmapLayer = await crearHeatmapLayer();
             }
-            
+
             if (heatmapLayer) {
                 heatmapLayer.addTo(mapa);
                 heatmapVisible = true;
                 btn.style.background = 'linear-gradient(135deg, #ff8844, #ff4444)';
                 btn.style.boxShadow = '0 0 15px rgba(255, 68, 68, 0.5)';
                 btn.innerHTML = '<i class="fas fa-fire"></i><span>Ocultar Calor</span>';
-                
-                // ✅ NUEVO: Registrar activación de heatmap
+
                 await registrarActivacionHeatmap(true, puntosHeatmap);
-                
+
                 Swal.fire({
                     icon: 'success',
                     title: 'Mapa de Calor Activado',
@@ -456,9 +424,8 @@ async function toggleHeatmap() {
                 color: 'var(--color-text-primary)'
             });
         }
-        
+
     } else {
-        // Desactivar heatmap
         if (heatmapLayer && mapa.hasLayer(heatmapLayer)) {
             mapa.removeLayer(heatmapLayer);
         }
@@ -466,10 +433,9 @@ async function toggleHeatmap() {
         btn.style.background = 'linear-gradient(135deg, #ff4444, #ff8844)';
         btn.style.boxShadow = 'none';
         btn.innerHTML = '<i class="fas fa-fire"></i><span>Mapa de Calor</span>';
-        
-        // ✅ NUEVO: Registrar desactivación de heatmap
+
         await registrarActivacionHeatmap(false, []);
-        
+
         Swal.fire({
             icon: 'info',
             title: 'Mapa de Calor Oculto',
@@ -488,13 +454,11 @@ async function toggleHeatmap() {
 // =============================================
 function actualizarHeatmap() {
     if (!heatmapVisible) return;
-    
-    console.log('🔄 Actualizando heatmap...');
+
     generarPuntosHeatmap();
-    
+
     if (heatmapLayer && mapa.hasLayer(heatmapLayer)) {
         mapa.removeLayer(heatmapLayer);
-        // Recrear layer con nuevos puntos
         if (typeof L.heatLayer !== 'undefined') {
             heatmapLayer = L.heatLayer(puntosHeatmap, CONFIG.heatmapConfig);
             heatmapLayer.addTo(mapa);
@@ -508,7 +472,7 @@ function actualizarHeatmap() {
 function crearModalPDF() {
     const existingModal = document.getElementById('pdfFullscreenModal');
     if (existingModal) existingModal.remove();
-    
+
     pdfModal = document.createElement('div');
     pdfModal.id = 'pdfFullscreenModal';
     pdfModal.className = 'pdf-fullscreen-modal';
@@ -526,7 +490,7 @@ function crearModalPDF() {
         flex-direction: column;
         backdrop-filter: blur(5px);
     `;
-    
+
     pdfModal.innerHTML = `
         <div class="pdf-modal-header" style="
             width: 100%;
@@ -596,16 +560,16 @@ function crearModalPDF() {
             "></iframe>
         </div>
     `;
-    
+
     document.body.appendChild(pdfModal);
-    
+
     const btnCerrar = document.getElementById('btnCerrarPDF');
     const btnDescargar = document.getElementById('btnDescargarPDF');
-    
+
     if (btnCerrar) {
         btnCerrar.addEventListener('click', cerrarModalPDF);
     }
-    
+
     if (btnDescargar) {
         btnDescargar.addEventListener('click', () => {
             const iframe = document.getElementById('pdfViewer');
@@ -617,7 +581,7 @@ function crearModalPDF() {
                 document.body.appendChild(a);
                 a.click();
                 document.body.removeChild(a);
-                
+
                 Swal.fire({
                     icon: 'success',
                     title: 'Descarga iniciada',
@@ -632,7 +596,7 @@ function crearModalPDF() {
             }
         });
     }
-    
+
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape' && pdfModal && pdfModal.style.display === 'flex') {
             cerrarModalPDF();
@@ -647,16 +611,16 @@ function abrirModalPDF(pdfUrl, incidenciaId = null, titulo = 'Visor de PDF') {
     if (!pdfModal) {
         crearModalPDF();
     }
-    
+
     const iframe = document.getElementById('pdfViewer');
     const titleSpan = document.getElementById('pdfModalTitle');
-    
+
     if (iframe) {
         iframe.src = pdfUrl;
     }
-    
+
     window.currentIncidenciaId = incidenciaId;
-    
+
     if (titleSpan) {
         if (incidenciaId) {
             titleSpan.innerHTML = `<i class="fas fa-file-pdf" style="color: #c0392b;"></i> INFORME INCIDENCIA - ID: ${incidenciaId}`;
@@ -664,7 +628,7 @@ function abrirModalPDF(pdfUrl, incidenciaId = null, titulo = 'Visor de PDF') {
             titleSpan.innerHTML = `<i class="fas fa-file-pdf" style="color: #c0392b;"></i> ${titulo}`;
         }
     }
-    
+
     pdfModal.style.display = 'flex';
     document.body.style.overflow = 'hidden';
 }
@@ -687,13 +651,13 @@ function cerrarModalPDF() {
 function inicializarMapa() {
     try {
         if (typeof L === 'undefined') {
-            console.error('❌ Leaflet no cargado');
+            console.error('Leaflet no cargado');
             return false;
         }
 
         const mapaElement = document.getElementById('mapa');
         if (!mapaElement) {
-            console.error('❌ Elemento #mapa no encontrado');
+            console.error('Elemento #mapa no encontrado');
             return false;
         }
 
@@ -713,11 +677,10 @@ function inicializarMapa() {
             attribution: '© OpenStreetMap | Centinela-MX'
         }).addTo(mapa);
 
-        console.log('✅ Mapa inicializado');
         return true;
 
     } catch (error) {
-        console.error('❌ Error mapa:', error);
+        console.error('Error mapa:', error);
         return false;
     }
 }
@@ -758,9 +721,8 @@ async function cargarUsuario() {
                 organizacionActual = { nombre: 'Mi Empresa', camelCase: 'pollosRay' };
             }
         }
-        console.log('👤 Usuario:', usuarioActual.organizacionCamelCase);
         await obtenerTokenAuth();
-        
+
     } catch (error) {
         console.error('Error cargando usuario:', error);
         usuarioActual = { organizacionCamelCase: 'pollosRay' };
@@ -785,7 +747,7 @@ async function obtenerTokenAuth() {
             }
         }
     } catch (error) {
-        console.warn('Error obteniendo token:', error);
+        // Error silencioso
         authToken = null;
     }
 }
@@ -799,16 +761,15 @@ async function cargarDatosParaPDF() {
         if (data?.length) {
             sucursalesCache = data;
         }
-        
+
         try {
             const { CategoriaManager } = await import('/clases/categoria.js');
             const categoriaManager = new CategoriaManager();
             categoriasCache = await categoriaManager.obtenerTodasCategorias();
         } catch (error) {
-            console.warn('Error cargando categorías:', error);
             categoriasCache = [];
         }
-        
+
         try {
             const modulo = await import('/clases/subcategoria.js').catch(() => null);
             if (modulo) {
@@ -819,10 +780,9 @@ async function cargarDatosParaPDF() {
                 }
             }
         } catch (error) {
-            console.warn('Error cargando subcategorías:', error);
             subcategoriasCache = [];
         }
-        
+
         if (generadorIPH && typeof generadorIPH.configurar === 'function') {
             generadorIPH.configurar({
                 organizacionActual,
@@ -833,8 +793,7 @@ async function cargarDatosParaPDF() {
                 authToken
             });
         }
-        
-        console.log('✅ Datos para PDF cargados');
+
     } catch (error) {
         console.error('Error cargando datos para PDF:', error);
     }
@@ -849,9 +808,8 @@ async function cargarRegiones() {
             usuarioActual.organizacionCamelCase,
             usuarioActual
         );
-        console.log(`✅ Cargadas ${regiones.length} regiones`);
     } catch (error) {
-        console.error('❌ Error cargando regiones:', error);
+        console.error('Error cargando regiones:', error);
         regiones = [];
     }
 }
@@ -883,15 +841,12 @@ async function cargarSucursales() {
                     }
                 }
             }
-            console.log(`✅ Cargadas ${sucursales.length} sucursales`);
-        } else {
-            console.warn('⚠️ No hay sucursales en Firebase');
         }
 
         actualizarStats();
 
     } catch (error) {
-        console.error('❌ Error cargando sucursales:', error);
+        console.error('Error cargando sucursales:', error);
     }
 }
 
@@ -946,14 +901,11 @@ function agregarSucursalAlMapa(sucursal, region) {
 // INICIAR LISTENER DE INCIDENCIAS REALES
 // =============================================
 async function iniciarListenerIncidenciasReales() {
-    console.log('📡 Iniciando listener de incidencias REAL con onSnapshot...');
-
     try {
         const { collection, query, orderBy, limit, onSnapshot } = await import("https://www.gstatic.com/firebasejs/12.8.0/firebase-firestore.js");
         const { db } = await import('/config/firebase-config.js');
 
         const collectionName = `incidencias_${usuarioActual.organizacionCamelCase}`;
-        console.log(`📁 Escuchando colección: ${collectionName}`);
 
         const incidenciasRef = collection(db, collectionName);
         const q = query(
@@ -963,14 +915,12 @@ async function iniciarListenerIncidenciasReales() {
         );
 
         unsubscribeIncidencias = onSnapshot(q, async (snapshot) => {
-            console.log(`📊 Cambio detectado: ${snapshot.docChanges().length} cambios`);
-
             const nuevasIncidencias = [];
-            
+
             snapshot.forEach(doc => {
                 const data = doc.data();
                 const fecha = data.fechaCreacion?.toDate?.() || new Date(data.fechaCreacion) || new Date();
-                
+
                 nuevasIncidencias.push({
                     id: doc.id,
                     sucursalId: data.sucursalId,
@@ -990,7 +940,6 @@ async function iniciarListenerIncidenciasReales() {
             const incidenciasAnteriores = [...incidencias];
             incidencias = nuevasIncidencias;
 
-            // Actualizar heatmap si está activo
             if (heatmapVisible) {
                 actualizarHeatmap();
             }
@@ -999,7 +948,7 @@ async function iniciarListenerIncidenciasReales() {
                 if (change.type === 'added') {
                     const data = change.doc.data();
                     const fecha = data.fechaCreacion?.toDate?.() || new Date(data.fechaCreacion) || new Date();
-                    
+
                     const nuevaIncidencia = {
                         id: change.doc.id,
                         sucursalId: data.sucursalId,
@@ -1009,12 +958,10 @@ async function iniciarListenerIncidenciasReales() {
                         estado: data.estado || 'pendiente',
                         fecha: fecha
                     };
-                    
+
                     const yaExiste = incidenciasAnteriores.some(inc => inc.id === change.doc.id);
-                    
+
                     if (!yaExiste && !isFirstSnapshot) {
-                        console.log('🔔 NUEVA INCIDENCIA DETECTADA:', nuevaIncidencia.id);
-                        
                         const sucursal = sucursalesMap.get(nuevaIncidencia.sucursalId);
                         if (sucursal) {
                             mostrarNotificacionIncidencia(nuevaIncidencia, sucursal);
@@ -1023,27 +970,21 @@ async function iniciarListenerIncidenciasReales() {
                     }
                 }
             });
-            
+
             if (isFirstSnapshot) {
                 isFirstSnapshot = false;
-                console.log('✅ Primera carga completada, listener activo');
-                // Generar puntos de heatmap iniciales
                 generarPuntosHeatmap();
             }
-            
+
             actualizarListaUltimasIncidencias();
             actualizarStats();
-            
-            console.log(`✅ Total incidencias cargadas: ${incidencias.length}`);
-            
+
         }, (error) => {
-            console.error('❌ Error en listener de incidencias:', error);
+            console.error('Error en listener de incidencias:', error);
         });
-        
-        console.log('✅ Listener de incidencias REAL activo');
-        
+
     } catch (error) {
-        console.error('❌ Error iniciando listener:', error);
+        console.error('Error iniciando listener:', error);
     }
 }
 
@@ -1053,9 +994,9 @@ async function iniciarListenerIncidenciasReales() {
 function actualizarListaUltimasIncidencias() {
     const container = document.getElementById('listaIncidencias');
     if (!container) return;
-    
+
     const ultimasIncidencias = incidencias.slice(0, 5);
-    
+
     if (!ultimasIncidencias.length) {
         container.innerHTML = `
             <div class="no-incidencias">
@@ -1066,17 +1007,17 @@ function actualizarListaUltimasIncidencias() {
         if (badge) badge.textContent = '0';
         return;
     }
-    
+
     const badge = document.getElementById('incidenciasBadge');
     if (badge) badge.textContent = ultimasIncidencias.length;
-    
+
     container.innerHTML = ultimasIncidencias.map(inc => {
         const nivel = CONFIG.nivelesRiesgo[inc.nivelRiesgo] || CONFIG.nivelesRiesgo.bajo;
         const sucursal = sucursalesMap.get(inc.sucursalId);
         const sucursalNombre = sucursal?.nombre || 'Sucursal desconocida';
         const estadoTexto = inc.estado === 'finalizada' ? 'Finalizada' : 'Pendiente';
         const estadoClass = inc.estado === 'finalizada' ? 'finalizada' : 'pendiente';
-        
+
         return `
             <div class="incidencia-item ${inc.nivelRiesgo}">
                 <div class="incidencia-header">
@@ -1130,12 +1071,10 @@ function actualizarListaUltimasIncidencias() {
 // =============================================
 // FUNCIÓN PARA VER PDF EN MODAL CON ID
 // =============================================
-window.verPDFIncidencia = async function(incidenciaId) {
-    console.log('📄 Abriendo PDF para incidencia:', incidenciaId);
-    
+window.verPDFIncidencia = async function (incidenciaId) {
     try {
         const incidencia = incidencias.find(i => i.id === incidenciaId);
-        
+
         if (!incidencia) {
             Swal.fire({
                 icon: 'error',
@@ -1146,7 +1085,7 @@ window.verPDFIncidencia = async function(incidenciaId) {
             });
             return;
         }
-        
+
         Swal.fire({
             title: 'Generando PDF...',
             html: '<div class="spinner-border text-primary" role="status"><span class="visually-hidden">Cargando...</span></div><p style="margin-top: 12px;">Por favor espere</p>',
@@ -1155,7 +1094,7 @@ window.verPDFIncidencia = async function(incidenciaId) {
             background: 'var(--color-bg-secondary)',
             color: 'var(--color-text-primary)'
         });
-        
+
         const incidenciaCompleta = {
             id: incidencia.id,
             sucursalId: incidencia.sucursalId,
@@ -1168,21 +1107,21 @@ window.verPDFIncidencia = async function(incidenciaId) {
             subcategoriaId: incidencia.subcategoriaId,
             imagenes: incidencia.imagenes || [],
             pdfUrl: incidencia.pdfUrl,
-            getNivelRiesgoTexto: function() {
+            getNivelRiesgoTexto: function () {
                 const niveles = { 'bajo': 'Bajo', 'medio': 'Medio', 'alto': 'Alto', 'critico': 'Crítico' };
                 return niveles[this.nivelRiesgo] || 'Bajo';
             },
-            getEstadoTexto: function() {
+            getEstadoTexto: function () {
                 const estados = { 'pendiente': 'Pendiente', 'finalizada': 'Finalizada' };
                 return estados[this.estado] || 'Pendiente';
             },
-            getSeguimientosArray: function() {
+            getSeguimientosArray: function () {
                 return [];
             }
         };
-        
+
         let pdfBlob = null;
-        
+
         if (incidencia.pdfUrl) {
             Swal.close();
             const result = await Swal.fire({
@@ -1193,9 +1132,8 @@ window.verPDFIncidencia = async function(incidenciaId) {
                 background: 'var(--color-bg-secondary)',
                 color: 'var(--color-text-primary)'
             });
-            
+
             if (result.isConfirmed) {
-                // ✅ NUEVO: Registrar visualización de PDF existente
                 await registrarGeneracionPDF(incidenciaId, 'existente', incidencia);
                 abrirModalPDF(incidencia.pdfUrl, incidencia.id, `Incidencia ${incidencia.id}`);
                 return;
@@ -1206,10 +1144,9 @@ window.verPDFIncidencia = async function(incidenciaId) {
                 mostrarAlerta: false,
                 returnBlob: true
             });
-            
+
             if (pdfBlob) {
                 const url = URL.createObjectURL(pdfBlob);
-                // ✅ NUEVO: Registrar generación de PDF
                 await registrarGeneracionPDF(incidenciaId, 'nuevo', incidencia);
                 abrirModalPDF(url, incidencia.id, `Incidencia ${incidencia.id}`);
                 window.currentPDFBlob = pdfBlob;
@@ -1218,18 +1155,17 @@ window.verPDFIncidencia = async function(incidenciaId) {
             } else {
                 throw new Error('No se pudo generar el PDF');
             }
-            
+
         } catch (genError) {
             console.error('Error generando PDF con IPH:', genError);
-            
+
             Swal.update({
                 html: '<div class="spinner-border text-primary" role="status"><span class="visually-hidden">Generando PDF simple...</span></div><p style="margin-top: 12px;">Generando PDF básico...</p>'
             });
-            
+
             const pdfSimpleBlob = await generarPDFSimple(incidencia);
             if (pdfSimpleBlob) {
                 const url = URL.createObjectURL(pdfSimpleBlob);
-                // ✅ NUEVO: Registrar generación de PDF simple
                 await registrarGeneracionPDF(incidenciaId, 'simple', incidencia);
                 abrirModalPDF(url, incidencia.id, `Incidencia ${incidencia.id} (Básico)`);
                 window.currentPDFBlob = pdfSimpleBlob;
@@ -1239,7 +1175,7 @@ window.verPDFIncidencia = async function(incidenciaId) {
                 throw new Error('No se pudo generar el PDF');
             }
         }
-        
+
     } catch (error) {
         console.error('Error generando PDF:', error);
         Swal.close();
@@ -1260,14 +1196,14 @@ async function generarPDFSimple(incidencia) {
     try {
         const { jsPDF } = window.jspdf || await import('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
         const doc = new jsPDF();
-        
+
         const sucursal = sucursalesMap.get(incidencia.sucursalId);
         const nivel = CONFIG.nivelesRiesgo[incidencia.nivelRiesgo] || CONFIG.nivelesRiesgo.bajo;
-        
+
         doc.setFontSize(18);
         doc.setTextColor(0, 82, 155);
         doc.text('INFORME DE INCIDENCIA', 105, 20, { align: 'center' });
-        
+
         doc.setFontSize(12);
         doc.setTextColor(0, 0, 0);
         doc.text(`ID: ${incidencia.id}`, 20, 35);
@@ -1275,16 +1211,16 @@ async function generarPDFSimple(incidencia) {
         doc.text(`Nivel de Riesgo: ${nivel.texto}`, 20, 55);
         doc.text(`Estado: ${incidencia.estado === 'finalizada' ? 'Finalizada' : 'Pendiente'}`, 20, 65);
         doc.text(`Fecha: ${formatearFecha(incidencia.fecha)}`, 20, 75);
-        
+
         doc.setFontSize(11);
         doc.setFont(undefined, 'bold');
         doc.text('Descripción:', 20, 95);
         doc.setFont(undefined, 'normal');
         const descripcionLines = doc.splitTextToSize(incidencia.descripcion || 'Sin descripción', 170);
         doc.text(descripcionLines, 20, 103);
-        
+
         return doc.output('blob');
-        
+
     } catch (error) {
         console.error('Error en PDF simple:', error);
         return null;
@@ -1296,16 +1232,12 @@ async function generarPDFSimple(incidencia) {
 // =============================================
 function mostrarNotificacionIncidencia(incidencia, sucursal) {
     const nivel = CONFIG.nivelesRiesgo[incidencia.nivelRiesgo] || CONFIG.nivelesRiesgo.bajo;
-    
-    console.log('🔔 Mostrando notificación para incidencia:', incidencia.id);
-    
+
     try {
         const audio = new Audio('/assets/sounds/notificacion.mp3');
-        audio.play().catch(e => console.log('Sonido no disponible'));
-    } catch (e) {
-        console.log('Error reproduciendo sonido');
-    }
-    
+        audio.play().catch(e => { });
+    } catch (e) { }
+
     Swal.fire({
         title: '🚨 NUEVA INCIDENCIA',
         html: `
@@ -1350,13 +1282,12 @@ function mostrarNotificacionIncidencia(incidencia, sucursal) {
     }).then(async (result) => {
         if (result.isConfirmed && sucursal) {
             centrarEnSucursal(sucursal.id);
-            // ✅ NUEVO: Registrar visualización de incidencia desde notificación
             await registrarVisualizacionIncidencia(incidencia, sucursal);
         } else if (result.dismiss === Swal.DismissReason.cancel) {
             window.verPDFIncidencia(incidencia.id);
         }
     });
-    
+
     Swal.fire({
         title: `${nivel.texto} - Nueva incidencia`,
         html: `<strong style="font-family: monospace; color: #00cfff;">📎 ID: ${incidencia.id}</strong><br>${incidencia.titulo}<br><small>📍 ${sucursal?.nombre || 'sucursal desconocida'}</small>`,
@@ -1379,10 +1310,10 @@ function centrarEnSucursal(sucursalId) {
     if (sucursal && marcadores.sucursales[sucursalId]) {
         mapa.setView([sucursal.latitud, sucursal.longitud], 16);
         marcadores.sucursales[sucursalId].openPopup();
-        
+
         const marker = marcadores.sucursales[sucursalId];
         const originalIcon = marker.getIcon();
-        
+
         const highlightIcon = L.divIcon({
             className: 'marcador-sucursal highlight',
             html: `<i class="fas fa-store" style="color: ${sucursal.regionColor}; font-size: 2.5rem; filter: drop-shadow(0 0 15px ${sucursal.regionColor});"></i>`,
@@ -1390,15 +1321,14 @@ function centrarEnSucursal(sucursalId) {
             iconAnchor: [16, 32],
             popupAnchor: [0, -32]
         });
-        
+
         marker.setIcon(highlightIcon);
         setTimeout(() => {
             marker.setIcon(originalIcon);
         }, 2000);
-        
-        console.log(`📍 Centrado en sucursal: ${sucursal.nombre}`);
+
     } else {
-        console.warn(`⚠️ No se encontró la sucursal con ID: ${sucursalId}`);
+        // Silencioso
     }
 }
 
@@ -1413,14 +1343,14 @@ function actualizarStats() {
     const altas = incidencias.filter(i => i.nivelRiesgo === 'alto').length;
     const medias = incidencias.filter(i => i.nivelRiesgo === 'medio').length;
     const bajas = incidencias.filter(i => i.nivelRiesgo === 'bajo').length;
-    
+
     const totalAltas = criticas + altas;
-    
+
     const altasMini = document.getElementById('statAltasMini');
     const mediasMini = document.getElementById('statMediasMini');
     const bajasMini = document.getElementById('statBajasMini');
     const sucursalesMini = document.getElementById('statSucursalesMini');
-    
+
     if (altasMini) altasMini.textContent = totalAltas;
     if (mediasMini) mediasMini.textContent = medias;
     if (bajasMini) bajasMini.textContent = bajas;
@@ -1433,19 +1363,19 @@ function actualizarStats() {
 async function cargarRegionesEnSelector() {
     const container = document.getElementById('regionList');
     if (!container) return;
-    
+
     if (!regiones.length) {
         container.innerHTML = '<div class="loading-regions">No hay regiones disponibles</div>';
         return;
     }
-    
+
     const sucursalesPorRegion = {};
     sucursales.forEach(s => {
         if (s.regionId) {
             sucursalesPorRegion[s.regionId] = (sucursalesPorRegion[s.regionId] || 0) + 1;
         }
     });
-    
+
     container.innerHTML = regiones.map(region => {
         const count = sucursalesPorRegion[region.id] || 0;
         return `
@@ -1456,7 +1386,7 @@ async function cargarRegionesEnSelector() {
             </div>
         `;
     }).join('');
-    
+
     document.querySelectorAll('.region-option').forEach(opt => {
         opt.addEventListener('click', () => {
             const regionId = opt.dataset.regionId;
@@ -1474,19 +1404,19 @@ async function cargarRegionesEnSelector() {
 async function cargarRegionesEnLista() {
     const container = document.getElementById('regionesList');
     if (!container) return;
-    
+
     if (!regiones.length) {
         container.innerHTML = '<div class="no-incidencias" style="padding: 15px;">No hay regiones</div>';
         return;
     }
-    
+
     const sucursalesPorRegion = {};
     sucursales.forEach(s => {
         if (s.regionId) {
             sucursalesPorRegion[s.regionId] = (sucursalesPorRegion[s.regionId] || 0) + 1;
         }
     });
-    
+
     container.innerHTML = regiones.map(region => {
         const count = sucursalesPorRegion[region.id] || 0;
         return `
@@ -1505,7 +1435,7 @@ async function cargarRegionesEnLista() {
 async function filtrarPorRegion(regionId, regionName, regionColor) {
     filtros.regionId = regionId;
     filtros.regionNombre = regionName;
-    
+
     const btn = document.getElementById('btnSeleccionarRegion');
     if (btn) {
         btn.innerHTML = `
@@ -1516,9 +1446,9 @@ async function filtrarPorRegion(regionId, regionName, regionColor) {
             <i class="fas fa-chevron-down"></i>
         `;
     }
-    
+
     mostrarBadgeRegionActiva(regionName, regionColor);
-    
+
     let sucursalesMostradas = 0;
     Object.keys(marcadores.sucursales).forEach(id => {
         const s = sucursales.find(x => x.id === id);
@@ -1535,15 +1465,14 @@ async function filtrarPorRegion(regionId, regionName, regionColor) {
             }
         }
     });
-    
-    // ✅ NUEVO: Registrar filtro por región
+
     await registrarFiltroRegion(regionId, regionName, sucursalesMostradas);
-    
+
     const sucursalesRegion = Object.values(marcadores.sucursales).filter((m, idx) => {
         const s = sucursales.find(x => x.id === Object.keys(marcadores.sucursales)[idx]);
         return s && s.regionId === regionId;
     });
-    
+
     if (sucursalesRegion.length > 0) {
         const grupo = L.featureGroup(sucursalesRegion);
         mapa.fitBounds(grupo.getBounds().pad(0.2));
@@ -1553,7 +1482,7 @@ async function filtrarPorRegion(regionId, regionName, regionColor) {
 function mostrarTodasLasSucursales() {
     filtros.regionId = null;
     filtros.regionNombre = null;
-    
+
     const btn = document.getElementById('btnSeleccionarRegion');
     if (btn) {
         btn.innerHTML = `
@@ -1562,15 +1491,15 @@ function mostrarTodasLasSucursales() {
             <i class="fas fa-chevron-down"></i>
         `;
     }
-    
+
     ocultarBadgeRegionActiva();
-    
+
     Object.keys(marcadores.sucursales).forEach(id => {
         if (!mapa.hasLayer(marcadores.sucursales[id])) {
             marcadores.sucursales[id].addTo(mapa);
         }
     });
-    
+
     const todos = Object.values(marcadores.sucursales);
     if (todos.length > 0) {
         const grupo = L.featureGroup(todos);
@@ -1597,7 +1526,7 @@ function mostrarBadgeRegionActiva(nombre, color) {
         </button>
     `;
     badge.style.display = 'flex';
-    
+
     const btnQuitar = document.getElementById('btnQuitarFiltroRegion');
     if (btnQuitar) {
         btnQuitar.addEventListener('click', mostrarTodasLasSucursales);
@@ -1616,7 +1545,7 @@ function configurarSelectorRegion() {
     const btn = document.getElementById('btnSeleccionarRegion');
     const dropdown = document.getElementById('regionDropdown');
     const limpiarBtn = document.getElementById('limpiarFiltroRegion');
-    
+
     if (btn && dropdown) {
         btn.addEventListener('click', (e) => {
             e.stopPropagation();
@@ -1624,7 +1553,7 @@ function configurarSelectorRegion() {
             btn.classList.toggle('active');
         });
     }
-    
+
     if (limpiarBtn) {
         limpiarBtn.addEventListener('click', () => {
             mostrarTodasLasSucursales();
@@ -1632,7 +1561,7 @@ function configurarSelectorRegion() {
             if (btn) btn.classList.remove('active');
         });
     }
-    
+
     document.addEventListener('click', (e) => {
         if (btn && dropdown && !btn.contains(e.target) && !dropdown.contains(e.target)) {
             dropdown.classList.remove('show');
@@ -1672,20 +1601,20 @@ async function refrescarRegiones() {
             btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i><span>Cargando...</span>';
             btn.disabled = true;
         }
-        
+
         regiones = await regionManager.getRegionesByOrganizacion(
             usuarioActual.organizacionCamelCase,
             usuarioActual
         );
-        
+
         await cargarRegionesEnLista();
         await cargarRegionesEnSelector();
-        
+
         if (btn) {
             btn.innerHTML = '<i class="fas fa-sync-alt"></i><span>Actualizar</span>';
             btn.disabled = false;
         }
-        
+
         Swal.fire({
             icon: 'success',
             title: 'Actualizado',
@@ -1695,7 +1624,7 @@ async function refrescarRegiones() {
             showConfirmButton: false,
             timer: 2000
         });
-        
+
     } catch (error) {
         console.error('Error:', error);
         const btn = document.getElementById('btnRefrescarRegiones');
@@ -1710,11 +1639,10 @@ async function refrescarRegiones() {
 // CONFIGURAR PANELES (PANEL DE INCIDENCIAS INICIA CERRADO)
 // =============================================
 function configurarPaneles() {
-    // Panel de incidencias - INICIA CERRADO
     const incidenciasHeader = document.getElementById('toggleIncidencias');
     const incidenciasList = document.querySelector('.incidencias-list');
     const incidenciasChevron = document.getElementById('incidenciasChevron');
-    
+
     if (incidenciasHeader && incidenciasList && incidenciasChevron) {
         let incidenciasOpen = false;
         incidenciasHeader.addEventListener('click', () => {
@@ -1725,13 +1653,12 @@ function configurarPaneles() {
         incidenciasList.style.display = 'none';
         incidenciasChevron.className = 'fas fa-chevron-up';
     }
-    
-    // Panel de regiones - INICIA CERRADO
+
     const regionsHeader = document.getElementById('toggleRegions');
     const regionsPanel = document.getElementById('regionsPanel');
     const regionsList = document.querySelector('.regions-list');
     const regionsChevron = document.getElementById('regionsChevron');
-    
+
     if (regionsHeader && regionsPanel && regionsList && regionsChevron) {
         let regionsOpen = false;
         regionsHeader.addEventListener('click', () => {
@@ -1751,7 +1678,7 @@ function configurarPaneles() {
 function configurarEventos() {
     const btnCentrar = document.getElementById('btnCentrarMapa');
     if (btnCentrar) btnCentrar.addEventListener('click', centrarMapa);
-    
+
     const btnRefrescar = document.getElementById('btnRefrescarRegiones');
     if (btnRefrescar) btnRefrescar.addEventListener('click', refrescarRegiones);
 }
