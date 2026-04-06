@@ -1,5 +1,7 @@
 // ========== panelControl.js - PANEL DE CONTROL COLABORADOR ==========
-// CON ACCESO RÁPIDO Y MÓDULOS EN 3 COLUMNAS (SIN INCIDENCIAS EN MÓDULOS)
+// CON ACCESO RÁPIDO Y MÓDULOS EN 3 COLUMNAS
+// AGREGADO: MÓDULO MERCANCÍA PERDIDA (LISTA, CREAR, ESTADÍSTICAS DE EXTRAVÍO)
+// UBICADO EN LA PRIMERA POSICIÓN (ANTES DE ÁREAS)
 
 let permisoManager = null;
 let usuarioActual = null;
@@ -52,7 +54,7 @@ const KPI_CONFIG = {
     }
 };
 
-// Configuración de ACCESO RÁPIDO (sin Lista de Extravíos ni Tablero de Control)
+// Configuración de ACCESO RÁPIDO
 const ACCESO_RAPIDO_CONFIG = [
     {
         id: 'nuevaIncidencia',
@@ -97,8 +99,45 @@ const ACCESO_RAPIDO_CONFIG = [
     }
 ];
 
-// Configuración de módulos agrupados por columnas (SIN INCIDENCIAS)
+// Configuración de módulos agrupados por columnas
+// ========== MÓDULO MERCANCÍA PERDIDA EN PRIMERA POSICIÓN ==========
 const COLUMNAS_CONFIG = [
+    // PRIMERO: MÓDULO MERCANCÍA PERDIDA
+    {
+        titulo: 'SECCION DE EXTRAVIO',
+        icono: 'fa-box-open',
+        color: '#ff8c00',
+        permisos: ['incidenciasRecuperacion', 'incidencias'],
+        tarjetas: [
+            {
+                modulo: 'incidenciasRecuperacionLista',
+                titulo: 'Lista de extravíos',
+                descripcion: 'Ver todos los registros de mercancía perdida',
+                icono: 'fa-list',
+                color: 'orange',
+                url: '/usuarios/colaborador/incidenciasRecuperacion/incidenciasRecuperacion.html',
+                permisoEspecifico: 'incidenciasRecuperacion'
+            },
+            {
+                modulo: 'crearIncidenciasRecuperacion',
+                titulo: 'Crear extravío',
+                descripcion: 'Registrar nueva mercancía perdida',
+                icono: 'fa-plus-circle',
+                color: 'orange',
+                url: '/usuarios/colaborador/crearIncidenciasRecuperacion/crearIncidenciasRecuperacion.html',
+                permisoEspecifico: 'crearIncidenciasRecuperacion'
+            },
+            {
+                modulo: 'estadisticasIncidenciasRecuperacion',
+                titulo: 'Estadísticas de extravío',
+                descripcion: 'Análisis de pérdidas y recuperaciones',
+                icono: 'fa-chart-line',
+                color: 'orange',
+                url: '/usuarios/colaborador/estadisticasIncidenciasRecuperacion/estadisticasIncidenciasRecuperacion.html',
+                permisoEspecifico: 'estadisticasIncidenciasRecuperacion'
+            }
+        ]
+    },
     // FILA 1 - MÓDULOS PRINCIPALES
     {
         titulo: 'PANEL DE ÁREAS',
@@ -263,7 +302,11 @@ async function obtenerPermisosUsuario() {
             permisosUsuario = {
                 areas: true, categorias: true, sucursales: true, regiones: true,
                 incidencias: true, usuarios: true, estadisticas: true, tareas: true,
-                monitoreo: true, permisos: true, loginMonitoreo: true, admin: true
+                monitoreo: true, permisos: true, loginMonitoreo: true, admin: true,
+                // Permisos para mercancía perdida
+                incidenciasRecuperacion: true,
+                crearIncidenciasRecuperacion: true,
+                estadisticasIncidenciasRecuperacion: true
             };
             return;
         }
@@ -272,7 +315,10 @@ async function obtenerPermisosUsuario() {
             permisosUsuario = {
                 areas: false, categorias: false, sucursales: false, regiones: false,
                 incidencias: true, usuarios: false, estadisticas: false, tareas: false,
-                monitoreo: false, permisos: false, loginMonitoreo: false, admin: false
+                monitoreo: false, permisos: false, loginMonitoreo: false, admin: false,
+                incidenciasRecuperacion: false,
+                crearIncidenciasRecuperacion: false,
+                estadisticasIncidenciasRecuperacion: false
             };
             return;
         }
@@ -282,19 +328,25 @@ async function obtenerPermisosUsuario() {
                 usuarioActual.cargoId, usuarioActual.areaId, usuarioActual.organizacionCamelCase
             );
             if (permiso) {
+                const tieneIncidencias = permiso.puedeAcceder('incidencias');
+
                 permisosUsuario = {
                     areas: permiso.puedeAcceder('areas'),
                     categorias: permiso.puedeAcceder('categorias'),
                     sucursales: permiso.puedeAcceder('sucursales'),
                     regiones: permiso.puedeAcceder('regiones'),
-                    incidencias: permiso.puedeAcceder('incidencias'),
+                    incidencias: tieneIncidencias,
                     usuarios: permiso.puedeAcceder('usuarios'),
                     estadisticas: permiso.puedeAcceder('estadisticas'),
                     tareas: permiso.puedeAcceder('tareas'),
                     monitoreo: permiso.puedeAcceder('monitoreo'),
                     permisos: permiso.puedeAcceder('permisos'),
                     loginMonitoreo: permiso.puedeAcceder('loginMonitoreo'),
-                    admin: false
+                    admin: false,
+                    // Permisos para mercancía perdida (heredan de incidencias o específicos)
+                    incidenciasRecuperacion: permiso.puedeAcceder('incidenciasRecuperacion') || tieneIncidencias,
+                    crearIncidenciasRecuperacion: permiso.puedeAcceder('crearIncidenciasRecuperacion') || tieneIncidencias,
+                    estadisticasIncidenciasRecuperacion: permiso.puedeAcceder('estadisticasIncidenciasRecuperacion') || tieneIncidencias
                 };
                 return;
             }
@@ -303,13 +355,19 @@ async function obtenerPermisosUsuario() {
         permisosUsuario = {
             areas: false, categorias: false, sucursales: false, regiones: false,
             incidencias: true, usuarios: false, estadisticas: false, tareas: false,
-            monitoreo: false, permisos: false, loginMonitoreo: false, admin: false
+            monitoreo: false, permisos: false, loginMonitoreo: false, admin: false,
+            incidenciasRecuperacion: false,
+            crearIncidenciasRecuperacion: false,
+            estadisticasIncidenciasRecuperacion: false
         };
     } catch (error) {
         permisosUsuario = {
             areas: false, categorias: false, sucursales: false, regiones: false,
             incidencias: true, usuarios: false, estadisticas: false, tareas: false,
-            monitoreo: false, permisos: false, loginMonitoreo: false, admin: false
+            monitoreo: false, permisos: false, loginMonitoreo: false, admin: false,
+            incidenciasRecuperacion: false,
+            crearIncidenciasRecuperacion: false,
+            estadisticasIncidenciasRecuperacion: false
         };
     }
 }
@@ -410,6 +468,7 @@ function renderizarColumnas() {
     container.innerHTML = '';
 
     for (const columna of COLUMNAS_CONFIG) {
+        // Verificar si tiene algún permiso de la columna (permisos array)
         const tieneAlgunPermiso = columna.permisos.some(p => permisosUsuario[p] === true);
         if (!tieneAlgunPermiso) continue;
 
@@ -432,7 +491,10 @@ function renderizarColumnas() {
         for (const tarjeta of columna.tarjetas) {
             let tienePermiso = false;
 
-            if (tarjeta.modulo) {
+            // Verificar permiso específico de la tarjeta si existe
+            if (tarjeta.permisoEspecifico) {
+                tienePermiso = permisosUsuario[tarjeta.permisoEspecifico] === true;
+            } else if (tarjeta.modulo) {
                 let moduloBase = tarjeta.modulo
                     .replace('Lista', '')
                     .replace('Nueva', '')
@@ -451,7 +513,10 @@ function renderizarColumnas() {
                     'monitoreo': 'monitoreo',
                     'mapa': 'monitoreo',
                     'tablero': 'monitoreo',
-                    'permisos': 'permisos'
+                    'permisos': 'permisos',
+                    'incidenciasrecuperacion': 'incidenciasRecuperacion',
+                    'crearincidenciasrecuperacion': 'crearIncidenciasRecuperacion',
+                    'estadisticasincidenciasrecuperacion': 'estadisticasIncidenciasRecuperacion'
                 };
 
                 const moduloKey = moduloMap[moduloBase] || moduloBase;

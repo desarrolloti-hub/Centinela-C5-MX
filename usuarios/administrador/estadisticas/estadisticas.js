@@ -115,11 +115,11 @@ function obtenerUsuarioActual() {
 async function registrarAccesoVistaEstadisticas() {
     if (!historialManager) return;
     if (accesoVistaRegistrado) return;
-    
+
     try {
         const usuario = obtenerUsuarioActual();
         if (!usuario) return;
-        
+
         await historialManager.registrarActividad({
             usuario: usuario,
             tipo: 'leer',
@@ -144,35 +144,35 @@ async function registrarAccesoVistaEstadisticas() {
 // ✅ NUEVO: Registrar aplicación de filtros
 async function registrarAplicacionFiltros(filtrosAplicados, totalIncidencias) {
     if (!historialManager) return;
-    
+
     try {
         const usuario = obtenerUsuarioActual();
         if (!usuario) return;
-        
+
         const filtrosDetalles = {};
-        
+
         if (filtrosAplicados.fechaInicio && filtrosAplicados.fechaFin) {
             filtrosDetalles.rangoFechas = `${filtrosAplicados.fechaInicio} al ${filtrosAplicados.fechaFin}`;
         }
-        
+
         if (filtrosAplicados.categoriaId !== 'todas') {
             const categoria = categoriasCache.find(c => c.id === filtrosAplicados.categoriaId);
             filtrosDetalles.categoria = categoria?.nombre || filtrosAplicados.categoriaId;
         }
-        
+
         if (filtrosAplicados.sucursalId !== 'todas') {
             const sucursal = sucursalesCache.find(s => s.id === filtrosAplicados.sucursalId);
             filtrosDetalles.sucursal = sucursal?.nombre || filtrosAplicados.sucursalId;
         }
-        
+
         if (filtrosAplicados.colaboradorId !== 'todos') {
             filtrosDetalles.colaborador = filtrosAplicados.colaboradorId;
         }
-        
+
         if (filtrosAplicados.busqueda) {
             filtrosDetalles.busqueda = filtrosAplicados.busqueda;
         }
-        
+
         await historialManager.registrarActividad({
             usuario: usuario,
             tipo: 'leer',
@@ -193,11 +193,11 @@ async function registrarAplicacionFiltros(filtrosAplicados, totalIncidencias) {
 // ✅ NUEVO: Registrar generación de reporte PDF
 async function registrarGeneracionPDFReporte(totalIncidencias, filtrosAplicados) {
     if (!historialManager) return;
-    
+
     try {
         const usuario = obtenerUsuarioActual();
         if (!usuario) return;
-        
+
         await historialManager.registrarActividad({
             usuario: usuario,
             tipo: 'leer',
@@ -208,9 +208,9 @@ async function registrarGeneracionPDFReporte(totalIncidencias, filtrosAplicados)
                 filtrosAplicados: {
                     fechaInicio: filtrosAplicados.fechaInicio,
                     fechaFin: filtrosAplicados.fechaFin,
-                    categoria: filtrosAplicados.categoriaId !== 'todas' ? 
+                    categoria: filtrosAplicados.categoriaId !== 'todas' ?
                         categoriasCache.find(c => c.id === filtrosAplicados.categoriaId)?.nombre : 'todas',
-                    sucursal: filtrosAplicados.sucursalId !== 'todas' ? 
+                    sucursal: filtrosAplicados.sucursalId !== 'todas' ?
                         sucursalesCache.find(s => s.id === filtrosAplicados.sucursalId)?.nombre : 'todas',
                     colaborador: filtrosAplicados.colaboradorId !== 'todos' ? filtrosAplicados.colaboradorId : 'todos'
                 },
@@ -226,11 +226,11 @@ async function registrarGeneracionPDFReporte(totalIncidencias, filtrosAplicados)
 // ✅ NUEVO: Registrar limpieza de filtros
 async function registrarLimpiezaFiltros() {
     if (!historialManager) return;
-    
+
     try {
         const usuario = obtenerUsuarioActual();
         if (!usuario) return;
-        
+
         await historialManager.registrarActividad({
             usuario: usuario,
             tipo: 'leer',
@@ -297,12 +297,12 @@ function mostrarMensajeEsperaFiltros() {
     // Limpiar tablas
     const tablaColab = document.getElementById('tablaColaboradoresBody');
     if (tablaColab) {
-        tablaColab.innerHTML = '发展<td colspan="6" style="text-align:center; padding:40px;"><i class="fas fa-filter" style="font-size: 32px; opacity: 0.3; margin-bottom: 10px;"></i><br>Selecciona filtros y presiona APLICAR发展</div>';
+        tablaColab.innerHTML = '<td colspan="6" style="text-align:center; padding:40px;"><i class="fas fa-filter" style="font-size: 32px; opacity: 0.3; margin-bottom: 10px;"></i><br>Selecciona filtros y presiona APLICAR</div>';
     }
 
     const tablaCat = document.getElementById('tablaCategoriasBody');
     if (tablaCat) {
-        tablaCat.innerHTML = '发展<td colspan="2" style="text-align:center; padding:40px;"><i class="fas fa-filter" style="font-size: 32px; opacity: 0.3; margin-bottom: 10px;"></i><br>Selecciona filtros y presiona APLICAR发展</div>';
+        tablaCat.innerHTML = '<td colspan="2" style="text-align:center; padding:40px;"><i class="fas fa-filter" style="font-size: 32px; opacity: 0.3; margin-bottom: 10px;"></i><br>Selecciona filtros y presiona APLICAR</div>';
     }
 
     // Resetear métricas
@@ -657,12 +657,12 @@ function mostrarMensajeSinResultados() {
 
     const tablaColab = document.getElementById('tablaColaboradoresBody');
     if (tablaColab) {
-        tablaColab.innerHTML = '发展<td colspan="6" style="text-align:center; padding:40px;"><i class="fas fa-search" style="font-size: 32px; opacity: 0.3; margin-bottom: 10px;"></i><br>No hay incidencias que coincidan con los filtros发展</div>';
+        tablaColab.innerHTML = '<td colspan="6" style="text-align:center; padding:40px;"><i class="fas fa-search" style="font-size: 32px; opacity: 0.3; margin-bottom: 10px;"></i><br>No hay incidencias que coincidan con los filtros</div>';
     }
 
     const tablaCat = document.getElementById('tablaCategoriasBody');
     if (tablaCat) {
-        tablaCat.innerHTML = '发展<td colspan="2" style="text-align:center; padding:40px;"><i class="fas fa-search" style="font-size: 32px; opacity: 0.3; margin-bottom: 10px;"></i><br>No hay incidencias que coincidan con los filtros发展</div>';
+        tablaCat.innerHTML = '<td colspan="2" style="text-align:center; padding:40px;"><i class="fas fa-search" style="font-size: 32px; opacity: 0.3; margin-bottom: 10px;"></i><br>No hay incidencias que coincidan con los filtros</div>';
     }
 
     // Resetear métricas a 0
@@ -1315,7 +1315,7 @@ function renderizarTablaColaboradores(colaboradores) {
     if (!tbody) return;
 
     if (!colaboradores || colaboradores.length === 0) {
-        tbody.innerHTML = '发展<td colspan="6" style="text-align:center; padding:30px;">No hay datos de colaboradores发展</div>';
+        tbody.innerHTML = '<td colspan="6" style="text-align:center; padding:30px;">No hay datos de colaboradores</div>';
         return;
     }
 
@@ -1354,7 +1354,7 @@ function renderizarTablaCategorias(categorias) {
     if (!tbody) return;
 
     if (!categorias || categorias.length === 0) {
-        tbody.innerHTML = '发展<td colspan="2" style="text-align:center; padding:30px;">No hay datos de categorías发展</div>';
+        tbody.innerHTML = '<td colspan="2" style="text-align:center; padding:30px;">No hay datos de categorías</div>';
         return;
     }
 
@@ -1493,7 +1493,7 @@ function mostrarLoadingInicial() {
             if (id.includes('grafico')) {
                 el.innerHTML = '<div style="text-align:center; padding:40px;"><i class="fas fa-spinner fa-spin" style="font-size:48px; color:var(--color-accent-primary);"></i></div>';
             } else if (id.includes('tabla')) {
-                el.innerHTML = '发展<td colspan="6" style="text-align:center;"><i class="fas fa-spinner fa-spin"></i> Cargando datos...发展</div>';
+                el.innerHTML = '<td colspan="6" style="text-align:center;"><i class="fas fa-spinner fa-spin"></i> Cargando datos...</div>';
             } else {
                 el.textContent = '...';
             }
