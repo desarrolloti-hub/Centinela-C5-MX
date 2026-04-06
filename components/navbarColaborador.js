@@ -2704,29 +2704,13 @@ class NavbarComplete {
         try {
             localStorage.clear();
             sessionStorage.clear();
-            this.clearSessionCookies();
             this.clearIndexedDB();
         } catch (error) {
             // Error silencioso
         }
     }
 
-    clearSessionCookies() {
-        try {
-            const cookies = document.cookie.split(';');
-            for (let i = 0; i < cookies.length; i++) {
-                const cookie = cookies[i];
-                const eqPos = cookie.indexOf('=');
-                const name = eqPos > -1 ? cookie.substr(0, eqPos).trim() : cookie.trim();
-
-                if (name.includes('session') || name.includes('auth') || name.includes('firebase')) {
-                    document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/`;
-                }
-            }
-        } catch (error) {
-            // Error silencioso
-        }
-    }
+ 
 
     async clearIndexedDB() {
         try {

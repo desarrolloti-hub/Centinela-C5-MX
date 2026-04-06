@@ -610,7 +610,7 @@ async function mostrarDetallesCanalizacion(incidenciaId, event) {
 }
 
 // =============================================
-// VER PDF
+// FUNCIÓN PARA VER PDF EN VISOR NATIVO DEL NAVEGADOR
 // =============================================
 window.verPDF = async function (incidenciaId, event) {
     event?.stopPropagation();
@@ -621,10 +621,12 @@ window.verPDF = async function (incidenciaId, event) {
             throw new Error('Incidencia no encontrada');
         }
 
+        // ✅ Registrar apertura de PDF
         await registrarAperturaPDF(incidencia);
 
         if (incidencia.pdfUrl) {
-            window.visualizadorPDF?.abrir(incidencia.pdfUrl, `Incidencia ${incidencia.id}`);
+            // Abrir PDF en nueva pestaña con visor nativo del navegador
+            window.open(incidencia.pdfUrl, '_blank');
         } else {
             Swal.fire({
                 icon: 'info',

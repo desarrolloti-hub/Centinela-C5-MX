@@ -467,7 +467,7 @@ body {
     padding: 15px;
     background: var(--color-bg-tertiary);
     border-radius: var(--border-radius-medium);
-    border: 2px dashed var(--color-border-light);
+    border: 2px dashed white !important ;
 }
 
 .upload-area {
@@ -1117,4 +1117,37 @@ body {
     .timeline-simple-evidencias-grid {
         grid-template-columns: 1fr;
     }
+}
+/* =============================================
+   DRAG & DROP Y PASTE
+   ============================================= */
+
+.image-upload-section.drag-over {
+    border-color: var(--color-accent-primary);
+    background: rgba(0, 207, 255, 0.1);
+    transition: all 0.3s ease;
+}
+
+.paste-indicator {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: var(--color-accent-primary);
+    color: #000;
+    padding: 10px 20px;
+    border-radius: 30px;
+    font-size: 14px;
+    font-weight: 600;
+    z-index: 10000;
+    animation: fadeInUp 0.3s ease;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    pointer-events: none;
+}
+
+/* Fondo blanco para el grid de imágenes preview */
+.images-preview-container .images-grid {
+    background: transparent;
+    border-radius: var(--border-radius-medium);
+    padding: 15px;
+    min-height: 150px;
 }
