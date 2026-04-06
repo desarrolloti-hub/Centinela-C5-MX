@@ -115,7 +115,7 @@ const COLUMNAS_CONFIG = [
                 descripcion: 'Ver todos los registros de mercancía perdida',
                 icono: 'fa-list',
                 color: 'orange',
-                url: '/usuarios/colaborador/incidenciasRecuperacion/incidenciasRecuperacion.html',
+                url: '/usuarios/colaboradores/incidenciasRecuperacion/incidenciasRecuperacion.html',
                 permisoEspecifico: 'incidenciasRecuperacion'
             },
             {
@@ -124,7 +124,7 @@ const COLUMNAS_CONFIG = [
                 descripcion: 'Registrar nueva mercancía perdida',
                 icono: 'fa-plus-circle',
                 color: 'orange',
-                url: '/usuarios/colaborador/crearIncidenciasRecuperacion/crearIncidenciasRecuperacion.html',
+                url: '/usuarios/colaboradores/crearIncidenciasRecuperacion/crearIncidenciasRecuperacion.html',
                 permisoEspecifico: 'crearIncidenciasRecuperacion'
             },
             {
@@ -133,7 +133,7 @@ const COLUMNAS_CONFIG = [
                 descripcion: 'Análisis de pérdidas y recuperaciones',
                 icono: 'fa-chart-line',
                 color: 'orange',
-                url: '/usuarios/colaborador/estadisticasIncidenciasRecuperacion/estadisticasIncidenciasRecuperacion.html',
+                url: '/usuarios/colaboradores/estadisticasIncidenciasRecuperacion/estadisticasIncidenciasRecuperacion.html',
                 permisoEspecifico: 'estadisticasIncidenciasRecuperacion'
             }
         ]
