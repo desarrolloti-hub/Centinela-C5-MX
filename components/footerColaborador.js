@@ -1,5 +1,3 @@
-// footer-component.js
-
 class FooterComponent {
     constructor() {
         this.init();
@@ -40,39 +38,44 @@ class FooterComponent {
         this.insertHTML();
     }
 
-    // Agrega estilos CSS para el footer
+    // Agrega estilos CSS para el footer (SOLO PARA EL FOOTER, SIN AFECTAR GLOBALES)
     addStyles() {
         if (document.getElementById('footer-component-styles')) return;
 
         const styles = `
+            /* ============================================
+               FOOTER COMPONENT - ESTILOS AISLADOS
+               ============================================ */
+            
             /* Footer fijo en la parte inferior */
             .footer-component {
                 position: fixed;
                 bottom: 0;
                 left: 0;
                 width: 100%;
-                background-color: var(--color-bg-primary);
-                color: var(--navbar-text);
-                font-family: var(--font-family-primary);
+                background-color: var(--color-bg-primary, #0a0a0a);
+                color: var(--navbar-text, #ffffff);
+                font-family: var(--font-family-primary, 'Orbitron', sans-serif);
                 padding: 8px 0;
                 font-size: 14px;
-                box-shadow: 0 -2px 10px rgb(0, 0, 0);
+                box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.5);
                 z-index: 900;
-                border-top: 1px solid var(--color-border-light);
+                border-top: 1px solid var(--color-border-light, rgba(255,255,255,0.1));
             }
             
             /* Efecto al hacer scroll */
             .footer-component.scrolled {
-                background-color: var(--navbar-scrolled-bg);
-                box-shadow: var(--navbar-scrolled-shadow);
+                background-color: var(--navbar-scrolled-bg, #0a0a0a);
+                box-shadow: var(--navbar-scrolled-shadow, 0 -2px 15px rgba(0,0,0,0.3));
             }
             
             /* Contenedor principal centrado */
             .footer-bottom-container {
                 width: 100%;
-                max-width: 1200px;
+                max-width: 1400px;
                 margin: 0 auto;
-                padding: 0 15px;
+                padding: 0 20px;
+                box-sizing: border-box;
             }
             
             /* Layout principal: Logo | Copyright | Fecha/Hora */
@@ -81,7 +84,8 @@ class FooterComponent {
                 justify-content: space-between;
                 align-items: center;
                 width: 100%;
-                min-height: 35px;
+                min-height: 40px;
+                gap: 15px;
             }
             
             /* Sección izquierda - Logo */
@@ -91,6 +95,7 @@ class FooterComponent {
                 gap: 8px;
                 flex: 1;
                 justify-content: flex-start;
+                min-width: 0;
             }
             
             /* Enlace del logo */
@@ -99,35 +104,37 @@ class FooterComponent {
                 align-items: center;
                 gap: 6px;
                 text-decoration: none;
-                transition: var(--transition-default);
+                transition: all 0.3s ease;
             }
             
-            /* Logo */
+            /* Logo imagen */
             .footer-logo {
-                height: 22px;
+                height: 24px;
                 width: auto;
                 object-fit: contain;
+                flex-shrink: 0;
             }
             
             /* Texto del logo */
             .footer-logo-text {
-                color: var(--navbar-logo-text);
+                color: var(--navbar-logo-text, #ffffff);
                 font-weight: 500;
-                font-size: 14px;
+                font-size: 13px;
                 white-space: nowrap;
             }
             
             /* Sección central - Copyright */
             .footer-center {
-                flex: 1;
+                flex: 2;
                 text-align: center;
                 padding: 0 10px;
+                min-width: 0;
             }
             
             .copyright {
-                color: var(--navbar-text);
+                color: var(--navbar-text, #cccccc);
                 margin: 0;
-                font-size: 14px;
+                font-size: 12px;
                 white-space: nowrap;
             }
             
@@ -137,6 +144,7 @@ class FooterComponent {
                 align-items: center;
                 flex: 1;
                 justify-content: flex-end;
+                min-width: 0;
             }
             
             /* Contenedor para fecha y hora apilados */
@@ -145,69 +153,189 @@ class FooterComponent {
                 flex-direction: column;
                 align-items: flex-end;
                 gap: 2px;
+                text-align: right;
             }
             
             /* Estilos para fecha y hora */
             .date-display, .time-display {
                 white-space: nowrap;
-                color: var(--navbar-text);
-                font-size: 14px;
+                color: var(--navbar-text, #cccccc);
+                font-size: 12px;
+                line-height: 1.3;
             }
             
             /* Hora con estilo de reloj digital */
             .time-display {
                 font-weight: 600;
                 font-family: 'Courier New', monospace;
+                font-size: 13px;
             }
             
-            /* Ajuste del body para espacio del footer fijo */
-            body {
-                padding-bottom: 50px !important;
-            }
+            /* ============================================
+               RESPONSIVE - SIN AFECTAR OTROS ELEMENTOS
+               ============================================ */
             
-            /* === RESPONSIVE PARA TABLET === */
+            /* Tablet */
             @media (max-width: 768px) {
-                .footer-component { padding: 6px 0; }
-                .footer-bottom-content { flex-wrap: wrap; gap: 6px; }
-                .footer-left { width: 30%; }
-                .footer-center { width: 40%; order: 2; }
-                .footer-right { width: 30%; }
-                .footer-logo { height: 20px; }
-                .footer-logo-text, .copyright, .date-display, .time-display { font-size: 12px; }
-                body { padding-bottom: 40px !important; }
+                .footer-component {
+                    padding: 6px 0;
+                }
+                
+                .footer-bottom-container {
+                    padding: 0 15px;
+                }
+                
+                .footer-bottom-content {
+                    flex-wrap: wrap;
+                    gap: 8px;
+                    min-height: auto;
+                }
+                
+                /* Logo a la izquierda */
+                .footer-left {
+                    order: 1;
+                    flex: 1;
+                    min-width: auto;
+                }
+                
+                /* Fecha/Hora a la derecha */
+                .footer-right {
+                    order: 2;
+                    flex: 1;
+                }
+                
+                /* Copyright abajo, centrado */
+                .footer-center {
+                    order: 3;
+                    flex: 0 0 100%;
+                    width: 100%;
+                    text-align: center;
+                    padding: 4px 0 0;
+                }
+                
+                .copyright {
+                    white-space: normal;
+                    font-size: 10px;
+                    line-height: 1.4;
+                }
+                
+                .footer-logo {
+                    height: 20px;
+                }
+                
+                .footer-logo-text {
+                    font-size: 11px;
+                }
+                
+                .date-display, .time-display {
+                    font-size: 10px;
+                }
+                
+                .time-display {
+                    font-size: 11px;
+                }
             }
             
-            /* === RESPONSIVE PARA MÓVIL === */
+            /* Móvil */
             @media (max-width: 480px) {
-                .footer-component { padding: 5px 0; font-size: 11px; }
-                .footer-bottom-content { gap: 4px; min-height: 25px; }
-                .footer-left { order: 1; width: 30%; }
-                .footer-center { order: 3; width: 100%; margin-top: 3px; }
-                .footer-right { order: 2; width: 40%; }
-                .footer-logo { height: 18px; }
-                .footer-logo-text { font-size: 11px; }
-                .copyright { font-size: 11px; }
-                .date-display, .time-display { font-size: 11px; }
-                body { padding-bottom: 35px !important; }
+                .footer-component {
+                    padding: 5px 0;
+                }
+                
+                .footer-bottom-container {
+                    padding: 0 12px;
+                }
+                
+                .footer-bottom-content {
+                    gap: 6px;
+                }
+                
+                .footer-left {
+                    flex: 1;
+                }
+                
+                .footer-right {
+                    flex: 1;
+                }
+                
+                .footer-center {
+                    margin-top: 2px;
+                }
+                
+                .footer-logo {
+                    height: 18px;
+                }
+                
+                .footer-logo-text {
+                    font-size: 10px;
+                }
+                
+                .copyright {
+                    font-size: 9px;
+                }
+                
+                .date-display {
+                    font-size: 9px;
+                }
+                
+                .time-display {
+                    font-size: 10px;
+                }
             }
             
-            /* === RESPONSIVE PARA MÓVIL PEQUEÑO === */
-            @media (max-width: 320px) {
-                .footer-component { padding: 4px 0; }
-                .footer-left { width: 25%; }
-                .footer-right { width: 45%; }
-                .footer-logo-text { display: none; }
-                .copyright { font-size: 9px; }
-                .date-display { font-size: 9px; }
-                .time-display { font-size: 10px; }
-                body { padding-bottom: 30px !important; }
+            /* Móvil muy pequeño */
+            @media (max-width: 360px) {
+                .footer-component {
+                    padding: 4px 0;
+                }
+                
+                .footer-bottom-container {
+                    padding: 0 10px;
+                }
+                
+                /* Ocultar texto del logo en pantallas muy pequeñas */
+                .footer-logo-text {
+                    display: none;
+                }
+                
+                .footer-logo {
+                    height: 16px;
+                }
+                
+                .copyright {
+                    font-size: 8px;
+                }
+                
+                .date-display {
+                    font-size: 8px;
+                }
+                
+                .time-display {
+                    font-size: 9px;
+                }
+                
+                .datetime-container {
+                    gap: 1px;
+                }
             }
             
-            /* Garantizar visibilidad de fecha y hora */
-            #currentDate, #currentTime {
-                display: block !important;
-                visibility: visible !important;
-                opacity: 1 !important;
+            /* Asegurar que el contenido no quede oculto detrás del footer */
+            body {
+                padding-bottom: 55px !important;
+                margin-bottom: 0 !important;
+            }
+            
+            /* Ajuste para pantallas pequeñas */
+            @media (max-width: 768px) {
+                body {
+                    padding-bottom: 65px !important;
+                }
+            }
+            
+            @media (max-width: 480px) {
+                body {
+                    padding-bottom: 70px !important;
+                }
             }
         `;
 
@@ -227,7 +355,7 @@ class FooterComponent {
                     <!-- Logo y nombre de la empresa -->
                     <div class="footer-left">
                         <a href="https://rsienterprise.web.app/" target="_blank" rel="noopener noreferrer" class="footer-logo-link">
-                            <img src="/assets/images/logoApp.png" alt="Centinela Logo" class="footer-logo">
+                            <img src="/assets/images/logoApp.png" alt="Centinela Logo" class="footer-logo" onerror="this.style.display='none'">
                             <span class="footer-logo-text">RSI Enterprise</span>
                         </a>
                     </div>
@@ -276,13 +404,22 @@ class FooterComponent {
         return date.toLocaleDateString('es-MX', options);
     }
 
-    // Formatea fecha muy corta (para móviles pequeños)
-    formatVeryShortDate(date) {
+    // Formatea fecha muy corta
+    formatShortDate(date) {
         const options = {
-            weekday: 'narrow',
             day: 'numeric',
             month: 'short',
             year: '2-digit',
+            timeZone: 'America/Mexico_City'
+        };
+        return date.toLocaleDateString('es-MX', options);
+    }
+
+    // Formatea fecha extremadamente corta
+    formatVeryShortDate(date) {
+        const options = {
+            day: 'numeric',
+            month: 'numeric',
             timeZone: 'America/Mexico_City'
         };
         return date.toLocaleDateString('es-MX', options);
@@ -300,7 +437,7 @@ class FooterComponent {
         return date.toLocaleTimeString('es-MX', options);
     }
 
-    // Formatea hora sin segundos (para pantallas pequeñas)
+    // Formatea hora sin segundos
     formatShortTime(date) {
         const options = {
             hour: '2-digit',
@@ -323,16 +460,16 @@ class FooterComponent {
             const width = window.innerWidth;
 
             // Formato responsive según tamaño de pantalla
-            if (width <= 320) {
-                // Móvil muy pequeño: formato compacto
+            if (width <= 360) {
+                // Móvil muy pequeño: formato ultra compacto
                 dateElement.textContent = this.formatVeryShortDate(now);
                 timeElement.textContent = this.formatShortTime(now);
             } else if (width <= 480) {
-                // Móvil: fecha normal, hora sin segundos
-                dateElement.textContent = this.formatDate(now);
+                // Móvil: fecha corta, hora sin segundos
+                dateElement.textContent = this.formatShortDate(now);
                 timeElement.textContent = this.formatShortTime(now);
             } else if (width <= 768) {
-                // Tablet: igual que móvil
+                // Tablet: fecha normal, hora sin segundos
                 dateElement.textContent = this.formatDate(now);
                 timeElement.textContent = this.formatShortTime(now);
             } else {
@@ -340,17 +477,11 @@ class FooterComponent {
                 dateElement.textContent = this.formatDate(now);
                 timeElement.textContent = this.formatTime(now);
             }
-
-            // Asegurar visibilidad
-            dateElement.style.display = 'block';
-            dateElement.style.visibility = 'visible';
-            timeElement.style.display = 'block';
-            timeElement.style.visibility = 'visible';
         };
 
-        update(); // Actualizar inmediatamente
-        setInterval(update, 1000); // Actualizar cada segundo
-        window.addEventListener('resize', update); // Actualizar al cambiar tamaño
+        update();
+        setInterval(update, 1000);
+        window.addEventListener('resize', update);
     }
 }
 
