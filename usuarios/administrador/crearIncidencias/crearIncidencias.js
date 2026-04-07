@@ -27,7 +27,7 @@ class CrearIncidenciaController {
         this.AreaManager = null;
         this.notificacionManager = null;
         this.notificacionSucursalManager = null;
-        
+
         this.pdfGenerator = null;
         this.pasoActual = 0;
         this.totalPasos = 7;
@@ -42,19 +42,19 @@ class CrearIncidenciaController {
         // Verificar sucursal
         const sucursalInput = document.getElementById('sucursalIncidencia');
         const sucursalValida = sucursalInput?.dataset?.selectedId && sucursalInput.dataset.selectedId !== '';
-        
+
         // Verificar categoría
         const categoriaInput = document.getElementById('categoriaIncidencia');
         const categoriaValida = categoriaInput?.dataset?.selectedId && categoriaInput.dataset.selectedId !== '';
-        
+
         // Verificar nivel de riesgo
         const nivelRiesgo = document.getElementById('nivelRiesgo')?.value;
         const riesgoValido = nivelRiesgo && nivelRiesgo !== '';
-        
+
         // Verificar estado
         const estado = document.getElementById('estadoIncidencia')?.value;
         const estadoValido = estado !== null && estado !== undefined && estado !== '';
-        
+
         // Verificar fecha
         const fecha = document.getElementById('fechaHoraIncidencia')?.value;
         let fechaValida = false;
@@ -62,14 +62,14 @@ class CrearIncidenciaController {
             const fechaObj = new Date(fecha);
             fechaValida = !isNaN(fechaObj.getTime()) && fechaObj <= new Date();
         }
-        
+
         // Verificar descripción
         const detalles = document.getElementById('detallesIncidencia')?.value.trim();
         const detallesValidos = detalles.length >= 10 && detalles.length <= LIMITES.DETALLES_INCIDENCIA;
-        
-        const todosCompletos = sucursalValida && categoriaValida && riesgoValido && 
-                               estadoValido && fechaValida && detallesValidos;
-        
+
+        const todosCompletos = sucursalValida && categoriaValida && riesgoValido &&
+            estadoValido && fechaValida && detallesValidos;
+
         const seccionImagenes = document.getElementById('seccionImagenesWrapper');
         if (seccionImagenes) {
             if (todosCompletos) {
@@ -78,7 +78,7 @@ class CrearIncidenciaController {
                 seccionImagenes.classList.remove('visible');
             }
         }
-        
+
         return todosCompletos;
     }
 
@@ -87,28 +87,28 @@ class CrearIncidenciaController {
     // =============================================
     _configurarArrastreImagenes() {
         const dropZone = document.getElementById('dropZoneImagenes');
-        
+
         if (!dropZone) return;
-        
+
         ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
             dropZone.addEventListener(eventName, (e) => {
                 e.preventDefault();
                 e.stopPropagation();
             });
         });
-        
+
         ['dragenter', 'dragover'].forEach(eventName => {
             dropZone.addEventListener(eventName, () => {
                 dropZone.classList.add('drag-over');
             });
         });
-        
+
         ['dragleave', 'drop'].forEach(eventName => {
             dropZone.addEventListener(eventName, () => {
                 dropZone.classList.remove('drag-over');
             });
         });
-        
+
         dropZone.addEventListener('drop', (e) => {
             const files = e.dataTransfer.files;
             if (files && files.length > 0) {
@@ -121,7 +121,7 @@ class CrearIncidenciaController {
                 }
             }
         });
-        
+
         dropZone.addEventListener('click', () => {
             document.getElementById('inputImagenes').click();
         });
@@ -162,98 +162,98 @@ class CrearIncidenciaController {
         document.querySelectorAll('.field-group-step').forEach(step => {
             step.classList.remove('visible');
         });
-        
+
         // Mostrar solo el primer paso
         const primerStep = document.querySelector('.field-group-step[data-step="0"]');
         if (primerStep) primerStep.classList.add('visible');
-        
+
         // Ocultar sección de evidencias inicialmente
         const seccionImagenes = document.getElementById('seccionImagenesWrapper');
         if (seccionImagenes) {
             seccionImagenes.classList.remove('visible');
         }
-        
+
         // Definir el orden de los campos y sus validaciones
         const ordenCampos = [
-            { 
-                id: 'sucursalIncidencia', 
-                siguiente: 'categoriaIncidencia', 
+            {
+                id: 'sucursalIncidencia',
+                siguiente: 'categoriaIncidencia',
                 validar: (valor) => {
                     const input = document.getElementById('sucursalIncidencia');
                     return input?.dataset?.selectedId && input.dataset.selectedId !== '';
                 }
             },
-            { 
-                id: 'categoriaIncidencia', 
-                siguiente: 'subcategoriaIncidencia', 
+            {
+                id: 'categoriaIncidencia',
+                siguiente: 'subcategoriaIncidencia',
                 validar: (valor) => {
                     const input = document.getElementById('categoriaIncidencia');
                     return input?.dataset?.selectedId && input.dataset.selectedId !== '';
                 }
             },
-            { 
-                id: 'subcategoriaIncidencia', 
-                siguiente: 'nivelRiesgo', 
+            {
+                id: 'subcategoriaIncidencia',
+                siguiente: 'nivelRiesgo',
                 validar: (valor) => true
             },
-            { 
-                id: 'nivelRiesgo', 
-                siguiente: 'estadoIncidencia', 
+            {
+                id: 'nivelRiesgo',
+                siguiente: 'estadoIncidencia',
                 validar: (valor) => valor !== '' && valor !== null
             },
-            { 
-                id: 'estadoIncidencia', 
-                siguiente: 'fechaHoraIncidencia', 
+            {
+                id: 'estadoIncidencia',
+                siguiente: 'fechaHoraIncidencia',
                 validar: (valor) => valor !== '' && valor !== null
             },
-            { 
-                id: 'fechaHoraIncidencia', 
-                siguiente: 'detallesIncidencia', 
+            {
+                id: 'fechaHoraIncidencia',
+                siguiente: 'detallesIncidencia',
                 validar: (valor) => {
                     if (!valor) return false;
                     const fechaObj = new Date(valor);
                     return !isNaN(fechaObj.getTime()) && fechaObj <= new Date();
                 }
             },
-            { 
-                id: 'detallesIncidencia', 
-                siguiente: null, 
+            {
+                id: 'detallesIncidencia',
+                siguiente: null,
                 validar: (valor) => {
                     const texto = valor.trim();
                     return texto.length >= 10 && texto.length <= LIMITES.DETALLES_INCIDENCIA;
                 }
             }
         ];
-        
+
         // Configurar cada campo
         ordenCampos.forEach((campo, index) => {
             const elemento = document.getElementById(campo.id);
             if (!elemento) return;
-            
+
             elemento._validacionSecuencial = {
                 siguienteId: campo.siguiente,
                 validar: campo.validar,
                 indice: index
             };
-            
+
             if (index === 0) {
                 this._habilitarCampo(elemento);
             } else {
                 this._deshabilitarCampo(elemento);
             }
-            
+
             elemento.addEventListener('change', () => {
                 this._validarYHabilitarSiguiente(campo.id);
                 this._verificarTodosLosCamposCompletos(); // Verificar todos los campos después de cada cambio
             });
-            
+
             if (elemento.tagName === 'INPUT' || elemento.tagName === 'TEXTAREA') {
                 elemento.addEventListener('blur', () => {
                     this._validarYHabilitarSiguiente(campo.id);
                     this._verificarTodosLosCamposCompletos();
                 });
             }
-            
+
             // Para selects, también verificar al cambiar
             if (elemento.tagName === 'SELECT') {
                 elemento.addEventListener('change', () => {
@@ -261,7 +261,7 @@ class CrearIncidenciaController {
                 });
             }
         });
-        
+
         // Configuración especial para Flatpickr
         const fechaInput = document.getElementById('fechaHoraIncidencia');
         if (fechaInput && this.flatpickrInstance) {
@@ -272,7 +272,7 @@ class CrearIncidenciaController {
                 }
             };
         }
-        
+
         // Observers para sugerencias
         const sucursalInput = document.getElementById('sucursalIncidencia');
         if (sucursalInput) {
@@ -282,7 +282,7 @@ class CrearIncidenciaController {
             });
             observer.observe(sucursalInput, { attributes: true, attributeFilter: ['data-selected-id'] });
         }
-        
+
         const categoriaInput = document.getElementById('categoriaIncidencia');
         if (categoriaInput) {
             const observer = new MutationObserver(() => {
@@ -291,7 +291,7 @@ class CrearIncidenciaController {
             });
             observer.observe(categoriaInput, { attributes: true, attributeFilter: ['data-selected-id'] });
         }
-        
+
         // Escuchar cambios en detalles (textarea)
         const detallesInput = document.getElementById('detallesIncidencia');
         if (detallesInput) {
@@ -300,98 +300,98 @@ class CrearIncidenciaController {
             });
         }
     }
-    
+
     _habilitarCampo(elemento) {
         if (!elemento) return;
         elemento.disabled = false;
-        
+
         if (elemento.tagName === 'SELECT') {
             elemento.disabled = false;
         }
-        
+
         if (elemento.tagName === 'INPUT') {
             elemento.readOnly = false;
         }
-        
+
         if (elemento.tagName === 'TEXTAREA') {
             elemento.readOnly = false;
         }
-        
+
         const parent = elemento.closest('.field-group-step');
         if (parent) {
             parent.classList.remove('locked');
         }
     }
-    
+
     _deshabilitarCampo(elemento) {
         if (!elemento) return;
         elemento.disabled = true;
-        
+
         if (elemento.tagName === 'SELECT') {
             elemento.disabled = true;
         }
-        
+
         if (elemento.tagName === 'INPUT') {
             elemento.readOnly = true;
         }
-        
+
         if (elemento.tagName === 'TEXTAREA') {
             elemento.readOnly = true;
         }
-        
+
         const parent = elemento.closest('.field-group-step');
         if (parent) {
             parent.classList.add('locked');
         }
     }
-    
+
     _validarYHabilitarSiguiente(campoId) {
         const campo = document.getElementById(campoId);
         if (!campo) return;
-        
+
         const config = campo._validacionSecuencial;
         if (!config) return;
-        
+
         let valor = campo.value;
-        
+
         if (campoId === 'sucursalIncidencia') {
             const input = document.getElementById('sucursalIncidencia');
             valor = input?.dataset?.selectedId || '';
         }
-        
+
         if (campoId === 'categoriaIncidencia') {
             const input = document.getElementById('categoriaIncidencia');
             valor = input?.dataset?.selectedId || '';
         }
-        
+
         const esValido = config.validar(valor);
-        
+
         if (!esValido && valor !== '' && valor !== null) {
             campo.classList.add('field-error-shake');
             setTimeout(() => campo.classList.remove('field-error-shake'), 500);
         }
-        
+
         if (esValido && config.siguienteId) {
             const siguienteCampo = document.getElementById(config.siguienteId);
             if (siguienteCampo && siguienteCampo.disabled) {
                 this._habilitarCampo(siguienteCampo);
-                
+
                 const siguienteStep = document.querySelector(`.field-group-step[data-step="${config.indice + 1}"]`);
                 if (siguienteStep && !siguienteStep.classList.contains('visible')) {
                     siguienteStep.classList.add('visible');
-                    
+
                     setTimeout(() => {
                         siguienteCampo.focus();
                     }, 100);
                 }
             }
         }
-        
+
         if (!esValido && config.siguienteId) {
             this._deshabilitarCamposSiguientes(config.siguienteId);
         }
     }
-    
+
     _deshabilitarCamposSiguientes(campoId) {
         const ordenCampos = [
             'sucursalIncidencia',
@@ -402,10 +402,10 @@ class CrearIncidenciaController {
             'fechaHoraIncidencia',
             'detallesIncidencia'
         ];
-        
+
         const indiceActual = ordenCampos.indexOf(campoId);
         if (indiceActual === -1) return;
-        
+
         for (let i = indiceActual; i < ordenCampos.length; i++) {
             const campo = document.getElementById(ordenCampos[i]);
             if (campo && !campo.disabled && i !== 0) {
@@ -455,7 +455,7 @@ class CrearIncidenciaController {
             try {
                 const { generadorIPH } = await import('/components/iph-generator.js');
                 this.pdfGenerator = generadorIPH;
-                console.log('✅ PDFGenerator inicializado correctamente');
+
                 return true;
             } catch (error) {
                 console.error('Error inicializando PDFGenerator:', error);
@@ -479,7 +479,7 @@ class CrearIncidenciaController {
             await this._cargarSucursalesParaNotificacion();
             await this._initNotificacionManager();
             await this._initNotificacionSucursalManager();
-            
+
             await this._initPDFGenerator();
 
             this._configurarOrganizacion();
@@ -761,7 +761,7 @@ class CrearIncidenciaController {
                 }
             });
         }
-        
+
         document.addEventListener('click', (e) => {
             if (inputSucursal && !inputSucursal.contains(e.target) && contenedorSucursal) {
                 contenedorSucursal.style.display = 'none';
@@ -775,24 +775,24 @@ class CrearIncidenciaController {
     _mostrarSugerenciasSucursal(termino) {
         const contenedor = document.getElementById('sugerenciasSucursal');
         if (!contenedor) return;
-        
+
         const terminoLower = termino.toLowerCase().trim();
         if (terminoLower.length === 0) {
             contenedor.style.display = 'none';
             contenedor.innerHTML = '';
             return;
         }
-        
+
         const sugerencias = this.sucursales.filter(suc =>
             suc.nombre.toLowerCase().includes(terminoLower)
         ).slice(0, 8);
-        
+
         if (sugerencias.length === 0) {
             contenedor.innerHTML = `<div class="sugerencia-vacia"><i class="fas fa-store"></i><p>No se encontraron sucursales</p></div>`;
             contenedor.style.display = 'block';
             return;
         }
-        
+
         let html = '<div class="sugerencias-lista">';
         sugerencias.forEach(suc => {
             html += `<div class="sugerencia-item" data-id="${suc.id}" data-nombre="${this._escapeHTML(suc.nombre)}">
@@ -806,7 +806,7 @@ class CrearIncidenciaController {
         html += '</div>';
         contenedor.innerHTML = html;
         contenedor.style.display = 'block';
-        
+
         contenedor.querySelectorAll('.sugerencia-item').forEach(item => {
             item.addEventListener('click', (e) => {
                 e.stopPropagation();
@@ -821,24 +821,24 @@ class CrearIncidenciaController {
     _mostrarSugerenciasCategoria(termino) {
         const contenedor = document.getElementById('sugerenciasCategoria');
         if (!contenedor) return;
-        
+
         const terminoLower = termino.toLowerCase().trim();
         if (terminoLower.length === 0) {
             contenedor.style.display = 'none';
             contenedor.innerHTML = '';
             return;
         }
-        
+
         const sugerencias = this.categorias.filter(cat =>
             cat.nombre.toLowerCase().includes(terminoLower)
         ).slice(0, 8);
-        
+
         if (sugerencias.length === 0) {
             contenedor.innerHTML = `<div class="sugerencia-vacia"><i class="fas fa-tags"></i><p>No se encontraron categorías</p></div>`;
             contenedor.style.display = 'block';
             return;
         }
-        
+
         let html = '<div class="sugerencias-lista">';
         sugerencias.forEach(cat => {
             html += `<div class="sugerencia-item" data-id="${cat.id}" data-nombre="${this._escapeHTML(cat.nombre)}">
@@ -851,7 +851,7 @@ class CrearIncidenciaController {
         html += '</div>';
         contenedor.innerHTML = html;
         contenedor.style.display = 'block';
-        
+
         contenedor.querySelectorAll('.sugerencia-item').forEach(item => {
             item.addEventListener('click', (e) => {
                 e.stopPropagation();
@@ -1219,7 +1219,7 @@ class CrearIncidenciaController {
                 await updateDoc(doc(db, collectionName, nuevaIncidencia.id), { imagenes: imagenesSubidas, fechaActualizacion: new Date() });
             }
             Swal.close();
-            
+
             const quiereCanalizarSucursal = await Swal.fire({ icon: 'question', title: '¿Canalizar a la sucursal?', text: '¿Deseas canalizar esta incidencia a la sucursal seleccionada?', showCancelButton: true, confirmButtonText: 'SÍ', cancelButtonText: 'NO' });
             if (quiereCanalizarSucursal.isConfirmed) {
                 await this._canalizarSucursal(nuevaIncidencia.id, datos.detalles.substring(0, 50));
@@ -1228,7 +1228,7 @@ class CrearIncidenciaController {
             if (quiereCanalizarArea.isConfirmed && this.areas.length > 0) {
                 await this._canalizarAreas(nuevaIncidencia.id, datos.detalles.substring(0, 50));
             }
-            
+
             await Swal.fire({ icon: 'success', title: '¡Incidencia creada!', text: 'La incidencia se ha creado correctamente', confirmButtonColor: '#28a745' });
             this._volverALista();
         } catch (error) {

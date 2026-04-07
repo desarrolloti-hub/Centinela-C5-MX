@@ -35,9 +35,9 @@ class CrearMercanciaPerdidaController {
     // =============================================
     _configurarDragAndDropYPegado() {
         const uploadArea = document.querySelector('.image-upload-section');
-        
+
         if (!uploadArea) return;
-        
+
         // DRAG & DROP - Arrastrar imágenes
         uploadArea.addEventListener('dragover', (e) => {
             e.preventDefault();
@@ -45,20 +45,20 @@ class CrearMercanciaPerdidaController {
             uploadArea.style.borderColor = 'var(--color-accent-secondary)';
             uploadArea.style.background = 'rgba(0, 207, 255, 0.05)';
         });
-        
+
         uploadArea.addEventListener('dragleave', (e) => {
             e.preventDefault();
             e.stopPropagation();
             uploadArea.style.borderColor = 'var(--color-border-light)';
             uploadArea.style.background = '';
         });
-        
+
         uploadArea.addEventListener('drop', (e) => {
             e.preventDefault();
             e.stopPropagation();
             uploadArea.style.borderColor = 'var(--color-border-light)';
             uploadArea.style.background = '';
-            
+
             const files = e.dataTransfer.files;
             if (files && files.length > 0) {
                 const imageFiles = Array.from(files).filter(file => file.type.startsWith('image/'));
@@ -70,12 +70,12 @@ class CrearMercanciaPerdidaController {
                 }
             }
         });
-        
+
         // CTRL+V - Pegar imágenes desde portapapeles
         document.addEventListener('paste', (e) => {
             const items = e.clipboardData.items;
             const imageFiles = [];
-            
+
             for (let i = 0; i < items.length; i++) {
                 const item = items[i];
                 if (item.type.indexOf('image') !== -1) {
@@ -89,7 +89,7 @@ class CrearMercanciaPerdidaController {
                     }
                 }
             }
-            
+
             if (imageFiles.length > 0) {
                 e.preventDefault();
                 this._procesarImagenes(imageFiles);
@@ -104,7 +104,7 @@ class CrearMercanciaPerdidaController {
                 const { HistorialUsuarioManager } = await import('/clases/historialUsuario.js');
                 this.historialManager = new HistorialUsuarioManager();
             } catch (error) {
-                console.error('Error inicializando historialManager:', error);
+                // Error silencioso
             }
         }
         return this.historialManager;
@@ -115,10 +115,8 @@ class CrearMercanciaPerdidaController {
             try {
                 const { generadorMercanciaPDF } = await import('/components/mercanciaPDF.js');
                 this.pdfGenerator = generadorMercanciaPDF;
-                console.log('✅ PDFGenerator inicializado correctamente');
                 return true;
             } catch (error) {
-                console.error('Error inicializando PDFGenerator:', error);
                 return false;
             }
         }
@@ -144,10 +142,6 @@ class CrearMercanciaPerdidaController {
 
             const registroTemporal = this._crearRegistroTemporal(datos);
 
-            console.log('📄 Generando PDF para nueva pestaña...');
-            console.log('📸 Evidencias:', registroTemporal.evidencias?.length || 0);
-            console.log('📍 Sucursal seleccionada:', this.sucursalSeleccionada);
-
             const pdfBlob = await this.pdfGenerator.generarReporte(registroTemporal, {
                 mostrarAlerta: false,
                 returnBlob: true,
@@ -157,8 +151,6 @@ class CrearMercanciaPerdidaController {
             if (!pdfBlob || pdfBlob.size === 0) {
                 throw new Error('El PDF generado está vacío');
             }
-
-            console.log(`📦 PDF generado: ${(pdfBlob.size / 1024).toFixed(2)} KB`);
 
             this.pdfBlobGenerado = pdfBlob;
 
@@ -171,10 +163,7 @@ class CrearMercanciaPerdidaController {
 
             Swal.close();
 
-            console.log('✅ PDF abierto en nueva pestaña');
-
         } catch (error) {
-            console.error('❌ Error generando PDF:', error);
             Swal.close();
 
             Swal.fire({
@@ -237,16 +226,10 @@ class CrearMercanciaPerdidaController {
                 throw new Error('No se pudo cargar información del usuario');
             }
 
-            console.log('👤 Usuario cargado:', this.usuarioActual);
-
             await this._inicializarManager();
             await this._cargarEmpresas();
 
             const pdfOk = await this._initPDFGenerator();
-
-            if (!pdfOk) {
-                console.warn('⚠️ PDFGenerator no disponible');
-            }
 
             this._configurarOrganizacion();
             this._inicializarDateTimePicker();
@@ -259,7 +242,6 @@ class CrearMercanciaPerdidaController {
             this.isInitialized = true;
 
         } catch (error) {
-            console.error('Error inicializando:', error);
             this._mostrarError('Error al inicializar: ' + error.message);
         }
     }
@@ -269,7 +251,6 @@ class CrearMercanciaPerdidaController {
             const { MercanciaPerdidaManager } = await import('/clases/incidenciaRecuperacion.js');
             this.mercanciaManager = new MercanciaPerdidaManager();
         } catch (error) {
-            console.error('Error cargando MercanciaPerdidaManager:', error);
             throw error;
         }
     }
@@ -314,12 +295,10 @@ class CrearMercanciaPerdidaController {
                     }
                 });
             } catch (error) {
-                console.error('Error inicializando Flatpickr:', error);
                 fechaInput.type = 'datetime-local';
                 fechaInput.max = this._formatearFechaParaInput(new Date());
             }
         } else {
-            console.warn('Flatpickr no está disponible, usando input nativo');
             const fechaInput = document.getElementById('fechaHoraEvento');
             if (fechaInput) {
                 fechaInput.type = 'datetime-local';
@@ -353,10 +332,7 @@ class CrearMercanciaPerdidaController {
             this.empresas = sucursales.map(s => s.nombre);
             this.empresas = [...new Set(this.empresas)];
 
-            console.log('✅ Sucursales cargadas:', this.sucursalesLista.length);
-
         } catch (error) {
-            console.error('Error cargando empresas:', error);
             this.empresas = [];
             this.sucursalesLista = [];
         }
@@ -405,7 +381,6 @@ class CrearMercanciaPerdidaController {
             };
 
         } catch (error) {
-            console.error('Error cargando usuario:', error);
             throw error;
         }
     }
@@ -513,108 +488,100 @@ class CrearMercanciaPerdidaController {
 
             this._configurarSugerencias();
             this._configurarValidacionSecuencial();
-            this._configurarVisibilidadImagenes();  // 👈 AGREGAR ESTA LÍNEA
-            
+            this._configurarVisibilidadImagenes();
+
             // ========== NUEVO: Configurar Drag & Drop y Ctrl+V ==========
             this._configurarDragAndDropYPegado();
             // ============================================================
 
         } catch (error) {
-            console.error('Error configurando eventos:', error);
+            // Error silencioso
         }
     }
 
-  _configurarValidacionSecuencial() {
-    const ordenCampos = [
-        { id: 'nombreEmpresaCC', siguiente: 'tipoEvento', validar: (valor) => valor.trim() !== '' },
-        { id: 'tipoEvento', siguiente: 'montoPerdido', validar: (valor) => valor !== '' },
-        { id: 'montoPerdido', siguiente: 'montoRecuperado', validar: (valor) => {
-            const monto = parseFloat(valor);
-            return !isNaN(monto) && monto > 0;
-        }},
-        { id: 'montoRecuperado', siguiente: 'fechaHoraEvento', validar: (valor) => true },
-        { id: 'fechaHoraEvento', siguiente: 'narracionEventos', validar: (valor) => valor.trim() !== '' },
-        { id: 'narracionEventos', siguiente: 'detallesPerdida', validar: (valor) => {
-            const texto = valor.trim();
-            return texto.length >= 10 && texto.length <= LIMITES.NARRACION_EVENTOS;
-        }},
-        { id: 'detallesPerdida', siguiente: null, validar: (valor) => true }
-    ];
+    _configurarValidacionSecuencial() {
+        const ordenCampos = [
+            { id: 'nombreEmpresaCC', siguiente: 'tipoEvento', validar: (valor) => valor.trim() !== '' },
+            { id: 'tipoEvento', siguiente: 'montoPerdido', validar: (valor) => valor !== '' },
+            {
+                id: 'montoPerdido', siguiente: 'montoRecuperado', validar: (valor) => {
+                    const monto = parseFloat(valor);
+                    return !isNaN(monto) && monto > 0;
+                }
+            },
+            { id: 'montoRecuperado', siguiente: 'fechaHoraEvento', validar: (valor) => true },
+            { id: 'fechaHoraEvento', siguiente: 'narracionEventos', validar: (valor) => valor.trim() !== '' },
+            {
+                id: 'narracionEventos', siguiente: 'detallesPerdida', validar: (valor) => {
+                    const texto = valor.trim();
+                    return texto.length >= 10 && texto.length <= LIMITES.NARRACION_EVENTOS;
+                }
+            },
+            { id: 'detallesPerdida', siguiente: null, validar: (valor) => true }
+        ];
 
-    ordenCampos.forEach((campo, index) => {
-        const elemento = document.getElementById(campo.id);
-        if (!elemento) return;
-        
-        elemento._validacionSecuencial = {
-            siguienteId: campo.siguiente,
-            validar: campo.validar,
-            indice: index
-        };
-        
-        if (index === 0) {
-            this._habilitarCampo(elemento);
-        } else {
-            this._deshabilitarCampo(elemento);
-        }
-        
-        // 👈 SOLO USAR 'change' para TODOS los campos
-        // 'change' se dispara CUANDO SALES del campo (blur + valor diferente)
-        elemento.addEventListener('change', () => {
-            this._validarYHabilitarSiguiente(campo.id);
-        });
-        
-        // Para campos de texto, también validar al perder foco por si no hubo cambio
-        if (elemento.tagName === 'INPUT' || elemento.tagName === 'TEXTAREA') {
-            elemento.addEventListener('blur', () => {
+        ordenCampos.forEach((campo, index) => {
+            const elemento = document.getElementById(campo.id);
+            if (!elemento) return;
+
+            elemento._validacionSecuencial = {
+                siguienteId: campo.siguiente,
+                validar: campo.validar,
+                indice: index
+            };
+
+            if (index === 0) {
+                this._habilitarCampo(elemento);
+            } else {
+                this._deshabilitarCampo(elemento);
+            }
+
+            elemento.addEventListener('change', () => {
                 this._validarYHabilitarSiguiente(campo.id);
             });
+
+            if (elemento.tagName === 'INPUT' || elemento.tagName === 'TEXTAREA') {
+                elemento.addEventListener('blur', () => {
+                    this._validarYHabilitarSiguiente(campo.id);
+                });
+            }
+        });
+
+        const fechaInput = document.getElementById('fechaHoraEvento');
+        if (fechaInput && this.flatpickrInstance) {
+            this.flatpickrInstance.config.onClose = (selectedDates, dateStr, instance) => {
+                if (selectedDates.length > 0) {
+                    this._validarYHabilitarSiguiente('fechaHoraEvento');
+                }
+            };
         }
-    });
-    
-    // Configuración especial para Flatpickr (selector de fecha)
-    const fechaInput = document.getElementById('fechaHoraEvento');
-    if (fechaInput && this.flatpickrInstance) {
-        this.flatpickrInstance.config.onClose = (selectedDates, dateStr, instance) => {
-            if (selectedDates.length > 0) {
-                this._validarYHabilitarSiguiente('fechaHoraEvento');
+    }
+
+    _configurarVisibilidadImagenes() {
+        const detallesInput = document.getElementById('detallesPerdida');
+        const seccionImagenes = document.getElementById('seccionImagenesWrapper');
+
+        if (!detallesInput || !seccionImagenes) return;
+
+        const verificarMostrarSeccion = () => {
+            const valorDetalles = detallesInput.value.trim();
+
+            if (valorDetalles.length > 0) {
+                if (!seccionImagenes.classList.contains('visible')) {
+                    seccionImagenes.classList.add('visible');
+                    setTimeout(() => {
+                        seccionImagenes.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }, 300);
+                }
+            } else {
+                seccionImagenes.classList.remove('visible');
             }
         };
+
+        detallesInput.addEventListener('input', verificarMostrarSeccion);
+        verificarMostrarSeccion();
     }
-}
 
-    // Agregar después del método _configurarValidacionSecuencial() o donde prefieras
-
-_configurarVisibilidadImagenes() {
-    const detallesInput = document.getElementById('detallesPerdida');
-    const seccionImagenes = document.getElementById('seccionImagenesWrapper');
-    
-    if (!detallesInput || !seccionImagenes) return;
-    
-    // Función para verificar si debe mostrar la sección
-    const verificarMostrarSeccion = () => {
-        const valorDetalles = detallesInput.value.trim();
-        
-        if (valorDetalles.length > 0) {
-            // Mostrar sección de imágenes
-            if (!seccionImagenes.classList.contains('visible')) {
-                seccionImagenes.classList.add('visible');
-                // Scroll suave hacia la sección de imágenes
-                setTimeout(() => {
-                    seccionImagenes.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                }, 300);
-            }
-        } else {
-            // Ocultar sección de imágenes
-            seccionImagenes.classList.remove('visible');
-        }
-    };
-    
-    // Escuchar cambios en el campo de detalles
-    detallesInput.addEventListener('input', verificarMostrarSeccion);
-    
-    // Verificar estado inicial (por si ya tiene contenido)
-    verificarMostrarSeccion();
-}
     _habilitarCampo(elemento) {
         if (!elemento) return;
         elemento.disabled = false;
@@ -810,13 +777,8 @@ _configurarVisibilidadImagenes() {
 
         if (sucursalEncontrada) {
             this.sucursalSeleccionada = sucursalEncontrada;
-            console.log('📍 Sucursal seleccionada:', sucursalEncontrada.nombre);
-            console.log('   Ciudad:', sucursalEncontrada.ciudad);
-            console.log('   Estado:', sucursalEncontrada.estado);
-            console.log('   Dirección:', sucursalEncontrada.direccion);
         } else {
             this.sucursalSeleccionada = null;
-            console.warn('⚠️ No se encontró la sucursal en la lista:', nombre);
         }
 
         document.getElementById('sugerenciasEmpresa').innerHTML = '';
@@ -971,280 +933,116 @@ _configurarVisibilidadImagenes() {
         });
     }
 
-  // =============================================
-// VALIDAR Y MOSTRAR OPCIONES (VERSIÓN SIMPLIFICADA)
-// =============================================
-async _validarYMostrarOpciones() {
-    const empresaInput = document.getElementById('nombreEmpresaCC');
-    const nombreEmpresaCC = empresaInput.value.trim();
+    // =============================================
+    // VALIDAR Y MOSTRAR OPCIONES (VERSIÓN SIMPLIFICADA)
+    // =============================================
+    async _validarYMostrarOpciones() {
+        const empresaInput = document.getElementById('nombreEmpresaCC');
+        const nombreEmpresaCC = empresaInput.value.trim();
 
-    if (!nombreEmpresaCC) {
-        this._mostrarError('Debe ingresar el nombre de la empresa o centro comercial');
-        empresaInput.focus();
-        return;
-    }
+        if (!nombreEmpresaCC) {
+            this._mostrarError('Debe ingresar el nombre de la empresa o centro comercial');
+            empresaInput.focus();
+            return;
+        }
 
-    const tipoEvento = document.getElementById('tipoEvento').value;
-    if (!tipoEvento) {
-        this._mostrarError('Debe seleccionar el tipo de evento');
-        document.getElementById('tipoEvento').focus();
-        return;
-    }
+        const tipoEvento = document.getElementById('tipoEvento').value;
+        if (!tipoEvento) {
+            this._mostrarError('Debe seleccionar el tipo de evento');
+            document.getElementById('tipoEvento').focus();
+            return;
+        }
 
-    const montoPerdido = parseFloat(document.getElementById('montoPerdido').value) || 0;
-    if (montoPerdido <= 0) {
-        this._mostrarError('Debe ingresar un monto perdido válido mayor a 0');
-        document.getElementById('montoPerdido').focus();
-        return;
-    }
+        const montoPerdido = parseFloat(document.getElementById('montoPerdido').value) || 0;
+        if (montoPerdido <= 0) {
+            this._mostrarError('Debe ingresar un monto perdido válido mayor a 0');
+            document.getElementById('montoPerdido').focus();
+            return;
+        }
 
-    const montoRecuperado = parseFloat(document.getElementById('montoRecuperado').value) || 0;
+        const montoRecuperado = parseFloat(document.getElementById('montoRecuperado').value) || 0;
 
-    const fechaInput = document.getElementById('fechaHoraEvento');
-    let fechaHora = fechaInput.value;
+        const fechaInput = document.getElementById('fechaHoraEvento');
+        let fechaHora = fechaInput.value;
 
-    if (!fechaHora) {
-        this._mostrarError('Debe seleccionar fecha y hora');
-        fechaInput.focus();
-        return;
-    }
+        if (!fechaHora) {
+            this._mostrarError('Debe seleccionar fecha y hora');
+            fechaInput.focus();
+            return;
+        }
 
-    const fechaSeleccionada = new Date(fechaHora);
-    const ahora = new Date();
+        const fechaSeleccionada = new Date(fechaHora);
+        const ahora = new Date();
 
-    if (fechaSeleccionada > ahora) {
-        this._mostrarError('No puede seleccionar una fecha futura');
-        fechaInput.focus();
-        return;
-    }
+        if (fechaSeleccionada > ahora) {
+            this._mostrarError('No puede seleccionar una fecha futura');
+            fechaInput.focus();
+            return;
+        }
 
-    const narracionInput = document.getElementById('narracionEventos');
-    const narracionEventos = narracionInput.value.trim();
-    if (!narracionEventos) {
-        narracionInput.classList.add('is-invalid');
-        this._mostrarError('La narración de los eventos es obligatoria');
-        narracionInput.focus();
-        return;
-    }
-    if (narracionEventos.length < 10) {
-        narracionInput.classList.add('is-invalid');
-        this._mostrarError('La narración debe tener al menos 10 caracteres');
-        narracionInput.focus();
-        return;
-    }
-    if (narracionEventos.length > LIMITES.NARRACION_EVENTOS) {
-        narracionInput.classList.add('is-invalid');
-        this._mostrarError(`La narración no puede exceder ${LIMITES.NARRACION_EVENTOS} caracteres`);
-        narracionInput.focus();
-        return;
-    }
-    narracionInput.classList.remove('is-invalid');
+        const narracionInput = document.getElementById('narracionEventos');
+        const narracionEventos = narracionInput.value.trim();
+        if (!narracionEventos) {
+            narracionInput.classList.add('is-invalid');
+            this._mostrarError('La narración de los eventos es obligatoria');
+            narracionInput.focus();
+            return;
+        }
+        if (narracionEventos.length < 10) {
+            narracionInput.classList.add('is-invalid');
+            this._mostrarError('La narración debe tener al menos 10 caracteres');
+            narracionInput.focus();
+            return;
+        }
+        if (narracionEventos.length > LIMITES.NARRACION_EVENTOS) {
+            narracionInput.classList.add('is-invalid');
+            this._mostrarError(`La narración no puede exceder ${LIMITES.NARRACION_EVENTOS} caracteres`);
+            narracionInput.focus();
+            return;
+        }
+        narracionInput.classList.remove('is-invalid');
 
-    const detallesPerdida = document.getElementById('detallesPerdida').value.trim();
+        const detallesPerdida = document.getElementById('detallesPerdida').value.trim();
 
-    const datos = {
-        nombreEmpresaCC,
-        tipoEvento,
-        montoPerdido,
-        montoRecuperado,
-        fechaHora,
-        narracionEventos,
-        detallesPerdida,
-        imagenes: this.imagenesSeleccionadas
-    };
+        const datos = {
+            nombreEmpresaCC,
+            tipoEvento,
+            montoPerdido,
+            montoRecuperado,
+            fechaHora,
+            narracionEventos,
+            detallesPerdida,
+            imagenes: this.imagenesSeleccionadas
+        };
 
-    // SweetAlert con solo dos opciones: Confirmar y Cancelar
-    const result = await Swal.fire({
-        title: 'Confirmar registro',
-        html: `
+        const result = await Swal.fire({
+            title: 'Confirmar registro',
+            html: `
             <div style="text-align: left;">
                 <p><strong><i class="fas fa-store"></i> Empresa:</strong> ${this._escapeHTML(nombreEmpresaCC)}</p>
                 <p><strong><i class="fas fa-exclamation-triangle"></i> Tipo:</strong> ${this._getTipoEventoTexto(tipoEvento)}</p>
-                <p><strong><i class="fas fa-dollar-sign"></i> Monto:</strong> $${montoPerdido.toLocaleString('es-MX', {minimumFractionDigits: 2})}</p>
+                <p><strong><i class="fas fa-dollar-sign"></i> Monto:</strong> $${montoPerdido.toLocaleString('es-MX', { minimumFractionDigits: 2 })}</p>
                 <p><strong><i class="fas fa-images"></i> Evidencias:</strong> ${this.imagenesSeleccionadas.length} imagen(es)</p>
                 <p><strong><i class="fas fa-file-pdf"></i> PDF:</strong> Se descargará automáticamente al confirmar</p>
             </div>
         `,
-        icon: 'question',
-        showCancelButton: true,
-        confirmButtonText: '<i class="fas fa-check-circle"></i> Confirmar',
-        cancelButtonText: '<i class="fas fa-times"></i> Cancelar',
-        confirmButtonColor: '#28a745',
-        cancelButtonColor: '#6c757d'
-    });
-
-    if (result.isConfirmed) {
-        await this._guardarYDescargarPDF(datos);
-    }
-}
-// =============================================
-// GUARDAR REGISTRO Y DESCARGAR PDF AUTOMÁTICAMENTE
-// =============================================
-async _guardarYDescargarPDF(datos) {
-    const btnCrear = document.getElementById('btnCrearRegistro');
-    const originalHTML = btnCrear ? btnCrear.innerHTML : '<i class="fas fa-check me-2"></i>Registrar Evento';
-
-    let registroId = null;
-
-    try {
-        if (btnCrear) {
-            btnCrear.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> Guardando...';
-            btnCrear.disabled = true;
-        }
-
-        Swal.fire({
-            title: 'Guardando registro...',
-            text: 'Generando reporte y subiendo evidencias...',
-            allowOutsideClick: false,
-            allowEscapeKey: false,
-            showConfirmButton: false,
-            didOpen: () => {
-                Swal.showLoading();
-            }
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: '<i class="fas fa-check-circle"></i> Confirmar',
+            cancelButtonText: '<i class="fas fa-times"></i> Cancelar',
+            confirmButtonColor: '#28a745',
+            cancelButtonColor: '#6c757d'
         });
 
-        const fechaObj = new Date(datos.fechaHora);
-        const hora = fechaObj.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
-
-        const registroTemporal = this._crearRegistroTemporal(datos);
-        const pdfBlob = await this.pdfGenerator.generarReporte(registroTemporal, {
-            mostrarAlerta: false,
-            returnBlob: true,
-            diagnosticar: false
-        });
-
-        if (!pdfBlob || pdfBlob.size === 0) {
-            throw new Error('No se pudo generar el PDF');
-        }
-
-        const registroData = {
-            nombreEmpresaCC: datos.nombreEmpresaCC,
-            tipoEvento: datos.tipoEvento,
-            montoPerdido: datos.montoPerdido,
-            montoRecuperado: datos.montoRecuperado,
-            fecha: fechaObj,
-            hora: hora,
-            narracionEventos: datos.narracionEventos,
-            detallesPerdida: datos.detallesPerdida,
-            reportadoPorId: this.usuarioActual.id,
-            reportadoPorNombre: this.usuarioActual.nombreCompleto,
-            sucursalInfo: this.sucursalSeleccionada
-        };
-
-        const nuevoRegistro = await this.mercanciaManager.crearRegistro(
-            registroData,
-            this.usuarioActual,
-            [],
-            []
-        );
-
-        registroId = nuevoRegistro.id;
-        console.log('✅ Registro creado:', registroId);
-
-        Swal.update({
-            title: 'Subiendo evidencias...',
-            text: `Subiendo ${datos.imagenes.length} evidencias...`
-        });
-
-        const evidenciasUrls = await this._subirEvidencias(registroId, datos.imagenes);
-
-        if (evidenciasUrls.length > 0) {
-            await this.mercanciaManager.actualizarRegistro(
-                registroId,
-                { evidencias: evidenciasUrls },
-                this.usuarioActual.id,
-                this.usuarioActual.organizacionCamelCase,
-                this.usuarioActual
-            );
-            console.log(`✅ ${evidenciasUrls.length} evidencias actualizadas`);
-        }
-
-        Swal.update({
-            title: 'Subiendo PDF...',
-            text: 'Guardando el reporte PDF...'
-        });
-
-        const pdfFile = new File([pdfBlob], `reporte_${registroId}.pdf`, { type: 'application/pdf' });
-        const rutaPDF = `mercancia_perdida_${this.usuarioActual.organizacionCamelCase}/${registroId}/pdf/reporte_${registroId}.pdf`;
-
-        const resultado = await this.mercanciaManager.subirArchivo(pdfFile, rutaPDF);
-
-        await this.mercanciaManager.actualizarEstadoPDF(
-            registroId,
-            'completado',
-            resultado.url,
-            this.usuarioActual.organizacionCamelCase,
-            this.usuarioActual
-        );
-
-        console.log('✅ PDF subido exitosamente:', resultado.url);
-
-        // 🔽 DESCARGAR PDF AUTOMÁTICAMENTE 🔽
-        const pdfUrl = URL.createObjectURL(pdfBlob);
-        const link = document.createElement('a');
-        link.href = pdfUrl;
-        link.download = `reporte_${registroId}.pdf`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        setTimeout(() => URL.revokeObjectURL(pdfUrl), 1000);
-        console.log('📥 PDF descargado automáticamente');
-
-        Swal.close();
-
-        const historial = await this._initHistorialManager();
-        if (historial) {
-            await historial.registrarActividad({
-                usuario: this.usuarioActual,
-                tipo: 'crear',
-                modulo: 'mercancia_perdida',
-                descripcion: `Registró mercancía perdida - ${datos.nombreEmpresaCC}`,
-                detalles: {
-                    registroId,
-                    nombreEmpresaCC: datos.nombreEmpresaCC,
-                    montoPerdido: datos.montoPerdido,
-                    tipoEvento: datos.tipoEvento,
-                    totalEvidencias: evidenciasUrls.length
-                }
-            });
-        }
-
-        await Swal.fire({
-            icon: 'success',
-            title: '¡Incidencia creada!',
-            text: 'Se creó correctamente la incidencia y se descargó el PDF',
-            confirmButtonText: 'Aceptar',
-            confirmButtonColor: '#28a745'
-        });
-
-        this._volverALista();
-
-    } catch (error) {
-        console.error('Error guardando registro:', error);
-        Swal.close();
-        
-        if (registroId) {
-            try {
-                const rutaStorage = `mercancia_perdida_${this.usuarioActual.organizacionCamelCase}/${registroId}`;
-                await this.mercanciaManager.eliminarCarpetaStorage(rutaStorage);
-                await this.mercanciaManager.eliminarRegistro(registroId, this.usuarioActual.organizacionCamelCase, false);
-            } catch (cleanupError) {
-                console.error('Error limpiando:', cleanupError);
-            }
-        }
-        
-        this._mostrarError(error.message || 'No se pudo registrar el evento');
-    } finally {
-        if (btnCrear) {
-            btnCrear.innerHTML = originalHTML;
-            btnCrear.disabled = false;
+        if (result.isConfirmed) {
+            await this._guardarYDescargarPDF(datos);
         }
     }
-}
+
     // =============================================
-    // GUARDAR REGISTRO CON SUCURSAL COMPLETA
+    // GUARDAR REGISTRO Y DESCARGAR PDF AUTOMÁTICAMENTE
     // =============================================
-    async _guardarRegistroDirecto(datos) {
+    async _guardarYDescargarPDF(datos) {
         const btnCrear = document.getElementById('btnCrearRegistro');
         const originalHTML = btnCrear ? btnCrear.innerHTML : '<i class="fas fa-check me-2"></i>Registrar Evento';
 
@@ -1303,7 +1101,6 @@ async _guardarYDescargarPDF(datos) {
             );
 
             registroId = nuevoRegistro.id;
-            console.log('✅ Registro creado:', registroId);
 
             Swal.update({
                 title: 'Subiendo evidencias...',
@@ -1320,7 +1117,6 @@ async _guardarYDescargarPDF(datos) {
                     this.usuarioActual.organizacionCamelCase,
                     this.usuarioActual
                 );
-                console.log(`✅ ${evidenciasUrls.length} evidencias actualizadas`);
             }
 
             Swal.update({
@@ -1341,7 +1137,15 @@ async _guardarYDescargarPDF(datos) {
                 this.usuarioActual
             );
 
-            console.log('✅ PDF subido exitosamente:', resultado.url);
+            // 🔽 DESCARGAR PDF AUTOMÁTICAMENTE 🔽
+            const pdfUrl = URL.createObjectURL(pdfBlob);
+            const link = document.createElement('a');
+            link.href = pdfUrl;
+            link.download = `reporte_${registroId}.pdf`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            setTimeout(() => URL.revokeObjectURL(pdfUrl), 1000);
 
             Swal.close();
 
@@ -1365,7 +1169,7 @@ async _guardarYDescargarPDF(datos) {
             await Swal.fire({
                 icon: 'success',
                 title: '¡Incidencia creada!',
-                text: 'Se creó correctamente la incidencia',
+                text: 'Se creó correctamente la incidencia y se descargó el PDF',
                 confirmButtonText: 'Aceptar',
                 confirmButtonColor: '#28a745'
             });
@@ -1373,7 +1177,6 @@ async _guardarYDescargarPDF(datos) {
             this._volverALista();
 
         } catch (error) {
-            console.error('Error guardando registro:', error);
             Swal.close();
 
             if (registroId) {
@@ -1382,7 +1185,7 @@ async _guardarYDescargarPDF(datos) {
                     await this.mercanciaManager.eliminarCarpetaStorage(rutaStorage);
                     await this.mercanciaManager.eliminarRegistro(registroId, this.usuarioActual.organizacionCamelCase, false);
                 } catch (cleanupError) {
-                    console.error('Error limpiando:', cleanupError);
+                    // Error silencioso
                 }
             }
 
@@ -1399,7 +1202,6 @@ async _guardarYDescargarPDF(datos) {
         if (!imagenes || imagenes.length === 0) return [];
 
         const resultados = [];
-        console.log(`📤 Subiendo ${imagenes.length} evidencias...`);
 
         for (let i = 0; i < imagenes.length; i++) {
             const img = imagenes[i];
@@ -1411,7 +1213,6 @@ async _guardarYDescargarPDF(datos) {
             const rutaStorage = `mercancia_perdida_${this.usuarioActual.organizacionCamelCase}/${registroId}/evidencias/${nombreArchivo}`;
 
             try {
-                console.log(`📤 Evidencia ${i + 1}/${imagenes.length}: ${nombreArchivo}`);
                 const resultado = await this.mercanciaManager.subirArchivo(img.file, rutaStorage);
 
                 resultados.push({
@@ -1423,9 +1224,7 @@ async _guardarYDescargarPDF(datos) {
                     generatedName: nombreArchivo,
                     fechaAgregada: new Date()
                 });
-                console.log(`✅ Evidencia ${i + 1} subida correctamente`);
             } catch (error) {
-                console.error(`❌ Error subiendo evidencia ${i + 1}:`, error);
                 throw error;
             }
         }

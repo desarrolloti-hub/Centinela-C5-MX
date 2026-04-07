@@ -75,7 +75,6 @@ function obtenerUsuarioActual() {
 
         return null;
     } catch (error) {
-        console.error('Error obteniendo usuario actual:', error);
         return null;
     }
 }
@@ -91,13 +90,12 @@ async function obtenerDatosOrganizacion() {
                 nombre: usuario.organizacion || 'Mi Empresa',
                 camelCase: usuario.organizacionCamelCase || ''
             };
-            console.log('Organización:', organizacionActual);
             return;
         }
-        
+
         const userData = JSON.parse(localStorage.getItem('userData') || '{}');
         const adminInfo = JSON.parse(localStorage.getItem('adminInfo') || '{}');
-        
+
         organizacionActual = {
             nombre: userData.organizacion || adminInfo.organizacion || 'Mi Empresa',
             camelCase: userData.organizacionCamelCase || adminInfo.organizacionCamelCase || ''
@@ -113,20 +111,19 @@ async function obtenerDatosOrganizacion() {
 async function cargarSucursales() {
     try {
         if (!organizacionActual?.camelCase) {
-            console.warn('No hay organización configurada');
             return;
         }
-        
+
         const { SucursalManager } = await import('/clases/sucursal.js');
         const sucursalManager = new SucursalManager();
-        
+
         const sucursales = await sucursalManager.getSucursalesByOrganizacion(
             organizacionActual.camelCase
         );
-        
+
         sucursalesCache = sucursales.map(s => s.nombre);
         sucursalesCache = [...new Set(sucursalesCache)];
-        
+
         const filtroSucursal = document.getElementById('filtroSucursal');
         if (filtroSucursal) {
             filtroSucursal.innerHTML = '<option value="todas">Todas las sucursales</option>';
@@ -137,13 +134,10 @@ async function cargarSucursales() {
                 filtroSucursal.appendChild(option);
             });
         }
-        
-        console.log(`${sucursalesCache.length} sucursales cargadas`);
-        
+
     } catch (error) {
-        console.error('Error cargando sucursales:', error);
         sucursalesCache = [];
-        
+
         const filtroSucursal = document.getElementById('filtroSucursal');
         if (filtroSucursal) {
             filtroSucursal.innerHTML = '<option value="todas">Todas las sucursales</option>';
@@ -156,32 +150,31 @@ async function cargarSucursales() {
 // =============================================
 async function cargarRegistrosConFiltros() {
     if (!organizacionActual?.camelCase || !mercanciaManager) {
-        console.error('No hay organización o manager configurado');
         mostrarError('No se pudo inicializar el módulo de datos');
         return;
     }
-    
+
     try {
         mostrarLoading();
-        
+
         const sucursal = document.getElementById('filtroSucursal')?.value || 'todas';
         const fechaInicio = document.getElementById('fechaInicio')?.value;
         const fechaFin = document.getElementById('fechaFin')?.value;
         const tipoEvento = document.getElementById('filtroTipoEvento')?.value || 'todos';
-        
+
         const todosRegistros = await mercanciaManager.getRegistrosByOrganizacion(
             organizacionActual.camelCase
         );
-        
+
         let registrosFiltrados = todosRegistros;
-        
+
         // Filtro por sucursal
         if (sucursal !== 'todas') {
-            registrosFiltrados = registrosFiltrados.filter(r => 
+            registrosFiltrados = registrosFiltrados.filter(r =>
                 r.nombreEmpresaCC === sucursal
             );
         }
-        
+
         // Filtro por fecha
         if (fechaInicio) {
             const fechaInicioObj = new Date(fechaInicio);
@@ -191,7 +184,7 @@ async function cargarRegistrosConFiltros() {
                 return fechaRegistro && fechaRegistro >= fechaInicioObj;
             });
         }
-        
+
         if (fechaFin) {
             const fechaFinObj = new Date(fechaFin);
             fechaFinObj.setHours(23, 59, 59, 999);
@@ -200,28 +193,27 @@ async function cargarRegistrosConFiltros() {
                 return fechaRegistro && fechaRegistro <= fechaFinObj;
             });
         }
-        
+
         // Filtro por tipo de evento
         if (tipoEvento !== 'todos') {
-            registrosFiltrados = registrosFiltrados.filter(r => 
+            registrosFiltrados = registrosFiltrados.filter(r =>
                 r.tipoEvento === tipoEvento
             );
         }
-        
+
         datosActuales.registros = registrosFiltrados;
-        
+
         const estadisticas = calcularEstadisticas(registrosFiltrados);
         datosActuales.estadisticas = estadisticas;
-        
+
         mostrarKPIs(estadisticas);
         actualizarGraficas(registrosFiltrados, estadisticas);
         actualizarTablaResumen(registrosFiltrados);
         mostrarContenedores();
-        
+
         document.getElementById('fechaActualizacion').textContent = new Date().toLocaleString('es-MX');
-        
+
     } catch (error) {
-        console.error('Error cargando registros con filtros:', error);
         mostrarError('No se pudieron cargar los datos: ' + error.message);
     }
 }
@@ -240,23 +232,23 @@ function calcularEstadisticas(registros) {
             promedioPerdida: 0
         };
     }
-    
+
     let totalPerdido = 0;
     let totalRecuperado = 0;
-    
+
     registros.forEach(r => {
         totalPerdido += r.montoPerdido || 0;
         totalRecuperado += r.montoRecuperado || 0;
     });
-    
+
     const totalNeto = totalPerdido - totalRecuperado;
-    const porcentajeRecuperacion = totalPerdido > 0 
-        ? (totalRecuperado / totalPerdido) * 100 
+    const porcentajeRecuperacion = totalPerdido > 0
+        ? (totalRecuperado / totalPerdido) * 100
         : 0;
-    const promedioPerdida = registros.length > 0 
-        ? totalPerdido / registros.length 
+    const promedioPerdida = registros.length > 0
+        ? totalPerdido / registros.length
         : 0;
-    
+
     return {
         totalPerdido,
         totalRecuperado,
@@ -271,13 +263,13 @@ function calcularEstadisticas(registros) {
 // MOSTRAR KPIs
 // =============================================
 function mostrarKPIs(estadisticas) {
-    const formatter = new Intl.NumberFormat('es-MX', { 
-        style: 'currency', 
+    const formatter = new Intl.NumberFormat('es-MX', {
+        style: 'currency',
         currency: 'MXN',
         minimumFractionDigits: 2,
         maximumFractionDigits: 2
     });
-    
+
     document.getElementById('totalPerdidas').textContent = formatter.format(estadisticas.totalPerdido);
     document.getElementById('totalRecuperado').textContent = formatter.format(estadisticas.totalRecuperado);
     document.getElementById('totalNeto').textContent = formatter.format(estadisticas.totalNeto);
@@ -294,7 +286,7 @@ function actualizarGraficas(registros, estadisticas) {
         actualizarGraficaVacia();
         return;
     }
-    
+
     actualizarGraficoTipoEvento(registros);
     actualizarGraficoEvolucionMensual(registros);
     actualizarGraficoTopSucursales(registros);
@@ -311,7 +303,7 @@ function actualizarGraficoTipoEvento(registros) {
         'accidente': 0,
         'otro': 0
     };
-    
+
     // Guardar registros por tipo para el click
     window.registrosPorTipo = {
         'robo': [],
@@ -319,33 +311,33 @@ function actualizarGraficoTipoEvento(registros) {
         'accidente': [],
         'otro': []
     };
-    
+
     const nombresTipos = {
         'robo': 'Robo',
         'extravio': 'Extravío',
         'accidente': 'Accidente',
         'otro': 'Otro'
     };
-    
+
     const colores = {
         'robo': COLORS.rojo,
         'extravio': COLORS.naranja,
         'accidente': COLORS.azul,
         'otro': COLORS.morado
     };
-    
+
     // Agrupar registros por tipo y sumar montos
     registros.forEach(r => {
         const tipo = r.tipoEvento || 'otro';
         tipos[tipo] = (tipos[tipo] || 0) + (r.montoPerdido || 0);
         window.registrosPorTipo[tipo].push(r);
     });
-    
+
     const ctx = document.getElementById('graficoTipoEvento').getContext('2d');
     const labels = Object.keys(tipos).map(k => nombresTipos[k] || k);
     const data = Object.values(tipos);
     const backgroundColors = Object.keys(tipos).map(k => colores[k] || COLORS.gris);
-    
+
     if (graficoTipoEvento) {
         graficoTipoEvento.data.labels = labels;
         graficoTipoEvento.data.datasets[0].data = data;
@@ -373,7 +365,7 @@ function actualizarGraficoTipoEvento(registros) {
                         const tipoKey = Object.keys(tipos)[index];
                         const tipoNombre = nombresTipos[tipoKey];
                         const registrosTipo = window.registrosPorTipo[tipoKey] || [];
-                        
+
                         if (registrosTipo.length === 0) {
                             Swal.fire({
                                 icon: 'info',
@@ -384,13 +376,13 @@ function actualizarGraficoTipoEvento(registros) {
                             });
                             return;
                         }
-                        
+
                         mostrarRegistrosEnSweet(registrosTipo, `Registros de tipo: ${tipoNombre}`, `<i class="fas fa-tag"></i> ${tipoNombre}`);
                     }
                 },
                 plugins: {
-                    legend: { 
-                        labels: { color: 'white', font: { size: 11, family: "'Rajdhani', sans-serif" } }, 
+                    legend: {
+                        labels: { color: 'white', font: { size: 11, family: "'Rajdhani', sans-serif" } },
                         position: 'bottom',
                         rtl: false
                     },
@@ -419,16 +411,16 @@ function actualizarGraficoTipoEvento(registros) {
 function actualizarGraficoEvolucionMensual(registros) {
     const meses = {};
     const mesesNombres = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
-    
+
     // Guardar registros por mes para el click
     window.registrosPorMes = {};
-    
+
     registros.forEach(r => {
         if (r.fecha) {
             const fecha = new Date(r.fecha);
             const mesKey = `${fecha.getFullYear()}-${fecha.getMonth() + 1}`;
             const mesNombre = `${mesesNombres[fecha.getMonth()]} ${fecha.getFullYear()}`;
-            
+
             if (!meses[mesKey]) {
                 meses[mesKey] = {
                     nombre: mesNombre,
@@ -442,14 +434,14 @@ function actualizarGraficoEvolucionMensual(registros) {
             window.registrosPorMes[mesKey].push(r);
         }
     });
-    
+
     const mesesOrdenados = Object.keys(meses).sort();
     const labels = mesesOrdenados.map(m => meses[m].nombre);
     const perdidosData = mesesOrdenados.map(m => meses[m].perdido);
     const recuperadosData = mesesOrdenados.map(m => meses[m].recuperado);
-    
+
     const ctx = document.getElementById('graficoEvolucionMensual').getContext('2d');
-    
+
     if (graficoEvolucionMensual) {
         graficoEvolucionMensual.data.labels = labels;
         graficoEvolucionMensual.data.datasets[0].data = perdidosData;
@@ -500,7 +492,7 @@ function actualizarGraficoEvolucionMensual(registros) {
                         const registrosMes = window.registrosPorMes[mesKey] || [];
                         const mesNombre = meses[mesKey]?.nombre || 'Mes desconocido';
                         const tipo = datasetIndex === 0 ? 'Pérdidas' : 'Recuperaciones';
-                        
+
                         if (registrosMes.length === 0) {
                             Swal.fire({
                                 icon: 'info',
@@ -511,7 +503,7 @@ function actualizarGraficoEvolucionMensual(registros) {
                             });
                             return;
                         }
-                        
+
                         mostrarRegistrosEnSweet(registrosMes, `Registros de ${mesNombre}`, `<i class="fas fa-calendar-alt"></i> ${mesNombre}`);
                     }
                 },
@@ -552,10 +544,10 @@ function actualizarGraficoEvolucionMensual(registros) {
 // =============================================
 function actualizarGraficoTopSucursales(registros) {
     const sucursalesMap = {};
-    
+
     // Guardar registros por sucursal para el click
     window.registrosPorSucursal = {};
-    
+
     registros.forEach(r => {
         const sucursal = r.nombreEmpresaCC || 'Sin asignar';
         if (!sucursalesMap[sucursal]) {
@@ -571,18 +563,18 @@ function actualizarGraficoTopSucursales(registros) {
         sucursalesMap[sucursal].eventos += 1;
         window.registrosPorSucursal[sucursal].push(r);
     });
-    
+
     const sucursalesArray = Object.entries(sucursalesMap)
         .map(([nombre, datos]) => ({ nombre, ...datos }))
         .sort((a, b) => b.perdido - a.perdido)
         .slice(0, 8);
-    
+
     const labels = sucursalesArray.map(s => s.nombre.length > 25 ? s.nombre.substring(0, 22) + '...' : s.nombre);
     const perdidosData = sucursalesArray.map(s => s.perdido);
     const nombresCompletos = sucursalesArray.map(s => s.nombre);
-    
+
     const ctx = document.getElementById('graficoTopSucursales').getContext('2d');
-    
+
     if (graficoTopSucursales) {
         graficoTopSucursales.data.labels = labels;
         graficoTopSucursales.data.datasets[0].data = perdidosData;
@@ -613,7 +605,7 @@ function actualizarGraficoTopSucursales(registros) {
                         const index = activeElements[0].index;
                         const sucursalNombre = nombresCompletos[index];
                         const registrosSucursal = window.registrosPorSucursal[sucursalNombre] || [];
-                        
+
                         if (registrosSucursal.length === 0) {
                             Swal.fire({
                                 icon: 'info',
@@ -624,16 +616,16 @@ function actualizarGraficoTopSucursales(registros) {
                             });
                             return;
                         }
-                        
+
                         mostrarRegistrosEnSweet(registrosSucursal, `Registros de ${sucursalNombre}`, `<i class="fas fa-building"></i> ${sucursalNombre}`);
                     }
                 },
                 plugins: {
-                    legend: { 
-                        labels: { 
-                            color: 'white', 
-                            font: { size: 10 } 
-                        } 
+                    legend: {
+                        labels: {
+                            color: 'white',
+                            font: { size: 10 }
+                        }
                     },
                     tooltip: {
                         callbacks: {
@@ -670,7 +662,7 @@ function actualizarGraficoTopSucursales(registros) {
 // =============================================
 function actualizarGraficoComparativa(estadisticas) {
     const ctx = document.getElementById('graficoComparativa').getContext('2d');
-    
+
     if (graficoComparativa) {
         graficoComparativa.data.datasets[0].data = [estadisticas.totalPerdido, estadisticas.totalRecuperado];
         graficoComparativa.update();
@@ -695,7 +687,7 @@ function actualizarGraficoComparativa(estadisticas) {
                         const index = activeElements[0].index;
                         const tipo = index === 0 ? 'Pérdidas' : 'Recuperaciones';
                         const registros = datosActuales.registros || [];
-                        
+
                         if (registros.length === 0) {
                             Swal.fire({
                                 icon: 'info',
@@ -706,7 +698,7 @@ function actualizarGraficoComparativa(estadisticas) {
                             });
                             return;
                         }
-                        
+
                         if (tipo === 'Pérdidas') {
                             mostrarRegistrosEnSweet(registros, 'Todos los registros de pérdidas', `<i class="fas fa-chart-line"></i> Todos los registros`);
                         } else {
@@ -758,9 +750,6 @@ function actualizarGraficoComparativa(estadisticas) {
 }
 
 // =============================================
-// FUNCIÓN PARA MOSTRAR REGISTROS EN SWEETALERT
-// =============================================
-// =============================================
 // FUNCIÓN PARA MOSTRAR REGISTROS EN SWEETALERT - VERSIÓN MEJORADA
 // =============================================
 function mostrarRegistrosEnSweet(registros, titulo, icono = '<i class="fas fa-chart-simple"></i>') {
@@ -777,16 +766,16 @@ function mostrarRegistrosEnSweet(registros, titulo, icono = '<i class="fas fa-ch
         });
         return;
     }
-    
+
     const formatter = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' });
     const totalPerdido = registros.reduce((acc, r) => acc + (r.montoPerdido || 0), 0);
     const totalRecuperado = registros.reduce((acc, r) => acc + (r.montoRecuperado || 0), 0);
     const tasaRecuperacion = totalPerdido > 0 ? ((totalRecuperado / totalPerdido) * 100).toFixed(2) : 0;
-    
+
     // Limitar a los primeros 15 registros para no saturar el modal
     const registrosMostrar = registros.slice(0, 15);
     const hayMas = registros.length > 15;
-    
+
     let registrosHtml = `
         <div class="swal-resumen-stats">
             <div class="swal-stats-grid">
@@ -810,12 +799,12 @@ function mostrarRegistrosEnSweet(registros, titulo, icono = '<i class="fas fa-ch
         </div>
         <div class="swal-registros-list">
     `;
-    
+
     registrosMostrar.forEach(registro => {
         const fecha = registro.getFechaFormateada ? registro.getFechaFormateada() : (registro.fecha ? new Date(registro.fecha).toLocaleDateString('es-MX') : 'N/A');
         const tipoTexto = registro.getTipoEventoTexto ? registro.getTipoEventoTexto() : (registro.tipoEvento || 'N/A');
         const estadoTexto = registro.getEstadoTexto ? registro.getEstadoTexto() : (registro.estado || 'activo');
-        
+
         // Clase de color para el estado
         let estadoColor = '#6c757d';
         let estadoIcon = 'fa-circle';
@@ -829,7 +818,7 @@ function mostrarRegistrosEnSweet(registros, titulo, icono = '<i class="fas fa-ch
             estadoColor = '#6c757d';
             estadoIcon = 'fa-ban';
         }
-        
+
         // Traducción de tipo de evento para mostrar bonito
         let tipoIcon = 'fa-tag';
         let tipoDisplay = tipoTexto;
@@ -843,7 +832,7 @@ function mostrarRegistrosEnSweet(registros, titulo, icono = '<i class="fas fa-ch
             tipoIcon = 'fa-car-crash';
             tipoDisplay = 'Accidente';
         }
-        
+
         registrosHtml += `
             <div class="swal-registro-card" onclick="window.verDetalleRegistroDesdeSweet('${registro.id}')">
                 <div class="swal-card-header">
@@ -878,7 +867,7 @@ function mostrarRegistrosEnSweet(registros, titulo, icono = '<i class="fas fa-ch
             </div>
         `;
     });
-    
+
     if (hayMas) {
         registrosHtml += `
             <div class="swal-mas-registros">
@@ -886,9 +875,9 @@ function mostrarRegistrosEnSweet(registros, titulo, icono = '<i class="fas fa-ch
             </div>
         `;
     }
-    
+
     registrosHtml += `</div>`;
-    
+
     Swal.fire({
         title: `${icono} ${titulo}`,
         html: registrosHtml,
@@ -911,16 +900,13 @@ function mostrarRegistrosEnSweet(registros, titulo, icono = '<i class="fas fa-ch
 }
 
 // =============================================
-// FUNCIÓN GLOBAL PARA VER DETALLE DE REGISTRO DESDE SWEET
-// =============================================
-// =============================================
 // FUNCIÓN GLOBAL PARA VER DETALLE DE REGISTRO DESDE SWEET - VERSIÓN MEJORADA
 // =============================================
-window.verDetalleRegistroDesdeSweet = function(registroId) {
+window.verDetalleRegistroDesdeSweet = function (registroId) {
     Swal.close();
-    
+
     const registro = datosActuales.registros.find(r => r.id === registroId);
-    
+
     if (!registro) {
         Swal.fire({
             icon: 'error',
@@ -934,12 +920,12 @@ window.verDetalleRegistroDesdeSweet = function(registroId) {
         });
         return;
     }
-    
+
     const formatter = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' });
     const fecha = registro.getFechaFormateada ? registro.getFechaFormateada() : (registro.fecha ? new Date(registro.fecha).toLocaleDateString('es-MX') : 'N/A');
     const tipoTexto = registro.getTipoEventoTexto ? registro.getTipoEventoTexto() : (registro.tipoEvento || 'N/A');
     const estadoTexto = registro.getEstadoTexto ? registro.getEstadoTexto() : (registro.estado || 'activo');
-    
+
     let estadoColor = '#6c757d';
     let estadoIcon = 'fa-circle';
     if (estadoTexto === 'Recuperado') {
@@ -949,12 +935,12 @@ window.verDetalleRegistroDesdeSweet = function(registroId) {
         estadoColor = '#f59e0b';
         estadoIcon = 'fa-exclamation-circle';
     }
-    
+
     let tipoIcon = 'fa-tag';
     if (tipoTexto === 'robo' || tipoTexto === 'Robo') tipoIcon = 'fa-mask';
     else if (tipoTexto === 'extravio' || tipoTexto === 'Extravío') tipoIcon = 'fa-map-marker-alt';
     else if (tipoTexto === 'accidente' || tipoTexto === 'Accidente') tipoIcon = 'fa-car-crash';
-    
+
     const detallesHtml = `
         <div style="display: flex; flex-direction: column; gap: 16px;">
             <div class="swal-resumen-stats" style="margin-bottom: 0;">
@@ -1012,7 +998,7 @@ window.verDetalleRegistroDesdeSweet = function(registroId) {
             ` : ''}
         </div>
     `;
-    
+
     Swal.fire({
         title: `<i class="fas fa-info-circle" style="color: var(--color-accent-primary);"></i> Detalles del registro`,
         html: detallesHtml,
@@ -1032,7 +1018,7 @@ window.verDetalleRegistroDesdeSweet = function(registroId) {
 // =============================================
 function actualizarGraficaVacia() {
     const canvasIds = ['graficoTipoEvento', 'graficoEvolucionMensual', 'graficoTopSucursales', 'graficoComparativa'];
-    
+
     canvasIds.forEach(id => {
         const canvas = document.getElementById(id);
         if (canvas) {
@@ -1052,9 +1038,9 @@ function actualizarGraficaVacia() {
 function actualizarTablaResumen(registros) {
     const tbody = document.getElementById('tablaResumenBody');
     if (!tbody) return;
-    
+
     const sucursalesMap = {};
-    
+
     registros.forEach(r => {
         const sucursal = r.nombreEmpresaCC || 'Sin asignar';
         if (!sucursalesMap[sucursal]) {
@@ -1068,18 +1054,18 @@ function actualizarTablaResumen(registros) {
         sucursalesMap[sucursal].perdido += r.montoPerdido || 0;
         sucursalesMap[sucursal].recuperado += r.montoRecuperado || 0;
     });
-    
+
     const sucursalesArray = Object.entries(sucursalesMap)
-        .map(([nombre, datos]) => ({ 
-            nombre, 
+        .map(([nombre, datos]) => ({
+            nombre,
             ...datos,
             neto: datos.perdido - datos.recuperado,
             porcentaje: datos.perdido > 0 ? (datos.recuperado / datos.perdido) * 100 : 0
         }))
         .sort((a, b) => b.perdido - a.perdido);
-    
+
     const formatter = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' });
-    
+
     if (sucursalesArray.length === 0) {
         tbody.innerHTML = `
             <tr>
@@ -1088,7 +1074,7 @@ function actualizarTablaResumen(registros) {
         `;
         return;
     }
-    
+
     tbody.innerHTML = sucursalesArray.map(s => `
         <tr>
             <td title="${escapeHTML(s.nombre)}">${escapeHTML(s.nombre.length > 35 ? s.nombre.substring(0, 32) + '...' : s.nombre)}</td>
@@ -1108,7 +1094,7 @@ function mostrarContenedores() {
     const emptyState = document.getElementById('emptyState');
     const kpisContainer = document.getElementById('kpisContainer');
     const graficasContainer = document.getElementById('graficasContainer');
-    
+
     if (emptyState) emptyState.style.display = 'none';
     if (kpisContainer) kpisContainer.style.display = 'grid';
     if (graficasContainer) graficasContainer.style.display = 'block';
@@ -1118,7 +1104,7 @@ function mostrarEmptyState() {
     const emptyState = document.getElementById('emptyState');
     const kpisContainer = document.getElementById('kpisContainer');
     const graficasContainer = document.getElementById('graficasContainer');
-    
+
     if (emptyState) emptyState.style.display = 'block';
     if (kpisContainer) kpisContainer.style.display = 'none';
     if (graficasContainer) graficasContainer.style.display = 'none';
@@ -1140,12 +1126,12 @@ function limpiarFiltros() {
     const fechaInicio = document.getElementById('fechaInicio');
     const fechaFin = document.getElementById('fechaFin');
     const filtroTipoEvento = document.getElementById('filtroTipoEvento');
-    
+
     if (filtroSucursal) filtroSucursal.value = 'todas';
     if (fechaInicio) fechaInicio.value = '';
     if (fechaFin) fechaFin.value = '';
     if (filtroTipoEvento) filtroTipoEvento.value = 'todos';
-    
+
     mostrarEmptyState();
 }
 
@@ -1221,7 +1207,6 @@ async function generarReportePDF() {
         });
 
     } catch (error) {
-        console.error('Error generando PDF:', error);
         Swal.fire({
             icon: 'error',
             title: 'Error',
@@ -1261,19 +1246,19 @@ function configurarEventos() {
     const btnLimpiar = document.getElementById('btnLimpiarFiltros');
     const btnEmptyAplicar = document.getElementById('btnEmptyAplicar');
     const btnPDF = document.getElementById('btnGenerarPDF');
-    
+
     if (btnAplicar) btnAplicar.addEventListener('click', cargarRegistrosConFiltros);
     if (btnLimpiar) btnLimpiar.addEventListener('click', limpiarFiltros);
     if (btnEmptyAplicar) btnEmptyAplicar.addEventListener('click', cargarRegistrosConFiltros);
     if (btnPDF) btnPDF.addEventListener('click', generarReportePDF);
-    
+
     const fechaInicio = document.getElementById('fechaInicio');
     const fechaFin = document.getElementById('fechaFin');
-    
+
     if (fechaInicio) fechaInicio.addEventListener('keypress', (e) => {
         if (e.key === 'Enter') cargarRegistrosConFiltros();
     });
-    
+
     if (fechaFin) fechaFin.addEventListener('keypress', (e) => {
         if (e.key === 'Enter') cargarRegistrosConFiltros();
     });
@@ -1284,23 +1269,19 @@ function configurarEventos() {
 // =============================================
 async function inicializarDashboard() {
     try {
-        console.log('🚀 Dashboard inicializado correctamente');
-        
         await obtenerDatosOrganizacion();
-        
+
         if (!organizacionActual?.camelCase) {
-            console.error('No se pudo obtener la organización');
             mostrarEmptyState();
             return;
         }
-        
+
         mercanciaManager = new MercanciaPerdidaManager();
         await cargarSucursales();
         configurarEventos();
         mostrarEmptyState();
-        
+
     } catch (error) {
-        console.error('Error inicializando dashboard:', error);
         mostrarError('No se pudo cargar el dashboard');
         mostrarEmptyState();
     }

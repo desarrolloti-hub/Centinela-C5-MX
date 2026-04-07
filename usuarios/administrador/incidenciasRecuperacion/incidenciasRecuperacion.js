@@ -102,12 +102,12 @@ async function cargarRegistrosPagina(pagina) {
 
         cursoresPaginacion.ultimoDocumento = resultado.ultimoDocumento;
         cursoresPaginacion.primerDocumento = resultado.primerDocumento;
-        
+
         registrosActuales = resultado.registros;
         totalRegistros = resultado.total;
         totalPaginas = resultado.totalPaginas;
         paginaActual = resultado.paginaActual;
-        
+
         if (registrosActuales.length === 0 && pagina === 1) {
             tbody.innerHTML = `
                 <tr>
@@ -125,9 +125,9 @@ async function cargarRegistrosPagina(pagina) {
             `;
             return;
         }
-        
+
         renderizarRegistros();
-        
+
     } catch (error) {
         console.error('Error cargando registros:', error);
         mostrarError('Error al cargar registros: ' + error.message);
@@ -136,7 +136,7 @@ async function cargarRegistrosPagina(pagina) {
 
 window.irPagina = async function (pagina) {
     if (pagina < 1 || pagina > totalPaginas || pagina === paginaActual) return;
-    
+
     try {
         const tbody = document.getElementById('tablaRegistrosBody');
         if (tbody) {
@@ -151,9 +151,9 @@ window.irPagina = async function (pagina) {
                 </tr>
             `;
         }
-        
+
         let resultado;
-        
+
         if (pagina > paginaActual) {
             resultado = await mercanciaManager.getRegistrosPaginados(
                 organizacionActual.camelCase,
@@ -176,16 +176,16 @@ window.irPagina = async function (pagina) {
                 null
             );
         }
-        
+
         cursoresPaginacion.ultimoDocumento = resultado.ultimoDocumento;
         cursoresPaginacion.primerDocumento = resultado.primerDocumento;
         registrosActuales = resultado.registros;
         totalRegistros = resultado.total;
         totalPaginas = resultado.totalPaginas;
         paginaActual = pagina;
-        
+
         renderizarRegistros();
-        
+
     } catch (error) {
         console.error('Error navegando a página:', error);
         mostrarError('Error al cambiar de página: ' + error.message);
@@ -200,7 +200,7 @@ function renderizarRegistros() {
     if (paginationInfo) {
         const inicio = (paginaActual - 1) * ITEMS_POR_PAGINA + 1;
         const fin = Math.min(inicio + registrosActuales.length - 1, totalRegistros);
-        
+
         if (totalRegistros > 0) {
             paginationInfo.textContent = `Mostrando ${inicio}-${fin} de ${totalRegistros} registros`;
         } else {
@@ -227,7 +227,7 @@ function renderizarPaginacion() {
     }
 
     let html = '';
-    
+
     html += `
         <li class="page-item ${paginaActual === 1 ? 'disabled' : ''}">
             <button class="page-link" onclick="irPagina(${paginaActual - 1})" ${paginaActual === 1 ? 'disabled' : ''}>
@@ -235,15 +235,15 @@ function renderizarPaginacion() {
             </button>
         </li>
     `;
-    
+
     const maxPagesToShow = 5;
     let startPage = Math.max(1, paginaActual - Math.floor(maxPagesToShow / 2));
     let endPage = Math.min(totalPaginas, startPage + maxPagesToShow - 1);
-    
+
     if (endPage - startPage + 1 < maxPagesToShow) {
         startPage = Math.max(1, endPage - maxPagesToShow + 1);
     }
-    
+
     if (startPage > 1) {
         html += `
             <li class="page-item">
@@ -252,7 +252,7 @@ function renderizarPaginacion() {
             ${startPage > 2 ? '<li class="page-item disabled"><span class="page-link">...</span></li>' : ''}
         `;
     }
-    
+
     for (let i = startPage; i <= endPage; i++) {
         html += `
             <li class="page-item ${i === paginaActual ? 'active' : ''}">
@@ -260,7 +260,7 @@ function renderizarPaginacion() {
             </li>
         `;
     }
-    
+
     if (endPage < totalPaginas) {
         html += `
             ${endPage < totalPaginas - 1 ? '<li class="page-item disabled"><span class="page-link">...</span></li>' : ''}
@@ -269,7 +269,7 @@ function renderizarPaginacion() {
             </li>
         `;
     }
-    
+
     html += `
         <li class="page-item ${paginaActual === totalPaginas || totalPaginas === 0 ? 'disabled' : ''}">
             <button class="page-link" onclick="irPagina(${paginaActual + 1})" ${paginaActual === totalPaginas || totalPaginas === 0 ? 'disabled' : ''}>
@@ -277,7 +277,7 @@ function renderizarPaginacion() {
             </button>
         </li>
     `;
-    
+
     pagination.innerHTML = html;
 }
 
@@ -285,10 +285,10 @@ function aplicarFiltros() {
     filtrosActivos.estado = document.getElementById('filtroEstado')?.value || 'todos';
     filtrosActivos.tipoEvento = document.getElementById('filtroTipoEvento')?.value || 'todos';
     filtrosActivos.nombreEmpresaCC = document.getElementById('filtroEmpresa')?.value || 'todos';
-    
+
     paginaActual = 1;
     cursoresPaginacion = { ultimoDocumento: null, primerDocumento: null };
-    
+
     cargarRegistrosPagina(1);
 }
 
@@ -306,10 +306,10 @@ function limpiarFiltros() {
         tipoEvento: 'todos',
         nombreEmpresaCC: 'todos'
     };
-    
+
     paginaActual = 1;
     cursoresPaginacion = { ultimoDocumento: null, primerDocumento: null };
-    
+
     cargarRegistrosPagina(1);
 }
 
@@ -319,18 +319,18 @@ function limpiarFiltros() {
 // =============================================
 window.verPDF = async function (registroId, event) {
     event?.stopPropagation();
-    
+
     try {
         const registro = registrosActuales.find(r => r.id === registroId);
-        
+
         if (!registro) {
             throw new Error('Registro no encontrado');
         }
-        
+
         if (registro.pdfUrl && registro.pdfUrl.trim() !== '') {
             // Abrir PDF en nueva pestaña con el visor nativo del navegador
             window.open(registro.pdfUrl, '_blank');
-            
+
             // Notificación opcional
             Swal.fire({
                 icon: 'success',
@@ -399,15 +399,15 @@ window.registrarRecuperacion = function (registroId, event) {
 function mostrarModalDetalles(registro) {
     const modal = document.getElementById('modalDetalles');
     const body = document.getElementById('modalDetallesBody');
-    
+
     if (!modal || !body) return;
-    
+
     const uiData = registro.toUI ? registro.toUI() : registro;
-    
+
     const perdidoFormateado = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(uiData.montoPerdido);
     const recuperadoFormateado = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(uiData.montoRecuperado);
     const netoFormateado = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(uiData.montoNeto || (uiData.montoPerdido - uiData.montoRecuperado));
-    
+
     let evidenciasHtml = '';
     if (uiData.evidencias && uiData.evidencias.length > 0) {
         evidenciasHtml = `
@@ -424,7 +424,7 @@ function mostrarModalDetalles(registro) {
             </div>
         `;
     }
-    
+
     let recuperacionesHtml = '';
     if (registro.historialRecuperaciones && registro.historialRecuperaciones.length > 0) {
         recuperacionesHtml = `
@@ -436,11 +436,11 @@ function mostrarModalDetalles(registro) {
             </div>
         `;
     }
-    
+
     const estadoPDF = uiData.estadoGeneracion || 'pendiente';
     const estadoPDFTexto = uiData.estadoGeneracionTexto || 'Pendiente';
     const estadoPDFColor = uiData.estadoGeneracionColor || '#ffc107';
-    
+
     body.innerHTML = `
         <div class="detalles-grid">
             <div class="detalle-card">
@@ -528,11 +528,11 @@ function mostrarModalDetalles(registro) {
         </div>
         ` : ''}
     `;
-    
+
     modal.classList.add('show');
 }
 
-window.verImagenGrande = function(url) {
+window.verImagenGrande = function (url) {
     const viewer = document.createElement('div');
     viewer.className = 'modal-image-viewer';
     viewer.innerHTML = `
@@ -545,7 +545,7 @@ window.verImagenGrande = function(url) {
     document.body.appendChild(viewer);
 };
 
-window.cerrarModalDetalles = function() {
+window.cerrarModalDetalles = function () {
     const modal = document.getElementById('modalDetalles');
     if (modal) modal.classList.remove('show');
 };
@@ -570,7 +570,7 @@ async function mostrarModalRecuperacion(registro) {
             }
         }
     });
-    
+
     if (monto) {
         const { value: comentario } = await Swal.fire({
             title: 'Comentario',
@@ -581,7 +581,7 @@ async function mostrarModalRecuperacion(registro) {
             confirmButtonText: 'Guardar',
             cancelButtonText: 'Cancelar'
         });
-        
+
         try {
             Swal.fire({
                 title: 'Procesando...',
@@ -589,9 +589,9 @@ async function mostrarModalRecuperacion(registro) {
                 allowOutsideClick: false,
                 didOpen: () => Swal.showLoading()
             });
-            
+
             const usuario = obtenerUsuarioActual();
-            
+
             await mercanciaManager.registrarRecuperacion(
                 registro.id,
                 parseFloat(monto),
@@ -601,16 +601,16 @@ async function mostrarModalRecuperacion(registro) {
                 organizacionActual.camelCase,
                 usuario
             );
-            
+
             Swal.close();
             Swal.fire({
                 icon: 'success',
                 title: 'Recuperación registrada',
                 text: `Se ha registrado la recuperación de $${parseFloat(monto).toLocaleString()}`
             });
-            
+
             await cargarRegistrosPagina(paginaActual);
-            
+
         } catch (error) {
             console.error('Error registrando recuperación:', error);
             Swal.fire({
@@ -626,17 +626,17 @@ function crearFilaRegistro(registro, tbody) {
     const tr = document.createElement('tr');
     tr.className = 'registro-row';
     tr.dataset.id = registro.id;
-    
+
     const uiData = registro.toUI ? registro.toUI() : registro;
-    
+
     const perdidoFormateado = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(uiData.montoPerdido);
     const recuperadoFormateado = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(uiData.montoRecuperado);
     const fechaFormateada = uiData.fecha || registro.getFechaFormateada?.() || 'N/A';
-    
+
     const tienePDF = uiData.tienePDF || (uiData.pdfGenerado === true && uiData.pdfUrl);
     const pdfIcono = tienePDF ? '<i class="fas fa-file-pdf" style="color: #c0392b;"></i>' : '<i class="fas fa-file-pdf" style="color: #6c757d;"></i>';
     const pdfTitle = tienePDF ? 'Ver PDF' : (uiData.estadoGeneracion === 'generando' ? 'Generando PDF...' : 'PDF pendiente');
-    
+
     tr.innerHTML = `
         <td data-label="ID / Folio">
             <span class="registro-id" title="${registro.id}">${escapeHTML(registro.id)}</span>
@@ -675,9 +675,9 @@ function crearFilaRegistro(registro, tbody) {
             </div>
         </td>
     `;
-    
+
     tbody.appendChild(tr);
-    
+
     setTimeout(() => {
         tr.querySelectorAll('[data-action]').forEach(btn => {
             btn.addEventListener('click', (e) => {
@@ -688,7 +688,7 @@ function crearFilaRegistro(registro, tbody) {
                 else if (action === 'pdf') window.verPDF(id, e);
             });
         });
-        
+
         tr.addEventListener('click', (e) => {
             if (!e.target.closest('[data-action]')) {
                 window.verDetallesRegistro(registro.id, e);
@@ -703,7 +703,7 @@ async function cargarEmpresas() {
             const registros = await mercanciaManager.getRegistrosByOrganizacion(organizacionActual.camelCase);
             const empresasUnicas = [...new Set(registros.map(r => r.nombreEmpresaCC).filter(Boolean))];
             empresasCache = empresasUnicas;
-            
+
             const filtroEmpresa = document.getElementById('filtroEmpresa');
             if (filtroEmpresa) {
                 filtroEmpresa.innerHTML = '<option value="todos">Todas las empresas</option>';
@@ -724,11 +724,11 @@ async function cargarEmpresas() {
 function configurarEventListeners() {
     const btnFiltrar = document.getElementById('btnFiltrar');
     const btnLimpiar = document.getElementById('btnLimpiarFiltros');
-    
+
     if (btnFiltrar) {
         btnFiltrar.addEventListener('click', aplicarFiltros);
     }
-    
+
     if (btnLimpiar) {
         btnLimpiar.addEventListener('click', limpiarFiltros);
     }
@@ -769,13 +769,13 @@ async function obtenerDatosOrganizacion() {
                 nombre: usuario.organizacion || 'Mi Empresa',
                 camelCase: usuario.organizacionCamelCase || ''
             };
-            console.log('📌 Organización:', organizacionActual);
+            console.log('', organizacionActual);
             return;
         }
-        
+
         const userData = JSON.parse(localStorage.getItem('userData') || '{}');
         const adminInfo = JSON.parse(localStorage.getItem('adminInfo') || '{}');
-        
+
         organizacionActual = {
             nombre: userData.organizacion || adminInfo.organizacion || 'Mi Empresa',
             camelCase: userData.organizacionCamelCase || adminInfo.organizacionCamelCase || ''
@@ -788,14 +788,14 @@ async function obtenerDatosOrganizacion() {
 async function inicializarMercanciaManager() {
     try {
         await obtenerDatosOrganizacion();
-        
+
         mercanciaManager = new MercanciaPerdidaManager();
-        
+
         configurarEventListeners();
-        
+
         await cargarRegistrosPagina(1);
         await cargarEmpresas();
-        
+
         return true;
     } catch (error) {
         console.error('Error al inicializar mercancía perdida:', error);
