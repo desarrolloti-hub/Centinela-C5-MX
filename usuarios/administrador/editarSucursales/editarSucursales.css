@@ -1002,3 +1002,197 @@ select.form-control option {
         justify-content: center;
     }
 }
+/* ============================================= */
+/* ESTILOS PARA NÚMEROS DE EMERGENCIA */
+/* ============================================= */
+
+.numeros-emergencia-container {
+    background: var(--color-bg-tertiary, rgba(0, 0, 0, 0.3));
+    border-radius: 12px;
+    padding: 20px;
+    margin-top: 10px;
+}
+
+.emergencia-list-container {
+    margin-bottom: 20px;
+    max-height: 250px;
+    overflow-y: auto;
+    border-radius: 8px;
+}
+
+.emergencia-empty-message {
+    text-align: center;
+    padding: 30px 20px;
+    color: var(--color-text-dim, #888);
+    background: var(--color-bg-secondary, rgba(0, 0, 0, 0.2));
+    border-radius: 8px;
+    font-size: 14px;
+}
+
+.emergencia-empty-message i {
+    font-size: 24px;
+    margin-bottom: 10px;
+    display: block;
+}
+
+.emergencia-empty-message small {
+    display: block;
+    margin-top: 8px;
+    font-size: 12px;
+}
+
+.emergencia-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--color-bg-secondary, rgba(0, 0, 0, 0.2));
+    border-radius: 10px;
+    padding: 12px 15px;
+    margin-bottom: 10px;
+    transition: all 0.2s ease;
+    border: 1px solid transparent;
+}
+
+.emergencia-item:hover {
+    border-color: var(--color-accent-primary, #00bcd4);
+    background: var(--color-bg-tertiary, rgba(0, 0, 0, 0.3));
+}
+
+.emergencia-item-icon {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--color-accent-primary, #00bcd4);
+    border-radius: 50%;
+    color: white;
+    font-size: 18px;
+}
+
+.emergencia-item-info {
+    flex: 1;
+    margin-left: 15px;
+}
+
+.emergencia-item-servicio {
+    font-weight: 600;
+    color: var(--color-text-primary, #fff);
+    font-size: 15px;
+    margin-bottom: 4px;
+}
+
+.emergencia-item-numero {
+    font-size: 13px;
+    color: var(--color-accent-secondary, #4caf50);
+    font-family: monospace;
+}
+
+.emergencia-item-numero i {
+    margin-right: 5px;
+    font-size: 11px;
+}
+
+.emergencia-item-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.btn-edit-emergencia,
+.btn-delete-emergencia {
+    background: transparent;
+    border: none;
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 14px;
+}
+
+.btn-edit-emergencia {
+    color: var(--color-accent-primary, #00bcd4);
+}
+
+.btn-edit-emergencia:hover {
+    background: rgba(0, 188, 212, 0.2);
+    transform: scale(1.05);
+}
+
+.btn-delete-emergencia {
+    color: #ef5350;
+}
+
+.btn-delete-emergencia:hover {
+    background: rgba(239, 83, 80, 0.2);
+    transform: scale(1.05);
+}
+
+.emergencia-add-form {
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    padding-top: 20px;
+    margin-top: 10px;
+}
+
+.btn-add-emergencia {
+    background: var(--color-accent-primary, #00bcd4);
+    border: none;
+    padding: 10px 20px;
+    border-radius: 8px;
+    color: white;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    justify-content: center;
+}
+
+.btn-add-emergencia:hover {
+    background: var(--color-accent-primary-dark, #008c9e);
+    transform: translateY(-1px);
+}
+
+/* Scroll personalizado para la lista de emergencia */
+.emergencia-list-container::-webkit-scrollbar {
+    width: 6px;
+}
+
+.emergencia-list-container::-webkit-scrollbar-track {
+    background: var(--color-bg-secondary, rgba(0, 0, 0, 0.2));
+    border-radius: 3px;
+}
+
+.emergencia-list-container::-webkit-scrollbar-thumb {
+    background: var(--color-accent-primary, #00bcd4);
+    border-radius: 3px;
+}
+
+/* Responsive para números de emergencia */
+@media (max-width: 768px) {
+    .numeros-emergencia-container {
+        padding: 15px;
+    }
+    
+    .emergencia-item {
+        flex-wrap: wrap;
+        padding: 10px;
+    }
+    
+    .emergencia-item-info {
+        margin-left: 10px;
+    }
+    
+    .emergencia-item-actions {
+        margin-top: 8px;
+        width: 100%;
+        justify-content: flex-end;
+    }
+    
+    .btn-add-emergencia {
+        padding: 8px 15px;
+        font-size: 13px;
+    }
+}
