@@ -1,16 +1,17 @@
-// crearAreas.js - VERSIÓN CORREGIDA CON COLECCIÓN DINÁMICA COMO CATEGORIAS
-// SweetAlerts sin estilos personalizados
-// SIN PANTALLA DE CARGA "CREANDO..."
+// crearAreas.js - VERSIÓN QUE CARGA TODOS LOS USUARIOS (ADMINISTRADORES + COLABORADORES)
 
 console.clear();
-console.log('inicializado');
-
 window.crearAreaDebug = {
     estado: 'iniciando',
     controller: null
 };
 
 let Area, AreaManager;
+let User, UserManager;
+
+// Importar Firebase directamente para consultas
+import { db } from '/config/firebase-config.js';
+import { collection, getDocs, query, where } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-firestore.js";
 
 // LÍMITES DE CARACTERES
 const LIMITES = {
@@ -25,6 +26,10 @@ async function cargarDependencias() {
         const areaModule = await import('/clases/area.js');
         Area = areaModule.Area;
         AreaManager = areaModule.AreaManager;
+
+        const userModule = await import('/clases/user.js');
+        User = userModule.User;
+        UserManager = userModule.UserManager;
 
         iniciarAplicacion();
 
@@ -64,32 +69,27 @@ function inicializarController() {
 
 class CrearAreaController {
     constructor() {
-        // Primero cargar datos de organización desde localStorage como en categoria.js
         const orgData = this._cargarDatosOrganizacion();
 
         this.areaManager = new AreaManager();
+        this.userManager = new UserManager();
 
-        // Configurar userManager con los datos de organización
-        this.userManager = {
-            currentUser: {
-                id: orgData.userId || 'admin_temp',
-                nombreCompleto: orgData.nombreUsuario || 'Administrador',
-                organizacion: orgData.organizacionNombre,
-                organizacionCamelCase: orgData.organizacionCamelCase
-            }
+        this.userManager.currentUser = {
+            id: orgData.userId || 'admin_temp',
+            nombreCompleto: orgData.nombreUsuario || 'Administrador',
+            organizacion: orgData.organizacionNombre,
+            organizacionCamelCase: orgData.organizacionCamelCase,
+            esAdministrador: () => true
         };
 
         this.areaEnProceso = null;
         this.areaCreadaReciente = null;
         this.cargos = [];
+        this.usuariosActivos = [];
     }
 
-    /**
-     * Cargar datos de organización desde localStorage (igual que en categoria.js)
-     */
     _cargarDatosOrganizacion() {
         try {
-            // Intentar cargar desde adminInfo (admin)
             const adminInfo = localStorage.getItem('adminInfo');
             if (adminInfo) {
                 const adminData = JSON.parse(adminInfo);
@@ -101,7 +101,6 @@ class CrearAreaController {
                 };
             }
 
-            // Intentar cargar desde userData (usuario normal)
             const userData = JSON.parse(localStorage.getItem('userData') || '{}');
             const orgNombre = userData.organizacion || userData.empresa || 'Mi Organización';
 
@@ -122,9 +121,6 @@ class CrearAreaController {
         }
     }
 
-    /**
-     * Generar camelCase a partir de texto (igual que en categoria.js)
-     */
     _generarCamelCase(texto) {
         if (!texto || typeof texto !== 'string') return 'miOrganizacion';
         return texto
@@ -135,55 +131,178 @@ class CrearAreaController {
             .replace(/[^a-zA-Z0-9]/g, '');
     }
 
-    async cargarResponsables() {
-        const responsableSelect = document.getElementById('responsable');
-        if (!responsableSelect) return;
+    _obtenerIniciales(nombreCompleto) {
+        if (!nombreCompleto) return '??';
+        const palabras = nombreCompleto.trim().split(' ');
+        if (palabras.length === 1) return palabras[0].substring(0, 2).toUpperCase();
+        return (palabras[0][0] + palabras[palabras.length - 1][0]).toUpperCase();
+    }
+
+    _escapeHTML(text) {
+        if (!text) return '';
+        return String(text)
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
+    }
+
+    // ========== CARGAR TODOS LOS USUARIOS ACTIVOS (igual que en usuarios.js) ==========
+    async cargarUsuariosActivos() {
+        const responsableInput = document.getElementById('responsableInput');
+        const sugerenciasContainer = document.getElementById('sugerenciasList');
+
+        if (!responsableInput || !sugerenciasContainer) return;
 
         try {
-            responsableSelect.innerHTML = '<option value="">Seleccionar responsable...</option>';
+            const orgCamelCase = this.userManager.currentUser.organizacionCamelCase;
+            // 1. Cargar COLABORADORES ACTIVOS desde colaboradores_XXX
+            const coleccionColaboradores = `colaboradores_${orgCamelCase}`;
+            const colaboradoresQuery = query(
+                collection(db, coleccionColaboradores),
+                where("status", "==", true)
+            );
 
-            // Opción del administrador actual
-            const adminOption = document.createElement('option');
-            adminOption.value = 'admin_temp';
-            adminOption.text = `${this.userManager.currentUser.nombreCompleto} (Administrador)`;
-            adminOption.selected = true;
-            adminOption.style.fontWeight = 'bold';
-            responsableSelect.appendChild(adminOption);
+            const colaboradoresSnapshot = await getDocs(colaboradoresQuery);
+            const colaboradores = [];
 
-            const otroSeparator = document.createElement('option');
-            otroSeparator.disabled = true;
-            otroSeparator.text = '────────── OTRAS OPCIONES ──────────';
-            responsableSelect.appendChild(otroSeparator);
+            colaboradoresSnapshot.forEach(doc => {
+                const data = doc.data();
+                colaboradores.push({
+                    id: doc.id,
+                    nombre: data.nombreCompleto || data.nombre || 'Sin nombre',
+                    email: data.correoElectronico || data.email || '',
+                    rol: 'Colaborador',
+                    status: data.status
+                });
+            });
 
-            const nuevoOption = document.createElement('option');
-            nuevoOption.value = 'nuevo';
-            nuevoOption.text = '🆕 Asignar nuevo responsable...';
-            responsableSelect.appendChild(nuevoOption);
+            // 2. Cargar ADMINISTRADORES de la organización (dueños)
+            const administradoresQuery = query(
+                collection(db, "administradores"),
+                where("organizacionCamelCase", "==", orgCamelCase),
+                where("status", "==", true)
+            );
+
+            const administradoresSnapshot = await getDocs(administradoresQuery);
+            const administradores = [];
+
+            administradoresSnapshot.forEach(doc => {
+                const data = doc.data();
+                administradores.push({
+                    id: doc.id,
+                    nombre: data.nombreCompleto || data.nombre || 'Sin nombre',
+                    email: data.correoElectronico || data.email || '',
+                    rol: 'Administrador',
+                    status: data.status
+                });
+            });
+
+            // 3. Combinar ambos
+            this.usuariosActivos = [...administradores, ...colaboradores];
+
+            // Configurar búsqueda en tiempo real
+            let timeoutId;
+            responsableInput.addEventListener('input', (e) => {
+                clearTimeout(timeoutId);
+                timeoutId = setTimeout(() => {
+                    this._filtrarSugerencias(e.target.value);
+                }, 300);
+            });
+
+            // Cerrar sugerencias al hacer clic fuera
+            document.addEventListener('click', (e) => {
+                if (!responsableInput.contains(e.target) && !sugerenciasContainer.contains(e.target)) {
+                    sugerenciasContainer.style.display = 'none';
+                }
+            });
+
+            if (this.usuariosActivos.length === 0) {
+                sugerenciasContainer.innerHTML = '<div class="sugerencia-vacio">No hay usuarios disponibles</div>';
+            }
 
         } catch (error) {
-            this.mostrarNotificacion('Error cargando responsables', 'warning');
+            console.error('Error cargando usuarios:', error);
+            this.mostrarNotificacion('Error cargando usuarios: ' + error.message, 'error');
         }
+    }
+
+    _filtrarSugerencias(texto) {
+        const sugerenciasContainer = document.getElementById('sugerenciasList');
+
+        if (!texto || texto.trim() === '') {
+            sugerenciasContainer.style.display = 'none';
+            return;
+        }
+
+        const textoLower = texto.toLowerCase().trim();
+        const filtrados = this.usuariosActivos.filter(usuario =>
+            usuario.nombre.toLowerCase().includes(textoLower) ||
+            usuario.email.toLowerCase().includes(textoLower)
+        );
+
+        if (filtrados.length === 0) {
+            sugerenciasContainer.style.display = 'none';
+            return;
+        }
+
+        this._mostrarSugerencias(filtrados);
+    }
+
+    _mostrarSugerencias(usuarios) {
+        const sugerenciasContainer = document.getElementById('sugerenciasList');
+
+        let html = '';
+        usuarios.forEach(usuario => {
+            const iniciales = this._obtenerIniciales(usuario.nombre);
+            html += `
+                <div class="sugerencia-item" data-id="${usuario.id}" data-nombre="${this._escapeHTML(usuario.nombre)}" data-rol="${usuario.rol}">
+                    <div class="sugerencia-avatar">
+                        ${this._escapeHTML(iniciales)}
+                    </div>
+                    <div class="sugerencia-info">
+                        <div class="sugerencia-nombre">${this._escapeHTML(usuario.nombre)}</div>
+                        <div class="sugerencia-email">${this._escapeHTML(usuario.email)}</div>
+                    </div>
+                    <div class="sugerencia-rol">${usuario.rol}</div>
+                </div>
+            `;
+        });
+
+        sugerenciasContainer.innerHTML = html;
+        sugerenciasContainer.style.display = 'block';
+
+        document.querySelectorAll('.sugerencia-item').forEach(item => {
+            item.addEventListener('click', () => {
+                const userId = item.getAttribute('data-id');
+                const userNombre = item.getAttribute('data-nombre');
+                const userRol = item.getAttribute('data-rol');
+
+                document.getElementById('responsableInput').value = `${userNombre} (${userRol})`;
+                document.getElementById('responsableId').value = userId;
+                document.getElementById('responsableNombre').value = userNombre;
+
+                sugerenciasContainer.style.display = 'none';
+            });
+        });
     }
 
     init() {
         this.inicializarEventos();
         this.inicializarValidaciones();
-        this.cargarResponsables();
+        this.cargarUsuariosActivos();
         this.inicializarGestionCargos();
-
-        // Aplicar límites de caracteres a los campos
         this.aplicarLimitesCaracteres();
     }
 
     aplicarLimitesCaracteres() {
-        // Campo nombre área
         const nombreArea = document.getElementById('nombreArea');
         if (nombreArea) {
             nombreArea.maxLength = LIMITES.NOMBRE_AREA;
             nombreArea.addEventListener('input', () => this.validarLongitudCampo(nombreArea, LIMITES.NOMBRE_AREA, 'El nombre del área'));
         }
 
-        // Campo descripción área
         const descripcionArea = document.getElementById('descripcionArea');
         if (descripcionArea) {
             descripcionArea.maxLength = LIMITES.DESCRIPCION_AREA;
@@ -251,7 +370,6 @@ class CrearAreaController {
             const longitud = descripcionArea.value.length;
             contador.textContent = `${longitud}/${LIMITES.DESCRIPCION_AREA}`;
 
-            // Cambiar color si se acerca al límite
             if (longitud > LIMITES.DESCRIPCION_AREA * 0.9) {
                 contador.style.color = 'var(--color-warning)';
             } else if (longitud > LIMITES.DESCRIPCION_AREA * 0.95) {
@@ -284,7 +402,7 @@ class CrearAreaController {
     validarFormulario() {
         const nombreArea = document.getElementById('nombreArea')?.value.trim();
         const descripcion = document.getElementById('descripcionArea')?.value.trim();
-        const responsableSelect = document.getElementById('responsable');
+        const responsableId = document.getElementById('responsableId')?.value;
 
         if (!nombreArea) {
             this.mostrarError('El nombre del área es requerido');
@@ -316,15 +434,8 @@ class CrearAreaController {
             return false;
         }
 
-        if (responsableSelect && !responsableSelect.value) {
+        if (!responsableId) {
             this.mostrarError('Debe seleccionar un responsable para el área');
-            return false;
-        }
-
-        if (responsableSelect &&
-            (responsableSelect.value.includes('──────────') ||
-                responsableSelect.value === 'nuevo')) {
-            this.mostrarError('Debe seleccionar un responsable válido');
             return false;
         }
 
@@ -334,7 +445,6 @@ class CrearAreaController {
             return false;
         }
 
-        // Validar límites de caracteres de los cargos
         for (const cargo of cargosValidos) {
             if (!this.validarLongitudCargo(cargo.nombre, cargo.descripcion)) {
                 return false;
@@ -350,7 +460,6 @@ class CrearAreaController {
 
             const datosArea = this.obtenerDatosFormulario();
 
-            // Verificar si el área ya existe en la colección específica de la organización
             const existe = await this.areaManager.verificarAreaExistente(
                 datosArea.nombreArea,
                 this.userManager.currentUser.organizacionCamelCase
@@ -461,13 +570,13 @@ class CrearAreaController {
                             <div class="input-group">
                                 <input type="text" class="form-control" 
                                        id="cargo_nombre_${cargo.id}"
-                                       value="${this.escapeHTML(cargo.nombre)}"
+                                       value="${this._escapeHTML(cargo.nombre)}"
                                        placeholder="Ej: Gerente, Analista, Coordinador"
                                        maxlength="${LIMITES.NOMBRE_CARGO}"
-                                       oninput="window.crearAreaDebug.controller.actualizarCargo('${cargo.id}', 'nombre', this.value)">
+                                       oninput="window.crearAreaDebug.controller.actualizarCargo('${cargo.id}', 'nombre', this.value); window.crearAreaDebug.controller.actualizarContadorCargo('${cargo.id}', 'nombre', this.value)">
                             </div>
                             <div class="char-limit-info">
-                                <span class="char-counter">${cargo.nombre?.length || 0}/${LIMITES.NOMBRE_CARGO}</span>
+                                <span class="char-counter" id="contador_nombre_${cargo.id}">${(cargo.nombre?.length || 0)}/${LIMITES.NOMBRE_CARGO}</span>
                             </div>
                         </div>
                         <div style="width: 50%; padding: 0 10px; box-sizing: border-box;">
@@ -475,13 +584,13 @@ class CrearAreaController {
                             <div class="input-group">
                                 <input type="text" class="form-control" 
                                        id="cargo_descripcion_${cargo.id}"
-                                       value="${this.escapeHTML(cargo.descripcion)}"
+                                       value="${this._escapeHTML(cargo.descripcion)}"
                                        placeholder="Responsabilidades principales"
                                        maxlength="${LIMITES.DESCRIPCION_CARGO}"
-                                       oninput="window.crearAreaDebug.controller.actualizarCargo('${cargo.id}', 'descripcion', this.value)">
+                                       oninput="window.crearAreaDebug.controller.actualizarCargo('${cargo.id}', 'descripcion', this.value); window.crearAreaDebug.controller.actualizarContadorCargo('${cargo.id}', 'descripcion', this.value)">
                             </div>
                             <div class="char-limit-info">
-                                <span class="char-counter">${cargo.descripcion?.length || 0}/${LIMITES.DESCRIPCION_CARGO}</span>
+                                <span class="char-counter" id="contador_descripcion_${cargo.id}">${(cargo.descripcion?.length || 0)}/${LIMITES.DESCRIPCION_CARGO}</span>
                             </div>
                         </div>
                     </div>
@@ -492,10 +601,19 @@ class CrearAreaController {
         cargosList.innerHTML = html;
     }
 
+    actualizarContadorCargo(cargoId, campo, valor) {
+        const contadorId = `contador_${campo}_${cargoId}`;
+        const contadorElement = document.getElementById(contadorId);
+        const limite = campo === 'nombre' ? LIMITES.NOMBRE_CARGO : LIMITES.DESCRIPCION_CARGO;
+
+        if (contadorElement) {
+            contadorElement.textContent = `${valor.length}/${limite}`;
+        }
+    }
+
     actualizarCargo(cargoId, campo, valor) {
         const cargo = this.cargos.find(c => c.id === cargoId);
         if (cargo) {
-            // Validar límites de caracteres
             if (campo === 'nombre' && valor.length > LIMITES.NOMBRE_CARGO) {
                 valor = valor.substring(0, LIMITES.NOMBRE_CARGO);
                 this.mostrarNotificacion(`El nombre no puede exceder ${LIMITES.NOMBRE_CARGO} caracteres`, 'warning', 3000);
@@ -508,18 +626,10 @@ class CrearAreaController {
         }
     }
 
-    escapeHTML(text) {
-        if (!text) return '';
-        return String(text)
-            .replace(/&/g, "&amp;")
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;")
-            .replace(/"/g, "&quot;")
-            .replace(/'/g, "&#039;");
-    }
-
     obtenerDatosFormulario() {
         const userOrgCamel = this.userManager.currentUser.organizacionCamelCase;
+        const responsableId = document.getElementById('responsableId')?.value;
+        const responsableNombre = document.getElementById('responsableNombre')?.value;
 
         const cargosArray = this.cargos
             .filter(c => c.nombre && c.nombre.trim() !== '')
@@ -538,8 +648,8 @@ class CrearAreaController {
             descripcion: document.getElementById('descripcionArea').value.trim(),
             cargos: cargosObject,
             organizacionCamelCase: userOrgCamel,
-            responsable: 'admin_temp',
-            responsableNombre: this.userManager.currentUser.nombreCompleto
+            responsable: responsableId,
+            responsableNombre: responsableNombre
         };
     }
 
@@ -549,12 +659,10 @@ class CrearAreaController {
                 throw new Error('No hay datos de área para crear');
             }
 
-            // Crear área sin mostrar pantalla de carga
             const nuevaArea = await this.areaManager.crearArea(this.areaEnProceso, this.userManager);
 
             this.areaCreadaReciente = nuevaArea;
 
-            // MENSAJE SIMPLIFICADO
             await Swal.fire({
                 icon: 'success',
                 title: '¡Área creada!',
@@ -563,7 +671,6 @@ class CrearAreaController {
                 showConfirmButton: false
             });
 
-            // Preguntar qué hacer después
             const result = await Swal.fire({
                 title: '¿Qué desea hacer?',
                 icon: 'question',
@@ -605,14 +712,13 @@ class CrearAreaController {
         this.cargos = [];
         this.renderizarCargos();
 
-        const responsableSelect = document.getElementById('responsable');
-        if (responsableSelect) {
-            for (let i = 0; i < responsableSelect.options.length; i++) {
-                if (responsableSelect.options[i].value === 'admin_temp') {
-                    responsableSelect.selectedIndex = i;
-                    break;
-                }
-            }
+        document.getElementById('responsableId').value = '';
+        document.getElementById('responsableNombre').value = '';
+        document.getElementById('responsableInput').value = '';
+
+        const sugerenciasContainer = document.getElementById('sugerenciasList');
+        if (sugerenciasContainer) {
+            sugerenciasContainer.style.display = 'none';
         }
 
         this.actualizarContadorCaracteres();
