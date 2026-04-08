@@ -11,7 +11,7 @@ document.addEventListener('DOMContentLoaded', async function () {
         await inicializarManagers();
         const userManager = new UserManager();
         iniciarEditor(userManager);
-        console.log('Editor de usuarios cargado exitosamente');
+        //console.log('Editor de usuarios cargado exitosamente');
     } catch (error) {
         console.error('❌ Error cargando módulos:', error);
         mostrarErrorConfiguracion(error);
@@ -22,10 +22,10 @@ async function inicializarManagers() {
     try {
         const { HistorialUsuarioManager } = await import('/clases/historialUsuario.js');
         historialManager = new HistorialUsuarioManager();
-        
+
         const { SucursalManager } = await import('/clases/sucursal.js');
         sucursalManager = new SucursalManager();
-        
+
     } catch (error) {
         console.error('Error inicializando managers:', error);
     }
@@ -274,8 +274,8 @@ function configurarFiltroNumerico(elements) {
 
         elements.telefono.addEventListener('keypress', function (e) {
             if (e.ctrlKey || e.altKey || e.metaKey) return;
-            if (e.key === 'Backspace' || e.key === 'Delete' || e.key === 'Tab' || 
-                e.key === 'ArrowLeft' || e.key === 'ArrowRight' || e.key === 'Home' || 
+            if (e.key === 'Backspace' || e.key === 'Delete' || e.key === 'Tab' ||
+                e.key === 'ArrowLeft' || e.key === 'ArrowRight' || e.key === 'Home' ||
                 e.key === 'End' || e.key === 'Enter') return;
             if (!/^[0-9]$/.test(e.key)) {
                 e.preventDefault();

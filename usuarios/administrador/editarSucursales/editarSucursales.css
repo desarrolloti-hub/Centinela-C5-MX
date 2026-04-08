@@ -19,7 +19,7 @@ body {
     min-height: 100vh;
     margin: 0;
     padding: 20px;
-    padding-top: 80px; /* Espacio para el navbar fijo */
+    padding-top: 80px;
     line-height: 1.5;
 }
 
@@ -72,13 +72,14 @@ body {
 @keyframes titleGlow {
     0% {
         text-shadow: 0 0 5px var(--color-accent-primary),
-                     0 0 15px var(--color-accent-primary);
+            0 0 15px var(--color-accent-primary);
         opacity: 0.9;
     }
+
     100% {
         text-shadow: 0 0 15px var(--color-accent-primary),
-                     0 0 30px var(--color-accent-primary),
-                     0 0 45px var(--color-accent-primary);
+            0 0 30px var(--color-accent-primary),
+            0 0 45px var(--color-accent-primary);
         opacity: 1;
     }
 }
@@ -374,29 +375,6 @@ select.form-control option {
 }
 
 /* =============================================
-   ALERTAS
-   ============================================= */
-.alert {
-    border-radius: var(--border-radius-small) !important;
-    border: 1px solid !important;
-    padding: 15px 20px !important;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-}
-
-.alert-info {
-    background: rgba(0, 207, 255, 0.1) !important;
-    border-color: rgba(0, 207, 255, 0.3) !important;
-    color: #00cfff !important;
-}
-
-.alert-info i {
-    color: #00cfff !important;
-    filter: drop-shadow(0 0 4px #00cfff);
-}
-
-/* =============================================
    BOTONES DE ACCIÓN
    ============================================= */
 .action-buttons-container {
@@ -521,6 +499,7 @@ select.form-control option {
     from {
         opacity: 0;
     }
+
     to {
         opacity: 1;
     }
@@ -540,6 +519,7 @@ select.form-control option {
         opacity: 0;
         transform: translateY(20px);
     }
+
     to {
         opacity: 1;
         transform: translateY(0);
@@ -547,13 +527,13 @@ select.form-control option {
 }
 
 /* =============================================
-   RESPONSIVE - CORREGIDO PARA NAVBAR
+   RESPONSIVE GENERAL
    ============================================= */
 @media (max-width: 1023px) {
     body {
         padding-top: 70px;
     }
-    
+
     .custom-container {
         padding: 20px !important;
     }
@@ -686,15 +666,15 @@ select.form-control option {
     body {
         padding-top: 60px !important;
     }
-    
+
     .main-title {
         font-size: 18px !important;
     }
-    
+
     .main-title i {
         font-size: 20px !important;
     }
-    
+
     .header-description-text {
         font-size: 0.9rem !important;
     }
@@ -722,7 +702,7 @@ select.form-control option {
 }
 
 /* =============================================
-   MAPA - NUEVA SECCIÓN PARA EDITAR
+   MAPA
    ============================================= */
 .map-container {
     margin-top: 30px;
@@ -744,6 +724,7 @@ select.form-control option {
     z-index: 1;
 }
 
+/* BOTONES DEL MAPA - REPOSICIONADOS EN ESQUINA SUPERIOR DERECHA */
 .map-overlay {
     position: absolute;
     top: 20px;
@@ -758,7 +739,7 @@ select.form-control option {
     background: var(--color-bg-secondary) !important;
     border: 1px solid var(--color-accent-primary) !important;
     color: var(--color-text-primary) !important;
-    padding: 10px 15px !important;
+    padding: 8px 15px !important;
     border-radius: var(--border-radius-medium) !important;
     font-size: 13px !important;
     font-family: var(--font-family-primary) !important;
@@ -767,21 +748,36 @@ select.form-control option {
     align-items: center;
     gap: 8px;
     transition: all 0.3s ease !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
     backdrop-filter: blur(5px);
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
 }
 
 .map-button:hover {
     background: var(--color-accent-primary) !important;
     color: var(--color-bg-primary) !important;
     transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(192, 192, 192, 0.3);
 }
 
 .map-button i {
     font-size: 14px;
 }
 
+.map-limit-message {
+    position: absolute;
+    bottom: 10px;
+    left: 10px;
+    z-index: 1000;
+    background: rgba(0, 0, 0, 0.7);
+    color: var(--color-accent-primary);
+    padding: 5px 10px;
+    border-radius: var(--border-radius-small);
+    font-size: 11px;
+    font-family: var(--font-family-secondary);
+    pointer-events: none;
+    backdrop-filter: blur(4px);
+}
+
+/* Panel de coordenadas debajo del mapa */
 .map-coordinates-panel {
     background: var(--color-bg-secondary);
     border-top: 1px solid var(--color-border-light);
@@ -845,12 +841,24 @@ select.form-control option {
     0% {
         opacity: 1;
     }
+
     50% {
         opacity: 0.5;
     }
+
     100% {
         opacity: 1;
     }
+}
+
+/* Botones dentro del mapa (abajo) */
+.map-footer-buttons {
+    padding: 20px;
+    background: var(--color-bg-secondary);
+    border-top: 1px solid var(--color-border-light);
+    display: flex;
+    justify-content: flex-start;
+    gap: 15px;
 }
 
 /* Leaflet custom styles */
@@ -873,6 +881,8 @@ select.form-control option {
 .leaflet-control-zoom {
     border: none !important;
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3) !important;
+    margin-bottom: 20px !important;
+    margin-right: 20px !important;
 }
 
 .leaflet-control-zoom a {
@@ -924,62 +934,80 @@ select.form-control option {
         filter: drop-shadow(0 0 5px var(--color-accent-primary));
         transform: scale(1);
     }
+
     50% {
         filter: drop-shadow(0 0 15px var(--color-accent-primary));
         transform: scale(1.1);
     }
+
     100% {
         filter: drop-shadow(0 0 5px var(--color-accent-primary));
         transform: scale(1);
     }
 }
 
-/* Estilos para los botones dentro del mapa */
-.map-footer-buttons {
-    padding: 20px;
-    background: var(--color-bg-secondary);
-    border-top: 1px solid var(--color-border-light);
-    display: flex;
-    justify-content: flex-start;
-    gap: 15px;
-}
-
-/* Responsive para el mapa */
+/* =============================================
+   RESPONSIVE DEL MAPA
+   ============================================= */
 @media (max-width: 768px) {
     .map-wrapper {
         height: 350px;
     }
-    
+
     .map-overlay {
         top: 10px;
         right: 10px;
+        gap: 8px;
     }
-    
+
     .map-button {
-        padding: 8px 12px !important;
+        padding: 6px 12px !important;
         font-size: 12px !important;
     }
-    
+
+    .map-button i {
+        font-size: 12px;
+    }
+
     .coordinates-display {
-        flex-direction: column;
-        align-items: flex-start;
+        flex-direction: row;
+        flex-wrap: wrap;
+        justify-content: center;
         gap: 10px;
     }
-    
+
     .coord-item {
-        width: 100%;
+        flex: 1;
+        min-width: 120px;
+        justify-content: center;
+        padding: 6px 10px;
     }
-    
+
+    .coord-item span {
+        font-size: 12px;
+    }
+
+    .coord-item .coord-value {
+        font-size: 12px;
+    }
+
     .map-coordinates-panel {
         flex-direction: column;
-        align-items: flex-start;
+        align-items: stretch;
+        gap: 10px;
+        padding: 12px 15px;
     }
-    
+
+    .map-status {
+        justify-content: center;
+        font-size: 11px;
+    }
+
     .map-footer-buttons {
         flex-direction: column;
         gap: 10px;
     }
-    
+
     .map-footer-buttons .btn {
         width: 100%;
     }
@@ -989,16 +1017,70 @@ select.form-control option {
     .map-wrapper {
         height: 300px;
     }
-    
+
     .map-overlay {
-        position: static;
-        flex-direction: row;
-        justify-content: center;
-        margin-bottom: 10px;
+        top: 5px;
+        right: 5px;
+        gap: 6px;
     }
-    
+
     .map-button {
-        flex: 1;
+        padding: 5px 10px !important;
+        font-size: 11px !important;
+    }
+
+    .map-button span {
+        display: inline-block;
+    }
+
+    .map-button i {
+        font-size: 11px;
+    }
+
+    .coordinates-display {
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .coord-item {
+        width: 100%;
+        justify-content: space-between;
+        padding: 6px 12px;
+    }
+
+    .map-coordinates-panel {
+        padding: 10px 12px;
+    }
+
+    .map-status {
+        font-size: 10px;
+        justify-content: flex-start;
+    }
+}
+
+@media (max-width: 380px) {
+    .map-overlay {
+        top: 5px;
+        right: 5px;
+        gap: 5px;
+    }
+
+    .map-button {
+        padding: 4px 8px !important;
+        font-size: 10px !important;
+    }
+
+    .map-button span {
+        display: none;
+    }
+
+    .map-button i {
+        font-size: 12px;
+        margin: 0;
+    }
+
+    .map-button {
         justify-content: center;
+        padding: 6px 8px !important;
     }
 }

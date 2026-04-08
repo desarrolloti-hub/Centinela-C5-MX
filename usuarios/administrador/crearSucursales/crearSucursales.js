@@ -1,4 +1,4 @@
-// crearSucursales.js - VERSIÓN COMPLETA CON VALIDACIÓN BIDIRECCIONAL
+// crearSucursales.js - VERSIÓN SIN LOADING OVERLAY
 import { SucursalManager, ESTADOS_MEXICO } from '/clases/sucursal.js';
 
 let historialManager = null;
@@ -58,7 +58,6 @@ class CrearSucursalController {
     constructor() {
         this.sucursalManager = null;
         this.usuarioActual = null;
-        this.loadingOverlay = null;
 
         this.map = null;
         this.marker = null;
@@ -70,6 +69,10 @@ class CrearSucursalController {
         this.actualizandoDesdeMapa = false;
         this.actualizandoDesdeFormulario = false;
         this.busquedaTimeout = null;
+
+        this.marcadorMovidoPorUsuario = false;
+        this.camposFormularioModificados = false;
+        this.ultimosDatosFormulario = {};
 
         this._init();
     }
@@ -90,12 +93,51 @@ class CrearSucursalController {
             this._configurarValidacionUbicacion();
             this._configurarEventosEmergencia();
             this._configurarBusquedaDireccionTiempoReal();
+            this._monitorearCambiosFormulario();
             setTimeout(() => this._inicializarMapa(), 500);
             window.crearSucursalDebug.controller = this;
         } catch (error) {
-            console.error('Error inicializando:', error);
-            this._mostrarError('Error al inicializar: ' + error.message);
+            // Error silencioso
         }
+    }
+
+    _monitorearCambiosFormulario() {
+        const campos = [
+            'nombreSucursal', 'tipoSucursal', 'regionSucursal', 'estadoSucursal',
+            'ciudadSucursal', 'direccionSucursal', 'zonaSucursal', 'contactoSucursal'
+        ];
+
+        const guardarEstadoActual = () => {
+            this.ultimosDatosFormulario = {};
+            campos.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) {
+                    this.ultimosDatosFormulario[id] = el.value;
+                }
+            });
+        };
+
+        const verificarCambios = () => {
+            let haCambiado = false;
+            for (const id of campos) {
+                const el = document.getElementById(id);
+                if (el && this.ultimosDatosFormulario[id] !== el.value) {
+                    haCambiado = true;
+                    break;
+                }
+            }
+            this.camposFormularioModificados = haCambiado;
+        };
+
+        setTimeout(() => guardarEstadoActual(), 1000);
+
+        campos.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) {
+                el.addEventListener('input', verificarCambios);
+                el.addEventListener('change', verificarCambios);
+            }
+        });
     }
 
     // ========== BÚSQUEDA DE DIRECCIÓN EN TIEMPO REAL ==========
@@ -166,7 +208,7 @@ class CrearSucursalController {
 
             if (data && data.length > 0) {
                 container.innerHTML = data.map(item => `
-                    <div class="suggestion-item" data-lat="${item.lat}" data-lon="${item.lon}" data-display="${item.display_name}">
+                    <div class="suggestion-item" data-lat="${item.lat}" data-lon="${item.lon}" data-display="${this._escapeHTML(item.display_name)}">
                         <i class="fas fa-map-pin" style="margin-right: 8px;"></i>
                         ${this._escapeHTML(item.display_name.substring(0, 100))}
                     </div>
@@ -184,12 +226,11 @@ class CrearSucursalController {
 
                         if (this._validarCoordenadasMexico(lat, lon)) {
                             this.actualizandoDesdeMapa = true;
-                            this._colocarMarcador([lat, lon]);
-                            await this._obtenerInformacionUbicacion(lat, lon, true, true);
+                            this._colocarMarcador({ lat: lat, lng: lon });
+                            await this._obtenerInformacionUbicacion(lat, lon, true, false);
                             this.actualizandoDesdeMapa = false;
-                            this._mostrarNotificacion('📍 Dirección encontrada', 'success', 2000);
                         } else {
-                            this._mostrarNotificacion('Dirección fuera de México', 'warning', 2000);
+                            this._mostrarError('Dirección fuera de México');
                         }
                     });
                 });
@@ -197,54 +238,77 @@ class CrearSucursalController {
                 container.classList.remove('active');
             }
         } catch (error) {
-            console.error('Error buscando sugerencias:', error);
             container.classList.remove('active');
         }
     }
 
     // ========== NOTIFICACIONES ==========
-    _mostrarNotificacion(mensaje, tipo = 'info', duracion = 3000) {
-        const toast = document.createElement('div');
-        toast.className = `custom-toast toast-${tipo}`;
-
-        const icono = tipo === 'success' ? 'fa-check-circle' :
-            tipo === 'error' ? 'fa-exclamation-circle' :
-                tipo === 'warning' ? 'fa-exclamation-triangle' :
-                    'fa-info-circle';
-
-        toast.innerHTML = `<i class="fas ${icono}"></i><span>${mensaje}</span>`;
-
-        document.body.appendChild(toast);
-
-        setTimeout(() => {
-            toast.style.animation = 'slideOutRight 0.3s ease';
-            setTimeout(() => {
-                if (toast.parentNode) toast.remove();
-            }, 300);
-        }, duracion);
-    }
-
     _mostrarError(mensaje) {
-        this._mostrarNotificacion(mensaje, 'error');
+        Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: mensaje,
+            confirmButtonText: 'OK',
+            background: 'var(--color-bg-secondary)',
+            color: 'var(--color-text-primary)',
+            confirmButtonColor: '#dc3545'
+        });
     }
 
-    _mostrarCargando(mensaje = 'Procesando...') {
-        if (this.loadingOverlay) this.loadingOverlay.remove();
-        const overlay = document.createElement('div');
-        overlay.className = 'loading-overlay';
-        overlay.innerHTML = `<div class="spinner"></div><div class="loading-text">${mensaje}</div>`;
-        document.body.appendChild(overlay);
-        this.loadingOverlay = overlay;
+    _mostrarExito(mensaje) {
+        Swal.fire({
+            icon: 'success',
+            title: '¡Completado!',
+            text: mensaje,
+            confirmButtonText: 'OK',
+            background: 'var(--color-bg-secondary)',
+            color: 'var(--color-text-primary)',
+            confirmButtonColor: '#28a745'
+        });
     }
 
-    _ocultarCargando() {
-        if (this.loadingOverlay) {
-            this.loadingOverlay.remove();
-            this.loadingOverlay = null;
+    _mostrarInfo(mensaje) {
+        Swal.fire({
+            icon: 'info',
+            title: 'Información',
+            text: mensaje,
+            confirmButtonText: 'OK',
+            background: 'var(--color-bg-secondary)',
+            color: 'var(--color-text-primary)',
+            confirmButtonColor: '#17a2b8'
+        });
+    }
+
+    // ========== ACTUALIZAR COORDENADAS EN FORMULARIO ==========
+    _actualizarCamposCoordenadas(lat, lng) {
+        if (typeof lat !== 'number' || isNaN(lat) || typeof lng !== 'number' || isNaN(lng)) {
+            return false;
         }
+
+        const latFormateada = lat.toFixed(6);
+        const lngFormateada = lng.toFixed(6);
+
+        const latInput = document.getElementById('latitudSucursal');
+        const lngInput = document.getElementById('longitudSucursal');
+
+        if (latInput) {
+            latInput.value = latFormateada;
+            latInput.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+        if (lngInput) {
+            lngInput.value = lngFormateada;
+            lngInput.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+
+        const mapLat = document.getElementById('mapLatitud');
+        const mapLng = document.getElementById('mapLongitud');
+        if (mapLat) mapLat.textContent = latFormateada;
+        if (mapLng) mapLng.textContent = lngFormateada;
+
+        return true;
     }
 
-    // ========== SINCRONIZACIÓN BIDIRECCIONAL ==========
+    // ========== SINCRONIZACIÓN BIDIRECCIONAL DE COORDENADAS ==========
     _configurarSincronizacionCoordenadas() {
         const latInput = document.getElementById('latitudSucursal');
         const lngInput = document.getElementById('longitudSucursal');
@@ -263,8 +327,13 @@ class CrearSucursalController {
                 if (!isNaN(lat) && !isNaN(lng) && lat !== 0 && lng !== 0) {
                     if (this._validarCoordenadasMexico(lat, lng)) {
                         this.actualizandoDesdeFormulario = true;
-                        this._colocarMarcador([lat, lng]);
+                        this._colocarMarcador({ lat: lat, lng: lng });
                         this.actualizandoDesdeFormulario = false;
+
+                        const mapLat = document.getElementById('mapLatitud');
+                        const mapLng = document.getElementById('mapLongitud');
+                        if (mapLat) mapLat.textContent = lat.toFixed(6);
+                        if (mapLng) mapLng.textContent = lng.toFixed(6);
 
                         if (this.coordenadasTimeout) clearTimeout(this.coordenadasTimeout);
                         this.coordenadasTimeout = setTimeout(async () => {
@@ -273,13 +342,13 @@ class CrearSucursalController {
                     } else {
                         latInput.classList.add('is-invalid');
                         lngInput.classList.add('is-invalid');
-                        this._mostrarNotificacion('Coordenadas fuera del territorio mexicano', 'warning', 3000);
+                        this._mostrarError('Coordenadas fuera del territorio mexicano');
                     }
                 }
             };
 
             latInput.addEventListener('input', handleCoordenadasChange);
-            lngInput.addEventListener('input', handleCoordenadasChange);
+            lngInput.addEventListener('change', handleCoordenadasChange);
         }
 
         if (direccionInput) {
@@ -329,7 +398,6 @@ class CrearSucursalController {
         if (!direccion) return;
 
         try {
-            this._mostrarNotificacion('Buscando dirección...', 'info', 1500);
             const response = await fetch(
                 `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(direccion + ', México')}&limit=1&countrycodes=mx&addressdetails=1&accept-language=es-MX,es`
             );
@@ -341,14 +409,13 @@ class CrearSucursalController {
 
                 if (this._validarCoordenadasMexico(lat, lon)) {
                     this.actualizandoDesdeMapa = true;
-                    this._colocarMarcador([lat, lon]);
-                    await this._obtenerInformacionUbicacion(lat, lon, false, false);
+                    this._colocarMarcador({ lat: lat, lng: lon });
+                    await this._obtenerInformacionUbicacion(lat, lon, true, false);
                     this.actualizandoDesdeMapa = false;
-                    this._mostrarNotificacion('📍 Ubicación actualizada', 'success', 2000);
                 }
             }
         } catch (error) {
-            console.error('Error geocodificando dirección:', error);
+            // Error silencioso
         }
     }
 
@@ -368,12 +435,12 @@ class CrearSucursalController {
 
                 if (this._validarCoordenadasMexico(lat, lon)) {
                     this.actualizandoDesdeMapa = true;
-                    this._colocarMarcador([lat, lon]);
+                    this._colocarMarcador({ lat: lat, lng: lon });
                     this.actualizandoDesdeMapa = false;
                 }
             }
         } catch (error) {
-            console.error('Error geocodificando ciudad/estado:', error);
+            // Error silencioso
         }
     }
 
@@ -393,12 +460,12 @@ class CrearSucursalController {
 
                 if (this._validarCoordenadasMexico(lat, lon)) {
                     this.actualizandoDesdeMapa = true;
-                    this._colocarMarcador([lat, lon]);
+                    this._colocarMarcador({ lat: lat, lng: lon });
                     this.actualizandoDesdeMapa = false;
                 }
             }
         } catch (error) {
-            console.error('Error geocodificando zona:', error);
+            // Error silencioso
         }
     }
 
@@ -438,8 +505,6 @@ class CrearSucursalController {
         const lat = parseFloat(latInput?.value);
         const lng = parseFloat(lngInput?.value);
         const estado = estadoSelect?.value;
-        const ciudad = ciudadInput?.value.trim();
-        const direccion = direccionInput?.value.trim();
 
         [estadoSelect, ciudadInput, direccionInput, latInput, lngInput].forEach(el => {
             if (el) el.classList.remove('is-invalid');
@@ -462,62 +527,6 @@ class CrearSucursalController {
             }
         }
 
-        try {
-            const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=12&addressdetails=1&accept-language=es-MX,es`);
-            const data = await response.json();
-
-            if (data && data.address) {
-                const normalizar = (texto) => {
-                    if (!texto) return '';
-                    return texto.toLowerCase()
-                        .normalize("NFD")
-                        .replace(/[\u0300-\u036f]/g, "")
-                        .replace(/[^\w\s]/g, "")
-                        .trim();
-                };
-
-                const estadoObtenido = data.address.state;
-                if (estado && estadoObtenido) {
-                    const estadoNorm = normalizar(estado);
-                    const estadoObtenidoNorm = normalizar(estadoObtenido);
-
-                    const equivalenciasEstados = {
-                        'ciudad de mexico': ['cdmx', 'distrito federal', 'df', 'mexico city'],
-                        'estado de mexico': ['méxico', 'mexico', 'edomex'],
-                        'veracruz': ['veracruz de ignacio de la llave'],
-                        'san luis potosi': ['san luis potosí', 'slp'],
-                        'nuevo leon': ['nuevo león'],
-                        'michoacan': ['michoacán'],
-                        'coahuila': ['coahuila de zaragoza'],
-                        'queretaro': ['querétaro', 'santiago de querétaro'],
-                        'yucatan': ['yucatán']
-                    };
-
-                    let esEquivalente = false;
-                    for (const [principal, alternativas] of Object.entries(equivalenciasEstados)) {
-                        const principalNorm = normalizar(principal);
-                        if (estadoNorm === principalNorm && alternativas.includes(estadoObtenidoNorm)) {
-                            esEquivalente = true;
-                            break;
-                        }
-                        if (estadoObtenidoNorm === principalNorm && alternativas.includes(estadoNorm)) {
-                            esEquivalente = true;
-                            break;
-                        }
-                    }
-
-                    const sonIguales = estadoNorm === estadoObtenidoNorm;
-
-                    if (!sonIguales && !esEquivalente) {
-                        errores.push(`⚠️ El estado "${estado}" no coincide con la ubicación en el mapa (${estadoObtenido}).`);
-                        estadoSelect?.classList.add('is-invalid');
-                    }
-                }
-            }
-        } catch (error) {
-            console.warn('No se pudo validar con API:', error);
-        }
-
         const errorContainer = document.getElementById('ubicacionErrores');
         if (errorContainer) {
             if (errores.length > 0) {
@@ -534,11 +543,19 @@ class CrearSucursalController {
 
     async _obtenerInformacionUbicacion(lat, lng, actualizarTodosCampos = true, mostrarNotificaciones = true) {
         try {
-            if (mostrarNotificaciones) {
-                this._mostrarNotificacion('Obteniendo información...', 'info', 1500);
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 5000);
+
+            const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1&accept-language=es-MX,es`, {
+                signal: controller.signal
+            });
+
+            clearTimeout(timeoutId);
+
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
             }
 
-            const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1&accept-language=es-MX,es`);
             const data = await response.json();
 
             if (data && data.address) {
@@ -621,26 +638,12 @@ class CrearSucursalController {
                     }
                 }
 
-                const latInput = document.getElementById('latitudSucursal');
-                const lngInput = document.getElementById('longitudSucursal');
-                if (latInput && lngInput && !this.actualizandoDesdeMapa) {
-                    latInput.value = lat.toFixed(6);
-                    lngInput.value = lng.toFixed(6);
-                }
-
-                const mapLat = document.getElementById('mapLatitud');
-                const mapLng = document.getElementById('mapLongitud');
-                if (mapLat) mapLat.textContent = lat.toFixed(6);
-                if (mapLng) mapLng.textContent = lng.toFixed(6);
+                this._actualizarCamposCoordenadas(lat, lng);
 
                 return true;
             }
             return false;
         } catch (error) {
-            console.error('Error obteniendo información:', error);
-            if (mostrarNotificaciones) {
-                this._mostrarNotificacion('Error al obtener ubicación', 'error', 2000);
-            }
             return false;
         }
     }
@@ -680,20 +683,20 @@ class CrearSucursalController {
         const telefono = document.getElementById('emergencyTelefono')?.value.trim();
 
         if (!institucion) {
-            this._mostrarNotificacion('Ingresa el nombre de la institución', 'warning', 2000);
+            this._mostrarError('Ingresa el nombre de la institución');
             document.getElementById('emergencyInstitucion')?.focus();
             return;
         }
 
         if (!telefono) {
-            this._mostrarNotificacion('Ingresa el número telefónico', 'warning', 2000);
+            this._mostrarError('Ingresa el número telefónico');
             document.getElementById('emergencyTelefono')?.focus();
             return;
         }
 
         const telefonoLimpio = telefono.replace(/\D/g, '');
         if (telefonoLimpio.length < 3) {
-            this._mostrarNotificacion('El número debe tener al menos 3 dígitos', 'warning', 2000);
+            this._mostrarError('El número debe tener al menos 3 dígitos');
             return;
         }
 
@@ -704,13 +707,15 @@ class CrearSucursalController {
                 text: `Ya existe un número para "${institucion}". ¿Deseas reemplazarlo?`,
                 showCancelButton: true,
                 confirmButtonText: 'Sí, reemplazar',
-                cancelButtonText: 'Cancelar'
+                cancelButtonText: 'Cancelar',
+                background: 'var(--color-bg-secondary)',
+                color: 'var(--color-text-primary)'
             }).then((result) => {
                 if (result.isConfirmed) {
                     this.numerosEmergencia[institucion] = telefonoLimpio;
                     this._actualizarListaEmergencia();
                     this._limpiarCamposEmergencia();
-                    this._mostrarNotificacion(`✅ ${institucion}: ${this._formatearTelefono(telefonoLimpio)} actualizado`, 'success', 2000);
+                    this._mostrarExito(`${institucion}: número actualizado`);
                 }
             });
             return;
@@ -719,7 +724,7 @@ class CrearSucursalController {
         this.numerosEmergencia[institucion] = telefonoLimpio;
         this._actualizarListaEmergencia();
         this._limpiarCamposEmergencia();
-        this._mostrarNotificacion(`✅ ${institucion}: ${this._formatearTelefono(telefonoLimpio)} agregado`, 'success', 2000);
+        this._mostrarExito(`${institucion}: ${this._formatearTelefono(telefonoLimpio)} agregado`);
     }
 
     _limpiarCamposEmergencia() {
@@ -773,12 +778,14 @@ class CrearSucursalController {
             text: `¿Deseas eliminar el número de ${institucion}?`,
             showCancelButton: true,
             confirmButtonText: 'Sí, eliminar',
-            cancelButtonText: 'Cancelar'
+            cancelButtonText: 'Cancelar',
+            background: 'var(--color-bg-secondary)',
+            color: 'var(--color-text-primary)'
         }).then((result) => {
             if (result.isConfirmed) {
                 delete this.numerosEmergencia[institucion];
                 this._actualizarListaEmergencia();
-                this._mostrarNotificacion(`✅ ${institucion} eliminado`, 'success', 2000);
+                this._mostrarExito(`${institucion} eliminado`);
             }
         });
     }
@@ -802,7 +809,9 @@ class CrearSucursalController {
                 </div>`,
                 showCancelButton: true,
                 confirmButtonText: 'Sí, continuar',
-                cancelButtonText: 'Revisar datos'
+                cancelButtonText: 'Revisar datos',
+                background: 'var(--color-bg-secondary)',
+                color: 'var(--color-text-primary)'
             }).then((result) => {
                 if (result.isConfirmed) {
                     this._validarCamposYGuardar();
@@ -822,7 +831,10 @@ class CrearSucursalController {
                 icon: 'error',
                 title: 'Error de validación',
                 html: `<div style="text-align: left;">${errores.map(err => `<p>• ${err}</p>`).join('')}</div>`,
-                confirmButtonText: 'CORREGIR'
+                confirmButtonText: 'CORREGIR',
+                background: 'var(--color-bg-secondary)',
+                color: 'var(--color-text-primary)',
+                confirmButtonColor: '#dc3545'
             });
             return;
         }
@@ -947,7 +959,9 @@ class CrearSucursalController {
             icon: 'warning',
             showCancelButton: true,
             confirmButtonText: 'CONFIRMAR',
-            cancelButtonText: 'CANCELAR'
+            cancelButtonText: 'CANCELAR',
+            background: 'var(--color-bg-secondary)',
+            color: 'var(--color-text-primary)'
         }).then((result) => {
             if (result.isConfirmed) this._guardarSucursal(datos);
         });
@@ -1002,11 +1016,18 @@ class CrearSucursalController {
             const totalEmergencias = Object.keys(numerosEmergencia).length;
 
             await Swal.fire({
-                icon: 'success', title: '¡Sucursal creada!',
+                icon: 'success',
+                title: '¡Sucursal creada!',
                 html: `<p><strong>${this._escapeHTML(datos.nombre)}</strong><br>${this._escapeHTML(datos.ciudad)}, ${this._escapeHTML(datos.estado)}</p>
                        <p><strong>Región:</strong> ${this._escapeHTML(datos.regionNombre)}</p>
                        ${totalEmergencias > 0 ? `<p><strong>✅ ${totalEmergencias} número(s) de emergencia configurado(s)</strong></p>` : ''}`,
-                showCancelButton: true, confirmButtonText: 'CREAR OTRA', cancelButtonText: 'IR A SUCURSALES'
+                showCancelButton: true,
+                confirmButtonText: 'CREAR OTRA',
+                cancelButtonText: 'IR A SUCURSALES',
+                background: 'var(--color-bg-secondary)',
+                color: 'var(--color-text-primary)',
+                confirmButtonColor: '#28a745',
+                cancelButtonColor: '#dc3545'
             }).then((result) => {
                 if (result.isConfirmed) this._limpiarFormulario();
                 else this._volverALista();
@@ -1038,7 +1059,7 @@ class CrearSucursalController {
 
         if (this.map && this.marker) {
             const defaultLat = 23.6345, defaultLng = -102.5528;
-            this._colocarMarcador([defaultLat, defaultLng]);
+            this._colocarMarcador({ lat: defaultLat, lng: defaultLng });
         }
 
         const errorContainer = document.getElementById('ubicacionErrores');
@@ -1046,6 +1067,9 @@ class CrearSucursalController {
             errorContainer.innerHTML = '';
             errorContainer.style.display = 'none';
         }
+
+        this.camposFormularioModificados = false;
+        this.marcadorMovidoPorUsuario = false;
     }
 
     // ========== FUNCIONES DEL MAPA ==========
@@ -1057,7 +1081,8 @@ class CrearSucursalController {
                 maxBounds: this._obtenerLimitesMexico(),
                 maxBoundsViscosity: 1.0,
                 minZoom: 5,
-                maxZoom: 18
+                maxZoom: 18,
+                zoomControl: false
             }).setView([defaultLat, defaultLng], defaultZoom);
 
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -1077,30 +1102,93 @@ class CrearSucursalController {
             this.marker = L.marker([defaultLat, defaultLng], { draggable: true, icon: customIcon }).addTo(this.map);
             this.marker.bindPopup(`📍 Sucursal<br>Arrastra para ajustar`).openPopup();
 
+            this._actualizarCamposCoordenadas(defaultLat, defaultLng);
+
             this.marker.on('dragend', async (event) => {
                 const position = event.target.getLatLng();
+
+                const hayDatosEnFormulario = this._verificarDatosFormulario();
+
+                if (hayDatosEnFormulario && !this.actualizandoDesdeFormulario && !this.marcadorMovidoPorUsuario) {
+                    const result = await Swal.fire({
+                        title: '¿Mover ubicación?',
+                        html: `<p>Al mover el marcador, se actualizarán automáticamente:</p>
+                               <ul style="text-align: left;">
+                                   <li>📍 Dirección</li>
+                                   <li>🏙️ Ciudad</li>
+                                   <li>🗺️ Estado</li>
+                                   <li>📍 Zona/Colonia</li>
+                                   <li>📐 Latitud y Longitud (campos del formulario y panel)</li>
+                               </ul>
+                               <p>¿Deseas continuar?</p>`,
+                        icon: 'question',
+                        showCancelButton: true,
+                        confirmButtonText: 'Sí, actualizar',
+                        cancelButtonText: 'Cancelar',
+                        confirmButtonColor: '#3085d6',
+                        cancelButtonColor: '#d33',
+                        background: 'var(--color-bg-secondary)',
+                        color: 'var(--color-text-primary)'
+                    });
+
+                    if (!result.isConfirmed) {
+                        const latActual = parseFloat(document.getElementById('latitudSucursal')?.value || defaultLat);
+                        const lngActual = parseFloat(document.getElementById('longitudSucursal')?.value || defaultLng);
+                        if (!isNaN(latActual) && !isNaN(lngActual)) {
+                            this.marker.setLatLng([latActual, lngActual]);
+                            this.map.setView([latActual, lngActual], this.map.getZoom());
+                        }
+                        return;
+                    }
+                }
+
+                this.marcadorMovidoPorUsuario = true;
+
                 if (this._validarCoordenadasMexico(position.lat, position.lng)) {
                     this.actualizandoDesdeMapa = true;
-                    this._actualizarCoordenadasMapa(position.lat, position.lng);
+                    this._actualizarCamposCoordenadas(position.lat, position.lng);
                     await this._obtenerInformacionUbicacion(position.lat, position.lng, true, false);
                     this.actualizandoDesdeMapa = false;
                 } else {
                     const ultimaLat = parseFloat(document.getElementById('latitudSucursal')?.value || defaultLat);
                     const ultimaLng = parseFloat(document.getElementById('longitudSucursal')?.value || defaultLng);
-                    this._colocarMarcador([ultimaLat, ultimaLng]);
-                    this._mostrarNotificacion('Ubicación fuera de México', 'warning', 2000);
+                    this._colocarMarcador({ lat: ultimaLat, lng: ultimaLng });
+                    this._mostrarError('Ubicación fuera de México');
                 }
+
+                setTimeout(() => {
+                    this.marcadorMovidoPorUsuario = false;
+                }, 500);
             });
 
             this.map.on('click', async (e) => {
                 const { lat, lng } = e.latlng;
+
+                const hayDatosEnFormulario = this._verificarDatosFormulario();
+
+                if (hayDatosEnFormulario && !this.actualizandoDesdeFormulario) {
+                    const result = await Swal.fire({
+                        title: '¿Cambiar ubicación?',
+                        html: `<p>Al hacer clic en el mapa, se actualizarán los campos del formulario con la nueva ubicación.</p>
+                               <p>¿Deseas continuar?</p>`,
+                        icon: 'question',
+                        showCancelButton: true,
+                        confirmButtonText: 'Sí, actualizar',
+                        cancelButtonText: 'Cancelar',
+                        background: 'var(--color-bg-secondary)',
+                        color: 'var(--color-text-primary)'
+                    });
+
+                    if (!result.isConfirmed) return;
+                }
+
                 if (this._validarCoordenadasMexico(lat, lng)) {
                     this.actualizandoDesdeMapa = true;
-                    this._colocarMarcador(e.latlng);
+                    this._colocarMarcador({ lat: lat, lng: lng });
                     await this._obtenerInformacionUbicacion(lat, lng, true, false);
                     this.actualizandoDesdeMapa = false;
                 } else {
-                    this._mostrarNotificacion('Selecciona dentro de México', 'warning', 2000);
+                    this._mostrarError('Selecciona dentro de México');
                 }
             });
 
@@ -1108,8 +1196,27 @@ class CrearSucursalController {
             this.mapInitialized = true;
             this._configurarEventosMapa();
         } catch (error) {
-            console.error('Error inicializando mapa:', error);
+            // Error silencioso
         }
+    }
+
+    _verificarDatosFormulario() {
+        const camposRelevantes = [
+            'nombreSucursal', 'tipoSucursal', 'regionSucursal', 'estadoSucursal',
+            'ciudadSucursal', 'direccionSucursal', 'zonaSucursal', 'contactoSucursal'
+        ];
+
+        for (const id of camposRelevantes) {
+            const el = document.getElementById(id);
+            if (el && el.value && el.value.trim() !== '') {
+                if (el.tagName === 'SELECT') {
+                    if (el.value && el.value !== '') return true;
+                } else {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     _obtenerLimitesMexico() {
@@ -1135,19 +1242,42 @@ class CrearSucursalController {
 
     _colocarMarcador(posicion) {
         if (!this.map || !this.marker) return;
-        this.marker.setLatLng(posicion);
-        this.map.setView(posicion, 15);
-        this._actualizarCoordenadasMapa(posicion.lat, posicion.lng);
+
+        let lat, lng;
+
+        if (Array.isArray(posicion)) {
+            lat = posicion[0];
+            lng = posicion[1];
+        } else if (posicion && typeof posicion === 'object') {
+            lat = posicion.lat;
+            lng = posicion.lng;
+        } else {
+            return;
+        }
+
+        if (typeof lat !== 'number' || isNaN(lat) || typeof lng !== 'number' || isNaN(lng)) {
+            return;
+        }
+
+        this.marker.setLatLng([lat, lng]);
+        this.map.setView([lat, lng], 15);
+        this._actualizarCoordenadasMapa(lat, lng);
     }
 
     _actualizarCoordenadasMapa(lat, lng) {
-        const latF = Number(lat).toFixed(6), lngF = Number(lng).toFixed(6);
-        if (!this.actualizandoDesdeFormulario) {
-            const latIn = document.getElementById('latitudSucursal'), lngIn = document.getElementById('longitudSucursal');
-            if (latIn) latIn.value = latF;
-            if (lngIn) lngIn.value = lngF;
+        if (typeof lat !== 'number' || isNaN(lat) || typeof lng !== 'number' || isNaN(lng)) {
+            return;
         }
-        const mLat = document.getElementById('mapLatitud'), mLng = document.getElementById('mapLongitud');
+
+        const latF = Number(lat).toFixed(6);
+        const lngF = Number(lng).toFixed(6);
+
+        if (!this.actualizandoDesdeFormulario) {
+            this._actualizarCamposCoordenadas(lat, lng);
+        }
+
+        const mLat = document.getElementById('mapLatitud');
+        const mLng = document.getElementById('mapLongitud');
         if (mLat) mLat.textContent = latF;
         if (mLng) mLng.textContent = lngF;
     }
@@ -1155,12 +1285,11 @@ class CrearSucursalController {
     async _buscarDireccionEnMapa() {
         const direccion = document.getElementById('direccionSucursal').value;
         if (!direccion) {
-            this._mostrarNotificacion('Ingresa una dirección', 'warning');
+            this._mostrarError('Ingresa una dirección');
             return;
         }
 
         try {
-            this._mostrarCargando('Buscando dirección...');
             const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(direccion + ', México')}&limit=1&countrycodes=mx&addressdetails=1&accept-language=es-MX,es`);
             const data = await response.json();
 
@@ -1168,46 +1297,65 @@ class CrearSucursalController {
                 const lat = parseFloat(data[0].lat), lon = parseFloat(data[0].lon);
                 if (this._validarCoordenadasMexico(lat, lon)) {
                     this.actualizandoDesdeMapa = true;
-                    this._colocarMarcador([lat, lon]);
-                    await this._obtenerInformacionUbicacion(lat, lon, true, true);
+                    this._colocarMarcador({ lat: lat, lng: lon });
+                    await this._obtenerInformacionUbicacion(lat, lon, true, false);
                     this.actualizandoDesdeMapa = false;
-                    this._mostrarNotificacion('Dirección encontrada 📍', 'success', 2000);
+                    this._mostrarExito('Dirección encontrada 📍');
                 } else {
-                    this._mostrarNotificacion('Dirección fuera de México', 'warning');
+                    this._mostrarError('Dirección fuera de México');
                 }
             } else {
-                this._mostrarNotificacion('No se encontró la dirección', 'warning');
+                this._mostrarError('No se encontró la dirección');
             }
         } catch (error) {
-            this._mostrarNotificacion('Error al buscar dirección', 'error');
-        } finally {
-            this._ocultarCargando();
+            this._mostrarError('Error al buscar dirección');
         }
     }
 
     _obtenerUbicacionActual() {
         if (!navigator.geolocation) {
-            this._mostrarNotificacion('Geolocalización no soportada', 'error');
+            this._mostrarError('Geolocalización no soportada');
             return;
         }
 
-        this._mostrarCargando('Obteniendo ubicación...');
-        navigator.geolocation.getCurrentPosition(async (position) => {
-            const { latitude, longitude } = position.coords;
-            if (this._validarCoordenadasMexico(latitude, longitude)) {
-                this.actualizandoDesdeMapa = true;
-                this._colocarMarcador([latitude, longitude]);
-                await this._obtenerInformacionUbicacion(latitude, longitude, true, true);
-                this.actualizandoDesdeMapa = false;
-                this._mostrarNotificacion('Ubicación obtenida 📍', 'success', 2000);
-            } else {
-                this._mostrarNotificacion('Ubicación fuera de México', 'warning');
+        navigator.geolocation.getCurrentPosition(
+            async (position) => {
+                try {
+                    const { latitude, longitude } = position.coords;
+
+                    if (!latitude || !longitude || isNaN(latitude) || isNaN(longitude)) {
+                        throw new Error('Coordenadas inválidas');
+                    }
+
+                    if (this._validarCoordenadasMexico(latitude, longitude)) {
+                        this.actualizandoDesdeMapa = true;
+                        this._colocarMarcador({ lat: latitude, lng: longitude });
+                        await this._obtenerInformacionUbicacion(latitude, longitude, true, false);
+                        this.actualizandoDesdeMapa = false;
+                        this._mostrarExito('Ubicación actual obtenida');
+                    } else {
+                        this._mostrarError('Ubicación fuera de México');
+                    }
+                } catch (error) {
+                    this._mostrarError('Error al procesar la ubicación');
+                }
+            },
+            (error) => {
+                let mensaje = 'No se pudo obtener la ubicación';
+                switch (error.code) {
+                    case error.PERMISSION_DENIED:
+                        mensaje = 'Permiso denegado. Activa la ubicación en tu navegador';
+                        break;
+                    case error.POSITION_UNAVAILABLE:
+                        mensaje = 'Información de ubicación no disponible';
+                        break;
+                    case error.TIMEOUT:
+                        mensaje = 'Tiempo de espera agotado';
+                        break;
+                }
+                this._mostrarError(mensaje);
             }
-            this._ocultarCargando();
-        }, () => {
-            this._ocultarCargando();
-            this._mostrarNotificacion('No se pudo obtener la ubicación', 'error');
-        });
+        );
     }
 
     // ========== MÉTODOS AUXILIARES ==========
@@ -1230,9 +1378,8 @@ class CrearSucursalController {
         try {
             const { HistorialUsuarioManager } = await import('/clases/historialUsuario.js');
             historialManager = new HistorialUsuarioManager();
-            console.log('📋 HistorialManager inicializado');
         } catch (error) {
-            console.error('Error inicializando historial:', error);
+            // Error silencioso
         }
     }
 
@@ -1247,7 +1394,7 @@ class CrearSucursalController {
                 detalles: { sucursalId: sucursal.id, ...datos }
             });
         } catch (error) {
-            console.error('Error registrando actividad:', error);
+            // Error silencioso
         }
     }
 
@@ -1287,7 +1434,7 @@ class CrearSucursalController {
                 correo: 'admin@centinela.com'
             };
         } catch (error) {
-            console.error('Error cargando usuario:', error);
+            // Error silencioso
             throw error;
         }
     }
@@ -1330,7 +1477,7 @@ class CrearSucursalController {
     _validarLongitudCampo(campo, limite, nombreCampo) {
         if (campo.value.length > limite) {
             campo.value = campo.value.substring(0, limite);
-            this._mostrarNotificacion(`${nombreCampo} no puede exceder ${limite} caracteres`, 'warning', 3000);
+            this._mostrarError(`${nombreCampo} no puede exceder ${limite} caracteres`);
         }
     }
 
@@ -1341,7 +1488,7 @@ class CrearSucursalController {
             document.getElementById('crearSucursalBtn')?.addEventListener('click', (e) => { e.preventDefault(); this._validarYGuardar(); });
             document.getElementById('sucursalForm')?.addEventListener('submit', (e) => { e.preventDefault(); this._validarYGuardar(); });
         } catch (error) {
-            console.error('Error configurando eventos:', error);
+            // Error silencioso
         }
     }
 
@@ -1366,7 +1513,6 @@ class CrearSucursalController {
                 select.appendChild(option);
             });
         } catch (error) {
-            console.error('Error cargando regiones:', error);
             const select = document.getElementById('regionSucursal');
             if (select) select.innerHTML = '<option value="">-- Error cargando regiones --</option>';
         }
@@ -1395,7 +1541,9 @@ class CrearSucursalController {
             icon: 'warning',
             showCancelButton: true,
             confirmButtonText: 'Sí, cancelar',
-            cancelButtonText: 'No, continuar'
+            cancelButtonText: 'No, continuar',
+            background: 'var(--color-bg-secondary)',
+            color: 'var(--color-text-primary)'
         }).then((result) => {
             if (result.isConfirmed) this._volverALista();
         });
@@ -1409,7 +1557,6 @@ class CrearSucursalController {
 
 document.addEventListener('DOMContentLoaded', async function () {
     if (typeof Swal === 'undefined') {
-        console.error('❌ SweetAlert2 no está cargado.');
         return;
     }
     window.crearSucursalDebug.controller = new CrearSucursalController();
