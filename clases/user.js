@@ -42,6 +42,7 @@ class User {
         this.nombreCompleto = data.nombreCompleto || '';
         this.correoElectronico = data.correoElectronico || '';
         this.telefono = data.telefono || ''; // Nuevo campo teléfono
+    this.codigoColaborador = data.codigoColaborador || ''; // Código del colaborador (opcional)
         this.status = data.status !== undefined ? data.status : true;
         this.idAuth = data.idAuth || '';
         this.fotoUsuario = data.fotoUsuario || data.fotoURL || data.foto || '';
@@ -662,6 +663,7 @@ class UserManager {
             const colabFirestoreData = {
                 ...colaboradorData,
                 idAuth: uid,
+                 codigoColaborador: colaboradorData.codigoColaborador || '', // ← NUEVA LÍNEA
                 rol: 'colaborador',
                 cargo: colaboradorData.cargo || null,
                 cargoId: colaboradorData.cargoId || (colaboradorData.cargo && colaboradorData.cargo.id) || null,
@@ -1616,6 +1618,7 @@ class UserManager {
                     ...data,
                     cargo: 'colaborador',
                     // ✅ CAMPOS DE SUCURSAL
+                    codigoColaborador: data.codigoColaborador || '', // NUEVO CAMPO
                     sucursalAsignadaId: data.sucursalAsignadaId || null,
                     sucursalAsignadaNombre: data.sucursalAsignadaNombre || null,
                     sucursalAsignadaCiudad: data.sucursalAsignadaCiudad || null

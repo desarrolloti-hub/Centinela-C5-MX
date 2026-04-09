@@ -1,5 +1,5 @@
-// editUser.js - Editor de colaboradores (VERSIÓN MODIFICADA - FOTO EN MEMORIA)
-// CON REGISTRO DE BITÁCORA - SIN CONEXIÓN DIRECTA A FIREBASE
+// editUser.js - Editor de colaboradores (VERSIÓN COMPLETA CON TELÉFONO Y CÓDIGO)
+// CON REGISTRO DE BITÁCORA
 import { UserManager } from '/clases/user.js';
 import { AreaManager } from '/clases/area.js';
 
@@ -11,6 +11,7 @@ let selectedFile = null;
 let currentPhotoType = '';
 let currentPhotoElements = null;
 let pendingPhotoBase64 = null; // ✅ NUEVA: Foto pendiente en memoria
+
 
 document.addEventListener('DOMContentLoaded', async function () {
     try {
@@ -27,12 +28,17 @@ async function inicializarManagers() {
     try {
         const { HistorialUsuarioManager } = await import('/clases/historialUsuario.js');
         historialManager = new HistorialUsuarioManager();
-        
+        console.log('📋 HistorialManager inicializado para editar usuarios');
+    } catch (error) {
+        console.error('Error inicializando historialManager:', error);
+    }
+
+    try {
         const { SucursalManager } = await import('/clases/sucursal.js');
         sucursalManager = new SucursalManager();
-        
+        console.log('🏢 SucursalManager inicializado para editar usuarios');
     } catch (error) {
-        console.error('Error inicializando managers:', error);
+        console.error('Error inicializando sucursalManager:', error);
     }
 }
 
@@ -54,6 +60,7 @@ async function registrarEdicionColaborador(colaboradorOriginal, datosActualizado
                 fechaEdicion: new Date().toISOString()
             }
         });
+        console.log(`✅ Edición de colaborador "${colaboradorOriginal.nombreCompleto}" registrada en bitácora`);
     } catch (error) {
         console.error('Error registrando edición de colaborador:', error);
     }
@@ -81,6 +88,7 @@ async function registrarCambioEstadoColaborador(colaborador, nuevoEstado, estado
                 fechaCambio: new Date().toISOString()
             }
         });
+        console.log(`✅ Cambio de estado de colaborador "${colaborador.nombreCompleto}" registrado en bitácora`);
     } catch (error) {
         console.error('Error registrando cambio de estado de colaborador:', error);
     }
@@ -104,6 +112,7 @@ async function registrarInhabilitacionColaborador(colaborador, usuarioActual) {
                 razon: 'Inhabilitado desde el panel de edición'
             }
         });
+        console.log(`✅ Inhabilitación de colaborador "${colaborador.nombreCompleto}" registrada en bitácora`);
     } catch (error) {
         console.error('Error registrando inhabilitación de colaborador:', error);
     }
@@ -126,6 +135,7 @@ async function registrarCambioFotoPerfil(colaborador, usuarioActual) {
                 fechaCambio: new Date().toISOString()
             }
         });
+        console.log(`✅ Cambio de foto de perfil de colaborador "${colaborador.nombreCompleto}" registrado en bitácora`);
     } catch (error) {
         console.error('Error registrando cambio de foto de perfil:', error);
     }
@@ -150,6 +160,7 @@ async function registrarCambioSucursal(colaborador, sucursalAnterior, sucursalNu
                 fechaCambio: new Date().toISOString()
             }
         });
+        console.log(`✅ Cambio de sucursal de colaborador "${colaborador.nombreCompleto}" registrado en bitácora`);
     } catch (error) {
         console.error('Error registrando cambio de sucursal:', error);
     }
@@ -174,8 +185,34 @@ async function registrarCambioTelefono(colaborador, telefonoAnterior, telefonoNu
                 fechaCambio: new Date().toISOString()
             }
         });
+        console.log(`✅ Cambio de teléfono de colaborador "${colaborador.nombreCompleto}" registrado en bitácora`);
     } catch (error) {
         console.error('Error registrando cambio de teléfono:', error);
+    }
+}
+
+// Registrar cambio de código
+async function registrarCambioCodigo(colaborador, codigoAnterior, codigoNuevo, usuarioActual) {
+    if (!historialManager) return;
+
+    try {
+        await historialManager.registrarActividad({
+            usuario: usuarioActual,
+            tipo: 'editar',
+            modulo: 'usuarios',
+            descripcion: `Cambió código de colaborador: ${colaborador.nombreCompleto || colaborador.nombre}`,
+            detalles: {
+                colaboradorId: colaborador.id,
+                colaboradorNombre: colaborador.nombreCompleto || colaborador.nombre,
+                colaboradorEmail: colaborador.correoElectronico,
+                codigoAnterior: codigoAnterior || 'Sin código',
+                codigoNuevo: codigoNuevo || 'Sin código',
+                fechaCambio: new Date().toISOString()
+            }
+        });
+        console.log(`✅ Cambio de código de colaborador "${colaborador.nombreCompleto}" registrado en bitácora`);
+    } catch (error) {
+        console.error('Error registrando cambio de código:', error);
     }
 }
 
@@ -205,6 +242,115 @@ async function verificarLimiteSucursal(sucursalId, organizacionCamelCase, colabo
     }
 }
 
+// ========== FUNCIONES PARA CÓDIGO DE COLABORADOR ==========
+
+/**
+ * Valida que el código tenga formato correcto y sea único en la organización
+ * Si el código está vacío, retorna válido (es opcional)
+ */
+async function validarCodigoColaboradorEdicion(codigo, organizacionCamelCase, colaboradorIdActual) {
+    // Si está vacío, es válido (campo opcional)
+    if (!codigo || codigo.trim() === '') {
+        return { valido: true, mensaje: '' };
+    }
+    
+    // Validar formato: 3 dígitos exactos
+    if (!/^\d{3}$/.test(codigo)) {
+        return { valido: false, mensaje: 'El código debe tener exactamente 3 dígitos (001-999)' };
+    }
+    
+    const numero = parseInt(codigo, 10);
+    if (numero < 1 || numero > 999) {
+        return { valido: false, mensaje: 'El código debe estar entre 001 y 999' };
+    }
+    
+    try {
+        const userManager = new UserManager();
+        const colaboradores = await userManager.getColaboradoresByOrganizacion(organizacionCamelCase, true);
+        
+        // Verificar si el código ya existe (excluyendo al colaborador actual)
+        const existe = colaboradores.some(col => 
+            col.codigoColaborador === codigo && col.id !== colaboradorIdActual
+        );
+        
+        if (existe) {
+            return { valido: false, mensaje: `El código ${codigo} ya está en uso por otro colaborador` };
+        }
+        
+        return { valido: true, mensaje: '' };
+        
+    } catch (error) {
+        console.error('Error validando código:', error);
+        return { valido: true, mensaje: '' };
+    }
+}
+
+/**
+ * Configurar validación del código en tiempo real
+ */
+function configurarValidacionCodigo(elements, organizacionCamelCase, colaboradorId) {
+    if (!elements.codigoColaborador) return;
+    
+    elements.codigoColaborador.addEventListener('input', async function(e) {
+        // Limitar a solo números
+        this.value = this.value.replace(/[^0-9]/g, '').slice(0, 3);
+        
+        // Si está vacío, resetear estilos
+        if (this.value.length === 0) {
+            this.style.borderColor = '';
+            const hint = this.closest('.form-field-group')?.querySelector('.field-hint');
+            if (hint) {
+                hint.style.color = '';
+                hint.innerHTML = `<i class="fas fa-info-circle"></i> Código único de 3 dígitos (001-999). Déjalo vacío si no quieres asignar código.`;
+            }
+            return;
+        }
+        
+        // Validar formato solo si tiene contenido
+        if (this.value.length === 3) {
+            const validacion = await validarCodigoColaboradorEdicion(this.value, organizacionCamelCase, colaboradorId);
+            if (!validacion.valido) {
+                this.style.borderColor = 'var(--color-danger, #dc3545)';
+                const hint = this.closest('.form-field-group')?.querySelector('.field-hint');
+                if (hint) {
+                    hint.style.color = 'var(--color-danger, #dc3545)';
+                    hint.innerHTML = `<i class="fas fa-exclamation-triangle"></i> ${validacion.mensaje}`;
+                }
+            } else {
+                this.style.borderColor = 'var(--color-success, #28a745)';
+                const hint = this.closest('.form-field-group')?.querySelector('.field-hint');
+                if (hint) {
+                    hint.style.color = '';
+                    hint.innerHTML = `<i class="fas fa-check-circle"></i> Código válido y disponible`;
+                }
+            }
+        } else {
+            this.style.borderColor = 'var(--color-warning, #ff9800)';
+            const hint = this.closest('.form-field-group')?.querySelector('.field-hint');
+            if (hint) {
+                hint.style.color = 'var(--color-warning, #ff9800)';
+                hint.innerHTML = `<i class="fas fa-info-circle"></i> El código debe tener exactamente 3 dígitos`;
+            }
+        }
+    });
+    
+    // Evento blur para limpiar códigos incompletos
+    elements.codigoColaborador.addEventListener('blur', function() {
+        if (this.value.length > 0 && this.value.length !== 3) {
+            this.value = '';
+            this.style.borderColor = '';
+            const hint = this.closest('.form-field-group')?.querySelector('.field-hint');
+            if (hint) {
+                hint.style.color = '';
+                hint.innerHTML = `<i class="fas fa-info-circle"></i> Código único de 3 dígitos (001-999). Déjalo vacío si no quieres asignar código.`;
+            }
+        }
+    });
+}
+
+// ==================== VARIABLES GLOBALES ====================
+
+
 // ==================== FUNCIONES PRINCIPALES ====================
 
 async function iniciarEditor(userManager) {
@@ -218,6 +364,7 @@ async function iniciarEditor(userManager) {
         let usuarioActual = obtenerUsuarioActual();
 
         if (!usuarioActual) {
+            console.warn('No hay información de usuario, usando valores por defecto');
             usuarioActual = {
                 id: `usuario_${Date.now()}`,
                 uid: `usuario_${Date.now()}`,
@@ -238,7 +385,11 @@ async function iniciarEditor(userManager) {
         configurarEliminacion(elements, userManager);
         configurarSelectorStatus(elements);
         configurarFiltroNumerico(elements);
+        
+        // Configurar validación del código
+        configurarValidacionCodigo(elements, usuarioActual.organizacionCamelCase, collaboratorId);
 
+        // Cargar áreas (esto también cargará sucursales si el área es sucursales)
         await cargarAreas(elements);
 
     } catch (error) {
@@ -248,6 +399,7 @@ async function iniciarEditor(userManager) {
     }
 }
 
+// Filtro solo números para teléfono
 function configurarFiltroNumerico(elements) {
     if (elements.telefono) {
         elements.telefono.addEventListener('input', function (e) {
@@ -284,6 +436,7 @@ function configurarFiltroNumerico(elements) {
     }
 }
 
+// Obtener usuario actual
 function obtenerUsuarioActual() {
     try {
         const adminInfo = JSON.parse(localStorage.getItem('adminInfo') || '{}');
@@ -328,6 +481,7 @@ function generarCamelCase(texto) {
         .replace(/[^a-zA-Z0-9]/g, '');
 }
 
+// Funciones de utilidad
 function obtenerIdDesdeURL() {
     const urlParams = new URLSearchParams(window.location.search);
     const collaboratorId = urlParams.get('id');
@@ -360,6 +514,7 @@ function obtenerElementosDOM() {
         orgPlaceholder: document.getElementById('orgPlaceholder'),
 
         fullName: document.getElementById('fullName'),
+        codigoColaborador: document.getElementById('codigoColaborador'),
         email: document.getElementById('email'),
         telefono: document.getElementById('telefono'),
         organizationName: document.getElementById('organizationName'),
@@ -424,6 +579,12 @@ async function cargarDatosColaborador(userManager, collaboratorId, elements) {
             throw new Error('Colaborador no encontrado');
         }
 
+        console.log('🔴🔴🔴 DATOS DEL COLABORADOR DESDE USERMANAGER:');
+        console.log('   - sucursalAsignadaId:', collaborator.sucursalAsignadaId);
+        console.log('   - sucursalAsignadaNombre:', collaborator.sucursalAsignadaNombre);
+        console.log('   - telefono:', collaborator.telefono);
+        console.log('   - codigoColaborador:', collaborator.codigoColaborador || '(vacío)');
+
         window.currentCollaborator = collaborator;
         window.colaboradorOriginal = JSON.parse(JSON.stringify(collaborator));
         pendingPhotoBase64 = null; // ✅ Limpiar foto pendiente
@@ -465,12 +626,18 @@ function actualizarInterfaz(elements, collaborator) {
         elements.fullName.value = collaborator.nombreCompleto;
     }
 
+    if (elements.codigoColaborador) {
+        elements.codigoColaborador.value = collaborator.codigoColaborador || '';
+        console.log('🔢 Código cargado:', collaborator.codigoColaborador || '(vacío)');
+    }
+
     if (elements.email && collaborator.correoElectronico) {
         elements.email.value = collaborator.correoElectronico;
     }
 
     if (elements.telefono) {
         elements.telefono.value = collaborator.telefono || '';
+        console.log('📞 Teléfono cargado:', collaborator.telefono || '(vacío)');
     }
 
     if (elements.organizationName && collaborator.organizacion) {
@@ -499,6 +666,7 @@ function actualizarInterfaz(elements, collaborator) {
         });
     }
 
+    // Foto de perfil
     if (collaborator.fotoUsuario) {
         const profileUrl = collaborator.getFotoUrl();
         if (elements.profileImage) {
@@ -517,6 +685,7 @@ function actualizarInterfaz(elements, collaborator) {
         }
     }
 
+    // Logo de organización
     if (collaborator.fotoOrganizacion) {
         const orgUrl = collaborator.fotoOrganizacion;
         if (elements.orgImage) {
@@ -579,6 +748,8 @@ function mostrarMensaje(element, type, text) {
     }
 }
 
+// ========== FUNCIONES PARA CARGAR ÁREAS Y SUCURSALES ==========
+
 async function cargarAreas(elements) {
     if (!elements.areaSelect) return;
 
@@ -627,7 +798,11 @@ async function cargarAreas(elements) {
                 const areaNombre = elements.areaSelect.options[elements.areaSelect.selectedIndex]?.getAttribute('data-nombre') || '';
                 const esAreaSucursales = areaNombre.toLowerCase() === 'sucursales' || areaNombre.toLowerCase() === 'sucursal';
 
+                console.log('🔴 Área seleccionada:', areaNombre, 'esAreaSucursales:', esAreaSucursales);
+                console.log('🔴 Sucursal asignada del colaborador:', collaborator.sucursalAsignadaId, collaborator.sucursalAsignadaNombre);
+
                 if (esAreaSucursales && collaborator.sucursalAsignadaId) {
+                    console.log('🏢 Área sucursales detectada, forzando carga de sucursal asignada:', collaborator.sucursalAsignadaId);
                     setTimeout(() => {
                         cargarSucursales(elements);
                     }, 300);
@@ -640,6 +815,7 @@ async function cargarAreas(elements) {
                             const option = Array.from(cargoSelect.options).find(opt => opt.value === collaborator.cargo.id);
                             if (option) {
                                 cargoSelect.value = option.value;
+                                console.log('✅ Cargo seleccionado por ID:', collaborator.cargo.id);
                                 return true;
                             }
                         }
@@ -651,6 +827,7 @@ async function cargarAreas(elements) {
                         );
                         if (optionPorNombre) {
                             elements.cargoEnAreaSelect.value = optionPorNombre.value;
+                            console.log('✅ Cargo seleccionado por nombre:', collaborator.cargo.nombre);
                             return true;
                         }
                     }
@@ -740,6 +917,7 @@ function cargarCargosPorArea(elements) {
     const esAreaSucursales = areaNombre.toLowerCase() === 'sucursales' || areaNombre.toLowerCase() === 'sucursal';
 
     if (esAreaSucursales) {
+        console.log('🏢 Área "sucursales" seleccionada, cargando sucursales...');
         cargarSucursales(elements);
     }
 }
@@ -752,16 +930,26 @@ async function cargarSucursales(elements) {
         const collaborator = window.currentCollaborator;
 
         if (!usuarioActual || !usuarioActual.organizacionCamelCase) {
+            console.warn('No se pudo cargar sucursales: organización no disponible');
             return;
         }
 
         const sucursalAsignadaId = collaborator.sucursalAsignadaId;
         const sucursalAsignadaNombre = collaborator.sucursalAsignadaNombre;
 
+        console.log('🔴🔴🔴 CARGANDO SUCURSALES - DATOS DEL COLABORADOR:');
+        console.log('   - sucursalAsignadaId:', sucursalAsignadaId);
+        console.log('   - sucursalAsignadaNombre:', sucursalAsignadaNombre);
+
         elements.sucursalSelect.innerHTML = '<option value="">Cargando sucursales...</option>';
         elements.sucursalSelect.disabled = true;
 
         const sucursales = await sucursalManager.getSucursalesByOrganizacion(usuarioActual.organizacionCamelCase);
+
+        console.log('🔴 SUCURSALES DISPONIBLES EN LA BASE DE DATOS:');
+        sucursales.forEach(s => {
+            console.log(`   - ID: ${s.id}, Nombre: ${s.nombre}`);
+        });
 
         if (sucursales.length === 0) {
             elements.sucursalSelect.innerHTML = '<option value="">No hay sucursales disponibles</option>';
@@ -779,6 +967,7 @@ async function cargarSucursales(elements) {
                 if (isSelected) {
                     sucursalEncontrada = true;
                     valorSeleccionado = sucursal.id;
+                    console.log(`✅✅✅ SUCURSAL ENCONTRADA PARA SELECCIONAR: ${sucursal.nombre} (${sucursal.id})`);
                 }
                 const selectedAttr = isSelected ? 'selected' : '';
                 options += `<option value="${sucursal.id}" data-nombre="${sucursal.nombre}" data-ciudad="${sucursal.ciudad}" ${selectedAttr}>${sucursal.nombre} - ${sucursal.ciudad || 'Sin ciudad'}</option>`;
@@ -789,14 +978,18 @@ async function cargarSucursales(elements) {
 
             if (sucursalAsignadaId && sucursalEncontrada) {
                 elements.sucursalSelect.value = valorSeleccionado;
+                console.log('✅ Sucursal forzada en el select, valor actual:', elements.sucursalSelect.value);
+                console.log('✅ Texto seleccionado:', elements.sucursalSelect.options[elements.sucursalSelect.selectedIndex]?.text);
             }
 
             if (sucursalAsignadaId) {
                 if (sucursalEncontrada) {
+                    console.log('✅ Sucursal seleccionada en el select:', elements.sucursalSelect.value);
                     if (elements.sucursalHint) {
                         elements.sucursalHint.innerHTML = '<i class="fas fa-check-circle" style="color: #28a745;"></i> Sucursal asignada: ' + sucursalAsignadaNombre;
                     }
                 } else {
+                    console.warn('⚠️ Sucursal asignada NO ENCONTRADA en la lista:', sucursalAsignadaId);
                     if (elements.sucursalHint) {
                         elements.sucursalHint.innerHTML = '<i class="fas fa-exclamation-triangle" style="color: #ff9800;"></i> La sucursal asignada "' + sucursalAsignadaNombre + '" ya no existe. Selecciona una nueva.';
                     }
@@ -832,6 +1025,7 @@ function configurarSelectoresAreaCargo(elements) {
     });
 }
 
+// Handlers básicos
 function configurarHandlersBasicos(elements) {
     if (elements.cancelBtn) {
         elements.cancelBtn.addEventListener('click', () => {
@@ -866,7 +1060,7 @@ function configurarSelectorStatus(elements) {
     });
 }
 
-// ✅ NUEVA VERSIÓN - Solo previsualiza, no guarda
+// Configurar foto de perfil
 function configurarFotoPerfil(elements, userManager) {
     if (!elements.profileCircle) return;
 
@@ -1141,13 +1335,216 @@ async function guardarTodosLosCambios(elements, userManager) {
     return result.isConfirmed;
 }
 
+// Guardar cambios - INCLUYE TELÉFONO Y CÓDIGO
 function configurarGuardado(elements, userManager) {
     if (!elements.saveChangesBtn || !window.currentCollaborator) return;
 
     elements.saveChangesBtn.addEventListener('click', async () => {
-        const confirmed = await guardarTodosLosCambios(elements, userManager);
+        if (!elements.fullName || !elements.fullName.value.trim()) {
+            mostrarMensaje(elements.mainMessage, 'error', 'El nombre completo es obligatorio');
+            if (elements.fullName) elements.fullName.focus();
+            return;
+        }
+
+        const collaborator = window.currentCollaborator;
+        const colaboradorOriginal = window.colaboradorOriginal;
+        const usuarioActual = window.usuarioActual;
+
+        let areaNombre = 'No asignada';
+        let cargoNombre = 'No asignado';
+        let cargoDescripcion = '';
+        let cargoObjeto = null;
+
+        const areas = elements.areaSelect._areasData || [];
+        const areaSeleccionada = areas.find(a => a.id === elements.areaSelect?.value);
+        if (areaSeleccionada) {
+            areaNombre = areaSeleccionada.nombreArea;
+        }
+
+        const cargosData = elements.cargoEnAreaSelect._cargosData || {};
+        const cargoSeleccionado = cargosData[elements.cargoEnAreaSelect?.value];
+        if (cargoSeleccionado) {
+            cargoNombre = cargoSeleccionado.nombre || 'Cargo sin nombre';
+            cargoDescripcion = cargoSeleccionado.descripcion || '';
+            cargoObjeto = {
+                id: cargoSeleccionado.id || elements.cargoEnAreaSelect.value,
+                nombre: cargoNombre,
+                descripcion: cargoDescripcion
+            };
+        }
+
+        let sucursalId = null;
+        let sucursalNombre = null;
+        let sucursalCiudad = null;
+        let esAreaSucursales = false;
+
+        const areaSeleccionadaElement = elements.areaSelect.options[elements.areaSelect.selectedIndex];
+        const areaSeleccionadaNombre = areaSeleccionadaElement?.getAttribute('data-nombre') || '';
+        esAreaSucursales = areaSeleccionadaNombre.toLowerCase() === 'sucursales' || areaSeleccionadaNombre.toLowerCase() === 'sucursal';
+
+        if (esAreaSucursales && elements.sucursalSelect && elements.sucursalSelect.value) {
+            sucursalId = elements.sucursalSelect.value;
+
+            const sucursalesData = elements.sucursalSelect._sucursalesData || [];
+            const sucursalSeleccionada = sucursalesData.find(s => s.id === sucursalId);
+            if (sucursalSeleccionada) {
+                sucursalNombre = sucursalSeleccionada.nombre;
+                sucursalCiudad = sucursalSeleccionada.ciudad;
+            }
+
+            if (sucursalId && usuarioActual.organizacionCamelCase) {
+                const limiteOk = await verificarLimiteSucursal(sucursalId, usuarioActual.organizacionCamelCase, collaborator.id);
+                if (!limiteOk) {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Límite de colaboradores alcanzado',
+                        html: `La sucursal seleccionada ya tiene 2 colaboradores asignados.<br>
+                               No se pueden asignar más colaboradores a esta sucursal.`,
+                        confirmButtonText: 'ENTENDIDO'
+                    });
+                    return;
+                }
+            }
+        }
+
+        const nuevoTelefono = elements.telefono?.value.trim() || '';
+        const telefonoOriginal = colaboradorOriginal.telefono || '';
         
-        if (!confirmed) return;
+        const nuevoCodigo = elements.codigoColaborador?.value.trim() || '';
+        const codigoOriginal = colaboradorOriginal.codigoColaborador || '';
+
+        const cambios = [];
+        const nuevosDatos = {
+            nombreCompleto: elements.fullName.value.trim(),
+            telefono: nuevoTelefono,
+            codigoColaborador: nuevoCodigo,
+            status: elements.statusInput.value === 'active',
+            areaAsignadaId: elements.areaSelect?.value || null,
+            cargo: cargoObjeto,
+            sucursalAsignadaId: sucursalId,
+            sucursalAsignadaNombre: sucursalNombre,
+            sucursalAsignadaCiudad: sucursalCiudad
+        };
+
+        // VALIDAR UNICIDAD DEL CÓDIGO
+        const codigoValidacion = await validarCodigoColaboradorEdicion(
+            nuevoCodigo,
+            collaborator.organizacionCamelCase || usuarioActual.organizacionCamelCase,
+            collaborator.id
+        );
+
+        if (!codigoValidacion.valido) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Código inválido',
+                text: codigoValidacion.mensaje,
+                confirmButtonText: 'CORREGIR'
+            });
+            return;
+        }
+
+        if (colaboradorOriginal.nombreCompleto !== nuevosDatos.nombreCompleto) {
+            cambios.push({
+                campo: 'nombre',
+                anterior: colaboradorOriginal.nombreCompleto,
+                nuevo: nuevosDatos.nombreCompleto
+            });
+        }
+
+        if (telefonoOriginal !== nuevoTelefono) {
+            cambios.push({
+                campo: 'teléfono',
+                anterior: telefonoOriginal || 'No registrado',
+                nuevo: nuevoTelefono || 'No registrado'
+            });
+        }
+
+        if (codigoOriginal !== nuevoCodigo) {
+            cambios.push({
+                campo: 'código',
+                anterior: codigoOriginal || 'Sin código',
+                nuevo: nuevoCodigo || 'Sin código'
+            });
+        }
+
+        const estadoOriginal = colaboradorOriginal.status === true || colaboradorOriginal.status === 'active';
+        if (estadoOriginal !== nuevosDatos.status) {
+            cambios.push({
+                campo: 'estado',
+                anterior: estadoOriginal ? 'activo' : 'inactivo',
+                nuevo: nuevosDatos.status ? 'activo' : 'inactivo'
+            });
+        }
+
+        if (colaboradorOriginal.areaAsignadaId !== nuevosDatos.areaAsignadaId) {
+            cambios.push({
+                campo: 'área',
+                anterior: colaboradorOriginal.areaAsignadaNombre || 'No asignada',
+                nuevo: areaNombre
+            });
+        }
+
+        const cargoOriginalNombre = colaboradorOriginal.cargo?.nombre || 'No asignado';
+        if (cargoOriginalNombre !== cargoNombre) {
+            cambios.push({
+                campo: 'cargo',
+                anterior: cargoOriginalNombre,
+                nuevo: cargoNombre
+            });
+        }
+
+        const sucursalOriginalNombre = colaboradorOriginal.sucursalAsignadaNombre || 'No asignada';
+        if (sucursalOriginalNombre !== (sucursalNombre || 'No asignada')) {
+            cambios.push({
+                campo: 'sucursal',
+                anterior: sucursalOriginalNombre,
+                nuevo: sucursalNombre || 'No asignada'
+            });
+        }
+
+        if (cambios.length === 0) {
+            Swal.fire({
+                icon: 'info',
+                title: 'Sin cambios',
+                text: 'No se detectaron cambios en los datos del colaborador',
+                timer: 2000,
+                showConfirmButton: false
+            });
+            return;
+        }
+
+        let confirmHtml = `
+            <div>
+                <p><strong>Nombre:</strong> ${elements.fullName.value}</p>
+                <p><strong>Código:</strong> ${nuevoCodigo || 'Sin código'}</p>
+                <p><strong>Teléfono:</strong> ${nuevoTelefono || 'No especificado'}</p>
+                <p><strong>Área asignada:</strong> ${areaNombre}</p>
+                <p><strong>Cargo en el área:</strong> ${cargoNombre}</p>
+        `;
+
+        if (esAreaSucursales) {
+            confirmHtml += `<p><strong>Sucursal asignada:</strong> ${sucursalNombre ? `${sucursalNombre}${sucursalCiudad ? ` (${sucursalCiudad})` : ''}` : 'No asignada'}</p>`;
+        }
+
+        confirmHtml += `
+                <p><strong>Status:</strong> ${elements.statusInput.value === 'active' ? 'Activo' : 'Inactivo'}</p>
+                <div style="margin-top: 15px; padding: 10px; background: rgba(0,0,0,0.2); border-radius: 8px; text-align: left;">
+                    <strong>Cambios detectados:</strong>
+                    ${cambios.map(c => `<p style="margin: 5px 0; font-size: 0.9rem;">• ${c.campo}: ${c.anterior} → ${c.nuevo}</p>`).join('')}
+                </div>
+            </div>
+        `;
+
+        const result = await Swal.fire({
+            title: '¿Guardar cambios?',
+            html: confirmHtml,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'GUARDAR',
+            cancelButtonText: 'CANCELAR'
+        });
+
+        if (!result.isConfirmed) return;
 
         Swal.fire({
             title: 'Guardando cambios...',
@@ -1284,6 +1681,7 @@ function configurarGuardado(elements, userManager) {
             const updateData = {
                 nombreCompleto: elements.fullName.value.trim(),
                 telefono: nuevoTelefono,
+                codigoColaborador: nuevoCodigo,
                 status: elements.statusInput.value === 'active',
                 cargo: cargoObjeto,
                 areaAsignadaId: elements.areaSelect?.value || null
@@ -1297,10 +1695,12 @@ function configurarGuardado(elements, userManager) {
                 updateData.sucursalAsignadaId = sucursalId;
                 updateData.sucursalAsignadaNombre = sucursalNombre;
                 updateData.sucursalAsignadaCiudad = sucursalCiudad;
+                console.log('💾 Guardando sucursal:', { sucursalId, sucursalNombre, sucursalCiudad });
             } else {
                 updateData.sucursalAsignadaId = null;
                 updateData.sucursalAsignadaNombre = null;
                 updateData.sucursalAsignadaCiudad = null;
+                console.log('🗑️ Limpiando sucursal (área no es sucursales)');
             }
 
             await userManager.updateUser(
@@ -1315,6 +1715,11 @@ function configurarGuardado(elements, userManager) {
             const telefonoCambio = cambios.find(c => c.campo === 'teléfono');
             if (telefonoCambio) {
                 await registrarCambioTelefono(colaboradorOriginal, telefonoCambio.anterior, telefonoCambio.nuevo, usuarioActual);
+            }
+
+            const codigoCambio = cambios.find(c => c.campo === 'código');
+            if (codigoCambio) {
+                await registrarCambioCodigo(colaboradorOriginal, codigoCambio.anterior, codigoCambio.nuevo, usuarioActual);
             }
 
             const sucursalCambio = cambios.find(c => c.campo === 'sucursal');
@@ -1379,7 +1784,7 @@ function configurarGuardado(elements, userManager) {
     });
 }
 
-// ✅ MÉTODO ACTUALIZADO - USANDO UserManager en lugar de conexión directa
+// Cambiar contraseña
 function configurarCambioPassword(elements, userManager) {
     if (!elements.changePasswordBtn) return;
 
@@ -1424,50 +1829,55 @@ function configurarCambioPassword(elements, userManager) {
         });
 
         try {
-            const resultado = await userManager.enviarCorreoRecuperacion(userEmail);
+            const firebaseModule = await import('/config/firebase-config.js');
+            const { sendPasswordResetEmail } = await import("https://www.gstatic.com/firebasejs/12.8.0/firebase-auth.js");
+
+            const actionCodeSettings = {
+                url: window.location.origin + '/verifyEmail.html',
+                handleCodeInApp: false
+            };
+
+            await sendPasswordResetEmail(firebaseModule.auth, userEmail, actionCodeSettings);
 
             Swal.close();
 
-            if (resultado.success) {
-                await Swal.fire({
-                    icon: 'success',
-                    title: '¡Enlace enviado exitosamente!',
-                    html: `
-                        <div>
-                            <p><strong>Destinatario:</strong> ${userEmail}</p>
-                            <p><strong>Válido por:</strong> 1 hora</p>
-                            <p>El colaborador recibirá instrucciones para restablecer su contraseña.</p>
-                        </div>
-                    `,
-                    confirmButtonText: 'ENTENDIDO',
-                    allowOutsideClick: false,
-                    showCloseButton: true
-                });
-            } else {
-                await Swal.fire({
-                    icon: 'error',
-                    title: 'Error al enviar',
-                    text: resultado.message || 'Ocurrió un error al enviar el correo',
-                    confirmButtonText: 'ENTENDIDO'
-                });
-            }
+            await Swal.fire({
+                icon: 'success',
+                title: '¡Enlace enviado exitosamente!',
+                html: `
+                    <div>
+                        <p><strong>Destinatario:</strong> ${userEmail}</p>
+                        <p><strong>Válido por:</strong> 1 hora</p>
+                        <p>El colaborador recibirá instrucciones para restablecer su contraseña.</p>
+                    </div>
+                `,
+                confirmButtonText: 'ENTENDIDO',
+                allowOutsideClick: false,
+                showCloseButton: true
+            });
 
         } catch (error) {
             Swal.close();
+
             console.error('❌ Error enviando correo:', error);
 
             let errorMessage = 'Ocurrió un error al enviar el correo';
 
-            if (error.code === 'auth/user-not-found') {
-                errorMessage = 'Usuario no encontrado';
-            } else if (error.code === 'auth/invalid-email') {
-                errorMessage = 'Correo inválido';
-            } else if (error.code === 'auth/too-many-requests') {
-                errorMessage = 'Demasiados intentos';
-            } else if (error.code === 'auth/network-request-failed') {
-                errorMessage = 'Error de conexión';
-            } else if (error.message) {
-                errorMessage = error.message;
+            switch (error.code) {
+                case 'auth/user-not-found':
+                    errorMessage = 'Usuario no encontrado';
+                    break;
+                case 'auth/invalid-email':
+                    errorMessage = 'Correo inválido';
+                    break;
+                case 'auth/too-many-requests':
+                    errorMessage = 'Demasiados intentos';
+                    break;
+                case 'auth/network-request-failed':
+                    errorMessage = 'Error de conexión';
+                    break;
+                default:
+                    errorMessage = 'Error del sistema';
             }
 
             Swal.fire({
@@ -1480,6 +1890,7 @@ function configurarCambioPassword(elements, userManager) {
     });
 }
 
+// Eliminar/inhabilitar
 function configurarEliminacion(elements, userManager) {
     if (!elements.deleteBtn) return;
 
