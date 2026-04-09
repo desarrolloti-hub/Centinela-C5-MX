@@ -1,9 +1,10 @@
+// editarSucursales.js - VERSIÓN SIN LOADING OVERLAY
 window.editarSucursalDebug = {
     estado: 'iniciando',
     controller: null
 };
 
-let historialManager = null; // ✅ NUEVO: Para registrar actividades
+let historialManager = null;
 
 // LÍMITES DE CARACTERES
 const LIMITES = {
@@ -25,33 +26,28 @@ class EditarSucursalController {
         this.regionManager = null;
         this.usuarioActual = null;
         this.sucursalActual = null;
-        this.sucursalOriginal = null; // ✅ NUEVO: Copia original para comparar cambios
-        this.loadingOverlay = null;
-        this.notificacionActual = null;
+        this.sucursalOriginal = null;
 
         // Propiedades del mapa
         this.map = null;
         this.marker = null;
         this.mapInitialized = false;
 
-        // Timeout para debounce del listener de coordenadas
+        // Timeout para debounce
         this.coordenadasTimeout = null;
 
-        // Bandera para evitar loops infinitos
+        // Bandera para evitar loops
         this.actualizandoDesdeMapa = false;
 
-        // Inicializar
         this._init();
     }
 
     // ========== INICIALIZACIÓN ==========
     async _init() {
         try {
-            // 1. Cargar usuario
             this._cargarUsuario();
 
             if (!this.usuarioActual) {
-                console.warn('No hay usuario autenticado, usando valores por defecto');
                 this.usuarioActual = {
                     id: `usuario_${Date.now()}`,
                     uid: `usuario_${Date.now()}`,
@@ -62,10 +58,8 @@ class EditarSucursalController {
                 };
             }
 
-            // 2. Inicializar historialManager
             await this._initHistorial();
 
-            // 3. Obtener ID de la URL
             const urlParams = new URLSearchParams(window.location.search);
             const sucursalId = urlParams.get('id');
             const orgFromUrl = urlParams.get('org');
@@ -74,35 +68,20 @@ class EditarSucursalController {
                 throw new Error('No se especificó la sucursal a editar');
             }
 
-            // Si hay orgFromUrl, usarla para determinar la organización
             if (orgFromUrl) {
                 this.usuarioActual.organizacionCamelCase = orgFromUrl;
             }
 
             this.sucursalId = sucursalId;
 
-            // 4. Cargar managers
             await this._cargarManagers();
-
-            // 5. Cargar regiones
             await this._cargarRegiones();
-
-            // 6. Cargar estados de México
             this._cargarEstados();
-
-            // 7. Cargar datos de la sucursal
             await this._cargarDatosSucursal();
-
-            // 8. Aplicar límites de caracteres
             this._aplicarLimitesCaracteres();
-
-            // 9. Configurar listener de coordenadas
             this._configurarListenerCoordenadas();
-
-            // 10. Configurar eventos
             this._configurarEventos();
 
-            // 11. Inicializar mapa (después de cargar los datos)
             setTimeout(() => this._inicializarMapa(), 1000);
 
             window.editarSucursalDebug.controller = this;
@@ -110,27 +89,22 @@ class EditarSucursalController {
         } catch (error) {
             console.error('Error inicializando:', error);
             this._mostrarError('Error al inicializar: ' + error.message);
-            // NO redirigir automáticamente
         }
     }
 
-    // ✅ NUEVO: Inicializar historialManager
     async _initHistorial() {
         try {
             const { HistorialUsuarioManager } = await import('/clases/historialUsuario.js');
             historialManager = new HistorialUsuarioManager();
-            console.log('📋 HistorialManager inicializado para editar sucursales');
         } catch (error) {
-            console.error('Error inicializando historialManager:', error);
+            // Error silencioso
         }
     }
 
-    // ✅ NUEVO: Registrar edición de sucursal
     async _registrarEdicionSucursal(sucursalOriginal, sucursalActualizada, cambios) {
         if (!historialManager) return;
 
         try {
-            // Obtener nombre de la región
             let regionNombre = '';
             if (sucursalActualizada.regionId) {
                 try {
@@ -159,9 +133,8 @@ class EditarSucursalController {
                     fechaEdicion: new Date().toISOString()
                 }
             });
-            console.log(`✅ Edición de sucursal "${sucursalOriginal.nombre}" registrada en bitácora`);
         } catch (error) {
-            console.error('Error registrando edición de sucursal:', error);
+            // Error silencioso
         }
     }
 
@@ -184,7 +157,6 @@ class EditarSucursalController {
     // ========== CARGA DE USUARIO ==========
     _cargarUsuario() {
         try {
-            // Intentar obtener usuario del localStorage
             const adminInfo = localStorage.getItem('adminInfo');
             if (adminInfo) {
                 const adminData = JSON.parse(adminInfo);
@@ -214,11 +186,9 @@ class EditarSucursalController {
                 return;
             }
 
-            // Si no hay datos, retornar null (se usarán valores por defecto en _init)
             this.usuarioActual = null;
 
         } catch (error) {
-            console.error('Error cargando usuario:', error);
             this.usuarioActual = null;
         }
     }
@@ -254,7 +224,6 @@ class EditarSucursalController {
             }
         });
 
-        // Validación especial para teléfono (solo números)
         const contactoInput = document.getElementById('contactoSucursal');
         if (contactoInput) {
             contactoInput.addEventListener('input', (e) => {
@@ -268,11 +237,47 @@ class EditarSucursalController {
     }
 
     _validarLongitudCampo(campo, limite, nombreCampo) {
-        const longitud = campo.value.length;
-        if (longitud > limite) {
+        if (campo.value.length > limite) {
             campo.value = campo.value.substring(0, limite);
-            this._mostrarNotificacion(`${nombreCampo} no puede exceder ${limite} caracteres`, 'warning', 3000);
+            this._mostrarError(`${nombreCampo} no puede exceder ${limite} caracteres`);
         }
+    }
+
+    // ========== NOTIFICACIONES ==========
+    _mostrarError(mensaje) {
+        Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: mensaje,
+            confirmButtonText: 'OK',
+            background: 'var(--color-bg-secondary)',
+            color: 'var(--color-text-primary)',
+            confirmButtonColor: '#dc3545'
+        });
+    }
+
+    _mostrarExito(mensaje) {
+        Swal.fire({
+            icon: 'success',
+            title: '¡Completado!',
+            text: mensaje,
+            confirmButtonText: 'OK',
+            background: 'var(--color-bg-secondary)',
+            color: 'var(--color-text-primary)',
+            confirmButtonColor: '#28a745'
+        });
+    }
+
+    _mostrarInfo(mensaje) {
+        Swal.fire({
+            icon: 'info',
+            title: 'Información',
+            text: mensaje,
+            confirmButtonText: 'OK',
+            background: 'var(--color-bg-secondary)',
+            color: 'var(--color-text-primary)',
+            confirmButtonColor: '#17a2b8'
+        });
     }
 
     // ========== CARGA DE REGIONES ==========
@@ -301,7 +306,6 @@ class EditarSucursalController {
             });
 
         } catch (error) {
-            console.error('Error cargando regiones:', error);
             const select = document.getElementById('regionSucursal');
             if (select) {
                 select.innerHTML = '<option value="">-- Error cargando regiones --</option>';
@@ -326,8 +330,6 @@ class EditarSucursalController {
     // ========== CARGA DE DATOS DE SUCURSAL ==========
     async _cargarDatosSucursal() {
         try {
-            this._mostrarCargando('Cargando datos de la sucursal...');
-
             const sucursal = await this.sucursalManager.getSucursalById(
                 this.sucursalId,
                 this.usuarioActual.organizacionCamelCase
@@ -338,41 +340,27 @@ class EditarSucursalController {
             }
 
             this.sucursalActual = sucursal;
-            // ✅ NUEVO: Guardar copia original para comparar cambios
             this.sucursalOriginal = JSON.parse(JSON.stringify(sucursal));
 
-            // Llenar campos del formulario
             this._llenarFormulario(sucursal);
 
-            this._ocultarCargando();
-
         } catch (error) {
-            this._ocultarCargando();
-            console.error('Error cargando datos de sucursal:', error);
             throw error;
         }
     }
 
     _llenarFormulario(sucursal) {
-        // Campos principales
         this._setValue('sucursalId', sucursal.id);
         this._setValue('organizacionCamelCase', sucursal.organizacionCamelCase);
         this._setValue('nombreSucursal', sucursal.nombre || '');
         this._setValue('tipoSucursal', sucursal.tipo || '');
-
-        // Ubicación (campos directos)
         this._setValue('zonaSucursal', sucursal.zona || '');
         this._setValue('ciudadSucursal', sucursal.ciudad || '');
         this._setValue('direccionSucursal', sucursal.direccion || '');
-
-        // Contacto
         this._setValue('contactoSucursal', sucursal.contacto || '');
-
-        // Coordenadas (campos directos)
         this._setValue('latitudSucursal', sucursal.latitud || '');
         this._setValue('longitudSucursal', sucursal.longitud || '');
 
-        // Seleccionar región (con timeout para esperar que carguen las opciones)
         if (sucursal.regionId) {
             setTimeout(() => {
                 const regionSelect = document.getElementById('regionSucursal');
@@ -382,7 +370,6 @@ class EditarSucursalController {
             }, 500);
         }
 
-        // Seleccionar estado
         if (sucursal.estado) {
             setTimeout(() => {
                 const estadoSelect = document.getElementById('estadoSucursal');
@@ -406,9 +393,7 @@ class EditarSucursalController {
         const lngInput = document.getElementById('longitudSucursal');
 
         if (latInput && lngInput) {
-            // Listener para cuando cambian las coordenadas manualmente
             const handleCoordenadasChange = () => {
-                // Limpiar timeout anterior
                 if (this.coordenadasTimeout) {
                     clearTimeout(this.coordenadasTimeout);
                 }
@@ -416,16 +401,13 @@ class EditarSucursalController {
                 const lat = parseFloat(latInput.value);
                 const lng = parseFloat(lngInput.value);
 
-                // Validar que sean números válidos y estén dentro de México
                 if (!isNaN(lat) && !isNaN(lng) && lat !== 0 && lng !== 0) {
-                    // Validar límites de México
                     if (lat >= 14.5 && lat <= 33.5 && lng >= -118.5 && lng <= -86.5) {
-                        // Esperar 500ms después de que el usuario deje de escribir
                         this.coordenadasTimeout = setTimeout(() => {
                             this._obtenerDireccionDesdeCoordenadas(lat, lng);
                         }, 500);
                     } else {
-                        this._mostrarNotificacion('❌ Las coordenadas deben estar dentro de México', 'warning', 2000);
+                        this._mostrarError('Las coordenadas deben estar dentro de México');
                     }
                 }
             };
@@ -438,9 +420,17 @@ class EditarSucursalController {
     // ========== OBTENER DIRECCIÓN DESDE COORDENADAS ==========
     async _obtenerDireccionDesdeCoordenadas(lat, lng) {
         try {
-            this._mostrarNotificacion('Obteniendo dirección exacta...', 'info', 1000);
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 5000);
 
-            const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`);
+            const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`, {
+                signal: controller.signal
+            });
+
+            clearTimeout(timeoutId);
+
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
             const data = await response.json();
 
             if (data && data.display_name) {
@@ -448,12 +438,10 @@ class EditarSucursalController {
                 const ciudadInput = document.getElementById('ciudadSucursal');
                 const estadoSelect = document.getElementById('estadoSucursal');
 
-                // Actualizar dirección
                 if (direccionInput) {
                     direccionInput.value = data.display_name;
                 }
 
-                // Actualizar ciudad si está disponible
                 if (ciudadInput && data.address) {
                     const ciudad = data.address.city || data.address.town || data.address.village || data.address.municipality;
                     if (ciudad) {
@@ -461,10 +449,8 @@ class EditarSucursalController {
                     }
                 }
 
-                // Actualizar estado si está disponible y coincide con nuestra lista
                 if (estadoSelect && data.address && data.address.state) {
                     const estadoEncontrado = data.address.state;
-                    // Buscar si el estado existe en nuestro select
                     for (let i = 0; i < estadoSelect.options.length; i++) {
                         if (estadoSelect.options[i].text === estadoEncontrado) {
                             estadoSelect.selectedIndex = i;
@@ -472,31 +458,25 @@ class EditarSucursalController {
                         }
                     }
                 }
-
-                this._mostrarNotificacion('Dirección obtenida correctamente', 'success', 2000);
             }
         } catch (error) {
-            console.error('Error obteniendo dirección:', error);
-            this._mostrarNotificacion('No se pudo obtener la dirección', 'error', 2000);
+            // Error silencioso
         }
     }
 
     // ========== CONFIGURACIÓN DE EVENTOS ==========
     _configurarEventos() {
         try {
-            // Botón Volver a la lista
             const btnVolverLista = document.getElementById('btnVolverLista');
             if (btnVolverLista) {
                 btnVolverLista.addEventListener('click', () => this._volverALista());
             }
 
-            // Botón Cancelar
             const btnCancelar = document.getElementById('btnCancelar');
             if (btnCancelar) {
                 btnCancelar.addEventListener('click', () => this._cancelarEdicion());
             }
 
-            // Botón Actualizar
             const btnActualizar = document.getElementById('btnActualizarSucursal');
             if (btnActualizar) {
                 btnActualizar.addEventListener('click', (e) => {
@@ -505,7 +485,6 @@ class EditarSucursalController {
                 });
             }
 
-            // Formulario Submit
             const form = document.getElementById('formEditarSucursal');
             if (form) {
                 form.addEventListener('submit', (e) => {
@@ -515,13 +494,12 @@ class EditarSucursalController {
             }
 
         } catch (error) {
-            console.error('Error configurando eventos:', error);
+            // Error silencioso
         }
     }
 
     // ========== VALIDACIÓN Y ACTUALIZACIÓN ==========
     _validarYActualizar() {
-        // Obtener elementos
         const elements = {
             nombreSucursal: document.getElementById('nombreSucursal'),
             tipoSucursal: document.getElementById('tipoSucursal'),
@@ -535,7 +513,6 @@ class EditarSucursalController {
             zonaSucursal: document.getElementById('zonaSucursal')
         };
 
-        // Validar campos requeridos
         const errores = [];
 
         if (!elements.nombreSucursal.value.trim()) {
@@ -594,7 +571,6 @@ class EditarSucursalController {
             elements.longitudSucursal.classList.remove('is-invalid');
         }
 
-        // Validar teléfono
         if (!elements.contactoSucursal.value.trim()) {
             elements.contactoSucursal.classList.add('is-invalid');
             errores.push('El teléfono de contacto es obligatorio');
@@ -608,12 +584,11 @@ class EditarSucursalController {
             }
         }
 
-        // Validar que las coordenadas estén dentro de México
         const lat = parseFloat(elements.latitudSucursal.value);
         const lng = parseFloat(elements.longitudSucursal.value);
         if (!isNaN(lat) && !isNaN(lng)) {
             if (lat < 14.5 || lat > 33.5 || lng < -118.5 || lng > -86.5) {
-                errores.push('❌ Las coordenadas deben estar dentro del territorio mexicano');
+                errores.push('Las coordenadas deben estar dentro del territorio mexicano');
                 elements.latitudSucursal.classList.add('is-invalid');
                 elements.longitudSucursal.classList.add('is-invalid');
             }
@@ -624,31 +599,19 @@ class EditarSucursalController {
             return;
         }
 
-        // Detectar cambios
         const cambios = this._detectarCambios();
 
         if (cambios.length === 0) {
-            Swal.fire({
-                icon: 'info',
-                title: 'Sin cambios',
-                text: 'No se detectaron cambios en los datos de la sucursal',
-                timer: 2000,
-                showConfirmButton: false,
-                background: 'var(--color-bg-secondary)',
-                color: 'var(--color-text-primary)'
-            });
+            this._mostrarInfo('No se detectaron cambios en los datos de la sucursal');
             return;
         }
 
-        // Confirmar actualización
         this._confirmarActualizacion(cambios);
     }
 
-    // ✅ NUEVO: Detectar cambios en la sucursal
     _detectarCambios() {
         const cambios = [];
 
-        // Obtener valores actuales
         const valoresActuales = {
             nombre: document.getElementById('nombreSucursal').value.trim(),
             tipo: document.getElementById('tipoSucursal').value.trim(),
@@ -662,7 +625,6 @@ class EditarSucursalController {
             longitud: document.getElementById('longitudSucursal').value.trim()
         };
 
-        // Comparar con original
         if (valoresActuales.nombre !== (this.sucursalOriginal.nombre || '')) {
             cambios.push({
                 campo: 'nombre',
@@ -765,7 +727,6 @@ class EditarSucursalController {
         const latitud = document.getElementById('latitudSucursal').value.trim();
         const longitud = document.getElementById('longitudSucursal').value.trim();
 
-        // Generar HTML de cambios
         let cambiosHTML = '';
         cambios.forEach(cambio => {
             cambiosHTML += `
@@ -777,17 +738,16 @@ class EditarSucursalController {
             `;
         });
 
-        // Mostrar confirmación con SweetAlert2
         Swal.fire({
             title: '¿Confirmar actualización?',
             html: `
                 <div style="text-align: left;">
-                    <p><strong>Nombre:</strong> ${nombre}</p>
-                    <p><strong>Tipo:</strong> ${tipo}</p>
-                    <p><strong>Región:</strong> ${regionNombre}</p>
-                    <p><strong>Estado:</strong> ${estado}</p>
-                    <p><strong>Ciudad:</strong> ${ciudad}</p>
-                    <p><strong>Dirección:</strong> ${direccion}</p>
+                    <p><strong>Nombre:</strong> ${this._escapeHTML(nombre)}</p>
+                    <p><strong>Tipo:</strong> ${this._escapeHTML(tipo)}</p>
+                    <p><strong>Región:</strong> ${this._escapeHTML(regionNombre)}</p>
+                    <p><strong>Estado:</strong> ${this._escapeHTML(estado)}</p>
+                    <p><strong>Ciudad:</strong> ${this._escapeHTML(ciudad)}</p>
+                    <p><strong>Dirección:</strong> ${this._escapeHTML(direccion)}</p>
                     <p><strong>Coordenadas:</strong> ${latitud}, ${longitud}</p>
                     <div style="margin-top: 15px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.1);">
                         <strong>Cambios detectados:</strong>
@@ -818,9 +778,6 @@ class EditarSucursalController {
                 btnActualizar.disabled = true;
             }
 
-            this._mostrarCargando('Actualizando sucursal...');
-
-            // Obtener datos del formulario (campos directos)
             const sucursalData = {
                 nombre: document.getElementById('nombreSucursal').value.trim(),
                 tipo: document.getElementById('tipoSucursal').value.trim(),
@@ -834,17 +791,15 @@ class EditarSucursalController {
                 longitud: parseFloat(document.getElementById('longitudSucursal').value)
             };
 
-            // Validar que las coordenadas sean números válidos y estén dentro de México
             if (isNaN(sucursalData.latitud) || isNaN(sucursalData.longitud)) {
                 throw new Error('Las coordenadas deben ser números válidos');
             }
 
             if (sucursalData.latitud < 14.5 || sucursalData.latitud > 33.5 ||
                 sucursalData.longitud < -118.5 || sucursalData.longitud > -86.5) {
-                throw new Error('❌ Las coordenadas deben estar dentro del territorio mexicano');
+                throw new Error('Las coordenadas deben estar dentro del territorio mexicano');
             }
 
-            // Actualizar sucursal
             const sucursalActualizada = await this.sucursalManager.actualizarSucursal(
                 this.sucursalId,
                 sucursalData,
@@ -852,17 +807,21 @@ class EditarSucursalController {
                 this.usuarioActual.organizacionCamelCase
             );
 
-            // ✅ NUEVO: Registrar edición en bitácora
             await this._registrarEdicionSucursal(this.sucursalOriginal, sucursalActualizada, cambios);
 
-            this._ocultarCargando();
-
-            // Mostrar éxito
-            await this._mostrarExitoActualizacion(sucursalActualizada);
+            await Swal.fire({
+                icon: 'success',
+                title: '¡Sucursal actualizada!',
+                text: 'Los cambios se han guardado correctamente',
+                confirmButtonText: 'Ir a Sucursales',
+                background: 'var(--color-bg-secondary)',
+                color: 'var(--color-text-primary)',
+                confirmButtonColor: '#28a745'
+            }).then(() => {
+                this._volverALista();
+            });
 
         } catch (error) {
-            this._ocultarCargando();
-            console.error('Error actualizando sucursal:', error);
             this._mostrarError(error.message || 'No se pudo actualizar la sucursal');
         } finally {
             if (btnActualizar) {
@@ -872,75 +831,41 @@ class EditarSucursalController {
         }
     }
 
-    async _mostrarExitoActualizacion(sucursal) {
-        await Swal.fire({
-            icon: 'success',
-            title: '¡Sucursal actualizada!',
-            text: 'Los cambios se han guardado correctamente',
-            confirmButtonText: 'Ir a Sucursales',
-            background: 'var(--color-bg-secondary)',
-            color: 'var(--color-text-primary)'
-        }).then(() => {
-            this._volverALista();
-        });
-    }
-
-    // ========== FUNCIONES DEL MAPA LIMITADO A MÉXICO ==========
+    // ========== FUNCIONES DEL MAPA ==========
     _inicializarMapa() {
         try {
-            // =============================================
-            // LÍMITES ESTRICTOS DE MÉXICO
-            // =============================================
-            // Esquina Suroeste (Chiapas, Baja California Sur)
-            // Esquina Noreste (Tamaulipas, Quintana Roo)
             const southWest = L.latLng(14.5, -118.5);
             const northEast = L.latLng(33.5, -86.5);
             const mexicoBounds = L.latLngBounds(southWest, northEast);
-
-            // Centro exacto de México
             const centroMexico = { lat: 23.6345, lng: -102.5528 };
 
-            // Obtener coordenadas de la sucursal
             let lat = parseFloat(document.getElementById('latitudSucursal').value);
             let lng = parseFloat(document.getElementById('longitudSucursal').value);
 
-            // Validar que las coordenadas estén dentro de México
             if (isNaN(lat) || isNaN(lng) || lat < 14.5 || lat > 33.5 || lng < -118.5 || lng > -86.5) {
                 lat = centroMexico.lat;
                 lng = centroMexico.lng;
             }
 
-            // =============================================
-            // CREAR MAPA CON RESTRICCIONES
-            // =============================================
             this.map = L.map('sucursalMap', {
                 center: [lat, lng],
                 zoom: 6,
-                minZoom: 5,                    // Zoom mínimo (no deja alejarse más)
-                maxZoom: 18,                   // Zoom máximo
-                maxBounds: mexicoBounds,       // NO permite salirse de México
-                maxBoundsViscosity: 1.0,       // Hace que el mapa "rebote" en los bordes
-                zoomControl: true
+                minZoom: 5,
+                maxZoom: 18,
+                maxBounds: mexicoBounds,
+                maxBoundsViscosity: 1.0,
+                zoomControl: false
             });
 
-            // Establecer los límites de forma estricta (evita que el usuario se salga)
             this.map.setMaxBounds(mexicoBounds);
 
-            // También evitar que el usuario arrastre el mapa fuera de los límites
-            this.map.on('drag', () => {
-                const bounds = this.map.getBounds();
-                if (!mexicoBounds.contains(bounds.getNorthWest()) || !mexicoBounds.contains(bounds.getSouthEast())) {
-                    this.map.setView(centroMexico, 5);
-                }
-            });
-
-            // Capa de OpenStreetMap
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '© OpenStreetMap contributors | Centinela-MX | 🇲🇽 Solo México',
+                attribution: '© OpenStreetMap | Centinela-MX | 🇲🇽 Solo México',
                 maxZoom: 19
             }).addTo(this.map);
 
-            // Icono personalizado para el marcador
+            L.control.zoom({ position: 'bottomright' }).addTo(this.map);
+
             const customIcon = L.divIcon({
                 className: 'custom-marker',
                 html: '<i class="fas fa-map-marker-alt"></i>',
@@ -948,26 +873,16 @@ class EditarSucursalController {
                 popupAnchor: [0, -15]
             });
 
-            // Crear marcador (arrastrable pero con límites)
             this.marker = L.marker([lat, lng], {
                 draggable: true,
                 icon: customIcon
             }).addTo(this.map);
 
-            // Popup del marcador
+            const nombre = document.getElementById('nombreSucursal').value || 'Sucursal';
             this.marker.bindPopup(`
-                <b>${document.getElementById('nombreSucursal').value || 'Sucursal'}</b><br>
+                <b>${this._escapeHTML(nombre)}</b><br>
                 🇲🇽 Solo ubicaciones dentro de México
             `).openPopup();
-
-            // Evento cuando se arrastra el marcador (con validación estricta)
-            this.marker.on('drag', (event) => {
-                const position = event.target.getLatLng();
-                if (position.lat < 14.5 || position.lat > 33.5 || position.lng < -118.5 || position.lng > -86.5) {
-                    this.marker.setLatLng([lat, lng]);
-                    this._mostrarNotificacion('❌ No puedes poner la sucursal fuera de México', 'warning', 2000);
-                }
-            });
 
             this.marker.on('dragend', (event) => {
                 const position = event.target.getLatLng();
@@ -978,11 +893,10 @@ class EditarSucursalController {
                     lng = position.lng;
                 } else {
                     this.marker.setLatLng([lat, lng]);
-                    this._mostrarNotificacion('❌ La ubicación debe estar dentro del territorio mexicano', 'warning', 3000);
+                    this._mostrarError('La ubicación debe estar dentro del territorio mexicano');
                 }
             });
 
-            // Evento cuando se hace clic en el mapa (con validación)
             this.map.on('click', (e) => {
                 const latClick = e.latlng.lat;
                 const lngClick = e.latlng.lng;
@@ -993,28 +907,20 @@ class EditarSucursalController {
                     lat = latClick;
                     lng = lngClick;
                 } else {
-                    this._mostrarNotificacion('❌ Solo puedes seleccionar ubicaciones dentro de México', 'warning', 2000);
+                    this._mostrarError('Solo puedes seleccionar ubicaciones dentro de México');
                 }
             });
 
-            // Sincronizar con campos de texto
             this._actualizarCoordenadasMapa(lat, lng);
-
             this.mapInitialized = true;
-
-            // Configurar eventos del mapa
             this._configurarEventosMapa();
-
-            console.log('🗺️ Mapa inicializado - Limitado a México');
 
         } catch (error) {
             console.error('Error inicializando mapa:', error);
-            this._mostrarNotificacion('Error al cargar el mapa', 'error');
         }
     }
 
     _configurarEventosMapa() {
-        // Botón centrar mapa
         const btnCentrar = document.getElementById('btnCentrarMapa');
         if (btnCentrar) {
             btnCentrar.addEventListener('click', () => {
@@ -1029,19 +935,16 @@ class EditarSucursalController {
             });
         }
 
-        // Botón buscar dirección
         const btnBuscar = document.getElementById('btnBuscarDireccion');
         if (btnBuscar) {
             btnBuscar.addEventListener('click', () => this._buscarDireccionEnMapa());
         }
 
-        // Botón obtener ubicación actual
         const btnUbicacion = document.getElementById('btnObtenerUbicacion');
         if (btnUbicacion) {
             btnUbicacion.addEventListener('click', () => this._obtenerUbicacionActual());
         }
 
-        // Sincronizar cambios en los inputs de coordenadas
         const latInput = document.getElementById('latitudSucursal');
         const lngInput = document.getElementById('longitudSucursal');
 
@@ -1067,7 +970,6 @@ class EditarSucursalController {
             });
         }
 
-        // Evento para cuando se selecciona un estado
         const estadoSelect = document.getElementById('estadoSucursal');
         if (estadoSelect) {
             estadoSelect.addEventListener('change', (e) => {
@@ -1082,17 +984,26 @@ class EditarSucursalController {
     _colocarMarcador(posicion) {
         if (!this.map || !this.marker) return;
 
-        this.marker.setLatLng(posicion);
-        this.map.setView(posicion, 15);
-        this._actualizarCoordenadasMapa(posicion.lat, posicion.lng);
+        let lat, lng;
+        if (Array.isArray(posicion)) {
+            lat = posicion[0];
+            lng = posicion[1];
+        } else if (posicion && typeof posicion === 'object') {
+            lat = posicion.lat;
+            lng = posicion.lng;
+        } else {
+            return;
+        }
+
+        this.marker.setLatLng([lat, lng]);
+        this.map.setView([lat, lng], 15);
+        this._actualizarCoordenadasMapa(lat, lng);
     }
 
     _actualizarCoordenadasMapa(lat, lng) {
-        // Redondear a 6 decimales
         const latFormatted = Number(lat).toFixed(6);
         const lngFormatted = Number(lng).toFixed(6);
 
-        // Actualizar campos del formulario (SOLO si no estamos actualizando desde el mapa)
         if (!this.actualizandoDesdeMapa) {
             const latInput = document.getElementById('latitudSucursal');
             const lngInput = document.getElementById('longitudSucursal');
@@ -1101,18 +1012,16 @@ class EditarSucursalController {
             if (lngInput) lngInput.value = lngFormatted;
         }
 
-        // Actualizar display en el mapa
         const mapLat = document.getElementById('mapLatitud');
         const mapLng = document.getElementById('mapLongitud');
 
         if (mapLat) mapLat.textContent = latFormatted;
         if (mapLng) mapLng.textContent = lngFormatted;
 
-        // Actualizar popup del marcador
         if (this.marker) {
             const nombre = document.getElementById('nombreSucursal').value || 'Sucursal';
             this.marker.setPopupContent(`
-                <b>${nombre}</b><br>
+                <b>${this._escapeHTML(nombre)}</b><br>
                 Lat: ${latFormatted}, Lng: ${lngFormatted}
             `);
         }
@@ -1122,14 +1031,11 @@ class EditarSucursalController {
         const direccion = document.getElementById('direccionSucursal').value;
 
         if (!direccion) {
-            this._mostrarNotificacion('Por favor ingresa una dirección para buscar', 'warning');
+            this._mostrarError('Ingresa una dirección para buscar');
             return;
         }
 
         try {
-            this._mostrarCargando('Buscando dirección exacta...');
-
-            // Buscar SOLO en México con countrycodes=mx
             const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(direccion)}&limit=1&countrycodes=mx&addressdetails=1`);
             const data = await response.json();
 
@@ -1137,50 +1043,41 @@ class EditarSucursalController {
                 const lat = parseFloat(data[0].lat);
                 const lon = parseFloat(data[0].lon);
 
-                // Validar que la dirección esté dentro de México
                 if (lat >= 14.5 && lat <= 33.5 && lon >= -118.5 && lon <= -86.5) {
                     this._colocarMarcador([lat, lon]);
                     await this._obtenerDireccionDesdeCoordenadas(lat, lon);
-                    this._mostrarNotificacion('✅ Dirección encontrada en México', 'success', 2000);
+                    this._mostrarExito('Dirección encontrada en México');
                 } else {
-                    this._mostrarNotificacion('❌ La dirección buscada está fuera de México', 'warning');
+                    this._mostrarError('La dirección buscada está fuera de México');
                 }
             } else {
-                this._mostrarNotificacion('❌ No se encontró la dirección en México. Intenta con más detalles (ciudad, estado)', 'warning');
+                this._mostrarError('No se encontró la dirección en México');
             }
         } catch (error) {
-            console.error('Error buscando dirección:', error);
-            this._mostrarNotificacion('Error al buscar la dirección', 'error');
-        } finally {
-            this._ocultarCargando();
+            this._mostrarError('Error al buscar la dirección');
         }
     }
 
     _obtenerUbicacionActual() {
         if (!navigator.geolocation) {
-            this._mostrarNotificacion('Tu navegador no soporta geolocalización', 'error');
+            this._mostrarError('Tu navegador no soporta geolocalización');
             return;
         }
-
-        this._mostrarCargando('Obteniendo tu ubicación exacta...');
 
         navigator.geolocation.getCurrentPosition(
             (position) => {
                 const { latitude, longitude } = position.coords;
 
-                // Validar que la ubicación esté dentro de México
                 if (latitude >= 14.5 && latitude <= 33.5 && longitude >= -118.5 && longitude <= -86.5) {
                     this._colocarMarcador([latitude, longitude]);
                     this._obtenerDireccionDesdeCoordenadas(latitude, longitude);
-                    this._mostrarNotificacion('✅ Ubicación obtenida dentro de México', 'success', 2000);
+                    this._mostrarExito('Ubicación obtenida dentro de México');
                 } else {
-                    this._mostrarNotificacion('❌ Tu ubicación actual está fuera de México. Solo se permiten sucursales en territorio mexicano.', 'warning');
+                    this._mostrarError('Tu ubicación está fuera de México');
                     this.map.setView([23.6345, -102.5528], 5);
                 }
-                this._ocultarCargando();
             },
             (error) => {
-                this._ocultarCargando();
                 let mensaje = 'Error obteniendo ubicación';
                 switch (error.code) {
                     case error.PERMISSION_DENIED:
@@ -1193,7 +1090,7 @@ class EditarSucursalController {
                         mensaje = 'Tiempo de espera agotado';
                         break;
                 }
-                this._mostrarNotificacion(mensaje, 'error');
+                this._mostrarError(mensaje);
             },
             {
                 enableHighAccuracy: true,
@@ -1203,45 +1100,43 @@ class EditarSucursalController {
         );
     }
 
-    // ========== FUNCIÓN PARA CENTRAR MAPA EN ESTADO SELECCIONADO ==========
     _centrarMapaEnEstado(estado) {
         if (!this.map) return;
 
-        // Coordenadas aproximadas de los estados de México
         const coordenadasEstados = {
             "Aguascalientes": [21.8853, -102.2916],
-            "Baja California": [32.5000, -115.5000],
-            "Baja California Sur": [25.0000, -111.5000],
-            "Campeche": [19.0000, -90.5000],
-            "Chiapas": [16.5000, -92.5000],
-            "Chihuahua": [28.5000, -106.0000],
-            "Coahuila": [27.5000, -101.5000],
-            "Colima": [19.5000, -103.5000],
-            "Durango": [24.5000, -104.5000],
-            "Guanajuato": [21.0000, -101.5000],
-            "Guerrero": [17.5000, -100.0000],
-            "Hidalgo": [20.5000, -98.5000],
-            "Jalisco": [20.5000, -103.5000],
-            "México": [19.5000, -99.5000],
-            "Estado de México": [19.5000, -99.5000],
+            "Baja California": [30.8406, -115.2838],
+            "Baja California Sur": [25.8378, -111.9748],
+            "Campeche": [19.8301, -90.5349],
+            "Chiapas": [16.7569, -93.1292],
+            "Chihuahua": [28.6329, -106.0691],
+            "Coahuila": [27.0587, -101.7068],
+            "Colima": [19.2452, -103.7241],
+            "Durango": [24.0277, -104.6532],
+            "Guanajuato": [21.0190, -101.2574],
+            "Guerrero": [17.4392, -99.5451],
+            "Hidalgo": [20.0911, -98.7624],
+            "Jalisco": [20.6595, -103.3496],
+            "México": [19.2870, -99.6544],
+            "Estado de México": [19.2870, -99.6544],
             "Ciudad de México": [19.4326, -99.1332],
-            "Michoacán": [19.5000, -101.5000],
-            "Morelos": [18.5000, -99.0000],
-            "Nayarit": [22.0000, -105.0000],
-            "Nuevo León": [25.5000, -100.0000],
-            "Oaxaca": [17.5000, -96.5000],
-            "Puebla": [19.0000, -98.0000],
-            "Querétaro": [20.5000, -100.0000],
-            "Quintana Roo": [20.5000, -87.5000],
-            "San Luis Potosí": [22.5000, -100.5000],
-            "Sinaloa": [25.0000, -107.5000],
-            "Sonora": [29.5000, -110.0000],
-            "Tabasco": [18.0000, -92.5000],
-            "Tamaulipas": [24.5000, -98.5000],
-            "Tlaxcala": [19.5000, -98.5000],
-            "Veracruz": [19.5000, -96.5000],
-            "Yucatán": [20.5000, -89.0000],
-            "Zacatecas": [23.5000, -102.5000]
+            "Michoacán": [19.5665, -101.7068],
+            "Morelos": [18.6813, -99.1013],
+            "Nayarit": [21.7514, -104.8455],
+            "Nuevo León": [25.5921, -99.9962],
+            "Oaxaca": [17.0732, -96.7266],
+            "Puebla": [19.0414, -98.2062],
+            "Querétaro": [20.5888, -100.3899],
+            "Quintana Roo": [19.1814, -88.4794],
+            "San Luis Potosí": [22.1565, -100.9855],
+            "Sinaloa": [24.8091, -107.3940],
+            "Sonora": [29.2970, -110.3309],
+            "Tabasco": [17.9892, -92.9475],
+            "Tamaulipas": [24.2669, -98.8362],
+            "Tlaxcala": [19.3181, -98.2375],
+            "Veracruz": [19.1738, -96.1342],
+            "Yucatán": [20.7099, -89.0943],
+            "Zacatecas": [23.1273, -102.8722]
         };
 
         const coords = coordenadasEstados[estado];
@@ -1253,9 +1148,8 @@ class EditarSucursalController {
                 .setContent(`<b>${estado}</b><br>Haz clic en el mapa para ajustar la ubicación`)
                 .openOn(this.map);
 
-            this._mostrarNotificacion(`Mapa centrado en ${estado}`, 'info', 2000);
+            this._mostrarInfo(`Mapa centrado en ${estado}`);
         } else {
-            console.warn(`No se encontraron coordenadas para el estado: ${estado}`);
             this.map.setView([23.6345, -102.5528], 5);
         }
     }
@@ -1283,53 +1177,9 @@ class EditarSucursalController {
     }
 
     // ========== UTILIDADES ==========
-    _mostrarError(mensaje) {
-        Swal.fire({
-            icon: 'error',
-            title: 'Error',
-            text: mensaje,
-            confirmButtonText: 'Entendido',
-            background: 'var(--color-bg-secondary)',
-            color: 'var(--color-text-primary)'
-        });
-    }
-
-    _mostrarNotificacion(mensaje, tipo = 'info', duracion = 5000) {
-        Swal.fire({
-            title: tipo === 'success' ? 'Éxito' :
-                tipo === 'error' ? 'Error' :
-                    tipo === 'warning' ? 'Advertencia' : 'Información',
-            text: mensaje,
-            icon: tipo,
-            timer: duracion,
-            timerProgressBar: true,
-            showConfirmButton: false,
-            background: 'var(--color-bg-secondary)',
-            color: 'var(--color-text-primary)'
-        });
-    }
-
-    _mostrarCargando(mensaje = 'Procesando...') {
-        if (this.loadingOverlay) {
-            this.loadingOverlay.remove();
-        }
-
-        const overlay = document.createElement('div');
-        overlay.className = 'loading-overlay';
-        overlay.innerHTML = `
-            <div class="spinner"></div>
-            <div class="loading-text">${mensaje}</div>
-        `;
-
-        document.body.appendChild(overlay);
-        this.loadingOverlay = overlay;
-    }
-
-    _ocultarCargando() {
-        if (this.loadingOverlay) {
-            this.loadingOverlay.remove();
-            this.loadingOverlay = null;
-        }
+    _escapeHTML(text) {
+        if (!text) return '';
+        return String(text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
     }
 }
 
