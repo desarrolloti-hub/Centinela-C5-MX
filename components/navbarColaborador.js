@@ -1760,6 +1760,10 @@ class NavbarComplete {
                             <i class="fa-solid fa-check-circle"></i>
                             <span>Incidencias Canalizadas</span>
                         </a>
+                         <a href="../estadisticas/estadisticas.html" class="gestionar-dropdown-option" id="estadisticasBtn" style="width: 100%;">
+                        <i class="fa-solid fa-chart-simple"></i>
+                        <span>Estadísticas incidencias</span>
+                    </a>
 
                         <!-- === NUEVAS OPCIONES DE INCIDENCIAS DE RECUPERACIÓN (MERCANCÍA PERDIDA) === -->
             
@@ -1793,22 +1797,12 @@ class NavbarComplete {
                         </a>
                         <a href="../loginMonitoreo/loginMonitoreo.html" class="monitoreo-dropdown-option" id="loginMonitoreoBtn">
                             <i class="fa-solid fa-sign-in-alt"></i>
-                            <span>Login Monitoreo</span>
+                            <span>Tablero de Control</span>
                         </a>
                     </div>
                 </div>
 
-                <!-- SECCIÓN ESTADÍSTICAS -->
-                <div class="nav-section">
-                    <div class="nav-section-title">
-                        <i class="fa-solid fa-chart-line"></i>
-                        <span>Estadísticas</span>
-                    </div>
-                    <a href="../estadisticas/estadisticas.html" class="gestionar-dropdown-option" id="estadisticasBtn" style="width: 100%;">
-                        <i class="fa-solid fa-chart-simple"></i>
-                        <span>Estadísticas</span>
-                    </a>
-                </div>
+              
 
                 <!-- SECCIÓN BITÁCORA -->
                 <div class="nav-section">

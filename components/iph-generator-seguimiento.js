@@ -64,7 +64,7 @@ class IPHGeneratorSeguimiento extends PDFBaseGenerator {
     }
 
     async initStorage() {
-        console.log('IPHSeguimiento listo');
+ 
     }
 
     configurar(config) {
@@ -545,11 +545,12 @@ class IPHGeneratorSeguimiento extends PDFBaseGenerator {
     /**
      * DIBUJA SEGUIMIENTO CON ALTURA DINÁMICA
      */
-    async dibujarSeguimiento(pdf, seguimiento, x, y, ancho, numero) {
-        const fecha = seguimiento.fecha ? this.formatearFechaVisualizacion(seguimiento.fecha) : 'Fecha no disponible';
-        const usuario = seguimiento.usuarioNombre || 'Usuario';
-        const descripcion = seguimiento.descripcion || 'Sin descripción';
-        const evidencias = seguimiento.evidencias || [];
+async dibujarSeguimiento(pdf, seguimiento, x, y, ancho, numero) {
+    const fecha = seguimiento.fecha ? this.formatearFechaVisualizacion(seguimiento.fecha) : 'Fecha no disponible';
+    // 🔥 CAMBIO: mostrar código si existe, sino el nombre
+    const usuario = seguimiento.usuarioCodigo || seguimiento.usuarioNombre || 'Usuario';
+    const descripcion = seguimiento.descripcion || 'Sin descripción';
+    const evidencias = seguimiento.evidencias || [];
         
         let alturaTotal = CONFIG.ALTURA_SEGUIMIENTO_BASE;
         
@@ -852,10 +853,7 @@ class IPHGeneratorSeguimiento extends PDFBaseGenerator {
             } = opciones;
             
             if (diagnosticar) {
-                console.log('📋 GENERANDO INFORME DE SEGUIMIENTO');
-                console.log('  Folio:', incidencia.id);
-                console.log('  Imágenes originales:', incidencia.imagenes?.length || 0);
-                console.log('  Seguimientos:', incidencia.getSeguimientosArray?.()?.length || 0);
+
             }
             
             if (mostrarAlerta) {
@@ -1149,26 +1147,27 @@ class IPHGeneratorSeguimiento extends PDFBaseGenerator {
         // PÁGINAS PARA CADA SEGUIMIENTO
         const seguimientos = incidencia.getSeguimientosArray ? incidencia.getSeguimientosArray() : [];
         
-        for (let i = 0; i < seguimientos.length; i++) {
-            const seguimiento = seguimientos[i];
-            
-            pdf.addPage();
-            this.paginaActualReal++;
-            this.dibujarEncabezadoBase(pdf, `SEGUIMIENTO ${i + 1} de ${seguimientos.length}`, `${incidencia.id}`);
-            
-            let yPosSeg = this.alturaEncabezado + 8;
-            
-            const fecha = seguimiento.fecha ? this.formatearFechaVisualizacion(seguimiento.fecha) : 'Fecha no disponible';
-            const usuario = seguimiento.usuarioNombre || 'Usuario';
-            
-            pdf.saveGraphicsState();
-            pdf.setFillColor(245, 248, 250);
-            pdf.roundedRect(margen + 4, yPosSeg, anchoContenido - 8, 22, 4, 4, 'F');
-            
-            pdf.setFont('helvetica', 'bold');
-            pdf.setFontSize(this.fonts.small);
-            pdf.setTextColor(0, 0, 0);
-            pdf.text(`SEGUIMIENTO POR: ${usuario}`, margen + 10, yPosSeg + 6);
+for (let i = 0; i < seguimientos.length; i++) {
+    const seguimiento = seguimientos[i];
+    
+    pdf.addPage();
+    this.paginaActualReal++;
+    this.dibujarEncabezadoBase(pdf, `SEGUIMIENTO ${i + 1} de ${seguimientos.length}`, `${incidencia.id}`);
+    
+    let yPosSeg = this.alturaEncabezado + 8;
+    
+    const fecha = seguimiento.fecha ? this.formatearFechaVisualizacion(seguimiento.fecha) : 'Fecha no disponible';
+    // 🔥 CAMBIO: mostrar código si existe, sino el nombre
+    const usuario = seguimiento.usuarioCodigo || seguimiento.usuarioNombre || 'Usuario';
+    
+    pdf.saveGraphicsState();
+    pdf.setFillColor(245, 248, 250);
+    pdf.roundedRect(margen + 4, yPosSeg, anchoContenido - 8, 22, 4, 4, 'F');
+    
+    pdf.setFont('helvetica', 'bold');
+    pdf.setFontSize(this.fonts.small);
+    pdf.setTextColor(0, 0, 0);
+    pdf.text(`SEGUIMIENTO POR: ${usuario}`, margen + 10, yPosSeg + 6);  // ← aquí se usa la variable
             
             pdf.setFont('helvetica', 'normal');
             pdf.setFontSize(this.fonts.mini);
