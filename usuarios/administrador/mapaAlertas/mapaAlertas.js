@@ -99,7 +99,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         sucursalManager = new SucursalManager();
         regionManager = new RegionManager();
         incidenciaManager = new IncidenciaManager();
-        crearModalPDF();
+      
         await cargarRegiones();
         await cargarSucursales();
         await cargarDatosParaPDF();
@@ -466,184 +466,11 @@ function actualizarHeatmap() {
     }
 }
 
-// =============================================
-// CREAR MODAL PARA VISUALIZAR PDF CON ID
-// =============================================
-function crearModalPDF() {
-    const existingModal = document.getElementById('pdfFullscreenModal');
-    if (existingModal) existingModal.remove();
 
-    pdfModal = document.createElement('div');
-    pdfModal.id = 'pdfFullscreenModal';
-    pdfModal.className = 'pdf-fullscreen-modal';
-    pdfModal.style.cssText = `
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(0, 0, 0, 0.95);
-        z-index: 9999;
-        display: none;
-        justify-content: center;
-        align-items: center;
-        flex-direction: column;
-        backdrop-filter: blur(5px);
-    `;
 
-    pdfModal.innerHTML = `
-        <div class="pdf-modal-header" style="
-            width: 100%;
-            background: linear-gradient(135deg, #1a1a2e, #0f0f1a);
-            padding: 15px 20px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-bottom: 1px solid rgba(0, 207, 255, 0.3);
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-        ">
-            <div class="pdf-modal-title" style="display: flex; align-items: center; gap: 12px;">
-                <i class="fas fa-file-pdf" style="color: #c0392b; font-size: 24px;"></i>
-                <span style="color: white; font-family: 'Orbitron', monospace; font-size: 1.1rem; font-weight: bold;" id="pdfModalTitle">Visor de PDF</span>
-            </div>
-            <div class="pdf-modal-actions" style="display: flex; gap: 15px;">
-                <button id="btnDescargarPDF" style="
-                    background: linear-gradient(135deg, #2c3e50, #1a2632);
-                    border: 1px solid #00cfff;
-                    color: white;
-                    padding: 8px 16px;
-                    border-radius: 8px;
-                    cursor: pointer;
-                    font-family: 'Rajdhani', sans-serif;
-                    font-weight: bold;
-                    display: flex;
-                    align-items: center;
-                    gap: 8px;
-                    transition: all 0.3s ease;
-                " onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
-                    <i class="fas fa-download"></i> Descargar
-                </button>
-                <button id="btnCerrarPDF" style="
-                    background: linear-gradient(135deg, #c0392b, #a93226);
-                    border: none;
-                    color: white;
-                    width: 40px;
-                    height: 40px;
-                    border-radius: 50%;
-                    cursor: pointer;
-                    font-size: 20px;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    transition: all 0.3s ease;
-                " onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-        </div>
-        <div class="pdf-modal-content" style="
-            flex: 1;
-            width: 100%;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            overflow: auto;
-            padding: 20px;
-        ">
-            <iframe id="pdfViewer" style="
-                width: 100%;
-                height: 100%;
-                border: none;
-                background: white;
-                border-radius: 12px;
-                box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-            "></iframe>
-        </div>
-    `;
 
-    document.body.appendChild(pdfModal);
 
-    const btnCerrar = document.getElementById('btnCerrarPDF');
-    const btnDescargar = document.getElementById('btnDescargarPDF');
 
-    if (btnCerrar) {
-        btnCerrar.addEventListener('click', cerrarModalPDF);
-    }
-
-    if (btnDescargar) {
-        btnDescargar.addEventListener('click', () => {
-            const iframe = document.getElementById('pdfViewer');
-            const pdfUrl = iframe.src;
-            if (pdfUrl && pdfUrl !== 'about:blank') {
-                const a = document.createElement('a');
-                a.href = pdfUrl;
-                a.download = `INFORME_INCIDENCIA_${window.currentIncidenciaId || Date.now()}.pdf`;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Descarga iniciada',
-                    text: 'El PDF se está descargando',
-                    toast: true,
-                    position: 'top-end',
-                    showConfirmButton: false,
-                    timer: 2000,
-                    background: 'var(--color-bg-secondary)',
-                    color: 'var(--color-text-primary)'
-                });
-            }
-        });
-    }
-
-    document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape' && pdfModal && pdfModal.style.display === 'flex') {
-            cerrarModalPDF();
-        }
-    });
-}
-
-// =============================================
-// ABRIR MODAL PDF CON ID VISIBLE
-// =============================================
-function abrirModalPDF(pdfUrl, incidenciaId = null, titulo = 'Visor de PDF') {
-    if (!pdfModal) {
-        crearModalPDF();
-    }
-
-    const iframe = document.getElementById('pdfViewer');
-    const titleSpan = document.getElementById('pdfModalTitle');
-
-    if (iframe) {
-        iframe.src = pdfUrl;
-    }
-
-    window.currentIncidenciaId = incidenciaId;
-
-    if (titleSpan) {
-        if (incidenciaId) {
-            titleSpan.innerHTML = `<i class="fas fa-file-pdf" style="color: #c0392b;"></i> INFORME INCIDENCIA - ID: ${incidenciaId}`;
-        } else {
-            titleSpan.innerHTML = `<i class="fas fa-file-pdf" style="color: #c0392b;"></i> ${titulo}`;
-        }
-    }
-
-    pdfModal.style.display = 'flex';
-    document.body.style.overflow = 'hidden';
-}
-
-function cerrarModalPDF() {
-    if (pdfModal) {
-        pdfModal.style.display = 'none';
-        const iframe = document.getElementById('pdfViewer');
-        if (iframe) {
-            iframe.src = 'about:blank';
-        }
-        document.body.style.overflow = '';
-        window.currentIncidenciaId = null;
-    }
-}
 
 // =============================================
 // INICIALIZAR MAPA
@@ -1129,16 +956,20 @@ window.verPDFIncidencia = async function (incidenciaId) {
                 text: 'Esta incidencia ya tiene un PDF generado. ¿Qué deseas hacer?',
                 icon: 'question',
                 confirmButtonText: 'Ver PDF existente',
+                cancelButtonText: 'Generar nuevo',
+                showCancelButton: true,
                 background: 'var(--color-bg-secondary)',
                 color: 'var(--color-text-primary)'
             });
 
             if (result.isConfirmed) {
                 await registrarGeneracionPDF(incidenciaId, 'existente', incidencia);
-                abrirModalPDF(incidencia.pdfUrl, incidencia.id, `Incidencia ${incidencia.id}`);
+                // Abrir en nueva pestaña con visor nativo
+                window.open(incidencia.pdfUrl, '_blank');
                 return;
             }
         }
+        
         try {
             pdfBlob = await generadorIPH.generarIPH(incidenciaCompleta, {
                 mostrarAlerta: false,
@@ -1148,7 +979,8 @@ window.verPDFIncidencia = async function (incidenciaId) {
             if (pdfBlob) {
                 const url = URL.createObjectURL(pdfBlob);
                 await registrarGeneracionPDF(incidenciaId, 'nuevo', incidencia);
-                abrirModalPDF(url, incidencia.id, `Incidencia ${incidencia.id}`);
+                // Abrir en nueva pestaña con visor nativo
+                window.open(url, '_blank');
                 window.currentPDFBlob = pdfBlob;
                 window.currentPDFUrl = url;
                 Swal.close();
@@ -1167,7 +999,8 @@ window.verPDFIncidencia = async function (incidenciaId) {
             if (pdfSimpleBlob) {
                 const url = URL.createObjectURL(pdfSimpleBlob);
                 await registrarGeneracionPDF(incidenciaId, 'simple', incidencia);
-                abrirModalPDF(url, incidencia.id, `Incidencia ${incidencia.id} (Básico)`);
+                // Abrir en nueva pestaña con visor nativo
+                window.open(url, '_blank');
                 window.currentPDFBlob = pdfSimpleBlob;
                 window.currentPDFUrl = url;
                 Swal.close();

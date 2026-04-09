@@ -7,8 +7,10 @@
     <title>Inicia Sesión | Centinela C5</title>
     <!-- Estilos -->
     <link rel="stylesheet" href="/components/personalization/personalization.css">
-    
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
+
+    <link
+        href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Rajdhani:wght@500;700&display=swap"
+        rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <!-- Icono en barra de titulo -->
     <link rel="icon" href="/assets/images/logo.png" type="image/png">
@@ -19,10 +21,11 @@
     <!-- SweetAlert2 -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
-
     <!-- SEO Básico -->
-    <meta name="description" content="Centinela es un sistema inteligente de seguridad para almacenamiento, monitoreo y predicción de incidencias. Plataforma confiable para prevención y análisis en tiempo real.">
-    <meta name="keywords" content="centinela, centinela, sistema de seguridad, seguridad inteligente, predicción de incidencias, monitoreo de seguridad, plataforma de seguridad, análisis de riesgos, prevención de incidentes">
+    <meta name="description"
+        content="Centinela es un sistema inteligente de seguridad para almacenamiento, monitoreo y predicción de incidencias. Plataforma confiable para prevención y análisis en tiempo real.">
+    <meta name="keywords"
+        content="centinela, centinela, sistema de seguridad, seguridad inteligente, predicción de incidencias, monitoreo de seguridad, plataforma de seguridad, análisis de riesgos, prevención de incidentes">
     <meta name="author" content="Centinela">
     <link rel="canonical" href="https://centinela-c5.web.app/" />
 
@@ -30,7 +33,8 @@
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://centinela-c5.web.app">
     <meta property="og:title" content="Centinela-C5 | Sistema Inteligente de Seguridad y Predicción">
-    <meta property="og:description" content="Centinela-C5 es una plataforma avanzada de seguridad para almacenamiento, monitoreo y predicción de incidencias en tiempo real.">
+    <meta property="og:description"
+        content="Centinela-C5 es una plataforma avanzada de seguridad para almacenamiento, monitoreo y predicción de incidencias en tiempo real.">
     <meta property="og:image" content="https://centinela-c5.web.app/assets/images/logo.png">
     <meta property="og:image:width" content="500">
     <meta property="og:image:height" content="500">
@@ -45,7 +49,8 @@
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:url" content="https://centinela-c5.web.app">
     <meta name="twitter:title" content="Centinela-C5 | Seguridad Inteligente">
-    <meta name="twitter:description" content="Sistema de seguridad inteligente para monitoreo, almacenamiento y predicción de incidencias.">
+    <meta name="twitter:description"
+        content="Sistema de seguridad inteligente para monitoreo, almacenamiento y predicción de incidencias.">
     <meta name="twitter:image" content="https://centinela-c5.web.app/assets/images/logo.png">
     <meta name="twitter:creator" content="">
 
@@ -88,7 +93,7 @@
          ============================================= -->
     <div class="login-main-container">
         <div class="login-wrapper">
-            
+
             <!-- =============================================
                  PANEL IZQUIERDO: LOGO Y MARCA
                  ============================================= -->
@@ -98,15 +103,15 @@
                     <div id="logo">
                         <img src="/assets/images/logo.png" alt="Logo Centinela" class="centinela-logo">
                     </div>
-                    
+
                     <!-- NOMBRE DE LA MARCA -->
                     <h1 class="brand-name">CENTINELA</h1>
                     <p class="brand-description">Sistema de seguridad y monitoreo empresarial</p>
-                    
+
                     <!-- =============================================
                          BOTÓN DE REGISTRO - IMPORTANTE: TIENE ID PARA JS
                          ============================================= -->
-                    
+
                 </div>
             </div>
 
@@ -120,7 +125,7 @@
                         <i class="fas fa-user"></i>
                     </div>
                 </div>
-                
+
                 <!-- ENCABEZADO DEL FORMULARIO -->
                 <div class="form-header">
                     <h2 class="form-main-title">INICIAR SESIÓN</h2>
@@ -131,7 +136,7 @@
                      FORMULARIO DE LOGIN - CRÍTICO: DEBE TENER ID="loginForm"
                      ============================================= -->
                 <form class="login-form-container" id="loginForm">
-                    
+
                     <!-- =============================================
                          CAMPO 1: CORREO ELECTRÓNICO (NO USERNAME)
                          IMPORTANTE: id="email" type="email" required
@@ -142,7 +147,7 @@
                         </label>
                         <div class="input-wrapper">
                             <input class="form-input-field" type="email" id="email" name="email"
-                                placeholder="ejemplo@correo.com" required>
+                                placeholder="ejemplo@correo.com" required autocomplete="email">
                         </div>
                     </div>
 
@@ -156,7 +161,7 @@
                         </label>
                         <div class="input-wrapper password-field">
                             <input class="form-input-field" type="password" id="password" name="password"
-                                placeholder="********" required>
+                                placeholder="********" required autocomplete="current-password">
                             <!-- BOTÓN PARA MOSTRAR/OCULTAR CONTRASEÑA -->
                             <button type="button" class="password-toggle-btn" id="passwordToggle">
                                 <i class="fas fa-eye"></i>
@@ -199,17 +204,15 @@
     <!-- Cargador de temas -->
     <script type="module" src="/components/cargadorTemas.js"></script>
 
-
-  
     <!-- Script de partículas animadas -->
     <script type="module" src="/components/particulas.js"></script>
-    
+
     <!-- =============================================
          SCRIPT PRINCIPAL DEL LOGIN - MÓDULO ES6
          IMPORTANTE: type="module" para poder usar import/export
          ============================================= -->
     <script type="module" src="/inicio-sesion.js"></script>
-    
+
 </body>
 
 </html>
