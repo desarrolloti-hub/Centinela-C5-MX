@@ -609,7 +609,7 @@ function renderizarSubcategorias() {
                             <input type="checkbox" 
                                    ${subcat.heredaColor ? 'checked' : ''}
                                    onchange="window.cambiarHerenciaColor('${subcat.id}', this.checked)">
-                            <span>Heredar color de categoría</span>
+                            <span>color de categoría</span>
                         </label>
                     </div>
                     

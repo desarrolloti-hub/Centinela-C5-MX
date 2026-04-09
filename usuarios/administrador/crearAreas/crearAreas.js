@@ -1,6 +1,6 @@
 // crearAreas.js - VERSIÓN QUE CARGA TODOS LOS USUARIOS (ADMINISTRADORES + COLABORADORES)
 
-console.clear();
+
 window.crearAreaDebug = {
     estado: 'iniciando',
     controller: null
@@ -666,7 +666,7 @@ class CrearAreaController {
             await Swal.fire({
                 icon: 'success',
                 title: '¡Área creada!',
-                text: `Área guardada en: areas_${this.userManager.currentUser.organizacionCamelCase}`,
+
                 timer: 2000,
                 showConfirmButton: false
             });

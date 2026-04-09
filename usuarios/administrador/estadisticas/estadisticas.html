@@ -153,204 +153,230 @@
             </div>
         </div>
 
-        <!-- Tarjetas de métricas principales -->
-        <div class="metrics-grid">
-            <!-- Críticas -->
-            <div class="metric-card criticas">
-                <div class="metric-title">
-                    <i class="fas fa-exclamation-triangle"></i>
-                    Incidencias Críticas
-                </div>
-                <div class="metric-value" id="metricCriticas">0</div>
-                <div class="metric-subtitle" id="metricCriticasPorcentaje">0% del total</div>
-                <i class="fas fa-exclamation-octagon metric-icon"></i>
-            </div>
-
-            <!-- Altas -->
-            <div class="metric-card altas">
-                <div class="metric-title">
-                    <i class="fas fa-exclamation-circle"></i>
-                    Incidencias Altas
-                </div>
-                <div class="metric-value" id="metricAltas">0</div>
-                <div class="metric-subtitle" id="metricAltasPorcentaje">0% del total</div>
-                <i class="fas fa-exclamation-triangle metric-icon"></i>
-            </div>
-
-            <!-- Pendientes -->
-            <div class="metric-card pendientes">
-                <div class="metric-title">
-                    <i class="fas fa-clock"></i>
-                    Pendientes
-                </div>
-                <div class="metric-value" id="metricPendientes">0</div>
-                <div class="metric-subtitle" id="metricPendientesPorcentaje">0% pendientes</div>
-                <i class="fas fa-hourglass-half metric-icon"></i>
-            </div>
-
-            <!-- Total -->
-            <div class="metric-card total">
-                <div class="metric-title">
-                    <i class="fas fa-chart-bar"></i>
-                    Total Incidencias
-                </div>
-                <div class="metric-value" id="metricTotal">0</div>
-                <div class="metric-subtitle" id="metricFinalizadasPorcentaje">0% resueltas</div>
-                <i class="fas fa-pie-chart metric-icon"></i>
-            </div>
+        <!-- Mensaje de bienvenida (visible inicialmente) -->
+        <div id="welcomeMessage" class="welcome-message">
+            <i class="fas fa-chart-line"></i>
+            <h3>¡Bienvenido a Estadísticas!</h3>
+            <p>Selecciona los filtros que deseas aplicar y presiona <strong>"Aplicar"</strong> para visualizar los
+                resultados.</p>
         </div>
 
-        <!-- SECCIÓN DE GRÁFICAS DE COLABORADORES (3 PRIMERAS) -->
-        <div class="charts-grid-3col">
-            <!-- Gráfica 1: Colaboradores que más actualizan -->
-            <div class="card">
-                <div class="card-header">
-                    <h5><i class="fas fa-edit"></i> Colaboradores que más actualizan</h5>
+        <!-- SECCIÓN DE RESULTADOS (oculta inicialmente) -->
+        <div id="resultadosSection" class="resultados-section">
+            <!-- Tarjetas de métricas principales -->
+            <div class="metrics-grid">
+                <!-- Críticas -->
+                <div class="metric-card criticas">
+                    <div class="metric-title">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        Incidencias Críticas
+                    </div>
+                    <div class="metric-value" id="metricCriticas">0</div>
+                    <div class="metric-subtitle" id="metricCriticasPorcentaje">0% del total</div>
+                    <i class="fas fa-exclamation-octagon metric-icon"></i>
                 </div>
-                <div class="card-body">
-                    <canvas id="graficoActualizadores" style="width: 100%; height: 250px;"></canvas>
+
+                <!-- Altas -->
+                <div class="metric-card altas">
+                    <div class="metric-title">
+                        <i class="fas fa-exclamation-circle"></i>
+                        Incidencias Altas
+                    </div>
+                    <div class="metric-value" id="metricAltas">0</div>
+                    <div class="metric-subtitle" id="metricAltasPorcentaje">0% del total</div>
+                    <i class="fas fa-exclamation-triangle metric-icon"></i>
+                </div>
+
+                <!-- Pendientes -->
+                <div class="metric-card pendientes">
+                    <div class="metric-title">
+                        <i class="fas fa-clock"></i>
+                        Pendientes
+                    </div>
+                    <div class="metric-value" id="metricPendientes">0</div>
+                    <div class="metric-subtitle" id="metricPendientesPorcentaje">0% pendientes</div>
+                    <i class="fas fa-hourglass-half metric-icon"></i>
+                </div>
+
+                <!-- Total -->
+                <div class="metric-card total">
+                    <div class="metric-title">
+                        <i class="fas fa-chart-bar"></i>
+                        Total Incidencias
+                    </div>
+                    <div class="metric-value" id="metricTotal">0</div>
+                    <div class="metric-subtitle" id="metricFinalizadasPorcentaje">0% resueltas</div>
+                    <i class="fas fa-pie-chart metric-icon"></i>
                 </div>
             </div>
 
-            <!-- Gráfica 2: Colaboradores con más reportes -->
-            <div class="card">
-                <div class="card-header">
-                    <h5><i class="fas fa-flag"></i> Colaboradores con más reportes</h5>
+            <!-- SECCIÓN DE GRÁFICAS DE COLABORADORES (3 PRIMERAS) -->
+            <div class="charts-grid-3col">
+                <!-- Gráfica 1: Colaboradores que más actualizan -->
+                <div class="card">
+                    <div class="card-header">
+                        <h5><i class="fas fa-edit"></i> Colaboradores que más actualizan</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="chart-container">
+                            <canvas id="graficoActualizadores" style="width: 100%; height: 250px;"></canvas>
+                        </div>
+                    </div>
                 </div>
-                <div class="card-body">
-                    <canvas id="graficoReportadores" style="width: 100%; height: 250px;"></canvas>
-                </div>
-            </div>
 
-            <!-- Gráfica 3: Colaboradores con más seguimientos -->
-            <div class="card">
-                <div class="card-header">
-                    <h5><i class="fas fa-history"></i> Colaboradores con más seguimientos</h5>
+                <!-- Gráfica 2: Colaboradores con más reportes -->
+                <div class="card">
+                    <div class="card-header">
+                        <h5><i class="fas fa-flag"></i> Colaboradores con más reportes</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="chart-container">
+                            <canvas id="graficoReportadores" style="width: 100%; height: 250px;"></canvas>
+                        </div>
+                    </div>
                 </div>
-                <div class="card-body">
-                    <canvas id="graficoSeguimientos" style="width: 100%; height: 250px;"></canvas>
-                </div>
-            </div>
-        </div>
 
-        <!-- SECCIÓN DE GRÁFICAS DE ESTADO Y RIESGO (2 GRÁFICAS) -->
-        <div class="charts-grid-2col">
-            <!-- Gráfica 4: Estado de incidencias -->
-            <div class="card">
-                <div class="card-header">
-                    <h5><i class="fas fa-check-circle"></i> Estado de Incidencias</h5>
-                </div>
-                <div class="card-body">
-                    <canvas id="graficoEstado" style="width: 100%; height: 250px;"></canvas>
-                </div>
-            </div>
-
-            <!-- Gráfica 5: Niveles de riesgo -->
-            <div class="card">
-                <div class="card-header">
-                    <h5><i class="fas fa-exclamation-triangle"></i> Niveles de Riesgo</h5>
-                </div>
-                <div class="card-body">
-                    <canvas id="graficoRiesgo" style="width: 100%; height: 250px;"></canvas>
-                </div>
-            </div>
-        </div>
-
-        <!-- SECCIÓN DE GRÁFICAS DE CATEGORÍAS Y SUCURSALES (2 GRÁFICAS) -->
-        <div class="charts-grid-2col">
-            <!-- Gráfica 6: Incidencias por categoría -->
-            <div class="card">
-                <div class="card-header">
-                    <h5><i class="fas fa-tags"></i> Incidencias por Categoría</h5>
-                </div>
-                <div class="card-body">
-                    <canvas id="graficoCategorias" style="width: 100%; height: 250px;"></canvas>
-                </div>
-            </div>
-
-            <!-- Gráfica 7: Incidencias por sucursal -->
-            <div class="card">
-                <div class="card-header">
-                    <h5><i class="fas fa-store"></i> Incidencias por Sucursal</h5>
-                </div>
-                <div class="card-body">
-                    <canvas id="graficoSucursales" style="width: 100%; height: 250px;"></canvas>
-                </div>
-            </div>
-        </div>
-
-        <!-- SECCIÓN DE GRÁFICA 8: Tiempo de resolución -->
-        <div class="charts-grid-1col">
-            <!-- Gráfica 8: Tiempo promedio de resolución -->
-            <div class="card">
-                <div class="card-header">
-                    <h5><i class="fas fa-clock"></i> Tiempo Promedio de Resolución por Colaborador</h5>
-                </div>
-                <div class="card-body">
-                    <canvas id="graficoTiempo" style="width: 100%; height: 250px;"></canvas>
-                </div>
-            </div>
-        </div>
-
-        <!-- TABLAS DE DATOS -->
-        <div class="tables-grid-2col">
-            <!-- Tabla de colaboradores -->
-            <div class="card">
-                <div class="card-header">
-                    <h5><i class="fas fa-users"></i> Desempeño de Colaboradores</h5>
-                </div>
-                <div class="card-body">
-                    <div class="table-responsive">
-                        <table class="table">
-                            <thead>
-                                <tr>
-                                    <th>Colaborador</th>
-                                    <th>Reportados</th>
-                                    <th>Actualizados</th>
-                                    <th>Seguimientos</th>
-                                    <th>Tiempo Prom.</th>
-                                    <th>Eficiencia</th>
-                                </tr>
-                            </thead>
-                            <tbody id="tablaColaboradoresBody">
-                                <tr>
-                                    <td colspan="6" style="text-align:center;">Cargando...</td>
-                                </tr>
-                            </tbody>
-                        </table>
+                <!-- Gráfica 3: Colaboradores con más seguimientos -->
+                <div class="card">
+                    <div class="card-header">
+                        <h5><i class="fas fa-history"></i> Colaboradores con más seguimientos</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="chart-container">
+                            <canvas id="graficoSeguimientos" style="width: 100%; height: 250px;"></canvas>
+                        </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Tabla de categorías -->
-            <div class="card">
-                <div class="card-header">
-                    <h5><i class="fas fa-chart-simple"></i> Incidencias por Categoría</h5>
+            <!-- SECCIÓN DE GRÁFICAS DE ESTADO Y RIESGO (2 GRÁFICAS) -->
+            <div class="charts-grid-2col">
+                <!-- Gráfica 4: Estado de incidencias -->
+                <div class="card">
+                    <div class="card-header">
+                        <h5><i class="fas fa-check-circle"></i> Estado de Incidencias</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="chart-container">
+                            <canvas id="graficoEstado" style="width: 100%; height: 250px;"></canvas>
+                        </div>
+                    </div>
                 </div>
-                <div class="card-body">
-                    <div class="table-responsive">
-                        <table class="table">
-                            <thead>
-                                <tr>
-                                    <th>Categoría</th>
-                                    <th>Cantidad</th>
-                                </tr>
-                            </thead>
-                            <tbody id="tablaCategoriasBody">
-                                <tr>
-                                    <td colspan="2" style="text-align:center;">Cargando...</td>
-                                </tr>
-                            </tbody>
-                        </table>
+
+                <!-- Gráfica 5: Niveles de riesgo -->
+                <div class="card">
+                    <div class="card-header">
+                        <h5><i class="fas fa-exclamation-triangle"></i> Niveles de Riesgo</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="chart-container">
+                            <canvas id="graficoRiesgo" style="width: 100%; height: 250px;"></canvas>
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
 
-        <!-- Información de última actualización -->
-        <div class="footer-datetime">
-            <i class="fas fa-sync-alt"></i>
-            Última actualización: <span id="fechaActualizacion">-</span>
+            <!-- SECCIÓN DE GRÁFICAS DE CATEGORÍAS Y SUCURSALES (2 GRÁFICAS) -->
+            <div class="charts-grid-2col">
+                <!-- Gráfica 6: Incidencias por categoría -->
+                <div class="card">
+                    <div class="card-header">
+                        <h5><i class="fas fa-tags"></i> Incidencias por Categoría</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="chart-container">
+                            <canvas id="graficoCategorias" style="width: 100%; height: 250px;"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Gráfica 7: Incidencias por sucursal -->
+                <div class="card">
+                    <div class="card-header">
+                        <h5><i class="fas fa-store"></i> Incidencias por Sucursal</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="chart-container">
+                            <canvas id="graficoSucursales" style="width: 100%; height: 250px;"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SECCIÓN DE GRÁFICA 8: Tiempo de resolución -->
+            <div class="charts-grid-1col">
+                <div class="card">
+                    <div class="card-header">
+                        <h5><i class="fas fa-clock"></i> Tiempo Promedio de Resolución por Colaborador</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="chart-container">
+                            <canvas id="graficoTiempo" style="width: 100%; height: 250px;"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TABLAS DE DATOS -->
+            <div class="tables-grid-2col">
+                <!-- Tabla de colaboradores -->
+                <div class="card">
+                    <div class="card-header">
+                        <h5><i class="fas fa-users"></i> Desempeño de Colaboradores</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Colaborador</th>
+                                        <th>Reportados</th>
+                                        <th>Actualizados</th>
+                                        <th>Seguimientos</th>
+                                        <th>Tiempo Prom.</th>
+                                        <th>Eficiencia</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tablaColaboradoresBody">
+                                    <tr>
+                                        <td colspan="6" style="text-align:center;">--</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tabla de categorías -->
+                <div class="card">
+                    <div class="card-header">
+                        <h5><i class="fas fa-chart-simple"></i> Incidencias por Categoría</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Categoría</th>
+                                        <th>Cantidad</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tablaCategoriasBody">
+                                    <tr>
+                                        <td colspan="2" style="text-align:center;">--</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Información de última actualización -->
+            <div class="footer-datetime">
+                <i class="fas fa-sync-alt"></i>
+                Última actualización: <span id="fechaActualizacion">-</span>
+            </div>
         </div>
     </div>
 
@@ -362,8 +388,7 @@
     <script src="/components/footerAdministrador.js"></script>
     <script type="module" src="estadisticas.js"></script>
     <script type="module" src="/components/autenticador.js"></script>
-    <script src="/components/protector-admin.js"> </script>
-</body>
+    <script src="/components/protector-admin.js"></script>
 </body>
 
 </html>

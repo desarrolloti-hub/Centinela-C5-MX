@@ -715,7 +715,7 @@ window.verDetallesSubcategoria = async function (categoriaId, subcategoriaId, ev
                     <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
                         <span style="display:inline-block; width:30px; height:30px; background:${colorSub}; border-radius:4px; border:2px solid rgba(255,255,255,0.1);"></span>
                         <span style="color: var(--color-text-secondary);">${colorSub}</span>
-                        ${hereda ? '<span style="background:rgba(16,185,129,0.1); color:#10b981; padding:2px 8px; border-radius:12px; font-size:0.7rem;">HEREDA</span>' : ''}
+                        ${hereda ? '<span style="background:rgba(16,185,129,0.1); color:#10b981; padding:2px 8px; border-radius:12px; font-size:0.7rem;">CONSERVA</span>' : ''}
                     </div>
                 </div>
 
@@ -1020,7 +1020,7 @@ async function cargarSubcategorias(categoriaId) {
                     <div style="display: flex; align-items: center; flex-wrap: nowrap; gap: 8px;">
                         <span style="display:inline-block; width:12px; height:12px; background-color: ${colorSub}; border-radius: 6px; flex-shrink:0;"></span>
                         <span style="max-width:120px; color: white;" title="${escapeHTML(sub.nombre || '')}">${escapeHTML(nombreTruncado)}</span>
-                        ${hereda ? '<span style="background:rgba(16,185,129,0.1); color:#10b981; padding:2px 6px; border-radius:12px; font-size:0.7rem; white-space:nowrap; flex-shrink:0;">HEREDA</span>' : ''}
+                        ${hereda ? '<span style="background:rgba(16,185,129,0.1); color:#10b981; padding:2px 6px; border-radius:12px; font-size:0.7rem; white-space:nowrap; flex-shrink:0;">CONSERVA</span>' : ''}
                         ${!hereda && sub.color ? '<span style="background:rgba(249,115,22,0.1); color:#f97316; padding:2px 6px; border-radius:12px; font-size:0.7rem; white-space:nowrap; flex-shrink:0;">PROPIO</span>' : ''}
                     </div>
                 </td>

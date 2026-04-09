@@ -1,6 +1,6 @@
 // =============================================
-// estadisticas.js - VERSIÓN FINAL CON FILTROS FUNCIONALES Y PDF GENERATOR
-// CON REGISTRO DE BITÁCORA - VERSIÓN CON CONSOLA LIMPIA
+// estadisticas.js - VERSIÓN CORREGIDA
+// CON TIEMPO PROMEDIO DE RESOLUCIÓN FUNCIONAL
 // =============================================
 
 // =============================================
@@ -18,6 +18,19 @@ let authToken = null;
 let historialManager = null;
 let accesoVistaRegistrado = false;
 
+// Almacenar datos originales para los clics
+let datosGraficas = {
+    topActualizadores: [],
+    topReportadores: [],
+    topSeguimientos: [],
+    estadoData: { pendientes: 0, finalizadas: 0 },
+    riesgoData: { critico: 0, alto: 0, medio: 0, bajo: 0 },
+    categoriasData: [],
+    sucursalesData: [],
+    tiemposPromedio: [],
+    incidenciasFiltradas: []
+};
+
 // Filtros activos
 let filtrosActivos = {
     fechaInicio: null,
@@ -34,7 +47,6 @@ let filtrosActivos = {
 document.addEventListener('DOMContentLoaded', async function () {
     try {
         await inicializarHistorial();
-        mostrarLoadingInicial();
         await inicializarEstadisticasManager();
         await obtenerTokenAuth();
         configurarFiltros();
@@ -42,13 +54,28 @@ document.addEventListener('DOMContentLoaded', async function () {
             cargarSucursales(),
             cargarCategorias()
         ]);
-        mostrarMensajeEsperaFiltros();
+        establecerFechasPorDefecto();
         await registrarAccesoVistaEstadisticas();
     } catch (error) {
         console.error('Error al inicializar estadísticas:', error);
         mostrarError('Error al cargar la página: ' + error.message);
     }
 });
+
+function establecerFechasPorDefecto() {
+    const hoy = new Date();
+    const hace30Dias = new Date();
+    hace30Dias.setDate(hoy.getDate() - 30);
+
+    const fechaInicio = document.getElementById('filtroFechaInicio');
+    const fechaFin = document.getElementById('filtroFechaFin');
+
+    if (fechaInicio) fechaInicio.value = hace30Dias.toISOString().split('T')[0];
+    if (fechaFin) fechaFin.value = hoy.toISOString().split('T')[0];
+
+    filtrosActivos.fechaInicio = hace30Dias.toISOString().split('T')[0];
+    filtrosActivos.fechaFin = hoy.toISOString().split('T')[0];
+}
 
 async function inicializarHistorial() {
     try {
@@ -245,35 +272,50 @@ async function obtenerTokenAuth() {
 }
 
 // =============================================
-// MOSTRAR MENSAJE DE ESPERA
+// MOSTRAR/MOVER SECCIÓN DE RESULTADOS
 // =============================================
-function mostrarMensajeEsperaFiltros() {
-    const graficas = [
+function mostrarResultados() {
+    const welcomeMsg = document.getElementById('welcomeMessage');
+    const resultadosSection = document.getElementById('resultadosSection');
+
+    if (welcomeMsg) welcomeMsg.style.display = 'none';
+    if (resultadosSection) {
+        resultadosSection.classList.add('visible');
+    }
+}
+
+function mostrarMensajeSinResultados() {
+    mostrarResultados();
+
+    const graficasIds = [
         'graficoActualizadores', 'graficoReportadores', 'graficoSeguimientos',
         'graficoEstado', 'graficoRiesgo', 'graficoCategorias',
         'graficoSucursales', 'graficoTiempo'
     ];
 
-    graficas.forEach(id => {
+    graficasIds.forEach(id => {
         const canvas = document.getElementById(id);
         if (canvas) {
             const ctx = canvas.getContext('2d');
+            if (charts[id]) {
+                delete charts[id];
+            }
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             ctx.font = '16px Arial';
             ctx.fillStyle = 'rgba(255,255,255,0.5)';
             ctx.textAlign = 'center';
-            ctx.fillText(' Aplica filtros para ver resultados', canvas.width / 2, canvas.height / 2);
+            ctx.fillText('📭 Sin resultados con los filtros actuales', canvas.width / 2, canvas.height / 2);
         }
     });
 
     const tablaColab = document.getElementById('tablaColaboradoresBody');
     if (tablaColab) {
-        tablaColab.innerHTML = '<td colspan="6" style="text-align:center; padding:40px;"><i class="fas fa-filter" style="font-size: 32px; opacity: 0.3; margin-bottom: 10px;"></i><br>Selecciona filtros y presiona APLICAR</div>';
+        tablaColab.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:40px;"><i class="fas fa-search" style="font-size: 32px; opacity: 0.3; margin-bottom: 10px;"></i><br>No hay incidencias que coincidan con los filtros</td</tr>';
     }
 
     const tablaCat = document.getElementById('tablaCategoriasBody');
     if (tablaCat) {
-        tablaCat.innerHTML = '<td colspan="2" style="text-align:center; padding:40px;"><i class="fas fa-filter" style="font-size: 32px; opacity: 0.3; margin-bottom: 10px;"></i><br>Selecciona filtros y presiona APLICAR</div>';
+        tablaCat.innerHTML = '<tr><td colspan="2" style="text-align:center; padding:40px;"><i class="fas fa-search" style="font-size: 32px; opacity: 0.3; margin-bottom: 10px;"></i><br>No hay incidencias que coincidan con los filtros</td</tr>';
     }
 
     setElementText('metricCriticas', '0');
@@ -384,19 +426,6 @@ async function cargarCategorias() {
 // CONFIGURAR FILTROS
 // =============================================
 function configurarFiltros() {
-    const hoy = new Date();
-    const hace30Dias = new Date();
-    hace30Dias.setDate(hoy.getDate() - 30);
-
-    const fechaInicio = document.getElementById('filtroFechaInicio');
-    const fechaFin = document.getElementById('filtroFechaFin');
-
-    if (fechaInicio) fechaInicio.value = hace30Dias.toISOString().split('T')[0];
-    if (fechaFin) fechaFin.value = hoy.toISOString().split('T')[0];
-
-    filtrosActivos.fechaInicio = hace30Dias.toISOString().split('T')[0];
-    filtrosActivos.fechaFin = hoy.toISOString().split('T')[0];
-
     document.getElementById('btnAplicarFiltros')?.addEventListener('click', aplicarFiltros);
     document.getElementById('btnLimpiarFiltros')?.addEventListener('click', limpiarFiltros);
 
@@ -416,8 +445,6 @@ function configurarFiltros() {
 // APLICAR FILTROS (FUNCIÓN PRINCIPAL)
 // =============================================
 async function aplicarFiltros() {
-    mostrarLoadingGraficas();
-
     const nuevosFiltros = {
         fechaInicio: document.getElementById('filtroFechaInicio')?.value || null,
         fechaFin: document.getElementById('filtroFechaFin')?.value || null,
@@ -431,7 +458,7 @@ async function aplicarFiltros() {
 
     await cargarIncidencias();
 
-    if (incidenciasFiltradas) {
+    if (incidenciasFiltradas && incidenciasFiltradas.length > 0) {
         await registrarAplicacionFiltros(filtrosActivos, incidenciasFiltradas.length);
     }
 }
@@ -522,8 +549,6 @@ async function cargarIncidencias() {
     }
 
     try {
-        mostrarLoadingGraficas();
-
         if (incidenciasCache.length === 0) {
             incidenciasCache = await incidenciaManager.getIncidenciasByOrganizacion(organizacionActual.camelCase);
         }
@@ -535,7 +560,23 @@ async function cargarIncidencias() {
             return;
         }
 
+        mostrarResultados();
+
         const datos = procesarDatosGraficas(incidenciasFiltradas);
+
+        // Guardar datos para los clics
+        datosGraficas = {
+            topActualizadores: datos.topActualizadores,
+            topReportadores: datos.topReportadores,
+            topSeguimientos: datos.topSeguimientos,
+            estadoData: datos.estadoData,
+            riesgoData: datos.riesgoData,
+            categoriasData: datos.categoriasData,
+            sucursalesData: datos.sucursalesData,
+            tiemposPromedio: datos.tiemposPromedio,
+            incidenciasFiltradas: incidenciasFiltradas
+        };
+
         actualizarMetricasPrincipales(datos.metricas);
         renderizarTodasLasGraficas(datos);
 
@@ -560,52 +601,13 @@ async function cargarIncidencias() {
             fechaEl.textContent = new Date().toLocaleString('es-MX');
         }
 
+        // Debug: Verificar que los tiempos promedio se cargaron correctamente
+        console.log('Tiempos promedio calculados:', datos.tiemposPromedio);
+
     } catch (error) {
         console.error('Error al cargar incidencias:', error);
         mostrarError('Error al cargar estadísticas: ' + error.message);
     }
-}
-
-// =============================================
-// MOSTRAR MENSAJE SIN RESULTADOS
-// =============================================
-function mostrarMensajeSinResultados() {
-    const graficas = [
-        'graficoActualizadores', 'graficoReportadores', 'graficoSeguimientos',
-        'graficoEstado', 'graficoRiesgo', 'graficoCategorias',
-        'graficoSucursales', 'graficoTiempo'
-    ];
-
-    graficas.forEach(id => {
-        const canvas = document.getElementById(id);
-        if (canvas) {
-            const ctx = canvas.getContext('2d');
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            ctx.font = '16px Arial';
-            ctx.fillStyle = 'rgba(255,255,255,0.5)';
-            ctx.textAlign = 'center';
-            ctx.fillText('📭 Sin resultados con los filtros actuales', canvas.width / 2, canvas.height / 2);
-        }
-    });
-
-    const tablaColab = document.getElementById('tablaColaboradoresBody');
-    if (tablaColab) {
-        tablaColab.innerHTML = '<td colspan="6" style="text-align:center; padding:40px;"><i class="fas fa-search" style="font-size: 32px; opacity: 0.3; margin-bottom: 10px;"></i><br>No hay incidencias que coincidan con los filtros</div>';
-    }
-
-    const tablaCat = document.getElementById('tablaCategoriasBody');
-    if (tablaCat) {
-        tablaCat.innerHTML = '<td colspan="2" style="text-align:center; padding:40px;"><i class="fas fa-search" style="font-size: 32px; opacity: 0.3; margin-bottom: 10px;"></i><br>No hay incidencias que coincidan con los filtros</div>';
-    }
-
-    setElementText('metricCriticas', '0');
-    setElementText('metricAltas', '0');
-    setElementText('metricPendientes', '0');
-    setElementText('metricTotal', '0');
-    setElementText('metricCriticasPorcentaje', '0% del total');
-    setElementText('metricAltasPorcentaje', '0% del total');
-    setElementText('metricPendientesPorcentaje', '0% pendientes');
-    setElementText('metricFinalizadasPorcentaje', '0% resueltas');
 }
 
 // =============================================
@@ -704,35 +706,57 @@ function procesarDatosGraficas(incidencias) {
         .sort((a, b) => b.cantidad - a.cantidad)
         .slice(0, 5);
 
+    // =============================================
+    // CÁLCULO CORREGIDO DEL TIEMPO PROMEDIO DE RESOLUCIÓN
+    // =============================================
     const tiemposResolucion = new Map();
-    incidencias.filter(i => i.estado === 'finalizada' && i.fechaFinalizacion).forEach(inc => {
+
+    // Filtrar solo incidencias finalizadas que tienen fecha de finalización
+    const incidenciasFinalizadas = incidencias.filter(i =>
+        i.estado === 'finalizada' && i.fechaFinalizacion && i.fechaInicio
+    );
+
+    incidenciasFinalizadas.forEach(inc => {
         if (inc.actualizadoPorNombre) {
             const inicio = inc.fechaInicio instanceof Date ? inc.fechaInicio : new Date(inc.fechaInicio);
             const fin = inc.fechaFinalizacion instanceof Date ? inc.fechaFinalizacion : new Date(inc.fechaFinalizacion);
-            const tiempoHoras = Math.round((fin - inicio) / (1000 * 60 * 60));
 
-            if (!tiemposResolucion.has(inc.actualizadoPorNombre)) {
-                tiemposResolucion.set(inc.actualizadoPorNombre, {
-                    total: 0,
-                    count: 0
-                });
+            // Calcular diferencia en horas
+            const diferenciaMs = fin - inicio;
+            const tiempoHoras = Math.round(diferenciaMs / (1000 * 60 * 60));
+
+            // Solo considerar tiempos positivos y razonables (menos de 720 horas = 30 días)
+            if (tiempoHoras > 0 && tiempoHoras < 720) {
+                if (!tiemposResolucion.has(inc.actualizadoPorNombre)) {
+                    tiemposResolucion.set(inc.actualizadoPorNombre, {
+                        total: 0,
+                        count: 0
+                    });
+                }
+                const data = tiemposResolucion.get(inc.actualizadoPorNombre);
+                data.total += tiempoHoras;
+                data.count++;
             }
-
-            const data = tiemposResolucion.get(inc.actualizadoPorNombre);
-            data.total += tiempoHoras;
-            data.count++;
         }
     });
 
+    // Calcular promedios y filtrar colaboradores con al menos una incidencia resuelta
     const tiemposPromedio = Array.from(tiemposResolucion.entries())
         .map(([nombre, data]) => ({
-            nombre,
+            nombre: nombre,
             promedio: data.count > 0 ? Math.round(data.total / data.count) : 0
         }))
         .filter(t => t.promedio > 0)
-        .sort((a, b) => a.promedio - b.promedio)
-        .slice(0, 5);
+        .sort((a, b) => a.promedio - b.promedio)  // Ordenar de menor a mayor (mejores tiempos primero)
+        .slice(0, 8);  // Mostrar hasta 8 colaboradores
 
+    // Debug: Verificar resultados
+    console.log('Incidencias finalizadas:', incidenciasFinalizadas.length);
+    console.log('Tiempos resolución calculados:', tiemposPromedio);
+
+    // =============================================
+    // DATOS DE COLABORADORES PARA LA TABLA
+    // =============================================
     const colaboradoresMap = new Map();
 
     incidencias.forEach(inc => {
@@ -786,14 +810,19 @@ function procesarDatosGraficas(incidencias) {
                 }
             });
         }
+    });
 
-        if (inc.estado === 'finalizada' && inc.fechaFinalizacion && inc.actualizadoPorNombre) {
+    // Calcular tiempo total por colaborador para incidencias resueltas
+    incidenciasFinalizadas.forEach(inc => {
+        if (inc.actualizadoPorNombre && colaboradoresMap.has(inc.actualizadoPorNombre)) {
             const inicio = inc.fechaInicio instanceof Date ? inc.fechaInicio : new Date(inc.fechaInicio);
             const fin = inc.fechaFinalizacion instanceof Date ? inc.fechaFinalizacion : new Date(inc.fechaFinalizacion);
             const tiempo = Math.round((fin - inicio) / (1000 * 60 * 60));
 
-            const col = colaboradoresMap.get(inc.actualizadoPorNombre);
-            if (col) col.tiempoTotal += tiempo;
+            if (tiempo > 0 && tiempo < 720) {
+                const col = colaboradoresMap.get(inc.actualizadoPorNombre);
+                col.tiempoTotal += tiempo;
+            }
         }
     });
 
@@ -830,11 +859,712 @@ function actualizarMetricasPrincipales(metricas) {
 }
 
 // =============================================
-// RENDERIZAR TODAS LAS GRÁFICAS
+// FUNCIONES PARA SWEETALERT DE CADA GRÁFICA
+// =============================================
+
+function mostrarRegistrosEnSweet(incidencias, titulo, iconoHtml) {
+    if (!incidencias || incidencias.length === 0) {
+        Swal.fire({
+            icon: 'info',
+            title: 'Sin registros',
+            text: 'No hay incidencias para mostrar',
+            background: '#1a1a1a',
+            color: '#fff',
+            customClass: {
+                popup: 'swal2-popup-custom'
+            }
+        });
+        return;
+    }
+
+    const totalIncidencias = incidencias.length;
+    const pendientes = incidencias.filter(i => i.estado === 'pendiente').length;
+    const finalizadas = incidencias.filter(i => i.estado === 'finalizada').length;
+    const criticas = incidencias.filter(i => i.nivelRiesgo === 'critico').length;
+    const altas = incidencias.filter(i => i.nivelRiesgo === 'alto').length;
+
+    const incidenciasMostrar = incidencias.slice(0, 15);
+    const hayMas = incidencias.length > 15;
+
+    let registrosHtml = `
+        <div class="swal-resumen-stats">
+            <div class="swal-stats-grid">
+                <div class="swal-stat-item" style="border-left-color: #8b5cf6;">
+                    <span class="swal-stat-label">Total incidencias</span>
+                    <span class="swal-stat-value">${totalIncidencias}</span>
+                </div>
+                <div class="swal-stat-item" style="border-left-color: #f59e0b;">
+                    <span class="swal-stat-label">Pendientes</span>
+                    <span class="swal-stat-value" style="color: #f59e0b;">${pendientes}</span>
+                </div>
+                <div class="swal-stat-item" style="border-left-color: #10b981;">
+                    <span class="swal-stat-label">Finalizadas</span>
+                    <span class="swal-stat-value" style="color: #10b981;">${finalizadas}</span>
+                </div>
+                <div class="swal-stat-item" style="border-left-color: #ef4444;">
+                    <span class="swal-stat-label">Críticas + Altas</span>
+                    <span class="swal-stat-value" style="color: #ef4444;">${criticas + altas}</span>
+                </div>
+            </div>
+        </div>
+        <div class="swal-registros-list">
+    `;
+
+    incidenciasMostrar.forEach(inc => {
+        const fecha = inc.fechaInicio instanceof Date ? inc.fechaInicio.toLocaleDateString('es-MX') :
+            (inc.fechaInicio ? new Date(inc.fechaInicio).toLocaleDateString('es-MX') : 'N/A');
+
+        let estadoColor = '#6c757d';
+        let estadoIcon = 'fa-circle';
+        if (inc.estado === 'finalizada') {
+            estadoColor = '#10b981';
+            estadoIcon = 'fa-check-circle';
+        } else if (inc.estado === 'pendiente') {
+            estadoColor = '#f59e0b';
+            estadoIcon = 'fa-clock';
+        }
+
+        let riesgoColor = '#6c757d';
+        let riesgoIcon = 'fa-chart-line';
+        if (inc.nivelRiesgo === 'critico') {
+            riesgoColor = '#ef4444';
+            riesgoIcon = 'fa-exclamation-triangle';
+        } else if (inc.nivelRiesgo === 'alto') {
+            riesgoColor = '#f97316';
+            riesgoIcon = 'fa-exclamation-circle';
+        } else if (inc.nivelRiesgo === 'medio') {
+            riesgoColor = '#eab308';
+            riesgoIcon = 'fa-chart-simple';
+        } else if (inc.nivelRiesgo === 'bajo') {
+            riesgoColor = '#10b981';
+            riesgoIcon = 'fa-check';
+        }
+
+        const detalles = inc.detalles ? (inc.detalles.length > 80 ? inc.detalles.substring(0, 80) + '...' : inc.detalles) : 'Sin detalles';
+
+        registrosHtml += `
+            <div class="swal-registro-card" onclick="window.verDetalleIncidenciaDesdeSweet('${inc.id}')">
+                <div class="swal-card-header">
+                    <span class="swal-id"><i class="fas fa-hashtag"></i> ${escapeHTML(inc.id.substring(0, 12))}...</span>
+                    <span class="swal-fecha"><i class="fas fa-calendar-alt"></i> ${fecha}</span>
+                </div>
+                <div class="swal-card-body">
+                    <div class="swal-info-principal">
+                        <div class="swal-sucursal">
+                            <i class="fas fa-store"></i> ${escapeHTML(obtenerNombreSucursal(inc.sucursalId) || 'Sin asignar')}
+                        </div>
+                        <div class="swal-tipo-evento">
+                            <i class="fas ${riesgoIcon}" style="color: ${riesgoColor};"></i> ${inc.nivelRiesgo ? inc.nivelRiesgo.charAt(0).toUpperCase() + inc.nivelRiesgo.slice(1) : 'N/A'}
+                            <span class="swal-estado-badge" style="margin-left: 8px; color: ${estadoColor};">
+                                <i class="fas ${estadoIcon}"></i> ${inc.estado ? inc.estado.charAt(0).toUpperCase() + inc.estado.slice(1) : 'N/A'}
+                            </span>
+                        </div>
+                    </div>
+                    <div class="swal-montos">
+                        <span class="swal-monto-perdido"><i class="fas fa-user"></i> ${escapeHTML(inc.creadoPorNombre || 'N/A')}</span>
+                        ${inc.actualizadoPorNombre ? `<span class="swal-monto-recuperado"><i class="fas fa-edit"></i> ${escapeHTML(inc.actualizadoPorNombre)}</span>` : ''}
+                    </div>
+                </div>
+                <div class="swal-card-footer">
+                    <div class="swal-narracion">
+                        <i class="fas fa-file-alt"></i>
+                        <span>${escapeHTML(detalles)}</span>
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+
+    if (hayMas) {
+        registrosHtml += `
+            <div class="swal-mas-registros">
+                <i class="fas fa-ellipsis-h"></i> y ${incidencias.length - 15} incidencias más. Haz clic en un registro para ver detalles completos.
+            </div>
+        `;
+    }
+
+    registrosHtml += `</div>`;
+
+    Swal.fire({
+        title: `${iconoHtml} ${titulo}`,
+        html: registrosHtml,
+        width: '880px',
+        background: 'transparent',
+        showConfirmButton: true,
+        confirmButtonText: '<i class="fas fa-check"></i> Cerrar',
+        confirmButtonColor: '#28a745',
+        customClass: {
+            popup: 'swal2-popup-custom',
+            title: 'swal2-title-custom',
+            confirmButton: 'swal2-confirm'
+        },
+        backdrop: `
+            rgba(0,0,0,0.8)
+            left top
+            no-repeat
+        `
+    });
+}
+
+window.verDetalleIncidenciaDesdeSweet = function (incidenciaId) {
+    Swal.close();
+
+    const incidencia = datosGraficas.incidenciasFiltradas?.find(i => i.id === incidenciaId);
+
+    if (!incidencia) {
+        Swal.fire({
+            icon: 'error',
+            title: 'Incidencia no encontrada',
+            text: 'No se pudo encontrar la incidencia seleccionada',
+            background: '#1a1a1a',
+            color: '#fff',
+            customClass: {
+                popup: 'swal2-popup-custom'
+            }
+        });
+        return;
+    }
+
+    const fecha = incidencia.fechaInicio instanceof Date ? incidencia.fechaInicio.toLocaleDateString('es-MX') :
+        (incidencia.fechaInicio ? new Date(incidencia.fechaInicio).toLocaleDateString('es-MX') : 'N/A');
+
+    let estadoColor = '#6c757d';
+    let estadoIcon = 'fa-circle';
+    if (incidencia.estado === 'finalizada') {
+        estadoColor = '#10b981';
+        estadoIcon = 'fa-check-circle';
+    } else if (incidencia.estado === 'pendiente') {
+        estadoColor = '#f59e0b';
+        estadoIcon = 'fa-clock';
+    }
+
+    let riesgoColor = '#6c757d';
+    let riesgoIcon = 'fa-chart-line';
+    let riesgoTexto = incidencia.nivelRiesgo ? incidencia.nivelRiesgo.charAt(0).toUpperCase() + incidencia.nivelRiesgo.slice(1) : 'N/A';
+    if (incidencia.nivelRiesgo === 'critico') {
+        riesgoColor = '#ef4444';
+        riesgoIcon = 'fa-exclamation-triangle';
+    } else if (incidencia.nivelRiesgo === 'alto') {
+        riesgoColor = '#f97316';
+        riesgoIcon = 'fa-exclamation-circle';
+    } else if (incidencia.nivelRiesgo === 'medio') {
+        riesgoColor = '#eab308';
+        riesgoIcon = 'fa-chart-simple';
+    } else if (incidencia.nivelRiesgo === 'bajo') {
+        riesgoColor = '#10b981';
+        riesgoIcon = 'fa-check';
+    }
+
+    const detallesHtml = `
+        <div style="display: flex; flex-direction: column; gap: 16px;">
+            <div class="swal-resumen-stats" style="margin-bottom: 0;">
+                <div class="swal-stats-grid">
+                    <div class="swal-stat-item" style="border-left-color: #8b5cf6;">
+                        <span class="swal-stat-label">ID Incidencia</span>
+                        <span class="swal-stat-value" style="font-size: 0.8rem; word-break: break-all;">${escapeHTML(incidencia.id)}</span>
+                    </div>
+                    <div class="swal-stat-item" style="border-left-color: #3b82f6;">
+                        <span class="swal-stat-label">Fecha</span>
+                        <span class="swal-stat-value" style="font-size: 0.9rem;">${fecha}</span>
+                    </div>
+                    <div class="swal-stat-item" style="border-left-color: ${estadoColor};">
+                        <span class="swal-stat-label">Estado</span>
+                        <span class="swal-stat-value" style="color: ${estadoColor};"><i class="fas ${estadoIcon}"></i> ${incidencia.estado ? incidencia.estado.charAt(0).toUpperCase() + incidencia.estado.slice(1) : 'N/A'}</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div style="background: rgba(0,0,0,0.4); border-radius: 16px; padding: 16px; border: 1px solid rgba(255,255,255,0.08);">
+                <div style="display: flex; flex-wrap: wrap; gap: 20px; justify-content: space-between;">
+                    <div>
+                        <div style="font-size: 0.7rem; text-transform: uppercase; color: #9ca3af; letter-spacing: 1px;">Sucursal</div>
+                        <div style="font-size: 1rem; font-weight: 600; margin-top: 4px;"><i class="fas fa-store" style="color: var(--color-accent-primary);"></i> ${escapeHTML(obtenerNombreSucursal(incidencia.sucursalId) || 'N/A')}</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 0.7rem; text-transform: uppercase; color: #9ca3af; letter-spacing: 1px;">Categoría</div>
+                        <div style="font-size: 1rem; font-weight: 600; margin-top: 4px;"><i class="fas fa-tag"></i> ${escapeHTML(obtenerNombreCategoria(incidencia.categoriaId) || 'N/A')}</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 0.7rem; text-transform: uppercase; color: #9ca3af; letter-spacing: 1px;">Nivel de riesgo</div>
+                        <div style="font-size: 1rem; font-weight: 600; margin-top: 4px; color: ${riesgoColor};"><i class="fas ${riesgoIcon}"></i> ${riesgoTexto}</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div style="display: flex; flex-wrap: wrap; gap: 16px;">
+                <div style="flex: 1; background: rgba(59, 130, 246, 0.1); border-radius: 16px; padding: 16px; border-left: 3px solid #3b82f6;">
+                    <div style="font-size: 0.7rem; text-transform: uppercase; color: #9ca3af;">Creado por</div>
+                    <div style="font-size: 1rem; font-weight: 600; margin-top: 4px;"><i class="fas fa-user-plus"></i> ${escapeHTML(incidencia.creadoPorNombre || 'N/A')}</div>
+                </div>
+                <div style="flex: 1; background: rgba(245, 158, 11, 0.1); border-radius: 16px; padding: 16px; border-left: 3px solid #f59e0b;">
+                    <div style="font-size: 0.7rem; text-transform: uppercase; color: #9ca3af;">Actualizado por</div>
+                    <div style="font-size: 1rem; font-weight: 600; margin-top: 4px;"><i class="fas fa-user-edit"></i> ${escapeHTML(incidencia.actualizadoPorNombre || 'N/A')}</div>
+                </div>
+            </div>
+            
+            ${incidencia.detalles ? `
+            <div style="background: rgba(0,0,0,0.3); border-radius: 16px; padding: 16px;">
+                <div style="font-size: 0.7rem; text-transform: uppercase; color: #9ca3af; margin-bottom: 8px;"><i class="fas fa-file-alt"></i> Detalles</div>
+                <div style="font-size: 0.85rem; line-height: 1.5; color: #d1d5db;">${escapeHTML(incidencia.detalles)}</div>
+            </div>
+            ` : ''}
+        </div>
+    `;
+
+    Swal.fire({
+        title: `<i class="fas fa-info-circle" style="color: var(--color-accent-primary);"></i> Detalles de la incidencia`,
+        html: detallesHtml,
+        width: '700px',
+        background: 'transparent',
+        confirmButtonText: '<i class="fas fa-check"></i> Cerrar',
+        customClass: {
+            popup: 'swal2-popup-custom',
+            title: 'swal2-title-custom',
+            confirmButton: 'swal2-confirm'
+        }
+    });
+};
+
+function mostrarAlertActualizadores() {
+    const data = datosGraficas.topActualizadores;
+    if (!data || data.length === 0) {
+        Swal.fire({
+            icon: 'info',
+            title: 'Sin datos',
+            text: 'No hay información de actualizaciones para mostrar',
+            background: '#1a1a1a',
+            color: '#fff'
+        });
+        return;
+    }
+
+    let html = '<div style="text-align: left;">';
+    html += '<p><strong>📊 Top colaboradores que más actualizan incidencias</strong></p>';
+    html += '<ul style="margin-top: 10px;">';
+    data.forEach((item, index) => {
+        const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : '📌';
+        html += `<li style="margin: 8px 0;">${medal} <strong>${escapeHTML(item.nombre)}</strong>: ${item.cantidad} incidencias actualizadas</li>`;
+    });
+    html += '</ul></div>';
+
+    Swal.fire({
+        title: 'Colaboradores que más actualizan',
+        html: html,
+        icon: 'info',
+        background: '#1a1a1a',
+        color: '#fff',
+        confirmButtonColor: '#3b82f6',
+        confirmButtonText: 'Cerrar'
+    });
+}
+
+function mostrarAlertReportadores() {
+    const data = datosGraficas.topReportadores;
+    if (!data || data.length === 0) {
+        Swal.fire({
+            icon: 'info',
+            title: 'Sin datos',
+            text: 'No hay información de reportes para mostrar',
+            background: '#1a1a1a',
+            color: '#fff'
+        });
+        return;
+    }
+
+    let html = '<div style="text-align: left;">';
+    html += '<p><strong>📝 Top colaboradores que más reportan incidencias</strong></p>';
+    html += '<ul style="margin-top: 10px;">';
+    data.forEach((item, index) => {
+        const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : '📌';
+        html += `<li style="margin: 8px 0;">${medal} <strong>${escapeHTML(item.nombre)}</strong>: ${item.cantidad} incidencias reportadas</li>`;
+    });
+    html += '</ul></div>';
+
+    Swal.fire({
+        title: 'Colaboradores con más reportes',
+        html: html,
+        icon: 'info',
+        background: '#1a1a1a',
+        color: '#fff',
+        confirmButtonColor: '#10b981',
+        confirmButtonText: 'Cerrar'
+    });
+}
+
+function mostrarAlertSeguimientos() {
+    const data = datosGraficas.topSeguimientos;
+    if (!data || data.length === 0) {
+        Swal.fire({
+            icon: 'info',
+            title: 'Sin datos',
+            text: 'No hay información de seguimientos para mostrar',
+            background: '#1a1a1a',
+            color: '#fff'
+        });
+        return;
+    }
+
+    let html = '<div style="text-align: left;">';
+    html += '<p><strong>🔄 Top colaboradores con más seguimientos</strong></p>';
+    html += '<ul style="margin-top: 10px;">';
+    data.forEach((item, index) => {
+        const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : '📌';
+        html += `<li style="margin: 8px 0;">${medal} <strong>${escapeHTML(item.nombre)}</strong>: ${item.cantidad} seguimientos realizados</li>`;
+    });
+    html += '</ul></div>';
+
+    Swal.fire({
+        title: 'Colaboradores con más seguimientos',
+        html: html,
+        icon: 'info',
+        background: '#1a1a1a',
+        color: '#fff',
+        confirmButtonColor: '#f97316',
+        confirmButtonText: 'Cerrar'
+    });
+}
+
+function mostrarAlertEstado() {
+    const data = datosGraficas.estadoData;
+    const total = (data.pendientes || 0) + (data.finalizadas || 0);
+    const pendientesPorc = total > 0 ? Math.round((data.pendientes / total) * 100) : 0;
+    const finalizadasPorc = total > 0 ? Math.round((data.finalizadas / total) * 100) : 0;
+
+    let html = '<div style="text-align: left;">';
+    html += '<p><strong>📈 Distribución de estados de incidencias</strong></p>';
+    html += '<div style="margin-top: 15px;">';
+    html += `<div style="margin-bottom: 10px; cursor: pointer;" onclick="window.mostrarRegistrosPorEstado('pendiente')">
+                <span style="display: inline-block; width: 12px; height: 12px; background: #f97316; border-radius: 50%; margin-right: 8px;"></span> 
+                <strong>Pendientes:</strong> ${data.pendientes} (${pendientesPorc}%) 
+                <span style="font-size: 11px; color: #3b82f6;"><i class="fas fa-mouse-pointer"></i> Haz clic para ver</span>
+            </div>`;
+    html += `<div style="margin-bottom: 10px; cursor: pointer;" onclick="window.mostrarRegistrosPorEstado('finalizada')">
+                <span style="display: inline-block; width: 12px; height: 12px; background: #10b981; border-radius: 50%; margin-right: 8px;"></span> 
+                <strong>Finalizadas:</strong> ${data.finalizadas} (${finalizadasPorc}%)
+                <span style="font-size: 11px; color: #3b82f6;"><i class="fas fa-mouse-pointer"></i> Haz clic para ver</span>
+            </div>`;
+    html += '</div>';
+    html += `<p style="margin-top: 15px; color: #6c757d; font-size: 12px;">Total de incidencias: ${total}</p>`;
+    html += '</div>';
+
+    Swal.fire({
+        title: 'Estado de Incidencias',
+        html: html,
+        icon: 'info',
+        background: '#1a1a1a',
+        color: '#fff',
+        confirmButtonColor: '#f97316',
+        confirmButtonText: 'Cerrar'
+    });
+}
+
+window.mostrarRegistrosPorEstado = function (estado) {
+    const incidencias = datosGraficas.incidenciasFiltradas?.filter(i => i.estado === estado) || [];
+    const titulo = estado === 'pendiente' ? 'Incidencias Pendientes' : 'Incidencias Finalizadas';
+    const icono = estado === 'pendiente' ? '<i class="fas fa-clock"></i>' : '<i class="fas fa-check-circle"></i>';
+
+    if (incidencias.length === 0) {
+        Swal.fire({
+            icon: 'info',
+            title: 'Sin registros',
+            text: `No hay incidencias ${estado === 'pendiente' ? 'pendientes' : 'finalizadas'} para mostrar`,
+            background: '#1a1a1a',
+            color: '#fff'
+        });
+        return;
+    }
+
+    Swal.close();
+    mostrarRegistrosEnSweet(incidencias, titulo, icono);
+};
+
+function mostrarAlertRiesgo() {
+    const data = datosGraficas.riesgoData;
+    const total = (data.critico || 0) + (data.alto || 0) + (data.medio || 0) + (data.bajo || 0);
+    const criticoPorc = total > 0 ? Math.round((data.critico / total) * 100) : 0;
+    const altoPorc = total > 0 ? Math.round((data.alto / total) * 100) : 0;
+    const medioPorc = total > 0 ? Math.round((data.medio / total) * 100) : 0;
+    const bajoPorc = total > 0 ? Math.round((data.bajo / total) * 100) : 0;
+
+    let html = '<div style="text-align: left;">';
+    html += '<p><strong>⚠️ Distribución de niveles de riesgo</strong></p>';
+    html += '<div style="margin-top: 15px;">';
+    html += `<div style="margin-bottom: 8px; cursor: pointer;" onclick="window.mostrarRegistrosPorRiesgo('critico')">
+                <span style="display: inline-block; width: 12px; height: 12px; background: #ef4444; border-radius: 50%; margin-right: 8px;"></span> 
+                <strong>Crítico:</strong> ${data.critico} (${criticoPorc}%)
+                <span style="font-size: 11px; color: #3b82f6;"><i class="fas fa-mouse-pointer"></i> Haz clic</span>
+            </div>`;
+    html += `<div style="margin-bottom: 8px; cursor: pointer;" onclick="window.mostrarRegistrosPorRiesgo('alto')">
+                <span style="display: inline-block; width: 12px; height: 12px; background: #f97316; border-radius: 50%; margin-right: 8px;"></span> 
+                <strong>Alto:</strong> ${data.alto} (${altoPorc}%)
+                <span style="font-size: 11px; color: #3b82f6;"><i class="fas fa-mouse-pointer"></i> Haz clic</span>
+            </div>`;
+    html += `<div style="margin-bottom: 8px; cursor: pointer;" onclick="window.mostrarRegistrosPorRiesgo('medio')">
+                <span style="display: inline-block; width: 12px; height: 12px; background: #eab308; border-radius: 50%; margin-right: 8px;"></span> 
+                <strong>Medio:</strong> ${data.medio} (${medioPorc}%)
+                <span style="font-size: 11px; color: #3b82f6;"><i class="fas fa-mouse-pointer"></i> Haz clic</span>
+            </div>`;
+    html += `<div style="margin-bottom: 8px; cursor: pointer;" onclick="window.mostrarRegistrosPorRiesgo('bajo')">
+                <span style="display: inline-block; width: 12px; height: 12px; background: #10b981; border-radius: 50%; margin-right: 8px;"></span> 
+                <strong>Bajo:</strong> ${data.bajo} (${bajoPorc}%)
+                <span style="font-size: 11px; color: #3b82f6;"><i class="fas fa-mouse-pointer"></i> Haz clic</span>
+            </div>`;
+    html += '</div>';
+    html += `<p style="margin-top: 15px; color: #6c757d; font-size: 12px;">Total de incidencias: ${total}</p>`;
+    html += '</div>';
+
+    Swal.fire({
+        title: 'Niveles de Riesgo',
+        html: html,
+        icon: 'warning',
+        background: '#1a1a1a',
+        color: '#fff',
+        confirmButtonColor: '#ef4444',
+        confirmButtonText: 'Cerrar'
+    });
+}
+
+window.mostrarRegistrosPorRiesgo = function (nivelRiesgo) {
+    const incidencias = datosGraficas.incidenciasFiltradas?.filter(i => i.nivelRiesgo === nivelRiesgo) || [];
+    const nivelesTexto = {
+        critico: 'Críticas',
+        alto: 'Altas',
+        medio: 'Medias',
+        bajo: 'Bajas'
+    };
+    const iconos = {
+        critico: '<i class="fas fa-exclamation-triangle"></i>',
+        alto: '<i class="fas fa-exclamation-circle"></i>',
+        medio: '<i class="fas fa-chart-simple"></i>',
+        bajo: '<i class="fas fa-check"></i>'
+    };
+
+    if (incidencias.length === 0) {
+        Swal.fire({
+            icon: 'info',
+            title: 'Sin registros',
+            text: `No hay incidencias de nivel ${nivelesTexto[nivelRiesgo]} para mostrar`,
+            background: '#1a1a1a',
+            color: '#fff'
+        });
+        return;
+    }
+
+    Swal.close();
+    mostrarRegistrosEnSweet(incidencias, `Incidencias ${nivelesTexto[nivelRiesgo]}`, iconos[nivelRiesgo]);
+};
+
+function mostrarAlertCategorias() {
+    const data = datosGraficas.categoriasData;
+    if (!data || data.length === 0) {
+        Swal.fire({
+            icon: 'info',
+            title: 'Sin datos',
+            text: 'No hay información de categorías para mostrar',
+            background: '#1a1a1a',
+            color: '#fff'
+        });
+        return;
+    }
+
+    const total = data.reduce((sum, item) => sum + item.cantidad, 0);
+
+    let html = '<div style="text-align: left;">';
+    html += '<p><strong>🏷️ Incidencias por categoría</strong></p>';
+    html += '<div style="margin-top: 15px;">';
+    data.forEach(item => {
+        const porcentaje = Math.round((item.cantidad / total) * 100);
+        html += `<div style="margin-bottom: 10px; cursor: pointer;" onclick="window.mostrarRegistrosPorCategoria('${escapeHTML(item.nombre)}')">`;
+        html += `<div style="display: flex; justify-content: space-between; margin-bottom: 4px;">`;
+        html += `<span><strong>${escapeHTML(item.nombre)}</strong></span>`;
+        html += `<span>${item.cantidad} (${porcentaje}%) <span style="font-size: 11px; color: #3b82f6;"><i class="fas fa-mouse-pointer"></i></span></span>`;
+        html += `</div>`;
+        html += `<div style="width: 100%; height: 6px; background: rgba(255,255,255,0.1); border-radius: 3px;">`;
+        html += `<div style="width: ${porcentaje}%; height: 100%; background: #8b5cf6; border-radius: 3px;"></div>`;
+        html += `</div>`;
+        html += `</div>`;
+    });
+    html += `<p style="margin-top: 15px; color: #6c757d; font-size: 12px;">Total de incidencias: ${total}</p>`;
+    html += '</div>';
+
+    Swal.fire({
+        title: 'Incidencias por Categoría',
+        html: html,
+        icon: 'info',
+        background: '#1a1a1a',
+        color: '#fff',
+        confirmButtonColor: '#8b5cf6',
+        confirmButtonText: 'Cerrar'
+    });
+}
+
+window.mostrarRegistrosPorCategoria = function (categoriaNombre) {
+    const categoria = categoriasCache.find(c => c.nombre === categoriaNombre);
+    if (!categoria) {
+        Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: 'No se encontró la categoría',
+            background: '#1a1a1a',
+            color: '#fff'
+        });
+        return;
+    }
+
+    const incidencias = datosGraficas.incidenciasFiltradas?.filter(i => i.categoriaId === categoria.id) || [];
+
+    if (incidencias.length === 0) {
+        Swal.fire({
+            icon: 'info',
+            title: 'Sin registros',
+            text: `No hay incidencias en la categoría ${categoriaNombre} para mostrar`,
+            background: '#1a1a1a',
+            color: '#fff'
+        });
+        return;
+    }
+
+    Swal.close();
+    mostrarRegistrosEnSweet(incidencias, `Incidencias: ${categoriaNombre}`, '<i class="fas fa-tag"></i>');
+};
+
+function mostrarAlertSucursales() {
+    const data = datosGraficas.sucursalesData;
+    if (!data || data.length === 0) {
+        Swal.fire({
+            icon: 'info',
+            title: 'Sin datos',
+            text: 'No hay información de sucursales para mostrar',
+            background: '#1a1a1a',
+            color: '#fff'
+        });
+        return;
+    }
+
+    const total = data.reduce((sum, item) => sum + item.cantidad, 0);
+
+    let html = '<div style="text-align: left;">';
+    html += '<p><strong>🏢 Incidencias por sucursal</strong></p>';
+    html += '<div style="margin-top: 15px;">';
+    data.forEach(item => {
+        const porcentaje = Math.round((item.cantidad / total) * 100);
+        html += `<div style="margin-bottom: 10px; cursor: pointer;" onclick="window.mostrarRegistrosPorSucursal('${escapeHTML(item.nombre)}')">`;
+        html += `<div style="display: flex; justify-content: space-between; margin-bottom: 4px;">`;
+        html += `<span><strong>${escapeHTML(item.nombre)}</strong></span>`;
+        html += `<span>${item.cantidad} (${porcentaje}%) <span style="font-size: 11px; color: #3b82f6;"><i class="fas fa-mouse-pointer"></i></span></span>`;
+        html += `</div>`;
+        html += `<div style="width: 100%; height: 6px; background: rgba(255,255,255,0.1); border-radius: 3px;">`;
+        html += `<div style="width: ${porcentaje}%; height: 100%; background: #14b8a6; border-radius: 3px;"></div>`;
+        html += `</div>`;
+        html += `</div>`;
+    });
+    html += `<p style="margin-top: 15px; color: #6c757d; font-size: 12px;">Total de incidencias: ${total}</p>`;
+    html += '</div>';
+
+    Swal.fire({
+        title: 'Incidencias por Sucursal',
+        html: html,
+        icon: 'info',
+        background: '#1a1a1a',
+        color: '#fff',
+        confirmButtonColor: '#14b8a6',
+        confirmButtonText: 'Cerrar'
+    });
+}
+
+window.mostrarRegistrosPorSucursal = function (sucursalNombre) {
+    const sucursal = sucursalesCache.find(s => s.nombre === sucursalNombre);
+    if (!sucursal) {
+        Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: 'No se encontró la sucursal',
+            background: '#1a1a1a',
+            color: '#fff'
+        });
+        return;
+    }
+
+    const incidencias = datosGraficas.incidenciasFiltradas?.filter(i => i.sucursalId === sucursal.id) || [];
+
+    if (incidencias.length === 0) {
+        Swal.fire({
+            icon: 'info',
+            title: 'Sin registros',
+            text: `No hay incidencias en la sucursal ${sucursalNombre} para mostrar`,
+            background: '#1a1a1a',
+            color: '#fff'
+        });
+        return;
+    }
+
+    Swal.close();
+    mostrarRegistrosEnSweet(incidencias, `Incidencias: ${sucursalNombre}`, '<i class="fas fa-store"></i>');
+};
+
+function mostrarAlertTiempoResolucion() {
+    const data = datosGraficas.tiemposPromedio;
+    if (!data || data.length === 0) {
+        Swal.fire({
+            icon: 'info',
+            title: 'Sin datos',
+            text: 'No hay información de tiempos de resolución para mostrar. Asegúrate de tener incidencias finalizadas.',
+            background: '#1a1a1a',
+            color: '#fff'
+        });
+        return;
+    }
+
+    let html = '<div style="text-align: left;">';
+    html += '<p><strong>⏱️ Tiempo promedio de resolución por colaborador</strong></p>';
+    html += '<p style="font-size: 12px; color: #6c757d; margin-bottom: 10px;">*Basado en incidencias finalizadas</p>';
+    html += '<div style="margin-top: 10px;">';
+    data.forEach((item, index) => {
+        const medal = index === 0 ? '🏆' : '📌';
+        // Determinar color según el tiempo (verde para rápido, rojo para lento)
+        let tiempoColor = '#10b981';
+        if (item.promedio > 72) tiempoColor = '#ef4444';
+        else if (item.promedio > 24) tiempoColor = '#f97316';
+        else if (item.promedio > 8) tiempoColor = '#eab308';
+
+        html += `<div style="margin-bottom: 12px; padding: 8px; background: rgba(0,0,0,0.3); border-radius: 8px;">`;
+        html += `<div style="display: flex; justify-content: space-between; align-items: center;">`;
+        html += `<span>${medal} <strong>${escapeHTML(item.nombre)}</strong></span>`;
+        html += `<span style="color: ${tiempoColor}; font-weight: bold;">${item.promedio} horas</span>`;
+        html += `</div>`;
+        html += `<div style="width: 100%; height: 4px; background: rgba(255,255,255,0.1); border-radius: 2px; margin-top: 6px;">`;
+        // Barra de progreso inversa (menor tiempo es mejor)
+        const maxTiempo = Math.max(...data.map(t => t.promedio));
+        const porcentaje = maxTiempo > 0 ? Math.min(100, Math.round((item.promedio / maxTiempo) * 100)) : 0;
+        html += `<div style="width: ${porcentaje}%; height: 100%; background: ${tiempoColor}; border-radius: 2px;"></div>`;
+        html += `</div>`;
+        html += `</div>`;
+    });
+    html += '</div>';
+    html += '<p style="margin-top: 15px; color: #6c757d; font-size: 12px;">*Menor tiempo = mejor eficiencia</p>';
+    html += '</div>';
+
+    Swal.fire({
+        title: 'Tiempo de Resolución',
+        html: html,
+        icon: 'info',
+        background: '#1a1a1a',
+        color: '#fff',
+        confirmButtonColor: '#ec4899',
+        confirmButtonText: 'Cerrar'
+    });
+}
+
+// =============================================
+// RENDERIZAR TODAS LAS GRÁFICAS CON EVENTOS DE CLIC
 // =============================================
 function renderizarTodasLasGraficas(datos) {
-    Object.values(charts).forEach(chart => {
-        if (chart && typeof chart.destroy === 'function') chart.destroy();
+    // Destruir gráficas existentes
+    Object.keys(charts).forEach(key => {
+        if (charts[key] && typeof charts[key].destroy === 'function') {
+            charts[key].destroy();
+            delete charts[key];
+        }
     });
 
     crearGraficoActualizadores(datos.topActualizadores);
@@ -845,6 +1575,31 @@ function renderizarTodasLasGraficas(datos) {
     crearGraficoCategorias(datos.categoriasData);
     crearGraficoSucursales(datos.sucursalesData);
     crearGraficoTiempoResolucion(datos.tiemposPromedio);
+
+    // Agregar eventos de clic a los canvas
+    agregarEventosClickCanvas();
+}
+
+function agregarEventosClickCanvas() {
+    const canvasConfigs = [
+        { id: 'graficoActualizadores', handler: mostrarAlertActualizadores },
+        { id: 'graficoReportadores', handler: mostrarAlertReportadores },
+        { id: 'graficoSeguimientos', handler: mostrarAlertSeguimientos },
+        { id: 'graficoEstado', handler: mostrarAlertEstado },
+        { id: 'graficoRiesgo', handler: mostrarAlertRiesgo },
+        { id: 'graficoCategorias', handler: mostrarAlertCategorias },
+        { id: 'graficoSucursales', handler: mostrarAlertSucursales },
+        { id: 'graficoTiempo', handler: mostrarAlertTiempoResolucion }
+    ];
+
+    canvasConfigs.forEach(config => {
+        const canvas = document.getElementById(config.id);
+        if (canvas) {
+            canvas.removeEventListener('click', config.handler);
+            canvas.addEventListener('click', config.handler);
+            canvas.style.cursor = 'pointer';
+        }
+    });
 }
 
 function crearGraficoActualizadores(actualizadores) {
@@ -854,14 +1609,14 @@ function crearGraficoActualizadores(actualizadores) {
     const ctx = canvas.getContext('2d');
 
     if (!actualizadores || actualizadores.length === 0) {
-        mostrarMensajeSinDatos(ctx, canvas, 'Sin datos de actualizaciones');
+        mostrarMensajeSinDatosEnCanvas(ctx, canvas, 'Sin datos de actualizaciones');
         return;
     }
 
     charts.actualizadores = new Chart(ctx, {
         type: 'bar',
         data: {
-            labels: actualizadores.map(a => a.nombre.split(' ')[0]),
+            labels: actualizadores.map(a => a.nombre.length > 12 ? a.nombre.substring(0, 10) + '...' : a.nombre),
             datasets: [{
                 label: 'Incidencias actualizadas',
                 data: actualizadores.map(a => a.cantidad),
@@ -871,7 +1626,7 @@ function crearGraficoActualizadores(actualizadores) {
         },
         options: {
             responsive: true,
-            maintainAspectRatio: false,
+            maintainAspectRatio: true,
             plugins: {
                 legend: { labels: { color: 'white' } },
                 tooltip: {
@@ -902,14 +1657,14 @@ function crearGraficoReportadores(reportadores) {
     const ctx = canvas.getContext('2d');
 
     if (!reportadores || reportadores.length === 0) {
-        mostrarMensajeSinDatos(ctx, canvas, 'Sin datos de reportes');
+        mostrarMensajeSinDatosEnCanvas(ctx, canvas, 'Sin datos de reportes');
         return;
     }
 
     charts.reportadores = new Chart(ctx, {
         type: 'bar',
         data: {
-            labels: reportadores.map(r => r.nombre.split(' ')[0]),
+            labels: reportadores.map(r => r.nombre.length > 12 ? r.nombre.substring(0, 10) + '...' : r.nombre),
             datasets: [{
                 label: 'Incidencias reportadas',
                 data: reportadores.map(r => r.cantidad),
@@ -919,7 +1674,7 @@ function crearGraficoReportadores(reportadores) {
         },
         options: {
             responsive: true,
-            maintainAspectRatio: false,
+            maintainAspectRatio: true,
             plugins: {
                 legend: { labels: { color: 'white' } }
             },
@@ -945,14 +1700,14 @@ function crearGraficoSeguimientos(seguimientos) {
     const ctx = canvas.getContext('2d');
 
     if (!seguimientos || seguimientos.length === 0) {
-        mostrarMensajeSinDatos(ctx, canvas, 'Sin datos de seguimientos');
+        mostrarMensajeSinDatosEnCanvas(ctx, canvas, 'Sin datos de seguimientos');
         return;
     }
 
     charts.seguimientos = new Chart(ctx, {
         type: 'bar',
         data: {
-            labels: seguimientos.map(s => s.nombre.split(' ')[0]),
+            labels: seguimientos.map(s => s.nombre.length > 12 ? s.nombre.substring(0, 10) + '...' : s.nombre),
             datasets: [{
                 label: 'Seguimientos realizados',
                 data: seguimientos.map(s => s.cantidad),
@@ -962,7 +1717,7 @@ function crearGraficoSeguimientos(seguimientos) {
         },
         options: {
             responsive: true,
-            maintainAspectRatio: false,
+            maintainAspectRatio: true,
             plugins: {
                 legend: { labels: { color: 'white' } }
             },
@@ -988,7 +1743,7 @@ function crearGraficoEstado(estado) {
     const ctx = canvas.getContext('2d');
 
     if ((!estado.pendientes || estado.pendientes === 0) && (!estado.finalizadas || estado.finalizadas === 0)) {
-        mostrarMensajeSinDatos(ctx, canvas, 'Sin datos de estado');
+        mostrarMensajeSinDatosEnCanvas(ctx, canvas, 'Sin datos de estado');
         return;
     }
 
@@ -999,12 +1754,13 @@ function crearGraficoEstado(estado) {
             datasets: [{
                 data: [estado.pendientes || 0, estado.finalizadas || 0],
                 backgroundColor: ['#f97316', '#10b981'],
-                borderWidth: 0
+                borderWidth: 0,
+                hoverOffset: 15
             }]
         },
         options: {
             responsive: true,
-            maintainAspectRatio: false,
+            maintainAspectRatio: true,
             plugins: {
                 legend: {
                     labels: { color: 'white' },
@@ -1034,7 +1790,7 @@ function crearGraficoRiesgo(riesgo) {
         (!riesgo.alto || riesgo.alto === 0) &&
         (!riesgo.medio || riesgo.medio === 0) &&
         (!riesgo.bajo || riesgo.bajo === 0)) {
-        mostrarMensajeSinDatos(ctx, canvas, 'Sin datos de riesgo');
+        mostrarMensajeSinDatosEnCanvas(ctx, canvas, 'Sin datos de riesgo');
         return;
     }
 
@@ -1045,12 +1801,13 @@ function crearGraficoRiesgo(riesgo) {
             datasets: [{
                 data: [riesgo.critico || 0, riesgo.alto || 0, riesgo.medio || 0, riesgo.bajo || 0],
                 backgroundColor: ['#ef4444', '#f97316', '#eab308', '#10b981'],
-                borderWidth: 0
+                borderWidth: 0,
+                hoverOffset: 15
             }]
         },
         options: {
             responsive: true,
-            maintainAspectRatio: false,
+            maintainAspectRatio: true,
             plugins: {
                 legend: {
                     labels: { color: 'white' },
@@ -1077,7 +1834,7 @@ function crearGraficoCategorias(categorias) {
     const ctx = canvas.getContext('2d');
 
     if (!categorias || categorias.length === 0) {
-        mostrarMensajeSinDatos(ctx, canvas, 'Sin datos de categorías');
+        mostrarMensajeSinDatosEnCanvas(ctx, canvas, 'Sin datos de categorías');
         return;
     }
 
@@ -1094,7 +1851,7 @@ function crearGraficoCategorias(categorias) {
         },
         options: {
             responsive: true,
-            maintainAspectRatio: false,
+            maintainAspectRatio: true,
             plugins: {
                 legend: { labels: { color: 'white' } }
             },
@@ -1120,7 +1877,7 @@ function crearGraficoSucursales(sucursales) {
     const ctx = canvas.getContext('2d');
 
     if (!sucursales || sucursales.length === 0) {
-        mostrarMensajeSinDatos(ctx, canvas, 'Sin datos de sucursales');
+        mostrarMensajeSinDatosEnCanvas(ctx, canvas, 'Sin datos de sucursales');
         return;
     }
 
@@ -1137,7 +1894,7 @@ function crearGraficoSucursales(sucursales) {
         },
         options: {
             responsive: true,
-            maintainAspectRatio: false,
+            maintainAspectRatio: true,
             plugins: {
                 legend: { labels: { color: 'white' } }
             },
@@ -1163,40 +1920,82 @@ function crearGraficoTiempoResolucion(tiempos) {
     const ctx = canvas.getContext('2d');
 
     if (!tiempos || tiempos.length === 0) {
-        mostrarMensajeSinDatos(ctx, canvas, 'Sin datos de tiempo');
+        mostrarMensajeSinDatosEnCanvas(ctx, canvas, 'Sin datos de tiempo de resolución');
         return;
     }
+
+    // Limitar nombres para mejor visualización
+    const nombres = tiempos.map(t => t.nombre.length > 15 ? t.nombre.substring(0, 12) + '...' : t.nombre);
+    const promedios = tiempos.map(t => t.promedio);
+
+    // Colores basados en el tiempo (verde para rápido, rojo para lento)
+    const colores = tiempos.map(t => {
+        if (t.promedio <= 24) return '#10b981';      // Verde: menos de 24 horas
+        if (t.promedio <= 72) return '#f59e0b';      // Naranja: entre 24 y 72 horas
+        return '#ef4444';                             // Rojo: más de 72 horas
+    });
 
     charts.tiempo = new Chart(ctx, {
         type: 'bar',
         data: {
-            labels: tiempos.map(t => t.nombre.split(' ')[0]),
+            labels: nombres,
             datasets: [{
-                label: 'Horas promedio',
-                data: tiempos.map(t => t.promedio),
-                backgroundColor: '#ec4899',
+                label: 'Horas promedio de resolución',
+                data: promedios,
+                backgroundColor: colores,
                 borderRadius: 4
             }]
         },
         options: {
             responsive: true,
-            maintainAspectRatio: false,
+            maintainAspectRatio: true,
+            indexAxis: 'y', // Barras horizontales para mejor lectura de nombres largos
             plugins: {
-                legend: { labels: { color: 'white' } }
+                legend: { labels: { color: 'white' } },
+                tooltip: {
+                    callbacks: {
+                        label: (ctx) => {
+                            const horas = ctx.raw;
+                            const dias = Math.floor(horas / 24);
+                            const horasResto = horas % 24;
+                            let texto = `${horas} horas`;
+                            if (dias > 0) {
+                                texto = `${dias} día${dias > 1 ? 's' : ''} y ${horasResto} horas`;
+                            }
+                            return `${ctx.dataset.label}: ${texto}`;
+                        }
+                    }
+                }
             },
             scales: {
-                y: {
+                x: {
                     beginAtZero: true,
                     grid: { color: 'rgba(255,255,255,0.1)' },
-                    ticks: { color: 'white', stepSize: 1 }
+                    ticks: {
+                        color: 'white', stepSize: 24, callback: (value) => {
+                            if (value >= 24) {
+                                const dias = value / 24;
+                                return `${dias}d`;
+                            }
+                            return `${value}h`;
+                        }
+                    }
                 },
-                x: {
+                y: {
                     grid: { display: false },
-                    ticks: { color: 'white', maxRotation: 45 }
+                    ticks: { color: 'white', font: { size: 10 } }
                 }
             }
         }
     });
+}
+
+function mostrarMensajeSinDatosEnCanvas(ctx, canvas, mensaje) {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.font = '14px Arial';
+    ctx.fillStyle = 'rgba(255,255,255,0.5)';
+    ctx.textAlign = 'center';
+    ctx.fillText(mensaje, canvas.width / 2, canvas.height / 2);
 }
 
 // =============================================
@@ -1207,7 +2006,7 @@ function renderizarTablaColaboradores(colaboradores) {
     if (!tbody) return;
 
     if (!colaboradores || colaboradores.length === 0) {
-        tbody.innerHTML = '<td colspan="6" style="text-align:center; padding:30px;">No hay datos de colaboradores</div>';
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:30px;">No hay datos de colaboradores</td</tr>';
         return;
     }
 
@@ -1218,13 +2017,19 @@ function renderizarTablaColaboradores(colaboradores) {
             Math.max(...colaboradores.map(c => (c.reportados || 0) + (c.actualizados || 0) + (c.seguimientos || 0))) : 1;
         const eficiencia = Math.min(100, Math.round((totalActividad / maxActividad) * 100));
 
+        // Color para el tiempo promedio
+        let tiempoColor = '#10b981';
+        if (tiempoPromedio > 72) tiempoColor = '#ef4444';
+        else if (tiempoPromedio > 24) tiempoColor = '#f97316';
+        else if (tiempoPromedio > 0) tiempoColor = '#eab308';
+
         return `
             <tr>
                 <td><i class="fas fa-user-circle" style="color: #3b82f6; margin-right: 8px;"></i> ${escapeHTML(col.nombre)}</td>
                 <td><span class="badge-value badge-info">${col.reportados || 0}</span></td>
                 <td><span class="badge-value badge-warning">${col.actualizados || 0}</span></td>
                 <td><span class="badge-value badge-success">${col.seguimientos || 0}</span></td>
-                <td><span class="badge-value badge-secondary">${tiempoPromedio} h</span></td>
+                <td><span class="badge-value" style="background: ${tiempoColor}20; color: ${tiempoColor};">${tiempoPromedio} h</span></td>
                 <td>
                     <div style="display: flex; align-items: center; gap: 8px;">
                         <div class="eficiencia-bar" style="flex: 1; height: 6px; background: rgba(255,255,255,0.1); border-radius: 3px;">
@@ -1232,8 +2037,8 @@ function renderizarTablaColaboradores(colaboradores) {
                         </div>
                         <span style="color: white; min-width: 40px;">${eficiencia}%</span>
                     </div>
-                 </td>
-             </tr>
+                  </td>
+              </tr>
         `;
     }).join('');
 }
@@ -1246,7 +2051,7 @@ function renderizarTablaCategorias(categorias) {
     if (!tbody) return;
 
     if (!categorias || categorias.length === 0) {
-        tbody.innerHTML = '<td colspan="2" style="text-align:center; padding:30px;">No hay datos de categorías</div>';
+        tbody.innerHTML = '<tr><td colspan="2" style="text-align:center; padding:30px;">No hay datos de categorías</td</tr>';
         return;
     }
 
@@ -1254,7 +2059,7 @@ function renderizarTablaCategorias(categorias) {
         <tr>
             <td>${escapeHTML(cat.nombre)}</td>
             <td><span class="badge-value badge-info">${cat.cantidad}</span></td>
-         </tr>
+        </tr>
     `).join('');
 }
 
@@ -1295,7 +2100,7 @@ function obtenerNombreCategoria(categoriaId) {
 }
 
 // =============================================
-// GENERAR REPORTE PDF - VERSIÓN CORREGIDA CON BITÁCORA
+// GENERAR REPORTE PDF
 // =============================================
 async function generarReportePDF() {
     try {
@@ -1363,57 +2168,6 @@ async function generarReportePDF() {
 // =============================================
 // UTILIDADES
 // =============================================
-function mostrarLoadingInicial() {
-    const elementos = [
-        'metricCriticas', 'metricAltas', 'metricPendientes', 'metricTotal',
-        'graficoActualizadores', 'graficoReportadores', 'graficoSeguimientos',
-        'graficoEstado', 'graficoRiesgo', 'graficoCategorias',
-        'graficoSucursales', 'graficoTiempo', 'tablaColaboradoresBody',
-        'tablaCategoriasBody'
-    ];
-
-    elementos.forEach(id => {
-        const el = document.getElementById(id);
-        if (el) {
-            if (id.includes('grafico')) {
-                el.innerHTML = '<div style="text-align:center; padding:40px;"><i class="fas fa-spinner fa-spin" style="font-size:48px; color:var(--color-accent-primary);"></i></div>';
-            } else if (id.includes('tabla')) {
-                el.innerHTML = '<td colspan="6" style="text-align:center;"><i class="fas fa-spinner fa-spin"></i> Cargando datos...</div>';
-            } else {
-                el.textContent = '...';
-            }
-        }
-    });
-}
-
-function mostrarLoadingGraficas() {
-    const graficas = [
-        'graficoActualizadores', 'graficoReportadores', 'graficoSeguimientos',
-        'graficoEstado', 'graficoRiesgo', 'graficoCategorias',
-        'graficoSucursales', 'graficoTiempo'
-    ];
-
-    graficas.forEach(id => {
-        const canvas = document.getElementById(id);
-        if (canvas) {
-            const ctx = canvas.getContext('2d');
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            ctx.font = '14px Arial';
-            ctx.fillStyle = 'rgba(255,255,255,0.5)';
-            ctx.textAlign = 'center';
-            ctx.fillText('Cargando...', canvas.width / 2, canvas.height / 2);
-        }
-    });
-}
-
-function mostrarMensajeSinDatos(ctx, canvas, mensaje) {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.font = '14px Arial';
-    ctx.fillStyle = 'rgba(255,255,255,0.5)';
-    ctx.textAlign = 'center';
-    ctx.fillText(mensaje, canvas.width / 2, canvas.height / 2);
-}
-
 function setElementText(id, text) {
     const el = document.getElementById(id);
     if (el) el.textContent = text;
