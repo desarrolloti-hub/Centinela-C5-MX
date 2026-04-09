@@ -390,6 +390,7 @@ async function cargarAreas(forceReload = false) {
     }
 }
 
+
 function cargarUsuario() {
     try {
         if (window.userManager && window.userManager.currentUser) {
@@ -400,7 +401,8 @@ function cargarUsuario() {
                 nombreCompleto: user.nombreCompleto || user.nombre || 'Usuario',
                 organizacion: user.organizacion || 'Sin organización',
                 organizacionCamelCase: user.organizacionCamelCase || generarCamelCase(user.organizacion),
-                correo: user.correo || user.email || ''
+                correo: user.correo || user.email || '',
+                codigoColaborador: user.codigoColaborador || ''  // ← CLAVE
             };
             return;
         }
@@ -414,8 +416,10 @@ function cargarUsuario() {
                 nombreCompleto: adminData.nombreCompleto || 'Administrador',
                 organizacion: adminData.organizacion || 'Sin organización',
                 organizacionCamelCase: adminData.organizacionCamelCase || generarCamelCase(adminData.organizacion),
-                correo: adminData.correoElectronico || ''
+                correo: adminData.correoElectronico || '',
+                codigoColaborador: adminData.codigoColaborador || ''  // ← CLAVE
             };
+           
             return;
         }
 
@@ -427,8 +431,10 @@ function cargarUsuario() {
                 nombreCompleto: userData.nombreCompleto || userData.nombre || 'Usuario',
                 organizacion: userData.organizacion || userData.empresa || 'Sin organización',
                 organizacionCamelCase: userData.organizacionCamelCase || generarCamelCase(userData.organizacion || userData.empresa),
-                correo: userData.correo || userData.email || ''
+                correo: userData.correo || userData.email || '',
+                codigoColaborador: userData.codigoColaborador || ''  // ← CLAVE
             };
+          
             return;
         }
 
@@ -821,12 +827,19 @@ function mostrarHistorialSeguimiento() {
         const claveImagenes = `seguimiento_${idSeguimiento}`;
         window._imagenesSeguimientosHistorial[claveImagenes] = imagenesData;
 
+        // 🔥🔥🔥 AQUÍ ESTÁ EL CAMBIO CLAVE 🔥🔥🔥
+        // SOLO mostrar el código, NADA del nombre
+        // Si no tiene código, mostrar "Sin código"
+        const identificadorUsuario = seg.usuarioCodigo 
+            ? `<i class="fas fa-id-badge"></i> ${escapeHTML(seg.usuarioCodigo)}`
+            : `<i class="fas fa-exclamation-triangle"></i> Sin código`;
+
         html += `
             <div class="timeline-simple-item">
                 <div class="timeline-simple-content">
                     <div class="timeline-simple-header">
                         <div class="timeline-simple-user">
-                            <span class="timeline-simple-name">${escapeHTML(seg.usuarioNombre || 'Usuario')}</span>
+                            <span class="timeline-simple-name">${identificadorUsuario}</span>
                             <span class="timeline-simple-badge">${idSeguimiento}</span>
                         </div>
                         <div class="timeline-simple-date">
@@ -882,7 +895,6 @@ function mostrarHistorialSeguimiento() {
     html += '</div>';
     container.innerHTML = html;
 }
-
 // =============================================
 // CONFIGURACIÓN DE EVENTOS
 // =============================================
@@ -1342,18 +1354,17 @@ async function guardarSeguimiento(datos) {
 
         const archivos = datos.evidencias.map(ev => ev.file);
 
-        await incidenciaManager.agregarSeguimiento(
-            incidenciaActual.id,
-            usuarioActual.id,
-            usuarioActual.nombreCompleto,
-            datos.descripcion,
-            archivos,
-            usuarioActual.organizacionCamelCase,
-            datos.evidencias,
-            datos.fecha,
-            usuarioActual
-        );
-
+await incidenciaManager.agregarSeguimiento(
+    incidenciaActual.id,
+    usuarioActual.id,
+    usuarioActual.nombreCompleto,
+    datos.descripcion,
+    archivos,
+    usuarioActual.organizacionCamelCase,
+    datos.evidencias,
+    datos.fecha,
+    usuarioActual
+);
         if (datos.nuevoEstado !== incidenciaActual.estado) {
             await incidenciaManager.actualizarIncidencia(
                 incidenciaActual.id,

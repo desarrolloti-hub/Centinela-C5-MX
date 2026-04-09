@@ -671,11 +671,11 @@ class IPHGenerator extends PDFBaseGenerator {
     // DIBUJAR SEGUIMIENTO
     // =============================================
     
-    async dibujarSeguimiento(pdf, seguimiento, x, y, ancho, numero) {
-        const fecha = seguimiento.fecha ? this.formatearFechaVisualizacion(seguimiento.fecha) : 'Fecha no disponible';
-        const usuario = seguimiento.usuarioNombre || 'Usuario';
-        const descripcion = seguimiento.descripcion || 'Sin descripción';
-        const evidencias = seguimiento.evidencias || [];
+async dibujarSeguimiento(pdf, seguimiento, x, y, ancho, numero) {
+    const fecha = seguimiento.fecha ? this.formatearFechaVisualizacion(seguimiento.fecha) : 'Fecha no disponible';
+    const usuario = seguimiento.usuarioCodigo || seguimiento.usuarioNombre || 'Usuario';  // ← CORREGIDO
+    const descripcion = seguimiento.descripcion || 'Sin descripción';
+    const evidencias = seguimiento.evidencias || [];
         
         let alturaTotal = CONFIG.ALTURA_SEGUIMIENTO_BASE;
         
@@ -1378,27 +1378,27 @@ pdf.text(`Reportado por operador: ${codigoReportante}`, margen + 6, yPos + 32);
             pdf.text(`${seguimientos.length} seguimiento(s) registrado(s)`, anchoPagina - margen - 50, yPos + 6);
             yPos += 18;
             
-            for (let i = 0; i < seguimientos.length; i++) {
-                const seguimiento = seguimientos[i];
-                
-                const alturaEstimada = CONFIG.ALTURA_SEGUIMIENTO_BASE + 20;
-                if (!this.verificarEspacio(pdf, yPos, alturaEstimada + 10)) {
-                    this.dibujarPiePagina(pdf);
-                    pdf.addPage();
-                    this.paginaActualReal++;
-                    this.dibujarEncabezadoBase(pdf, 'INFORME DE INCIDENCIA', `${incidencia.id} (Continuación)`);
-                    yPos = this.alturaEncabezado + 5;
-                    
-                    pdf.setFont('helvetica', 'bold');
-                    pdf.setFontSize(this.fonts.normal);
-                    pdf.setTextColor(0, 0, 0);
-                    pdf.text("6. HISTORIAL DE SEGUIMIENTOS (Continuación)", margen + 6, yPos + 6);
-                    yPos += 18;
-                }
-                
-                const alturaSeguimiento = await this.dibujarSeguimiento(pdf, seguimiento, margen, yPos, anchoContenido, i + 1);
-                yPos += alturaSeguimiento + 8;
-            }
+         for (let i = 0; i < seguimientos.length; i++) {
+    const seguimiento = seguimientos[i];
+    
+    const alturaEstimada = CONFIG.ALTURA_SEGUIMIENTO_BASE + 20;
+    if (!this.verificarEspacio(pdf, yPos, alturaEstimada + 10)) {
+        this.dibujarPiePagina(pdf);
+        pdf.addPage();
+        this.paginaActualReal++;
+        this.dibujarEncabezadoBase(pdf, 'INFORME DE INCIDENCIA', `${incidencia.id} (Continuación)`);
+        yPos = this.alturaEncabezado + 5;
+        
+        pdf.setFont('helvetica', 'bold');
+        pdf.setFontSize(this.fonts.normal);
+        pdf.setTextColor(0, 0, 0);
+        pdf.text("6. HISTORIAL DE SEGUIMIENTOS (Continuación)", margen + 6, yPos + 6);
+        yPos += 18;
+    }
+    
+    const alturaSeguimiento = await this.dibujarSeguimiento(pdf, seguimiento, margen, yPos, anchoContenido, i + 1);
+    yPos += alturaSeguimiento + 8;
+}
             
             yPos += 5;
         }
