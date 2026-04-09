@@ -269,12 +269,10 @@
     left: -50%;
     width: 200%;
     height: 200%;
-    background: linear-gradient(
-        to bottom right,
-        rgba(255, 255, 255, 0) 0%,
-        rgba(255, 255, 255, 0.1) 50%,
-        rgba(255, 255, 255, 0) 100%
-    );
+    background: linear-gradient(to bottom right,
+            rgba(255, 255, 255, 0) 0%,
+            rgba(255, 255, 255, 0.1) 50%,
+            rgba(255, 255, 255, 0) 100%);
     transform: rotate(30deg);
     transition: all 0.5s ease;
     opacity: 0;
@@ -327,7 +325,7 @@
     font-size: 13px;
 }
 
-.table > :not(caption) > * > * {
+.table> :not(caption)>*>* {
     background-color: transparent !important;
 }
 
@@ -506,12 +504,10 @@ tr.categoria-row.expanded .expand-icon i {
     left: -50%;
     width: 200%;
     height: 200%;
-    background: linear-gradient(
-        to bottom right,
-        rgba(255, 255, 255, 0) 0%,
-        rgba(255, 255, 255, 0.1) 50%,
-        rgba(255, 255, 255, 0) 100%
-    );
+    background: linear-gradient(to bottom right,
+            rgba(255, 255, 255, 0) 0%,
+            rgba(255, 255, 255, 0.1) 50%,
+            rgba(255, 255, 255, 0) 100%);
     transform: rotate(30deg);
     transition: all 0.5s ease;
     opacity: 0;
@@ -709,6 +705,7 @@ tr.categoria-row.expanded .expand-icon i {
 
 /* Vista móvil para subcategorías */
 @media (max-width: 768px) {
+
     .subcategorias-tabla,
     .subcategorias-tabla thead,
     .subcategorias-tabla tbody,
@@ -1065,7 +1062,7 @@ tr.categoria-row.expanded .expand-icon i {
     }
 
     .btn-agregar-sub {
-        width: 100%;
+        width: 50%;
         justify-content: center;
         white-space: normal;
         word-break: break-word;
@@ -1092,7 +1089,7 @@ tr.categoria-row.expanded .expand-icon i {
         justify-content: center;
         width: 100%;
     }
-    
+
     .btn-nueva-categoria-header,
     .btn-agregar-sub {
         padding: 8px 10px !important;
@@ -1132,13 +1129,14 @@ tr.categoria-row.expanded .expand-icon i {
 
 /* Para pantallas extremadamente pequeñas (menos de 360px) */
 @media (max-width: 360px) {
+
     .btn-nueva-categoria-header,
     .btn-agregar-sub {
         font-size: 11px !important;
         padding: 6px 8px !important;
         min-height: 36px;
     }
-    
+
     .btn-nueva-categoria-header i,
     .btn-agregar-sub i {
         font-size: 11px !important;

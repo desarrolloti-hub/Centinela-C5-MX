@@ -364,19 +364,26 @@ async generarPDF() {
             didOpen: () => Swal.showLoading()
         });
 
-        // Generar el PDF y obtener la URL
-        const pdfUrl = await this.generadorPDF.generarBitacoraPDF(
+        // Generar el PDF y obtener el blob/URL
+        const pdfBlob = await this.generadorPDF.generarBitacoraPDFBlob(
             this.actividades,
             this.fechaSeleccionada,
-            { mostrarAlerta: false } // Cambiado a false para manejar nosotros la apertura
+            { mostrarAlerta: false }
         );
 
         Swal.close();
 
-        // Abrir PDF en nueva pestaña con visor nativo del navegador
-        if (pdfUrl) {
+        // Crear URL del blob y abrir en nueva pestaña con visor nativo
+        if (pdfBlob) {
+            const pdfUrl = URL.createObjectURL(pdfBlob);
             window.open(pdfUrl, '_blank');
             
+            // Limpiar la URL después de un tiempo para liberar memoria
+            setTimeout(() => {
+                URL.revokeObjectURL(pdfUrl);
+            }, 10000);
+            
+            // Notificación de éxito
             Swal.fire({
                 icon: 'success',
                 title: 'PDF generado',
@@ -389,7 +396,7 @@ async generarPDF() {
                 color: '#fff'
             });
         } else {
-            throw new Error('No se pudo obtener la URL del PDF');
+            throw new Error('No se pudo generar el PDF');
         }
         
     } catch (error) {

@@ -13,74 +13,10 @@
         rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 
-    <!-- Icono en barra de titulo -->
     <link rel="icon" href="/assets/images/logo.png" type="image/png">
-    <!-- Archivo para PWA -->
     <link rel="manifest" href="/manifest.json">
-    <!-- Estilos modulo -->
     <link rel="stylesheet" href="panelControl.css">
-    <!-- SweetAlert2 -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-
-    <!-- SEO Básico -->
-    <meta name="description"
-        content="Centinela es un sistema inteligente de seguridad para almacenamiento, monitoreo y predicción de incidencias. Plataforma confiable para prevención y análisis en tiempo real.">
-    <meta name="keywords"
-        content="centinela, centinela, sistema de seguridad, seguridad inteligente, predicción de incidencias, monitoreo de seguridad, plataforma de seguridad, análisis de riesgos, prevención de incidentes">
-    <meta name="author" content="Centinela">
-    <link rel="canonical" href="https://centinela-c5.web.app/" />
-
-    <!-- Open Graph / Facebook / WhatsApp / LinkedIn -->
-    <meta property="og:type" content="website">
-    <meta property="og:url" content="https://centinela-c5.web.app">
-    <meta property="og:title" content="Centinela-C5 | Sistema Inteligente de Seguridad y Predicción">
-    <meta property="og:description"
-        content="Centinela-C5 es una plataforma avanzada de seguridad para almacenamiento, monitoreo y predicción de incidencias en tiempo real.">
-    <meta property="og:image" content="https://centinela-c5.web.app/assets/images/logo.png">
-    <meta property="og:image:width" content="500">
-    <meta property="og:image:height" content="500">
-    <meta property="og:image:alt" content="Vista previa oficial de Centinela-C5">
-    <meta property="og:image" content="https://centinela-c5.web.app/assets/images/logo.png">
-    <meta property="og:image:width" content="500">
-    <meta property="og:image:height" content="500">
-    <meta property="og:image:alt" content="Logo oficial de Centinela">
-    <meta property="og:site_name" content="Centinela">
-
-    <!-- Twitter Card -->
-    <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:url" content="https://centinela-c5.web.app">
-    <meta name="twitter:title" content="Centinela-C5 | Seguridad Inteligente">
-    <meta name="twitter:description"
-        content="Sistema de seguridad inteligente para monitoreo, almacenamiento y predicción de incidencias.">
-    <meta name="twitter:image" content="https://centinela-c5.web.app/assets/images/logo.png">
-    <meta name="twitter:creator" content="">
-
-    <!-- Schema.org / JSON-LD -->
-    <script type="application/ld+json">
-    {
-    "@context": "https://schema.org",
-    "@type": "LocalBusiness",
-    "name": "Centinela",
-    "operatingSystem": "Web",
-    "applicationCategory": "SecurityApplication",
-    "description": "Centinela es un sistema inteligente de seguridad para el almacenamiento, monitoreo y predicción de incidencias en tiempo real.",
-    "url": "https://centinela-c5.web.app",
-    "image": "https://centinela-c5.web.app/assets/images/logo.png",
-    "publisher": {
-        "@type": "Organization",
-        "name": "Centinela",
-        "logo": {
-        "@type": "ImageObject",
-        "url": "https://centinela-c5.web.app/assets/images/logo.png"
-        }
-    },
-    "offers": {
-        "@type": "Offer",
-        "price": "0",
-        "priceCurrency": "MXN"
-    }
-    }
-    </script>
 </head>
 
 <body>
@@ -93,47 +29,36 @@
         <div class="kpi-section">
             <h2><i class="fa-solid fa-chart-line"></i> PANEL DE CONTROL</h2>
             <div class="kpi-row kpi-row-6">
-                <!-- Tarjeta 1: INCIDENCIAS -->
                 <div class="kpi-card" id="kpi-incidencias">
                     <i class="fa-solid fa-exclamation-triangle" style="color: #ff4d00;"></i>
                     <span class="kpi-number" id="total-incidencias">0</span>
                     <h3>INCIDENCIAS</h3>
                     <p>Total registradas</p>
                 </div>
-
-                <!-- Tarjeta 2: INCIDENCIAS DIARIAS -->
                 <div class="kpi-card" id="kpi-incidencias-diarias">
                     <i class="fa-solid fa-calendar-day" style="color: #ff8c5a;"></i>
                     <span class="kpi-number" id="total-incidencias-diarias">0</span>
                     <h3>INCIDENCIAS DIARIAS</h3>
                     <p>Registradas hoy</p>
                 </div>
-
-                <!-- Tarjeta 3: REGIONES -->
                 <div class="kpi-card" id="kpi-regiones">
                     <i class="fa-solid fa-map" style="color: #2f8cff;"></i>
                     <span class="kpi-number" id="total-regiones">0</span>
                     <h3>REGIONES</h3>
                     <p>Registradas</p>
                 </div>
-
-                <!-- Tarjeta 4: SUCURSALES -->
                 <div class="kpi-card" id="kpi-sucursales">
                     <i class="fa-solid fa-building" style="color: #00cfff;"></i>
                     <span class="kpi-number" id="total-sucursales">0</span>
                     <h3>SUCURSALES</h3>
                     <p>Activas</p>
                 </div>
-
-                <!-- Tarjeta 5: ÁREAS -->
                 <div class="kpi-card" id="kpi-areas">
                     <i class="fa-solid fa-layer-group" style="color: #b16bff;"></i>
                     <span class="kpi-number" id="total-areas">0</span>
                     <h3>ÁREAS</h3>
                     <p>Registradas</p>
                 </div>
-
-                <!-- Tarjeta 6: USUARIOS -->
                 <div class="kpi-card" id="kpi-usuarios">
                     <i class="fa-solid fa-users" style="color: #9caba4;"></i>
                     <span class="kpi-number" id="total-usuarios">0</span>
@@ -142,10 +67,6 @@
                 </div>
             </div>
         </div>
-
-        <!-- ============================================= -->
-        <!-- SECCIÓN 2: ACCESO RÁPIDO -->
-        <!-- ============================================= -->
         <section class="center-row">
             <div class="side full-width">
                 <div class="section-container">
@@ -156,7 +77,8 @@
 
                     <div class="cards-grid-2" id="acceso-rapido-grid">
                         <!-- Tarjeta: Nueva Incidencia (con parpadeo) -->
-                        <div class="dashboard-card" id="card-nueva-incidencia">
+                        <div class="dashboard-card" id="card-nueva-incidencia"
+                            data-url="/usuarios/administrador/crearIncidencias/crearIncidencias.html">
                             <div class="card-icon cyan">
                                 <i class="fa-solid fa-triangle-exclamation"></i>
                             </div>
@@ -168,7 +90,8 @@
                         </div>
 
                         <!-- Tarjeta: Incidencias (Lista) -->
-                        <div class="dashboard-card" id="card-incidencias-lista">
+                        <div class="dashboard-card" id="card-incidencias-lista"
+                            data-url="/usuarios/administrador/incidencias/incidencias.html">
                             <div class="card-icon orange">
                                 <i class="fa-solid fa-list"></i>
                             </div>
@@ -180,7 +103,8 @@
                         </div>
 
                         <!-- Tarjeta: Mapa de Alertas (Monitoreo) -->
-                        <div class="dashboard-card" id="card-mapa-alertas">
+                        <div class="dashboard-card" id="card-mapa-alertas"
+                            data-url="/usuarios/administrador/mapaAlertas/mapaAlertas.html">
                             <div class="card-icon cyan">
                                 <i class="fa-solid fa-map-marker-alt"></i>
                             </div>
@@ -191,18 +115,10 @@
                             <div class="card-arrow">→</div>
                         </div>
 
-                        <!-- Tarjeta: Lista de Extravíos -->
-                        <div class="dashboard-card" id="card-lista-extravios">
-                            <div class="card-icon orange">
-                                <i class="fa-solid fa-box-open"></i>
-                            </div>
-                            <div class="card-text">
-                                <h3>Lista de Extravíos</h3>
-                                <p>Ver mercancía perdida</p>
-                            </div>
-                            <div class="card-arrow">→</div>
-                        </div>
-                        <div class="dashboard-card" id="tablero-de-control">
+
+                        <!-- Tarjeta: Tablero de Control -->
+                        <div class="dashboard-card" id="tablero-de-control"
+                            data-url="/usuarios/administrador/loginMonitoreo/loginMonitoreo.html">
                             <div class="card-icon orange">
                                 <i class="fa-solid fa-dashboard"></i>
                             </div>
@@ -217,9 +133,7 @@
             </div>
         </section>
         <br>
-
-        <!-- ============================================= -->
-        <!-- SECCIÓN 3: MÓDULOS DE ACCESO - 3 COLUMNAS -->
+        <!-- SECCIÓN 3: MÓDULOS DE ACCESO -->
         <!-- ============================================= -->
         <section class="center-row">
             <div class="side full-width">
@@ -229,32 +143,75 @@
                         <p class="section-subtitle">Gestión administrativa</p>
                     </div>
 
-                    <!-- CONTENEDORES HORIZONTALES (3 COLUMNAS) -->
+                    <!-- FILA 1: EXTRAVÍO | ÁREAS | SUCURSALES -->
                     <div class="modulos-grid">
+                        <!-- COLUMNA 1: EXTRAVÍOS (color naranja #fd7e14) -->
+                        <div class="modulo-columna">
+                            <div class="modulo-header">
+                                <i class="fa-solid fa-box-open" style="color: #fd7e14;"></i>
+                                <h3>SECCIÓN DE EXTRAVÍO</h3>
+                            </div>
+                            <div class="modulo-tarjetas">
+                                <div class="dashboard-card"
+                                    data-url="/usuarios/administrador/incidenciasRecuperacion/incidenciasRecuperacion.html">
+                                    <div class="card-icon orange">
+                                        <i class="fa-solid fa-list"></i>
+                                    </div>
+                                    <div class="card-text">
+                                        <h3>LISTA DE EXTRAVÍOS</h3>
+                                        <p>Ver todos los registros de mercancía perdida</p>
+                                    </div>
+                                    <div class="card-arrow">→</div>
+                                </div>
+                                <div class="dashboard-card"
+                                    data-url="/usuarios/administrador/crearIncidencias/crearIncidencias.html?tipo=extravio">
+                                    <div class="card-icon orange">
+                                        <i class="fa-solid fa-plus-circle"></i>
+                                    </div>
+                                    <div class="card-text">
+                                        <h3>CREAR EXTRAVÍO</h3>
+                                        <p>Registrar nueva mercancía perdida</p>
+                                    </div>
+                                    <div class="card-arrow">→</div>
+                                </div>
+                                <div class="dashboard-card"
+                                    data-url="/usuarios/administrador/estadisticasIncidenciasRecuperacion/estadisticasIncidenciasRecuperacion.html">
+                                    <div class="card-icon orange">
+                                        <i class="fa-solid fa-chart-line"></i>
+                                    </div>
+                                    <div class="card-text">
+                                        <h3>ESTADÍSTICAS DE EXTRAVÍO</h3>
+                                        <p>Análisis de pérdidas y recuperaciones</p>
+                                    </div>
+                                    <div class="card-arrow">→</div>
+                                </div>
+                            </div>
+                        </div>
 
-                        <!-- COLUMNA 1: ÁREAS -->
+                        <!-- COLUMNA 2: ÁREAS (color morado #b16bff) -->
                         <div class="modulo-columna">
                             <div class="modulo-header">
                                 <i class="fa-solid fa-layer-group" style="color: #b16bff;"></i>
-                                <h3> PANEL DE ÁREAS</h3>
+                                <h3>PANEL DE ÁREAS</h3>
                             </div>
                             <div class="modulo-tarjetas">
-                                <div class="dashboard-card" id="card-areas-lista">
+                                <div class="dashboard-card" data-url="/usuarios/administrador/areas/areas.html">
                                     <div class="card-icon purple">
                                         <i class="fa-solid fa-list"></i>
                                     </div>
                                     <div class="card-text">
-                                        <h3>Lista Áreas</h3>
+                                        <h3>LISTA ÁREAS</h3>
                                         <p>Ver todas las áreas</p>
                                     </div>
                                     <div class="card-arrow">→</div>
                                 </div>
-                                <div class="dashboard-card" id="card-areas-nueva">
+                                <div class="dashboard-card"
+                                    data-url="/usuarios/administrador/crearAreas/crearAreas.html">
                                     <div class="card-icon purple">
                                         <i class="fa-solid fa-plus-circle"></i>
                                     </div>
                                     <div class="card-text">
-                                        <h3>Nueva Área</h3>
+                                        <h3>NUEVA ÁREA</h3>
                                         <p>Crear nueva área</p>
                                     </div>
                                     <div class="card-arrow">→</div>
@@ -262,83 +219,212 @@
                             </div>
                         </div>
 
-                        <!-- COLUMNA 2: SUCURSALES -->
+                        <!-- COLUMNA 3: SUCURSALES (color cyan #00cfff) -->
                         <div class="modulo-columna">
                             <div class="modulo-header">
                                 <i class="fa-solid fa-building" style="color: #00cfff;"></i>
-                                <h3> PANEL DE SUCURSALES</h3>
+                                <h3>PANEL DE SUCURSALES</h3>
                             </div>
                             <div class="modulo-tarjetas">
-                                <div class="dashboard-card" id="card-sucursales-lista">
+                                <div class="dashboard-card"
+                                    data-url="/usuarios/administrador/sucursales/sucursales.html">
                                     <div class="card-icon cyan">
                                         <i class="fa-solid fa-list"></i>
                                     </div>
                                     <div class="card-text">
-                                        <h3>Lista Sucursales</h3>
+                                        <h3>LISTA SUCURSALES</h3>
                                         <p>Ver todas las sucursales</p>
                                     </div>
                                     <div class="card-arrow">→</div>
                                 </div>
-                                <div class="dashboard-card" id="card-sucursales-nueva">
+                                <div class="dashboard-card"
+                                    data-url="/usuarios/administrador/crearSucursales/crearSucursales.html">
                                     <div class="card-icon cyan">
                                         <i class="fa-solid fa-plus-circle"></i>
                                     </div>
                                     <div class="card-text">
-                                        <h3>Nueva Sucursal</h3>
+                                        <h3>NUEVA SUCURSAL</h3>
                                         <p>Crear nueva sucursal</p>
                                     </div>
                                     <div class="card-arrow">→</div>
                                 </div>
                             </div>
                         </div>
+                    </div>
 
-                        <!-- COLUMNA 3: REGIONES -->
+                    <!-- FILA 2: REGIONES | CATEGORÍAS | USUARIOS -->
+                    <div class="modulos-grid" style="margin-top: 1.5rem;">
+                        <!-- COLUMNA 4: REGIONES (color azul #2f8cff) -->
                         <div class="modulo-columna">
                             <div class="modulo-header">
                                 <i class="fa-solid fa-map" style="color: #2f8cff;"></i>
                                 <h3>PANEL DE REGIONES</h3>
                             </div>
                             <div class="modulo-tarjetas">
-                                <div class="dashboard-card" id="card-regiones-lista">
+                                <div class="dashboard-card" data-url="/usuarios/administrador/regiones/regiones.html">
                                     <div class="card-icon blue">
                                         <i class="fa-solid fa-list"></i>
                                     </div>
                                     <div class="card-text">
-                                        <h3>Lista Regiones</h3>
+                                        <h3>LISTA REGIONES</h3>
                                         <p>Ver todas las regiones</p>
                                     </div>
                                     <div class="card-arrow">→</div>
                                 </div>
-                                <div class="dashboard-card" id="card-regiones-nueva">
+                                <div class="dashboard-card"
+                                    data-url="/usuarios/administrador/crearRegiones/crearRegiones.html">
                                     <div class="card-icon blue">
                                         <i class="fa-solid fa-plus-circle"></i>
                                     </div>
                                     <div class="card-text">
-                                        <h3>Nueva Región</h3>
+                                        <h3>NUEVA REGIÓN</h3>
                                         <p>Crear nueva región</p>
                                     </div>
                                     <div class="card-arrow">→</div>
                                 </div>
                             </div>
                         </div>
-                        <!-- SECCIÓN MONITOREO -->
 
+                        <!-- COLUMNA 5: CATEGORÍAS (color verde #28a745) -->
+                        <div class="modulo-columna">
+                            <div class="modulo-header">
+                                <i class="fa-solid fa-tags" style="color: #28a745;"></i>
+                                <h3>PANEL DE CATEGORÍAS</h3>
+                            </div>
+                            <div class="modulo-tarjetas">
+                                <div class="dashboard-card"
+                                    data-url="/usuarios/administrador/categorias/categorias.html">
+                                    <div class="card-icon green">
+                                        <i class="fa-solid fa-list"></i>
+                                    </div>
+                                    <div class="card-text">
+                                        <h3>LISTA CATEGORÍAS</h3>
+                                        <p>Ver todas las categorías</p>
+                                    </div>
+                                    <div class="card-arrow">→</div>
+                                </div>
+                                <div class="dashboard-card"
+                                    data-url="/usuarios/administrador/crearCategorias/crearCategorias.html">
+                                    <div class="card-icon green">
+                                        <i class="fa-solid fa-plus-circle"></i>
+                                    </div>
+                                    <div class="card-text">
+                                        <h3>NUEVA CATEGORÍA</h3>
+                                        <p>Crear nueva categoría</p>
+                                    </div>
+                                    <div class="card-arrow">→</div>
+                                </div>
+                            </div>
+                        </div>
 
+                        <!-- COLUMNA 6: USUARIOS (color gris #9caba4) -->
+                        <div class="modulo-columna">
+                            <div class="modulo-header">
+                                <i class="fa-solid fa-users" style="color: #9caba4;"></i>
+                                <h3>PANEL DE USUARIOS</h3>
+                            </div>
+                            <div class="modulo-tarjetas">
+                                <div class="dashboard-card" data-url="/usuarios/administrador/usuarios/usuarios.html">
+                                    <div class="card-icon gray">
+                                        <i class="fa-solid fa-list"></i>
+                                    </div>
+                                    <div class="card-text">
+                                        <h3>LISTA USUARIOS</h3>
+                                        <p>Ver todos los usuarios</p>
+                                    </div>
+                                    <div class="card-arrow">→</div>
+                                </div>
+                                <div class="dashboard-card"
+                                    data-url="/usuarios/administrador/crearUsuarios/crearUsuarios.html">
+                                    <div class="card-icon gray">
+                                        <i class="fa-solid fa-plus-circle"></i>
+                                    </div>
+                                    <div class="card-text">
+                                        <h3>NUEVO USUARIO</h3>
+                                        <p>Crear nuevo usuario</p>
+                                    </div>
+                                    <div class="card-arrow">→</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- FILA 3: ESTADÍSTICAS | TAREAS | PERMISOS -->
+                    <div class="modulos-grid" style="margin-top: 1.5rem;">
+                        <!-- COLUMNA 7: ESTADÍSTICAS (color amarillo #ffcc00) -->
+                        <div class="modulo-columna">
+                            <div class="modulo-header">
+                                <i class="fa-solid fa-chart-pie" style="color: #ffcc00;"></i>
+                                <h3>PANEL DE ESTADÍSTICAS</h3>
+                            </div>
+                            <div class="modulo-tarjetas">
+                                <div class="dashboard-card"
+                                    data-url="/usuarios/administrador/estadisticas/estadisticas.html">
+                                    <div class="card-icon yellow">
+                                        <i class="fa-solid fa-chart-simple"></i>
+                                    </div>
+                                    <div class="card-text">
+                                        <h3>VER ESTADÍSTICAS</h3>
+                                        <p>Visualizar reportes y gráficas</p>
+                                    </div>
+                                    <div class="card-arrow">→</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- COLUMNA 8: TAREAS (color cyan #00cfff) -->
+                        <div class="modulo-columna">
+                            <div class="modulo-header">
+                                <i class="fa-solid fa-tasks" style="color: #00cfff;"></i>
+                                <h3>PANEL DE TAREAS</h3>
+                            </div>
+                            <div class="modulo-tarjetas">
+                                <div class="dashboard-card" data-url="/usuarios/administrador/tareas/tareas.html">
+                                    <div class="card-icon cyan">
+                                        <i class="fa-solid fa-check-circle"></i>
+                                    </div>
+                                    <div class="card-text">
+                                        <h3>MIS TAREAS</h3>
+                                        <p>Ver tareas asignadas</p>
+                                    </div>
+                                    <div class="card-arrow">→</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- COLUMNA 9: PERMISOS (color naranja #fd7e14) -->
+                        <div class="modulo-columna">
+                            <div class="modulo-header">
+                                <i class="fa-solid fa-lock" style="color: #fd7e14;"></i>
+                                <h3>PANEL DE PERMISOS</h3>
+                            </div>
+                            <div class="modulo-tarjetas">
+                                <div class="dashboard-card" data-url="/usuarios/administrador/permisos/permisos.html">
+                                    <div class="card-icon orange">
+                                        <i class="fa-solid fa-gear"></i>
+                                    </div>
+                                    <div class="card-text">
+                                        <h3>CONFIGURAR PERMISOS</h3>
+                                        <p>Gestionar permisos por cargo</p>
+                                    </div>
+                                    <div class="card-arrow">→</div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
         </section>
     </main>
     <br>
-    <!-- COMPONENTES -->
+
     <script type="module" src="/components/autenticador.js"></script>
     <script type="module" src="/components/cargadorTemas.js"></script>
     <script type="module" src="/components/particulas.js"></script>
     <script type="module" src="panelControl.js"></script>
     <script type="module" src="/components/navbarAdministrador.js"></script>
     <script src="/components/footerAdministrador.js"></script>
-    <script type="module" src="/components/autenticador.js"></script>
-    <script src="/components/protector-admin.js"> </script>
+    <script src="/components/protector-admin.js"></script>
 </body>
 
 </html>

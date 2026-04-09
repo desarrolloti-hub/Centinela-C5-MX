@@ -462,7 +462,7 @@ async function crearFilaCategoria(categoria, tbody) {
         <td colspan="5" style="padding:0; border-top:none;">
             <div style="background: linear-gradient(to bottom, rgba(0,0,0,0.3), rgba(0,0,0,0.5)); padding: 20px; border-radius: 0 0 20px 20px;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px;">
-                    <h6 style="color: white; font-size: 1rem; font-weight: 600; margin: 0; display: flex; align-items: center; gap: 8px;">
+                    <h6 style="color: white; font-size: 93%; font-weight: 580; margin: 0; display: flex; align-items: center; gap: 8px;">
                         <i class="fas fa-list-ul" style="color: white; filter: "></i>
                         Subcategorías de <span style="color:#2f8cff;">"${escapeHTML(categoria.nombre)}"</span>
                     </h6>
@@ -719,23 +719,6 @@ window.verDetallesSubcategoria = async function (categoriaId, subcategoriaId, ev
                     </div>
                 </div>
 
-                <div>
-                    <h4 style="color: var(--color-accent-primary); margin: 0 0 10px 0; font-size: 0.9rem; text-transform: uppercase;">
-                        <i class="fas fa-info-circle" style="margin-right: 8px;"></i>INFORMACIÓN DEL SISTEMA
-                    </h4>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-                        <div>
-                            <small style="color: var(--color-accent-primary); display: block; font-size: 0.7rem; text-transform: uppercase;">ID</small>
-                            <span style="color: var(--color-text-secondary);"><i class="fas fa-fingerprint" style="margin-right: 5px;"></i> ${subcategoriaId.substring(0, 8)}...</span>
-                        </div>
-                        <div>
-                            <small style="color: var(--color-accent-primary); display: block; font-size: 0.7rem; text-transform: uppercase;">HEREDA</small>
-                            <span style="color: var(--color-text-secondary);"><i class="fas ${hereda ? 'fa-check-circle' : 'fa-times-circle'}" style="margin-right: 5px;"></i> ${hereda ? 'SÍ' : 'NO'}</span>
-                        </div>
-                        <div style="grid-column: span 2;">
-                            <small style="color: var(--color-accent-primary); display: block; font-size: 0.7rem; text-transform: uppercase;">FECHA CREACIÓN</small>
-                            <span style="color: var(--color-text-secondary);"><i class="fas fa-calendar" style="margin-right: 5px;"></i> ${subcategoria.fechaCreacion ? new Date(subcategoria.fechaCreacion).toLocaleString('es-ES', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'No disponible'}</span>
-                        </div>
                     </div>
                 </div>
             </div>

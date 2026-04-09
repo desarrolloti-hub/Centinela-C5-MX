@@ -1,15 +1,15 @@
-// area.js - VERSIÓN COMPLETA CON ÍNDICES, NOTIFICACIONES Y REGISTRO DE CONSUMO
+// area.js - VERSIÓN CORREGIDA (Preserva estado de cargos al actualizar)
 
-import { 
-    collection, 
-    doc, 
-    getDocs, 
-    getDoc, 
-    setDoc, 
-    updateDoc, 
+import {
+    collection,
+    doc,
+    getDocs,
+    getDoc,
+    setDoc,
+    updateDoc,
     deleteDoc,
-    query, 
-    where, 
+    query,
+    where,
     serverTimestamp,
     addDoc,
     orderBy,
@@ -17,7 +17,6 @@ import {
 } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-firestore.js";
 
 import { db } from '/config/firebase-config.js';
-// [MODIFICACIÓN 1]: Importar la instancia de consumo (igual que en region.js)
 import consumo from '/clases/consumoFirebase.js';
 
 /**
@@ -29,23 +28,23 @@ class Area {
         this.nombreArea = data.nombreArea || '';
         this.descripcion = data.descripcion || '';
         this.caracteristicas = data.caracteristicas || '';
-        
+
         // Objeto que contiene los cargos del área
         this.cargos = {};
-        
+
         if (data.cargos) {
             if (typeof data.cargos === 'object') {
                 this.cargos = JSON.parse(JSON.stringify(data.cargos));
             }
         }
-        
+
         this.organizacionCamelCase = data.organizacionCamelCase || '';
         this.creadoPor = data.creadoPor || '';
         this.actualizadoPor = data.actualizadoPor || '';
         this.responsable = data.responsable || '';
         this.responsableNombre = data.responsableNombre || '';
-        this.estado = data.estado || 'activa'; // 'activa' o 'inactiva'
-        
+        this.estado = data.estado || 'activa';
+
         this.fechaCreacion = data.fechaCreacion ? this._convertirFecha(data.fechaCreacion) : new Date();
         this.fechaActualizacion = data.fechaActualizacion ? this._convertirFecha(data.fechaActualizacion) : new Date();
     }
@@ -56,7 +55,7 @@ class Area {
         if (typeof fecha === 'string' || typeof fecha === 'number') return new Date(fecha);
         return new Date();
     }
-    
+
     _formatearFecha(date) {
         if (!date) return 'No disponible';
         try {
@@ -70,19 +69,19 @@ class Area {
         }
     }
 
-    getCantidadCargosActivos() { 
+    getCantidadCargosActivos() {
         if (!this.cargos) return 0;
         return Object.values(this.cargos).filter(cargo => cargo.estado !== 'inactivo').length;
     }
-    
-    getCantidadCargosTotal() { 
-        return Object.keys(this.cargos || {}).length; 
+
+    getCantidadCargosTotal() {
+        return Object.keys(this.cargos || {}).length;
     }
-    
+
     tieneCargosActivos() {
         return this.getCantidadCargosActivos() > 0;
     }
-    
+
     getCargosAsArray() {
         const cargosArray = [];
         if (this.cargos) {
@@ -95,13 +94,13 @@ class Area {
         }
         return cargosArray;
     }
-    
-    getFechaCreacionFormateada() { 
-        return this._formatearFecha(this.fechaCreacion); 
+
+    getFechaCreacionFormateada() {
+        return this._formatearFecha(this.fechaCreacion);
     }
-    
-    getFechaActualizacionFormateada() { 
-        return this._formatearFecha(this.fechaActualizacion); 
+
+    getFechaActualizacionFormateada() {
+        return this._formatearFecha(this.fechaActualizacion);
     }
 
     getEstadoBadge() {
@@ -164,7 +163,7 @@ class AreaManager {
     _getCollectionName(organizacionCamelCase) {
         return `areas_${organizacionCamelCase}`;
     }
-    
+
     async _getHistorialManager() {
         if (!this.historialManager) {
             try {
@@ -176,7 +175,7 @@ class AreaManager {
         }
         return this.historialManager;
     }
-    
+
     async _getNotificacionManager() {
         if (!this.notificacionManager) {
             try {
@@ -188,7 +187,7 @@ class AreaManager {
         }
         return this.notificacionManager;
     }
-    
+
     _generarIdFirebase() {
         const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
         let id = '';
@@ -197,26 +196,24 @@ class AreaManager {
         }
         return id;
     }
-    
+
     async crearArea(areaData, userManager) {
         try {
             const usuarioActual = userManager.currentUser;
-            
+
             if (!usuarioActual || !usuarioActual.organizacionCamelCase) {
                 throw new Error('Usuario no tiene organización asignada');
             }
-            
+
             const organizacion = usuarioActual.organizacionCamelCase;
             const collectionName = this._getCollectionName(organizacion);
-            
-            // [MODIFICACIÓN 2]: Registrar LECTURA antes de verificar existencia (igual que en region.js)
+
             await consumo.registrarFirestoreLectura(collectionName, 'verificar nombre');
             const existe = await this.verificarAreaExistente(areaData.nombreArea, organizacion);
             if (existe) throw new Error('Ya existe un área con ese nombre');
-            
-            // Generar IDs de Firebase para los cargos
+
             const cargosConIdsFirebase = {};
-            
+
             if (areaData.cargos && typeof areaData.cargos === 'object') {
                 Object.keys(areaData.cargos).forEach(key => {
                     const cargo = areaData.cargos[key];
@@ -228,9 +225,9 @@ class AreaManager {
                     };
                 });
             }
-            
+
             const areasCollection = collection(db, collectionName);
-            
+
             const areaFirestoreData = {
                 nombreArea: areaData.nombreArea,
                 descripcion: areaData.descripcion || '',
@@ -245,20 +242,18 @@ class AreaManager {
                 fechaCreacion: serverTimestamp(),
                 fechaActualizacion: serverTimestamp()
             };
-            
-            // [MODIFICACIÓN 3]: Registrar ESCRITURA antes de addDoc (igual que en region.js)
+
             await consumo.registrarFirestoreEscritura(collectionName, 'nueva área');
             const docRef = await addDoc(areasCollection, areaFirestoreData);
-            
+
             const nuevaArea = new Area(docRef.id, {
                 ...areaFirestoreData,
                 fechaCreacion: new Date(),
                 fechaActualizacion: new Date()
             });
-            
+
             this.areas.unshift(nuevaArea);
 
-            // Registro en historial
             const historial = await this._getHistorialManager();
             if (historial) {
                 await historial.registrarActividad({
@@ -277,77 +272,69 @@ class AreaManager {
                     }
                 });
             }
-            
+
             return nuevaArea;
-            
+
         } catch (error) {
             console.error('Error creando área:', error);
             throw error;
         }
     }
-    
+
+    // ========== MÉTODO CORREGIDO: Preserva el estado de los cargos ==========
     async actualizarArea(areaId, nuevosDatos, usuarioId, organizacionCamelCase, usuarioActual = null) {
         try {
             if (!organizacionCamelCase) {
                 throw new Error('Se requiere organización para actualizar área');
             }
-            
+
             const collectionName = this._getCollectionName(organizacionCamelCase);
             const areaRef = doc(db, collectionName, areaId);
-            
-            // [MODIFICACIÓN 4]: Registrar LECTURA antes de getDoc (igual que en region.js)
+
             await consumo.registrarFirestoreLectura(collectionName, areaId);
             const areaSnap = await getDoc(areaRef);
-            
+
             if (!areaSnap.exists()) {
                 throw new Error(`Área con ID ${areaId} no encontrada`);
             }
-            
+
             const datosActuales = areaSnap.data();
-            
+
             let cargosActualizados = {};
-            
+
             if (nuevosDatos.cargos) {
+                // 1. Copiar TODOS los cargos existentes con sus estados ORIGINALES
                 if (datosActuales.cargos) {
                     Object.keys(datosActuales.cargos).forEach(id => {
-                        cargosActualizados[id] = datosActuales.cargos[id];
+                        cargosActualizados[id] = { ...datosActuales.cargos[id] };
                     });
                 }
-                
+
+                // 2. Actualizar los cargos que vienen del formulario
                 Object.keys(nuevosDatos.cargos).forEach(key => {
-                    const cargo = nuevosDatos.cargos[key];
-                    
-                    let cargoId = key;
-                    let cargoExiste = false;
-                    
-                    if (datosActuales.cargos) {
-                        Object.keys(datosActuales.cargos).forEach(existingId => {
-                            if (datosActuales.cargos[existingId].nombre === cargo.nombre) {
-                                cargoId = existingId;
-                                cargoExiste = true;
-                            }
-                        });
-                    }
-                    
-                    if (!cargoExiste && !datosActuales.cargos?.[key]) {
-                        cargoId = this._generarIdFirebase();
-                        cargosActualizados[cargoId] = {
-                            nombre: cargo.nombre || '',
-                            descripcion: cargo.descripcion || '',
-                            estado: 'activo'
+                    const cargoNuevo = nuevosDatos.cargos[key];
+
+                    if (cargosActualizados[key]) {
+                        // Cargo existe - actualizar nombre/descripción, PRESERVAR EL ESTADO
+                        cargosActualizados[key] = {
+                            ...cargosActualizados[key],
+                            nombre: cargoNuevo.nombre || '',
+                            descripcion: cargoNuevo.descripcion || '',
+                            estado: cargoNuevo.estado !== undefined ? cargoNuevo.estado : (cargosActualizados[key].estado || 'activo')
                         };
                     } else {
-                        cargosActualizados[cargoId] = {
-                            ...cargosActualizados[cargoId],
-                            nombre: cargo.nombre || '',
-                            descripcion: cargo.descripcion || ''
+                        // Cargo nuevo
+                        cargosActualizados[key] = {
+                            nombre: cargoNuevo.nombre || '',
+                            descripcion: cargoNuevo.descripcion || '',
+                            estado: cargoNuevo.estado || 'activo'
                         };
                     }
                 });
             } else {
                 cargosActualizados = datosActuales.cargos || {};
             }
-            
+
             const datosActualizados = {
                 nombreArea: nuevosDatos.nombreArea,
                 descripcion: nuevosDatos.descripcion,
@@ -357,11 +344,10 @@ class AreaManager {
                 fechaActualizacion: serverTimestamp(),
                 actualizadoPor: usuarioId
             };
-            
-            // [MODIFICACIÓN 5]: Registrar ACTUALIZACIÓN antes de updateDoc (igual que en region.js)
+
             await consumo.registrarFirestoreActualizacion(collectionName, areaId);
             await updateDoc(areaRef, datosActualizados);
-            
+
             const areaIndex = this.areas.findIndex(a => a.id === areaId);
             if (areaIndex !== -1) {
                 const areaActual = this.areas[areaIndex];
@@ -404,28 +390,24 @@ class AreaManager {
                     });
                 }
             }
-            
+
             return await this.getAreaById(areaId, organizacionCamelCase);
-            
+
         } catch (error) {
             console.error('Error actualizando área:', error);
             throw error;
         }
     }
 
-    /**
-     * Obtiene todas las áreas de una organización con ordenamiento por fecha
-     */
     async getAreasByOrganizacion(organizacionCamelCase, soloActivas = false, usuarioActual = null) {
         try {
             if (!organizacionCamelCase) return [];
-            
+
             const collectionName = this._getCollectionName(organizacionCamelCase);
             const areasCollection = collection(db, collectionName);
-            
+
             let areasQuery;
             if (soloActivas) {
-                // Usar índice: organizacionCamelCase + estado + fechaCreacion
                 areasQuery = query(
                     areasCollection,
                     where("organizacionCamelCase", "==", organizacionCamelCase),
@@ -433,19 +415,17 @@ class AreaManager {
                     orderBy("fechaCreacion", "desc")
                 );
             } else {
-                // Usar índice: organizacionCamelCase + fechaCreacion
                 areasQuery = query(
                     areasCollection,
                     where("organizacionCamelCase", "==", organizacionCamelCase),
                     orderBy("fechaCreacion", "desc")
                 );
             }
-            
-            // [MODIFICACIÓN 6]: Registrar LECTURA antes de getDocs (igual que en region.js)
+
             await consumo.registrarFirestoreLectura(collectionName, 'lista áreas');
             const areasSnapshot = await getDocs(areasQuery);
             const areas = [];
-            
+
             areasSnapshot.forEach(doc => {
                 try {
                     const data = doc.data();
@@ -455,7 +435,7 @@ class AreaManager {
                     console.error('Error procesando área:', error);
                 }
             });
-            
+
             this.areas = areas;
 
             if (usuarioActual) {
@@ -470,41 +450,36 @@ class AreaManager {
                     });
                 }
             }
-            
+
             return areas;
-            
+
         } catch (error) {
             console.error('Error obteniendo áreas:', error);
             return [];
         }
     }
 
-    /**
-     * Obtiene áreas por responsable (usuario)
-     */
     async getAreasByResponsable(responsableId, organizacionCamelCase) {
         try {
             if (!organizacionCamelCase || !responsableId) return [];
-            
+
             const collectionName = this._getCollectionName(organizacionCamelCase);
-            
-            // Usar índice: responsable + estado + fechaCreacion
+
             const q = query(
                 collection(db, collectionName),
                 where("responsable", "==", responsableId),
                 where("estado", "==", "activa"),
                 orderBy("fechaCreacion", "desc")
             );
-            
-            // [MODIFICACIÓN 7]: Registrar LECTURA (igual que en region.js)
+
             await consumo.registrarFirestoreLectura(collectionName, 'áreas por responsable');
             const snapshot = await getDocs(q);
             const areas = [];
-            
+
             snapshot.forEach(doc => {
                 areas.push(new Area(doc.id, doc.data()));
             });
-            
+
             return areas;
 
         } catch (error) {
@@ -515,18 +490,17 @@ class AreaManager {
 
     async getAreaById(areaId, organizacionCamelCase) {
         if (!organizacionCamelCase) return null;
-        
+
         const areaInMemory = this.areas.find(area => area.id === areaId);
         if (areaInMemory) return areaInMemory;
-        
+
         try {
             const collectionName = this._getCollectionName(organizacionCamelCase);
             const areaRef = doc(db, collectionName, areaId);
-            
-            // [MODIFICACIÓN 8]: Registrar LECTURA antes de getDoc (igual que en region.js)
+
             await consumo.registrarFirestoreLectura(collectionName, areaId);
             const areaSnap = await getDoc(areaRef);
-            
+
             if (areaSnap.exists()) {
                 const data = areaSnap.data();
                 const area = new Area(areaId, { ...data, id: areaId });
@@ -534,52 +508,50 @@ class AreaManager {
                 return area;
             }
             return null;
-            
+
         } catch (error) {
             console.error('Error obteniendo área:', error);
             return null;
         }
     }
-    
+
     async inactivarCargo(areaId, cargoId, usuarioId, organizacionCamelCase, usuarioActual = null) {
         try {
             if (!organizacionCamelCase) {
                 throw new Error('Se requiere organización para inactivar cargo');
             }
-            
+
             const collectionName = this._getCollectionName(organizacionCamelCase);
             const areaRef = doc(db, collectionName, areaId);
-            
-            // [MODIFICACIÓN 9]: Registrar LECTURA antes de getDoc (igual que en region.js)
+
             await consumo.registrarFirestoreLectura(collectionName, areaId);
             const areaSnap = await getDoc(areaRef);
-            
+
             if (!areaSnap.exists()) {
                 throw new Error(`Área con ID ${areaId} no encontrada`);
             }
-            
+
             const datosActuales = areaSnap.data();
             const cargos = datosActuales.cargos || {};
-            
+
             if (!cargos[cargoId]) {
                 throw new Error('Cargo no encontrado');
             }
-            
+
             const nombreCargo = cargos[cargoId].nombre;
-            
+
             cargos[cargoId] = {
                 ...cargos[cargoId],
                 estado: 'inactivo'
             };
-            
-            // [MODIFICACIÓN 10]: Registrar ACTUALIZACIÓN antes de updateDoc (igual que en region.js)
+
             await consumo.registrarFirestoreActualizacion(collectionName, areaId);
             await updateDoc(areaRef, {
                 cargos: cargos,
                 fechaActualizacion: serverTimestamp(),
                 actualizadoPor: usuarioId
             });
-            
+
             if (usuarioActual) {
                 const historial = await this._getHistorialManager();
                 if (historial) {
@@ -598,9 +570,9 @@ class AreaManager {
                     });
                 }
             }
-            
+
             return true;
-            
+
         } catch (error) {
             console.error('Error inactivando cargo:', error);
             throw error;
@@ -612,40 +584,38 @@ class AreaManager {
             if (!organizacionCamelCase) {
                 throw new Error('Se requiere organización para reactivar cargo');
             }
-            
+
             const collectionName = this._getCollectionName(organizacionCamelCase);
             const areaRef = doc(db, collectionName, areaId);
-            
-            // [MODIFICACIÓN 11]: Registrar LECTURA antes de getDoc (igual que en region.js)
+
             await consumo.registrarFirestoreLectura(collectionName, areaId);
             const areaSnap = await getDoc(areaRef);
-            
+
             if (!areaSnap.exists()) {
                 throw new Error(`Área con ID ${areaId} no encontrada`);
             }
-            
+
             const datosActuales = areaSnap.data();
             const cargos = datosActuales.cargos || {};
-            
+
             if (!cargos[cargoId]) {
                 throw new Error('Cargo no encontrado');
             }
-            
+
             const nombreCargo = cargos[cargoId].nombre;
-            
+
             cargos[cargoId] = {
                 ...cargos[cargoId],
                 estado: 'activo'
             };
-            
-            // [MODIFICACIÓN 12]: Registrar ACTUALIZACIÓN antes de updateDoc (igual que en region.js)
+
             await consumo.registrarFirestoreActualizacion(collectionName, areaId);
             await updateDoc(areaRef, {
                 cargos: cargos,
                 fechaActualizacion: serverTimestamp(),
                 actualizadoPor: usuarioId
             });
-            
+
             if (usuarioActual) {
                 const historial = await this._getHistorialManager();
                 if (historial) {
@@ -664,9 +634,9 @@ class AreaManager {
                     });
                 }
             }
-            
+
             return true;
-            
+
         } catch (error) {
             console.error('Error reactivando cargo:', error);
             throw error;
@@ -678,25 +648,24 @@ class AreaManager {
             if (!organizacionCamelCase) {
                 throw new Error('Se requiere organización para inactivar área');
             }
-            
+
             const area = await this.getAreaById(areaId, organizacionCamelCase);
             const nombreArea = area ? area.nombreArea : 'Área desconocida';
-            
+
             if (area && area.tieneCargosActivos()) {
                 throw new Error('No se puede inactivar un área con cargos activos. Debe inactivar todos los cargos primero.');
             }
-            
+
             const collectionName = this._getCollectionName(organizacionCamelCase);
             const areaRef = doc(db, collectionName, areaId);
-            
-            // [MODIFICACIÓN 13]: Registrar ACTUALIZACIÓN antes de updateDoc (igual que en region.js)
+
             await consumo.registrarFirestoreActualizacion(collectionName, areaId);
             await updateDoc(areaRef, {
                 estado: 'inactiva',
                 fechaActualizacion: serverTimestamp(),
                 actualizadoPor: usuarioId
             });
-            
+
             const areaIndex = this.areas.findIndex(a => a.id === areaId);
             if (areaIndex !== -1) {
                 this.areas[areaIndex].estado = 'inactiva';
@@ -720,9 +689,9 @@ class AreaManager {
                     });
                 }
             }
-            
+
             return true;
-            
+
         } catch (error) {
             console.error('Error inactivando área:', error);
             throw error;
@@ -734,21 +703,20 @@ class AreaManager {
             if (!organizacionCamelCase) {
                 throw new Error('Se requiere organización para reactivar área');
             }
-            
+
             const area = await this.getAreaById(areaId, organizacionCamelCase);
             const nombreArea = area ? area.nombreArea : 'Área desconocida';
-            
+
             const collectionName = this._getCollectionName(organizacionCamelCase);
             const areaRef = doc(db, collectionName, areaId);
-            
-            // [MODIFICACIÓN 14]: Registrar ACTUALIZACIÓN antes de updateDoc (igual que en region.js)
+
             await consumo.registrarFirestoreActualizacion(collectionName, areaId);
             await updateDoc(areaRef, {
                 estado: 'activa',
                 fechaActualizacion: serverTimestamp(),
                 actualizadoPor: usuarioId
             });
-            
+
             const areaIndex = this.areas.findIndex(a => a.id === areaId);
             if (areaIndex !== -1) {
                 this.areas[areaIndex].estado = 'activa';
@@ -772,40 +740,35 @@ class AreaManager {
                     });
                 }
             }
-            
+
             return true;
-            
+
         } catch (error) {
             console.error('Error reactivando área:', error);
             throw error;
         }
     }
-    
+
     async verificarAreaExistente(nombreArea, organizacionCamelCase) {
         try {
             const collectionName = this._getCollectionName(organizacionCamelCase);
-            
-            // Usar índice: nombreArea + organizacionCamelCase
+
             const q = query(
                 collection(db, collectionName),
                 where("nombreArea", "==", nombreArea),
                 where("organizacionCamelCase", "==", organizacionCamelCase)
             );
-            
-            // [MODIFICACIÓN 15]: Registrar LECTURA (igual que en region.js)
+
             await consumo.registrarFirestoreLectura(collectionName, 'verificar nombre');
             const querySnapshot = await getDocs(q);
             return !querySnapshot.empty;
-            
+
         } catch (error) {
             console.error('Error verificando área:', error);
             return false;
         }
     }
 
-    /**
-     * Obtener estadísticas de áreas por organización
-     */
     async getEstadisticas(organizacionCamelCase) {
         try {
             if (!organizacionCamelCase) {
@@ -814,20 +777,19 @@ class AreaManager {
 
             const collectionName = this._getCollectionName(organizacionCamelCase);
             const areasCollection = collection(db, collectionName);
-            
-            // [MODIFICACIÓN 16]: Registrar LECTURA (igual que en region.js)
+
             await consumo.registrarFirestoreLectura(collectionName, 'estadísticas');
             const snapshot = await getDocs(areasCollection);
-            
+
             let total = 0;
             let activas = 0;
-            
+
             snapshot.forEach(doc => {
                 total++;
                 const data = doc.data();
                 if (data.estado === 'activa') activas++;
             });
-            
+
             return {
                 total,
                 activas,
