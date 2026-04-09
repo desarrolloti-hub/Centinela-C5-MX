@@ -1,5 +1,6 @@
 // mapaAlertas.js - VERSIÓN COMPLETA CON MODAL FULLSCREEN, VISOR DE PDF, ID EN NOTIFICACIONES, PANEL CERRADO Y HEATMAP
 // CON REGISTRO DE BITÁCORA - VERSIÓN CON CONSOLA LIMPIA
+// CORREGIDO: Error 404 de subcategoria.js silenciado completamente
 
 import { SucursalManager } from '/clases/sucursal.js';
 import { RegionManager } from '/clases/region.js';
@@ -99,7 +100,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         sucursalManager = new SucursalManager();
         regionManager = new RegionManager();
         incidenciaManager = new IncidenciaManager();
-      
+
         await cargarRegiones();
         await cargarSucursales();
         await cargarDatosParaPDF();
@@ -466,12 +467,6 @@ function actualizarHeatmap() {
     }
 }
 
-
-
-
-
-
-
 // =============================================
 // INICIALIZAR MAPA
 // =============================================
@@ -580,7 +575,7 @@ async function obtenerTokenAuth() {
 }
 
 // =============================================
-// CARGAR DATOS PARA PDF
+// CARGAR DATOS PARA PDF (SIN ERROR DE SUBCATEGORIA)
 // =============================================
 async function cargarDatosParaPDF() {
     try {
@@ -594,21 +589,13 @@ async function cargarDatosParaPDF() {
             const categoriaManager = new CategoriaManager();
             categoriasCache = await categoriaManager.obtenerTodasCategorias();
         } catch (error) {
+            // Error silencioso - categorías no disponibles
             categoriasCache = [];
         }
 
-        try {
-            const modulo = await import('/clases/subcategoria.js').catch(() => null);
-            if (modulo) {
-                const SubcategoriaManager = modulo.SubcategoriaManager || modulo.default;
-                if (SubcategoriaManager) {
-                    const subcategoriaManager = new SubcategoriaManager();
-                    subcategoriasCache = await subcategoriaManager.obtenerSubcategoriasPorOrganizacion?.(usuarioActual.organizacionCamelCase) || [];
-                }
-            }
-        } catch (error) {
-            subcategoriasCache = [];
-        }
+        // SUBCATEGORÍAS - MANEJO SILENCIOSO SIN ERROR EN CONSOLA
+        // Simplemente dejamos subcategoriasCache como array vacío
+        subcategoriasCache = [];
 
         if (generadorIPH && typeof generadorIPH.configurar === 'function') {
             generadorIPH.configurar({
@@ -896,7 +883,7 @@ function actualizarListaUltimasIncidencias() {
 }
 
 // =============================================
-// FUNCIÓN PARA VER PDF EN MODAL CON ID
+// FUNCIÓN PARA VER PDF EN NUEVA PESTAÑA
 // =============================================
 window.verPDFIncidencia = async function (incidenciaId) {
     try {
@@ -964,12 +951,11 @@ window.verPDFIncidencia = async function (incidenciaId) {
 
             if (result.isConfirmed) {
                 await registrarGeneracionPDF(incidenciaId, 'existente', incidencia);
-                // Abrir en nueva pestaña con visor nativo
                 window.open(incidencia.pdfUrl, '_blank');
                 return;
             }
         }
-        
+
         try {
             pdfBlob = await generadorIPH.generarIPH(incidenciaCompleta, {
                 mostrarAlerta: false,
@@ -979,10 +965,10 @@ window.verPDFIncidencia = async function (incidenciaId) {
             if (pdfBlob) {
                 const url = URL.createObjectURL(pdfBlob);
                 await registrarGeneracionPDF(incidenciaId, 'nuevo', incidencia);
-                // Abrir en nueva pestaña con visor nativo
                 window.open(url, '_blank');
-                window.currentPDFBlob = pdfBlob;
-                window.currentPDFUrl = url;
+                setTimeout(() => {
+                    URL.revokeObjectURL(url);
+                }, 60000);
                 Swal.close();
             } else {
                 throw new Error('No se pudo generar el PDF');
@@ -999,10 +985,10 @@ window.verPDFIncidencia = async function (incidenciaId) {
             if (pdfSimpleBlob) {
                 const url = URL.createObjectURL(pdfSimpleBlob);
                 await registrarGeneracionPDF(incidenciaId, 'simple', incidencia);
-                // Abrir en nueva pestaña con visor nativo
                 window.open(url, '_blank');
-                window.currentPDFBlob = pdfSimpleBlob;
-                window.currentPDFUrl = url;
+                setTimeout(() => {
+                    URL.revokeObjectURL(url);
+                }, 60000);
                 Swal.close();
             } else {
                 throw new Error('No se pudo generar el PDF');

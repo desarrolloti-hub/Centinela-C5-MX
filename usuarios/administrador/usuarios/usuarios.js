@@ -771,7 +771,6 @@ function showCollaboratorDetails(collaborator, collaboratorName) {
                         <p><strong>Fecha creación</strong> <span>${fechaCreacion}</span></p>
                         <p><strong>Último inicio de sesión</strong> 
                             <span>
-                                <i class="fas fa-sign-in-alt""></i>
                                 ${fechaUltimoLogin}
                             </span>
                         </p>

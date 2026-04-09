@@ -171,7 +171,6 @@ class GeneradorPDFBitacora extends PDFBaseGenerator {
             const nombreArchivo = `bitacora_${fechaStr}.pdf`;
 
             const endTime = performance.now();
-            console.log(`PDF generado en ${(endTime - startTime).toFixed(0)}ms`);
 
             if (mostrarAlerta) {
                 Swal.close();
@@ -263,7 +262,7 @@ async generarBitacoraPDFBlob(actividades, fecha, opciones = {}) {
         this.dibujarPiePagina(pdf);
 
         const endTime = performance.now();
-        console.log(`PDF generado en ${(endTime - startTime).toFixed(0)}ms`);
+        
 
         if (mostrarAlerta) {
             Swal.close();

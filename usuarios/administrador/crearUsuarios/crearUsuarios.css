@@ -571,7 +571,7 @@ select.form-input-field option:any {
 
 /* ========== BOTONES ========== */
 .action-buttons {
-    display: grid;
+    display: flex;
     grid-template-columns: repeat(2, 1fr);
     gap: 1rem;
     margin-top: auto;

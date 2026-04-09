@@ -1105,7 +1105,7 @@ body {
    DROP ZONE
    ============================================= */
 .drop-zone {
-    border: 2px dashed #ccc;
+    border: 3px dashed #fff !important;
     border-radius: 12px;
     padding: 2rem;
     text-align: center;
@@ -1116,12 +1116,12 @@ body {
 }
 
 .drop-zone:hover {
-    border-color: #4a6cf7;
+    border-color: #ffffff;
     border-style: dashed;
 }
 
 .drop-zone.drag-over {
-    border-color: #28a745;
+    border-color: var(--color-accent-primary);
     border-style: solid;
     background: transparent;
 }
@@ -1133,7 +1133,7 @@ body {
 }
 
 .drop-zone:hover i {
-    color: #4a6cf7;
+    color: var(--color-accent-primary);
 }
 
 .drop-zone p {
@@ -1435,17 +1435,7 @@ select:not(.field-disabled):focus {
 }
 
 /* Badde de campo obligatorio para el dropzone */
-.drop-zone {
-    position: relative;
-    border: 2px dashed var(--color-border-light);
-    border-radius: var(--border-radius-medium);
-    padding: 2rem;
-    text-align: center;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    background: var(--color-bg-tertiary);
-    margin-bottom: 1.5rem;
-}
+
 
 .drop-zone .required-badge {
     position: absolute;

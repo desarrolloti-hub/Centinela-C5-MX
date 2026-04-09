@@ -250,7 +250,6 @@ export class OperacionesEstadisticas {
             const organizaciones = await this.obtenerOrganizaciones();
             
             if (!organizaciones || organizaciones.length === 0) {
-                console.log('No hay organizaciones para actualizar');
                 this._notificarProgreso({
                     completado: true,
                     total: 0,
@@ -268,8 +267,7 @@ export class OperacionesEstadisticas {
             const total = empresasAProcesar.length;
             let procesadas = 0;
             const resultados = [];
-            
-            console.log(`📊 Actualizando ${total} organizaciones...`);
+                    
             
             this._notificarProgreso({
                 completado: false,
@@ -309,8 +307,7 @@ export class OperacionesEstadisticas {
                                 if (actualizado) {
                                     await instancia.guardar();
                                     
-                                    const tiempoEmpresa = Date.now() - inicioEmpresa;
-                                    console.log(`✅ ${org.nombre}: ${instancia.conteos.storage.totalArchivos} archivos (${tiempoEmpresa}ms)`);
+                                    const tiempoEmpresa = Date.now() - inicioEmpresa;                                   
                                     
                                     return instancia;
                                 }
@@ -348,7 +345,6 @@ export class OperacionesEstadisticas {
                 }
             }
             
-            console.log(`✅ Actualizadas ${resultados.length} organizaciones`);
             
             this._notificarProgreso({
                 completado: true,
@@ -374,7 +370,6 @@ export class OperacionesEstadisticas {
     static limpiarCache() {
         this.cache.clear();
         this.storageCache.clear();
-        console.log('🗑️ Caché completamente limpiada');
     }
     
     static exportarACSV(estadisticas) {
@@ -554,7 +549,6 @@ export class OperacionesEstadisticas {
         const inicioTiempo = Date.now();
         
         try {
-            console.log(`📊 Actualizando estadísticas para ${this.id}...`);
             
             const [firestoreStats, storageStats, authStats] = await Promise.all([
                 this._recopilarFirestoreStats(),
@@ -738,7 +732,7 @@ export class OperacionesEstadisticas {
             return stats;
             
         } catch (error) {
-            console.log(`⚠️ Carpeta no encontrada para ${this.id}`);
+            
             return {
                 totalArchivos: 0,
                 totalSizeBytes: 0,
