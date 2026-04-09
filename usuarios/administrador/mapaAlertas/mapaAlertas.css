@@ -100,51 +100,6 @@ body {
 }
 
 /* =============================================
-   PANEL SUPERIOR IZQUIERDO - TÍTULO Y ESTADÍSTICAS
-   ============================================= */
-.map-header-panel {
-    position: absolute;
-    top: 20px;
-    left: 20px;
-    z-index: 10;
-    background: var(--color-bg-overlay, rgba(0, 0, 0, 0.85));
-    backdrop-filter: blur(10px);
-    border-radius: 16px;
-    padding: 12px 20px;
-    border: 1px solid var(--color-border-accent, rgba(0, 207, 255, 0.3));
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-    pointer-events: auto;
-}
-
-.map-header-panel h1 {
-    font-family: var(--font-family-primary, 'Orbitron', sans-serif);
-    font-size: 1.2rem;
-    color: var(--color-accent-primary, #00cfff);
-    margin: 0;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
-.map-header-panel h1 i {
-    color: var(--color-accent-primary, #00cfff);
-}
-
-.map-header-panel .stats-mini {
-    display: flex;
-    gap: 15px;
-    margin-top: 8px;
-    font-size: 0.7rem;
-    color: var(--color-text-secondary, #cccccc);
-}
-
-.map-header-panel .stats-mini span {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-}
-
-/* =============================================
    PANEL SELECTOR DE REGIÓN (ARRIBA DERECHA)
    ============================================= */
 .region-selector-panel {
@@ -334,13 +289,15 @@ body {
     font-size: 0.65rem;
 }
 
-/* Badge de región activa */
+/* =============================================
+   BADGE DE REGIÓN ACTIVA
+   ============================================= */
 .region-active-badge {
     position: absolute;
-    bottom: 20px;
+    top: 80px;
     left: 20px;
-    background: var(--color-bg-overlay, rgba(0, 0, 0, 0.8));
-    backdrop-filter: blur(5px);
+    background: var(--color-bg-overlay, rgba(0, 0, 0, 0.85));
+    backdrop-filter: blur(10px);
     border-radius: 20px;
     padding: 6px 12px;
     font-size: 0.7rem;
@@ -351,6 +308,7 @@ body {
     z-index: 15;
     pointer-events: auto;
     color: var(--color-text-secondary, #cccccc);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
 }
 
 .region-active-badge i {
@@ -361,6 +319,19 @@ body {
     width: 12px;
     height: 12px;
     border-radius: 2px;
+}
+
+#btnQuitarFiltroRegion {
+    background: none;
+    border: none;
+    color: #888;
+    cursor: pointer;
+    margin-left: 8px;
+    transition: color 0.2s ease;
+}
+
+#btnQuitarFiltroRegion:hover {
+    color: #ff4444;
 }
 
 /* =============================================
@@ -585,87 +556,7 @@ body {
 }
 
 /* =============================================
-   PANEL DE REGIONES (DESPLEGABLE HACIA ARRIBA)
-   ============================================= */
-.regions-panel {
-    position: absolute;
-    bottom: 20px;
-    left: 20px;
-    z-index: 10;
-    background: var(--color-bg-overlay, rgba(0, 0, 0, 0.85));
-    backdrop-filter: blur(10px);
-    border-radius: 12px;
-    border: 1px solid var(--color-border-accent, rgba(0, 207, 255, 0.3));
-    width: 260px;
-    max-height: 260px;
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
-    pointer-events: auto;
-    transition: transform 0.3s ease;
-}
-
-.regions-header {
-    padding: 8px 12px;
-    background: var(--color-bg-overlay-dark, rgba(0, 0, 0, 0.8));
-    border-bottom: 1px solid var(--color-border-accent, rgba(0, 207, 255, 0.3));
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    cursor: pointer;
-}
-
-.regions-header h4 {
-    font-family: var(--font-family-primary, 'Orbitron', sans-serif);
-    font-size: 0.7rem;
-    color: var(--color-accent-primary, #00cfff);
-    margin: 0;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-}
-
-.regions-header h4 i {
-    color: var(--color-accent-primary, #00cfff);
-}
-
-.regions-list {
-    overflow-y: auto;
-    max-height: 180px;
-    padding: 6px;
-}
-
-.region-item {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 5px 8px;
-    border-radius: 6px;
-    font-size: 0.65rem;
-}
-
-.region-color {
-    width: 16px;
-    height: 16px;
-    border-radius: 4px;
-    border: 1px solid rgba(255, 255, 255, 0.2);
-}
-
-.region-name {
-    flex: 1;
-    color: var(--color-text-primary, #ffffff);
-}
-
-.region-count {
-    background: var(--color-bg-tertiary, rgba(255, 255, 255, 0.1));
-    padding: 2px 5px;
-    border-radius: 10px;
-    font-size: 0.55rem;
-    color: var(--color-text-muted, #aaaaaa);
-}
-
-/* =============================================
-   PANEL INFERIOR DERECHO - BOTONES DE CONTROL
+   PANEL DE CONTROL - BOTONES (CENTRAR, ACTUALIZAR, HEATMAP)
    ============================================= */
 .control-panel {
     position: absolute;
@@ -782,35 +673,119 @@ body {
 }
 
 /* =============================================
-   LEYENDA
+   LEYENDA CON ESTADÍSTICAS INTEGRADAS - VERSIÓN CON ACORDEÓN EN RESPONSIVE
    ============================================= */
 .legend-panel {
     position: absolute;
     bottom: 20px;
-    left: -260px;
+    left: 20px;
     z-index: 10;
     background: var(--color-bg-overlay, rgba(0, 0, 0, 0.85));
     backdrop-filter: blur(10px);
     border-radius: 12px;
-    padding: 8px 16px;
     border: 1px solid var(--color-border-accent, rgba(0, 207, 255, 0.3));
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
     pointer-events: auto;
-    margin-left: 280px;
+    min-width: 180px;
+    transition: all 0.3s ease;
 }
 
-.legend-panel .legend-title {
-    font-size: 0.6rem;
+/* Header de la leyenda (siempre visible) */
+.legend-header {
+    padding: 10px 16px;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-radius: 12px;
+    transition: all 0.2s ease;
+}
+
+.legend-header:hover {
+    background: var(--color-accent-transparent, rgba(0, 207, 255, 0.1));
+}
+
+.legend-header .legend-title {
+    font-size: 0.65rem;
     text-transform: uppercase;
     color: var(--color-accent-primary, #00cfff);
-    margin-bottom: 6px;
     letter-spacing: 1px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.legend-header .legend-title i {
+    font-size: 0.7rem;
+}
+
+.legend-header .legend-chevron {
+    font-size: 0.6rem;
+    color: var(--color-accent-primary, #00cfff);
+    transition: transform 0.3s ease;
+}
+
+/* Contenido de la leyenda (desplegable) */
+.legend-content {
+    overflow: hidden;
+    transition: max-height 0.3s ease, padding 0.3s ease;
+    max-height: 0;
+    padding: 0 16px;
+}
+
+/* Estado expandido en desktop (siempre visible) */
+@media (min-width: 769px) {
+    .legend-content {
+        max-height: 500px;
+        padding: 0 16px 10px 16px;
+    }
+
+    .legend-header .legend-chevron {
+        display: none;
+    }
+}
+
+/* Estado colapsado en responsive */
+@media (max-width: 768px) {
+    .legend-panel {
+        min-width: auto;
+        max-width: 200px;
+        bottom: 10px;
+        left: 10px;
+    }
+
+    .legend-content {
+        max-height: 0;
+        padding: 0 16px;
+    }
+
+    .legend-panel.expanded .legend-content {
+        max-height: 400px;
+        padding: 0 16px 10px 16px;
+    }
+
+    .legend-panel.expanded .legend-chevron {
+        transform: rotate(180deg);
+    }
+}
+
+.legend-panel .legend-title-text {
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    color: var(--color-accent-primary, #00cfff);
+    margin-bottom: 8px;
+    letter-spacing: 1px;
+    border-bottom: 1px solid rgba(0, 207, 255, 0.3);
+    padding-bottom: 4px;
 }
 
 .legend-colors {
     display: flex;
     gap: 12px;
     flex-wrap: wrap;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .legend-item {
@@ -827,6 +802,54 @@ body {
 
 .legend-item .fa-store {
     font-size: 0.7rem;
+}
+
+/* Estadísticas dentro de la leyenda */
+.legend-stats {
+    margin-top: 4px;
+}
+
+.legend-stats-title {
+    font-size: 0.6rem;
+    color: var(--color-accent-primary, #00cfff);
+    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.legend-stats-title i {
+    font-size: 0.55rem;
+}
+
+.legend-stats-items {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: space-between;
+}
+
+.legend-stat-item {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    background: var(--color-bg-tertiary, rgba(255, 255, 255, 0.05));
+    padding: 4px 8px;
+    border-radius: 20px;
+    font-size: 0.7rem;
+    font-weight: bold;
+    color: var(--color-text-primary, #ffffff);
+}
+
+.legend-stat-item i {
+    font-size: 0.6rem;
+}
+
+.legend-stat-item .stat-label {
+    font-size: 0.55rem;
+    font-weight: normal;
+    color: var(--color-text-muted, #aaaaaa);
+    margin-left: 2px;
 }
 
 /* =============================================
@@ -1016,21 +1039,26 @@ body {
    ============================================= */
 @media (max-width: 1200px) {
     .legend-panel {
-        margin-left: 260px;
+        left: 20px;
     }
 }
 
 @media (max-width: 992px) {
-    .legend-panel {
-        margin-left: 240px;
-    }
-
     .incidencia-header {
         flex-wrap: wrap;
     }
 
     .incidencia-fecha {
         margin-left: 0;
+    }
+
+    .legend-stats-items {
+        gap: 6px;
+    }
+
+    .legend-stat-item {
+        padding: 3px 6px;
+        font-size: 0.65rem;
     }
 }
 
@@ -1075,41 +1103,50 @@ body {
         max-height: calc(100vh - 100px);
     }
 
-    .regions-panel {
-        width: 220px;
-        left: 10px;
-        bottom: 10px;
-    }
-
+    /* ========== BOTONES DE CONTROL EN ESQUINA INFERIOR DERECHA - SOLO ICONOS ========== */
     .control-panel {
         bottom: 10px;
         right: 10px;
+        top: auto;
+        left: auto;
+        flex-direction: column;
+        gap: 6px;
     }
 
     .control-btn {
-        padding: 6px 12px;
+        padding: 8px 10px;
+        border-radius: 50px;
+        gap: 0;
+    }
+
+    .control-btn span {
+        display: none;
+    }
+
+    .control-btn i {
+        font-size: 1rem;
+        margin: 0;
+    }
+
+    /* Badge de región activa */
+    .region-active-badge {
+        top: 70px;
+        left: 10px;
+        padding: 5px 10px;
         font-size: 0.65rem;
+        max-width: calc(100% - 80px);
     }
 
-    .map-header-panel {
-        top: 10px;
-        left: 10px;
-        padding: 6px 12px;
+    .region-active-badge span {
+        display: inline;
     }
 
-    .map-header-panel h1 {
-        font-size: 0.8rem;
-    }
-
+    /* Leyenda - abajo izquierda */
     .legend-panel {
-        bottom: 70px;
+        bottom: 10px;
         left: 10px;
-        margin-left: 0;
-        padding: 6px 12px;
-    }
-
-    .legend-colors {
-        gap: 8px;
+        top: auto;
+        right: auto;
     }
 
     .notification-swal {
@@ -1142,22 +1179,13 @@ body {
 
     .incidencias-panel {
         width: 260px;
-    }
-
-    .regions-panel {
-        width: 200px;
-    }
-
-    .legend-item span {
-        display: none;
-    }
-
-    .legend-item i {
-        font-size: 0.8rem;
+        top: 60px;
+        right: 8px;
+        max-height: calc(100vh - 90px);
     }
 
     .region-selector-btn span {
-        display: none;
+        display: inline;
     }
 
     .region-selector-btn i:first-child {
@@ -1166,6 +1194,7 @@ body {
 
     .region-dropdown {
         width: 200px;
+        top: 38px;
     }
 
     .incidencia-header {
@@ -1176,15 +1205,57 @@ body {
     .incidencia-fecha {
         margin-left: 0;
     }
+
+    /* Botones - esquina inferior derecha, solo iconos */
+    .control-panel {
+        bottom: 8px;
+        right: 8px;
+        gap: 5px;
+    }
+
+    .control-btn {
+        padding: 7px 9px;
+    }
+
+    .control-btn i {
+        font-size: 0.9rem;
+    }
+
+    /* Badge */
+    .region-active-badge {
+        top: 60px;
+        left: 8px;
+        font-size: 0.6rem;
+        padding: 4px 8px;
+        max-width: calc(100% - 70px);
+    }
+
+    .region-active-badge span {
+        display: inline;
+    }
 }
 
-@media (max-width: 360px) {
+@media (max-width: 380px) {
     .incidencias-panel {
         width: 240px;
     }
 
-    .regions-panel {
-        width: 180px;
+    .control-btn {
+        padding: 6px 8px;
+    }
+
+    .control-btn i {
+        font-size: 0.8rem;
+    }
+
+    .region-active-badge {
+        left: 8px;
+        font-size: 0.55rem;
+        padding: 3px 6px;
+    }
+
+    .region-active-badge span {
+        display: none;
     }
 }
 
