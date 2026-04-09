@@ -66,8 +66,7 @@ document.addEventListener('DOMContentLoaded', async function () {
 async function inicializarHistorial() {
     try {
         const { HistorialUsuarioManager } = await import('/clases/historialUsuario.js');
-        historialManager = new HistorialUsuarioManager();
-        console.log('📋 HistorialManager inicializado para sucursales');
+        historialManager = new HistorialUsuarioManager();        
     } catch (error) {
         console.error('Error inicializando historialManager:', error);
     }
@@ -114,8 +113,7 @@ async function registrarVisualizacionSucursal(sucursal) {
                 sucursalCiudad: sucursal.ciudad,
                 fechaVisualizacion: new Date().toISOString()
             }
-        });
-        console.log(`✅ Visualización de sucursal "${sucursal.nombre}" registrada en bitácora`);
+        });        
     } catch (error) {
         console.error('Error registrando visualización de sucursal:', error);
     }
@@ -142,8 +140,7 @@ async function registrarEliminacionSucursal(sucursal) {
                 sucursalCiudad: sucursal.ciudad,
                 fechaEliminacion: new Date().toISOString()
             }
-        });
-        console.log(`✅ Eliminación de sucursal "${sucursal.nombre}" registrada en bitácora`);
+        });        
     } catch (error) {
         console.error('Error registrando eliminación de sucursal:', error);
     }
