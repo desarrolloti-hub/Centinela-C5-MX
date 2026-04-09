@@ -71,7 +71,7 @@ async function inicializarHistorial() {
     try {
         const { HistorialUsuarioManager } = await import('/clases/historialUsuario.js');
         historialManager = new HistorialUsuarioManager();
-        console.log('📋 HistorialManager inicializado para editar categorías');
+
     } catch (error) {
         console.error('Error inicializando historialManager:', error);
     }
@@ -117,14 +117,14 @@ function obtenerUsuarioActual() {
 // ✅ NUEVO: Registrar edición de categoría
 async function registrarEdicionCategoria(categoriaOriginal, categoriaActualizada) {
     if (!historialManager) return;
-    
+
     try {
         const usuario = obtenerUsuarioActual();
         if (!usuario) return;
-        
+
         // Detectar cambios
         const cambios = [];
-        
+
         if (categoriaOriginal.nombre !== categoriaActualizada.nombre) {
             cambios.push({
                 campo: 'nombre',
@@ -132,7 +132,7 @@ async function registrarEdicionCategoria(categoriaOriginal, categoriaActualizada
                 nuevo: categoriaActualizada.nombre
             });
         }
-        
+
         if (categoriaOriginal.descripcion !== categoriaActualizada.descripcion) {
             cambios.push({
                 campo: 'descripcion',
@@ -140,7 +140,7 @@ async function registrarEdicionCategoria(categoriaOriginal, categoriaActualizada
                 nuevo: categoriaActualizada.descripcion?.substring(0, 50) + (categoriaActualizada.descripcion?.length > 50 ? '...' : '')
             });
         }
-        
+
         if (categoriaOriginal.color !== categoriaActualizada.color) {
             cambios.push({
                 campo: 'color',
@@ -148,10 +148,10 @@ async function registrarEdicionCategoria(categoriaOriginal, categoriaActualizada
                 nuevo: categoriaActualizada.color
             });
         }
-        
+
         // Detectar cambios en subcategorías
         const cambiosSubcategorias = detectarCambiosSubcategorias(categoriaOriginal.subcategorias, categoriaActualizada.subcategorias);
-        
+
         await historialManager.registrarActividad({
             usuario: usuario,
             tipo: 'editar',
@@ -165,7 +165,7 @@ async function registrarEdicionCategoria(categoriaOriginal, categoriaActualizada
                 fechaEdicion: new Date().toISOString()
             }
         });
-        console.log(`✅ Edición de categoría "${categoriaActualizada.nombre}" registrada en bitácora`);
+
     } catch (error) {
         console.error('Error registrando edición de categoría:', error);
     }
@@ -178,11 +178,11 @@ function detectarCambiosSubcategorias(originales, actualizadas) {
         eliminadas: [],
         modificadas: []
     };
-    
+
     // Convertir a arrays para comparar
     const originalArray = [];
     const actualArray = [];
-    
+
     if (originales && typeof originales === 'object') {
         Object.keys(originales).forEach(key => {
             if (originales[key] && typeof originales[key] === 'object') {
@@ -193,7 +193,7 @@ function detectarCambiosSubcategorias(originales, actualizadas) {
             }
         });
     }
-    
+
     if (actualizadas && typeof actualizadas === 'object') {
         Object.keys(actualizadas).forEach(key => {
             if (actualizadas[key] && typeof actualizadas[key] === 'object') {
@@ -204,7 +204,7 @@ function detectarCambiosSubcategorias(originales, actualizadas) {
             }
         });
     }
-    
+
     // Detectar agregadas
     actualArray.forEach(actual => {
         const existe = originalArray.some(orig => orig.id === actual.id);
@@ -216,7 +216,7 @@ function detectarCambiosSubcategorias(originales, actualizadas) {
             });
         }
     });
-    
+
     // Detectar eliminadas
     originalArray.forEach(original => {
         const existe = actualArray.some(actual => actual.id === original.id);
@@ -227,13 +227,13 @@ function detectarCambiosSubcategorias(originales, actualizadas) {
             });
         }
     });
-    
+
     // Detectar modificadas
     actualArray.forEach(actual => {
         const original = originalArray.find(orig => orig.id === actual.id);
         if (original && actual.nombre) {
             const cambiosSub = [];
-            
+
             if (original.nombre !== actual.nombre) {
                 cambiosSub.push({
                     campo: 'nombre',
@@ -241,7 +241,7 @@ function detectarCambiosSubcategorias(originales, actualizadas) {
                     nuevo: actual.nombre
                 });
             }
-            
+
             if (original.descripcion !== actual.descripcion) {
                 cambiosSub.push({
                     campo: 'descripcion',
@@ -249,7 +249,7 @@ function detectarCambiosSubcategorias(originales, actualizadas) {
                     nuevo: actual.descripcion?.substring(0, 50) || ''
                 });
             }
-            
+
             if (original.heredaColor !== actual.heredaColor) {
                 cambiosSub.push({
                     campo: 'heredaColor',
@@ -257,7 +257,7 @@ function detectarCambiosSubcategorias(originales, actualizadas) {
                     nuevo: actual.heredaColor
                 });
             }
-            
+
             if (!actual.heredaColor && original.color !== actual.color) {
                 cambiosSub.push({
                     campo: 'color',
@@ -265,7 +265,7 @@ function detectarCambiosSubcategorias(originales, actualizadas) {
                     nuevo: actual.color
                 });
             }
-            
+
             if (cambiosSub.length > 0) {
                 cambios.modificadas.push({
                     id: actual.id,
@@ -275,7 +275,7 @@ function detectarCambiosSubcategorias(originales, actualizadas) {
             }
         }
     });
-    
+
     return cambios;
 }
 
@@ -372,7 +372,7 @@ async function cargarCategoria(id) {
 
         // Convertir objeto de subcategorías a array
         subcategorias = [];
-        
+
         if (categoriaActual.subcategorias && typeof categoriaActual.subcategorias === 'object') {
             Object.keys(categoriaActual.subcategorias).forEach(key => {
                 const sub = categoriaActual.subcategorias[key];
@@ -411,13 +411,13 @@ function actualizarUICategoria() {
 
     // Actualizar campos del formulario
     document.getElementById('nombreCategoria').value = categoriaActual.nombre || '';
-    
+
     // Descripción
     const descripcionInput = document.getElementById('descripcionCategoria');
     if (descripcionInput) {
         descripcionInput.value = categoriaActual.descripcion || '';
     }
-    
+
     // Actualizar color
     const colorPicker = document.getElementById('colorPickerNative');
     if (colorPicker) {
@@ -434,7 +434,7 @@ function actualizarUICategoria() {
     if (colorHex) {
         colorHex.textContent = categoriaActual.color || '#2f8cff';
     }
-    
+
     // Actualizar contador de caracteres
     actualizarContadorCaracteres();
 }
@@ -442,7 +442,7 @@ function actualizarUICategoria() {
 function actualizarContadorCaracteres() {
     const descripcion = document.getElementById('descripcionCategoria');
     const contador = document.getElementById('contadorCaracteres');
-    
+
     if (descripcion && contador) {
         const longitud = descripcion.value.length;
         contador.textContent = `${longitud}/${LIMITES.DESCRIPCION_CATEGORIA}`;
@@ -609,7 +609,7 @@ function renderizarSubcategorias() {
                             <input type="checkbox" 
                                    ${subcat.heredaColor ? 'checked' : ''}
                                    onchange="window.cambiarHerenciaColor('${subcat.id}', this.checked)">
-                            <span>Heredar color de categoría</span>
+                            <span>color de categoría</span>
                         </label>
                     </div>
                     
@@ -671,7 +671,7 @@ function validarYGuardar() {
     // Validar descripción
     const descripcionInput = document.getElementById('descripcionCategoria');
     const descripcion = descripcionInput.value.trim();
-    
+
     if (descripcion.length > LIMITES.DESCRIPCION_CATEGORIA) {
         descripcionInput.classList.add('is-invalid');
         mostrarError(`La descripción no puede exceder ${LIMITES.DESCRIPCION_CATEGORIA} caracteres`);
@@ -723,7 +723,7 @@ function obtenerDatosFormulario(subcategoriasValidas) {
 
     subcategoriasValidas.forEach(subcat => {
         const id = subcat.id.startsWith('temp_') ? `sub_${Date.now()}_${Math.random().toString(36).substr(2, 4)}` : subcat.id;
-        
+
         subcategoriasObj[id] = {
             id: id,
             nombre: subcat.nombre.trim(),
@@ -840,7 +840,7 @@ function inicializarComponentes() {
             const color = e.target.value;
             const colorDisplay = document.getElementById('colorDisplay');
             const colorHex = document.getElementById('colorHex');
-            
+
             if (colorDisplay) {
                 colorDisplay.style.backgroundColor = color;
             }
@@ -899,9 +899,9 @@ function mostrarError(mensaje) {
 
 function mostrarNotificacion(mensaje, tipo = 'info', duracion = 5000) {
     Swal.fire({
-        title: tipo === 'success' ? 'Éxito' : 
-               tipo === 'error' ? 'Error' : 
-               tipo === 'warning' ? 'Advertencia' : 'Información',
+        title: tipo === 'success' ? 'Éxito' :
+            tipo === 'error' ? 'Error' :
+                tipo === 'warning' ? 'Advertencia' : 'Información',
         text: mensaje,
         icon: tipo,
         timer: duracion,

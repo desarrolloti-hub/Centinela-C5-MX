@@ -149,21 +149,23 @@
                                 </div>
 
                                 <div class="col-md-6 mb-3">
-                                    <label for="responsable" class="form-label">
+                                    <label for="responsableInput" class="form-label">
                                         <i class="fas fa-user me-1"></i>Responsable del Área
                                     </label>
                                     <div class="input-group">
                                         <span class="input-group-text"><i class="fas fa-user-tie"></i></span>
-                                        <select class="form-select" id="responsable">
-                                            <option value="">Seleccionar responsable...</option>
-                                        </select>
+                                        <input type="text" class="form-control" id="responsableInput"
+                                            placeholder="Escriba para buscar un usuario..." autocomplete="off">
                                     </div>
+                                    <div id="sugerenciasList" class="sugerencias-container" style="display: none;">
+                                    </div>
+                                    <input type="hidden" id="responsableId" value="">
+                                    <input type="hidden" id="responsableNombre" value="">
                                     <div class="form-text mt-1">
                                         <i class="fas fa-info-circle me-1"></i>
-                                        Persona encargada del área (opcional)
+                                        Busque y seleccione el responsable del área
                                     </div>
                                 </div>
-
                                 <div class="col-md-12 mb-3">
                                     <label for="descripcionArea" class="form-label">
                                         <i class="fas fa-align-left me-1"></i>Descripción del Área <span
@@ -216,8 +218,7 @@
                             <!-- Mensaje informativo -->
                             <div class="alert alert-info mt-3">
                                 <i class="fas fa-info-circle me-2"></i>
-                                Los cargos que modifique aquí estarán disponibles para asignar a los empleados de esta
-                                área.
+                                Edite los datos del área, gestione sus cargos y guarde sus cambios
                             </div>
 
                             <div class="d-flex justify-content-start gap-3 mt-4">

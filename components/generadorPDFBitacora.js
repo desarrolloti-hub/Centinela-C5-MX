@@ -195,6 +195,97 @@ class GeneradorPDFBitacora extends PDFBaseGenerator {
         }
     }
 
+    /**
+ * Genera el PDF y retorna el Blob para abrirlo en el visor nativo
+ */
+async generarBitacoraPDFBlob(actividades, fecha, opciones = {}) {
+    const startTime = performance.now();
+    const { mostrarAlerta = true } = opciones;
+
+    try {
+        if (mostrarAlerta) {
+            Swal.fire({
+                title: 'Generando PDF...',
+                text: 'Procesando información...',
+                allowOutsideClick: false,
+                didOpen: () => Swal.showLoading()
+            });
+        }
+
+        const organizacion = this.usuarioActual?.organizacionCamelCase || this.organizacionActual?.camelCase;
+        
+        const actividadesFiltradas = actividades.filter(act => !this._debeExcluirActividad(act));
+        
+        const registrosIds = new Set();
+        const actividadesLimpia = [];
+        
+        for (const act of actividadesFiltradas) {
+            const actLimpia = { ...act };
+            let descripcion = actLimpia.descripcion || actLimpia.accion || '';
+            descripcion = this._limpiarDescripcion(descripcion);
+            actLimpia.descripcionLimpia = descripcion;
+            
+            const incMatch = descripcion.match(/INC-\d{8}-\d{6}/i);
+            const mpMatch = descripcion.match(/MP-\d{8}-\d{6}/i);
+            
+            if (incMatch) registrosIds.add(incMatch[0]);
+            if (mpMatch) registrosIds.add(mpMatch[0]);
+            
+            actividadesLimpia.push(actLimpia);
+        }
+        
+        const pdfUrlsPromises = Array.from(registrosIds).map(async (id) => {
+            const url = await this._obtenerPdfUrl(id, organizacion);
+            return { id, url };
+        });
+        
+        const pdfUrlsResults = await Promise.all(pdfUrlsPromises);
+        pdfUrlsResults.forEach(({ id, url }) => {
+            if (url) this.pdfUrlsCache.set(id, url);
+        });
+
+        await Promise.all([
+            this.cargarLibrerias(),
+            this.cargarLogoCentinela(),
+            this.cargarLogoOrganizacion()
+        ]);
+
+        this.actividades = actividadesLimpia;
+        this.fechaSeleccionada = fecha;
+
+        const pdf = new this.jsPDF({
+            orientation: 'portrait',
+            unit: 'mm',
+            format: 'a4'
+        });
+
+        this._generarBitacoraDia(pdf, actividadesLimpia, fecha);
+        this.dibujarPiePagina(pdf);
+
+        const endTime = performance.now();
+        console.log(`PDF generado en ${(endTime - startTime).toFixed(0)}ms`);
+
+        if (mostrarAlerta) {
+            Swal.close();
+        }
+
+        // Retornar el PDF como Blob
+        return pdf.output('blob');
+
+    } catch (error) {
+        console.error('Error generando bitácora PDF:', error);
+        if (mostrarAlerta) {
+            Swal.close();
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: 'No se pudo generar la bitácora: ' + error.message,
+                confirmButtonColor: '#00cfff'
+            });
+        }
+        throw error;
+    }
+}
     _generarBitacoraDia(pdf, actividades, fecha) {
         const margen = 15;
         const anchoPagina = pdf.internal.pageSize.getWidth();

@@ -209,7 +209,62 @@
 }
 
 /* =============================================
-   GRIDS PARA MÉTRICAS Y GRÁFICAS
+   SECCIÓN DE RESULTADOS (OCULTA INICIALMENTE)
+   ============================================= */
+.resultados-section {
+    display: none;
+    animation: fadeIn 0.5s ease;
+}
+
+.resultados-section.visible {
+    display: block;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* =============================================
+   MENSaje DE ESPERA / BIENVENIDA
+   ============================================= */
+.welcome-message {
+    background: var(--color-bg-secondary);
+    border: 1px solid var(--color-border-light);
+    border-radius: var(--border-radius-large);
+    padding: 60px 20px;
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+.welcome-message i {
+    font-size: 64px;
+    color: var(--color-accent-primary);
+    margin-bottom: 20px;
+    opacity: 0.7;
+}
+
+.welcome-message h3 {
+    color: var(--color-text-primary);
+    font-family: var(--font-family-primary, 'Orbitron', sans-serif);
+    margin-bottom: 10px;
+}
+
+.welcome-message p {
+    color: var(--color-text-secondary);
+    font-family: var(--font-family-secondary, 'Rajdhani', sans-serif);
+    font-size: 1.1rem;
+}
+
+/* =============================================
+   GRIDS PARA MÉTRICAS Y GRÁFICAS - RESPONSIVE MEJORADO
    ============================================= */
 
 /* Grid para las métricas - 4 columnas */
@@ -220,7 +275,7 @@
     margin-bottom: 30px;
 }
 
-/* Grid de 3 columnas */
+/* Grid de 3 columnas - para gráficas de colaboradores */
 .charts-grid-3col {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
@@ -228,7 +283,7 @@
     margin-bottom: 30px;
 }
 
-/* Grid de 2 columnas */
+/* Grid de 2 columnas - para gráficas de estado/riesgo y categorías/sucursales */
 .charts-grid-2col {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
@@ -357,7 +412,7 @@
     overflow: hidden;
     width: 100%;
     box-sizing: border-box;
-    margin-bottom: 20px;
+    margin-bottom: 0;
 }
 
 .card-header {
@@ -384,6 +439,13 @@
 
 .card-body {
     padding: 20px;
+}
+
+/* Contenedor de gráfica con altura fija para mejor responsividad */
+.chart-container {
+    position: relative;
+    width: 100%;
+    min-height: 250px;
 }
 
 /* =============================================
@@ -502,6 +564,7 @@
 canvas {
     max-width: 100%;
     height: auto !important;
+    max-height: 250px;
     display: block;
 }
 
@@ -524,29 +587,10 @@ canvas {
 }
 
 /* =============================================
-   ANIMACIONES
-   ============================================= */
-@keyframes slideIn {
-    from {
-        opacity: 0;
-        transform: translateY(20px);
-    }
-
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-.card {
-    animation: slideIn 0.3s ease;
-}
-
-/* =============================================
-   RESPONSIVE DESIGN
+   RESPONSIVE DESIGN - MEJORADO
    ============================================= */
 
-/* Tablet */
+/* Tablet (768px - 1023px) */
 @media (max-width: 1023px) {
     .admin-container {
         padding: 20px;
@@ -554,19 +598,31 @@ canvas {
 
     .metrics-grid {
         grid-template-columns: repeat(2, 1fr);
+        gap: 15px;
     }
 
     .charts-grid-3col {
         grid-template-columns: repeat(2, 1fr);
+        gap: 15px;
+    }
+
+    .charts-grid-2col {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 15px;
     }
 
     .tables-grid-2col {
         grid-template-columns: 1fr;
+        gap: 15px;
+    }
+
+    .chart-container {
+        min-height: 220px;
     }
 }
 
-/* Móvil */
-@media (max-width: 768px) {
+/* Móvil (481px - 767px) */
+@media (max-width: 767px) {
     body {
         padding: 10px;
     }
@@ -594,12 +650,13 @@ canvas {
         min-width: 100%;
     }
 
-    .filtro-input,
-    .filtro-select {
+    .filtro-grupo .filtro-input,
+    .filtro-grupo .filtro-select {
         width: 100%;
     }
 
     .filtro-acciones {
+        flex-direction: column;
         gap: 8px;
     }
 
@@ -611,14 +668,14 @@ canvas {
 
     .metrics-grid {
         grid-template-columns: 1fr;
-        gap: 15px;
+        gap: 12px;
     }
 
     .charts-grid-3col,
     .charts-grid-2col,
     .tables-grid-2col {
         grid-template-columns: 1fr;
-        gap: 15px;
+        gap: 12px;
     }
 
     .card-header {
@@ -626,11 +683,15 @@ canvas {
     }
 
     .card-header h5 {
-        font-size: 0.9rem;
+        font-size: 0.85rem;
     }
 
     .card-body {
-        padding: 15px;
+        padding: 12px;
+    }
+
+    .metric-card {
+        padding: 1.2rem;
     }
 
     .metric-value {
@@ -640,16 +701,30 @@ canvas {
     .metric-icon {
         font-size: 3rem;
     }
+
+    .chart-container {
+        min-height: 200px;
+    }
+
+    canvas {
+        max-height: 200px;
+    }
+
+    .table th,
+    .table td {
+        font-size: 10px !important;
+        padding: 6px 4px !important;
+    }
 }
 
-/* Móvil pequeño */
+/* Móvil pequeño (hasta 480px) */
 @media (max-width: 480px) {
     .page-header h1 {
         font-size: 1.5rem;
     }
 
     .metric-card {
-        padding: 1.2rem;
+        padding: 1rem;
     }
 
     .metric-value {
@@ -661,10 +736,32 @@ canvas {
         right: 15px;
     }
 
-    .table th,
-    .table td {
-        font-size: 11px !important;
-        padding: 6px 4px !important;
+    .metric-title {
+        font-size: 0.85rem;
+    }
+
+    .metric-subtitle {
+        font-size: 0.75rem;
+    }
+
+    .card-header {
+        padding: 10px 12px;
+    }
+
+    .card-header h5 {
+        font-size: 0.75rem;
+    }
+
+    .card-body {
+        padding: 10px;
+    }
+
+    .chart-container {
+        min-height: 180px;
+    }
+
+    canvas {
+        max-height: 180px;
     }
 }
 

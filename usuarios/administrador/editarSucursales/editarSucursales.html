@@ -89,6 +89,7 @@
     }
     }
     </script>
+
 </head>
 
 <body>
@@ -228,6 +229,42 @@
                             </div>
 
                             <!-- ============================================= -->
+                            <!-- NÚMEROS DE EMERGENCIA (MISMO ESTILO QUE CREAR) -->
+                            <!-- ============================================= -->
+                            <div class="form-field">
+                                <h6 class="section-title" style="margin-top: 20px;">
+                                    <i class="fas fa-phone-alt"></i>Números de Emergencia
+                                    <span class="optional-badge">Opcional</span>
+                                </h6>
+
+                                <div class="emergency-container">
+                                    <div id="emergencyList" class="emergency-list"></div>
+
+                                    <div class="emergency-add">
+                                        <div class="emergency-add-field">
+                                            <label class="emergency-add-label">
+                                                <i class="fas fa-building"></i> Institución / Dependencia
+                                            </label>
+                                            <input type="text" id="emergencyInstitucion" class="emergency-add-input"
+                                                placeholder="Ej: Policía Local, Bomberos, Cruz Roja">
+                                        </div>
+                                        <div class="emergency-add-field">
+                                            <label class="emergency-add-label">
+                                                <i class="fas fa-phone"></i> Número telefónico
+                                            </label>
+                                            <input type="tel" id="emergencyTelefono" class="emergency-add-input"
+                                                placeholder="Ej: 911, 8112345678">
+                                        </div>
+                                        <div>
+                                            <button type="button" id="btnAddEmergency" class="btn-add-emergency">
+                                                <i class="fas fa-plus"></i> Agregar
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- ============================================= -->
                             <!-- COORDENADAS -->
                             <!-- ============================================= -->
                             <h6 class="section-title" style="margin-top: 25px;">
@@ -284,6 +321,9 @@
                 <div class="card-body" style="padding: 0;">
                     <div class="map-wrapper">
                         <div id="sucursalMap"></div>
+                        <div class="map-limit-message">
+                            <i class="fas fa-map-marker-alt"></i> Mapa limitado a México
+                        </div>
 
                         <!-- Overlay con botones de control -->
                         <div class="map-overlay">
@@ -351,7 +391,6 @@
     <script type="module" src="editarSucursales.js"></script>
     <script type="module" src="/components/autenticador.js"></script>
     <script src="/components/protector-admin.js"> </script>
-</body>
 </body>
 
 </html>

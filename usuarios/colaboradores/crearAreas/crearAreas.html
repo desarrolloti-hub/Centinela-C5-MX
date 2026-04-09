@@ -23,8 +23,10 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
     <!-- SEO Básico -->
-    <meta name="description" content="Centinela es un sistema inteligente de seguridad para almacenamiento, monitoreo y predicción de incidencias. Plataforma confiable para prevención y análisis en tiempo real.">
-    <meta name="keywords" content="centinela, centinela, sistema de seguridad, seguridad inteligente, predicción de incidencias, monitoreo de seguridad, plataforma de seguridad, análisis de riesgos, prevención de incidentes">
+    <meta name="description"
+        content="Centinela es un sistema inteligente de seguridad para almacenamiento, monitoreo y predicción de incidencias. Plataforma confiable para prevención y análisis en tiempo real.">
+    <meta name="keywords"
+        content="centinela, centinela, sistema de seguridad, seguridad inteligente, predicción de incidencias, monitoreo de seguridad, plataforma de seguridad, análisis de riesgos, prevención de incidentes">
     <meta name="author" content="Centinela">
     <link rel="canonical" href="https://centinela-c5.web.app/" />
 
@@ -32,7 +34,8 @@
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://centinela-c5.web.app">
     <meta property="og:title" content="Centinela-C5 | Sistema Inteligente de Seguridad y Predicción">
-    <meta property="og:description" content="Centinela-C5 es una plataforma avanzada de seguridad para almacenamiento, monitoreo y predicción de incidencias en tiempo real.">
+    <meta property="og:description"
+        content="Centinela-C5 es una plataforma avanzada de seguridad para almacenamiento, monitoreo y predicción de incidencias en tiempo real.">
     <meta property="og:image" content="https://centinela-c5.web.app/assets/images/logo.png">
     <meta property="og:image:width" content="500">
     <meta property="og:image:height" content="500">
@@ -47,7 +50,8 @@
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:url" content="https://centinela-c5.web.app">
     <meta name="twitter:title" content="Centinela-C5 | Seguridad Inteligente">
-    <meta name="twitter:description" content="Sistema de seguridad inteligente para monitoreo, almacenamiento y predicción de incidencias.">
+    <meta name="twitter:description"
+        content="Sistema de seguridad inteligente para monitoreo, almacenamiento y predicción de incidencias.">
     <meta name="twitter:image" content="https://centinela-c5.web.app/assets/images/logo.png">
     <meta name="twitter:creator" content="">
 
@@ -131,19 +135,22 @@
                                 </div>
                                 <div class="form-text">Ingrese el nombre completo del área o departamento</div>
                             </div>
+                            <!-- Responsable del Área con búsqueda -->
                             <div class="col-md-6 mb-3">
-                                <label for="responsable" class="form-label">
+                                <label for="responsableInput" class="form-label">
                                     <i class="fas fa-user me-1"></i>Responsable del Área
                                 </label>
                                 <div class="input-group">
                                     <span class="input-group-text"><i class="fas fa-user-tie"></i></span>
-                                    <select class="form-select" id="responsable" name="responsable">
-                                        <option value="">Seleccione un responsable...</option>
-                                    </select>
+                                    <input type="text" class="form-control" id="responsableInput"
+                                        placeholder="Escriba el nombre para buscar..." autocomplete="off">
                                 </div>
+                                <div id="sugerenciasList" class="sugerencias-container" style="display: none;"></div>
+                                <input type="hidden" id="responsableId" value="">
+                                <input type="hidden" id="responsableNombre" value="">
                                 <div class="form-text mt-1">
                                     <i class="fas fa-info-circle me-1"></i>
-                                    Persona encargada del área (opcional)
+                                    Comience a escribir para buscar usuarios activos (Administradores y Colaboradores)
                                 </div>
                             </div>
                             <div class="col-md-12 mb-3">
@@ -197,8 +204,7 @@
                             <!-- Mensaje informativo -->
                             <div class="alert alert-info mt-3">
                                 <i class="fas fa-info-circle me-2"></i>
-                                Los cargos que agregue aquí estarán disponibles para asignar a los empleados de esta
-                                área.
+                                Complete el formulario para añadir un área a la organización.
                             </div>
 
                             <div class="d-flex justify-content-start gap-3 mt-4">
@@ -216,7 +222,6 @@
         </form>
     </div>
     <br>
-
     <!-- Scripts -->
     <script type="module" src="/components/autenticador.js"></script>
     <script type="module" src="/components/cargadorTemas.js"></script>

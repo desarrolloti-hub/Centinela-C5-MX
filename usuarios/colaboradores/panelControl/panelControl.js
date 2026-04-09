@@ -1,56 +1,61 @@
 // ========== panelControl.js - PANEL DE CONTROL COLABORADOR ==========
 // CON ACCESO RÁPIDO Y MÓDULOS EN 3 COLUMNAS
-// AGREGADO: MÓDULO MERCANCÍA PERDIDA (LISTA, CREAR, ESTADÍSTICAS DE EXTRAVÍO)
-// UBICADO EN LA PRIMERA POSICIÓN (ANTES DE ÁREAS)
+// AGREGADO: KPIs COMO BOTONES QUE REDIRIGEN A SUS MÓDULOS CORRESPONDIENTES
 
 let permisoManager = null;
 let usuarioActual = null;
 let permisosUsuario = null;
 let unsubscribeFunctions = [];
 
-// Configuración de KPIs
+// Configuración de KPIs con sus rutas de redirección
 const KPI_CONFIG = {
     incidenciasCanalizadas: {
         modulo: 'incidencias',
         titulo: 'MIS INCIDENCIAS',
         subtitulo: 'Canalizadas',
         icono: 'fa-share-alt',
-        color: 'danger'
+        color: 'danger',
+        url: '/usuarios/colaboradores/incidencias/incidencias.html'  // Ruta agregada
     },
     areas: {
         modulo: 'areas',
         titulo: 'ÁREAS',
         subtitulo: 'Registradas',
-        icono: 'fa-sitemap',
-        color: 'blue'
+        icono: 'fa-solid fa-layer-group',
+        color: '#b16bff',
+        url: '/usuarios/colaboradores/areas/areas.html'  // Ruta agregada
     },
     categorias: {
         modulo: 'categorias',
         titulo: 'CATEGORÍAS',
         subtitulo: 'Registradas',
         icono: 'fa-tags',
-        color: 'purple'
+        color: 'purple',
+        url: '/usuarios/colaboradores/categorias/categorias.html'  // Ruta agregada
     },
     sucursales: {
         modulo: 'sucursales',
         titulo: 'SUCURSALES',
         subtitulo: 'Activas',
-        icono: 'fa-store',
-        color: 'yellow'
+        icono: 'fa-solid fa-building',
+        color: 'yellow',
+        url: '/usuarios/colaboradores/sucursales/sucursales.html'  // Ruta agregada
     },
     regiones: {
         modulo: 'regiones',
         titulo: 'REGIONES',
         subtitulo: 'Registradas',
         icono: 'fa-map-marked-alt',
-        color: 'purple'
+        color: 'purple',
+        url: '/usuarios/colaboradores/regiones/regiones.html'  // Ruta agregada
     },
     colaboradores: {
         modulo: 'usuarios',
         titulo: 'COLABORADORES',
         subtitulo: 'Activos',
         icono: 'fa-users',
-        color: 'cyan'
+        color: 'cyan',
+        url: '/usuarios/colaboradores/usuarios/usuarios.html'  // Ruta agregada
     }
 };
 
@@ -89,10 +94,10 @@ const ACCESO_RAPIDO_CONFIG = [
     },
     {
         id: 'loginMonitoreo',
-        titulo: 'Login Monitoreo',
-        descripcion: 'Acceso a cuentas de monitoreo',
-        icono: 'fa-sign-in-alt',
-        color: 'green',
+        titulo: 'Tablero de control',
+        descripcion: 'Cuentas de monitoreo',
+        icono: 'fa-solid fa-dashboard',
+        color: 'orange',
         url: '/usuarios/colaboradores/loginMonitoreo/loginMonitoreo.html',
         permiso: 'loginMonitoreo',
         brillo: false
@@ -100,7 +105,6 @@ const ACCESO_RAPIDO_CONFIG = [
 ];
 
 // Configuración de módulos agrupados por columnas
-// ========== MÓDULO MERCANCÍA PERDIDA EN PRIMERA POSICIÓN ==========
 const COLUMNAS_CONFIG = [
     // PRIMERO: MÓDULO MERCANCÍA PERDIDA
     {
@@ -173,30 +177,30 @@ const COLUMNAS_CONFIG = [
     {
         titulo: 'PANEL DE CATEGORÍAS',
         icono: 'fa-tags',
-        color: '#b16bff',
+        color: '#188d27',
         permisos: ['categorias'],
         tarjetas: [
-            { modulo: 'categoriasLista', titulo: 'Lista Categorías', descripcion: 'Ver todas las categorías', icono: 'fa-list', color: 'purple', url: '/usuarios/colaboradores/categorias/categorias.html' },
-            { modulo: 'categoriasNueva', titulo: 'Nueva Categoría', descripcion: 'Crear nueva categoría', icono: 'fa-plus-circle', color: 'purple', url: '/usuarios/colaboradores/crearCategorias/crearCategorias.html' }
+            { modulo: 'categoriasLista', titulo: 'Lista Categorías', descripcion: 'Ver todas las categorías', icono: 'fa-list', color: 'green', url: '/usuarios/colaboradores/categorias/categorias.html' },
+            { modulo: 'categoriasNueva', titulo: 'Nueva Categoría', descripcion: 'Crear nueva categoría', icono: 'fa-plus-circle', color: 'green', url: '/usuarios/colaboradores/crearCategorias/crearCategorias.html' }
         ]
     },
     {
         titulo: 'PANEL DE USUARIOS',
         icono: 'fa-users',
-        color: '#00cfff',
+        color: '#9caba4',
         permisos: ['usuarios'],
         tarjetas: [
-            { modulo: 'usuariosLista', titulo: 'Lista Usuarios', descripcion: 'Ver todos los usuarios', icono: 'fa-list', color: 'cyan', url: '/usuarios/colaboradores/usuarios/usuarios.html' },
-            { modulo: 'usuariosNuevo', titulo: 'Nuevo Usuario', descripcion: 'Crear nuevo usuario', icono: 'fa-plus-circle', color: 'cyan', url: '/usuarios/colaboradores/crearUsuarios/crearUsuarios.html' }
+            { modulo: 'usuariosLista', titulo: 'Lista Usuarios', descripcion: 'Ver todos los usuarios', icono: 'fa-list', color: '#9caba4', url: '/usuarios/colaboradores/usuarios/usuarios.html' },
+            { modulo: 'usuariosNuevo', titulo: 'Nuevo Usuario', descripcion: 'Crear nuevo usuario', icono: 'fa-plus-circle', color: '#9caba4', url: '/usuarios/colaboradores/crearUsuarios/crearUsuarios.html' }
         ]
     },
     {
         titulo: 'PANEL DE ESTADÍSTICAS',
-        icono: 'fa-chart-line',
-        color: '#b16bff',
+        icono: 'fa-solid fa-chart-pie',
+        color: '#ffcc00',
         permisos: ['estadisticas'],
         tarjetas: [
-            { modulo: 'estadisticasVer', titulo: 'Ver Estadísticas', descripcion: 'Visualizar reportes y gráficas', icono: 'fa-chart-simple', color: 'purple', url: '/usuarios/colaboradores/estadisticas/estadisticas.html' },
+            { modulo: 'estadisticasVer', titulo: 'Ver Estadísticas', descripcion: 'Visualizar reportes y gráficas', icono: 'fa-chart-simple', color: '#ffcc00', url: '/usuarios/colaboradores/estadisticas/estadisticas.html' },
             { modulo: 'reportes', titulo: 'Reportes', descripcion: 'Generar reportes personalizados', icono: 'fa-file-alt', color: 'purple', url: '/usuarios/colaboradores/reportes/reportes.html' }
         ]
     },
@@ -204,10 +208,10 @@ const COLUMNAS_CONFIG = [
     {
         titulo: 'PANEL DE TAREAS',
         icono: 'fa-tasks',
-        color: '#ffcc00',
+        color: '#00cfff',
         permisos: ['tareas'],
         tarjetas: [
-            { modulo: 'tareasLista', titulo: 'Mis Tareas', descripcion: 'Ver tareas asignadas', icono: 'fa-list-check', color: 'yellow', url: '/usuarios/colaboradores/tareas/tareas.html' }
+            { modulo: 'tareasLista', titulo: 'Mis Tareas', descripcion: 'Ver tareas asignadas', icono: 'fa-solid fa-check-circle', color: '#00cfff', url: '/usuarios/colaboradores/tareas/tareas.html' }
         ]
     },
     {
@@ -227,7 +231,7 @@ const COLUMNAS_CONFIG = [
         color: '#ff4d00',
         permisos: ['permisos'],
         tarjetas: [
-            { modulo: 'permisosLista', titulo: 'Configurar Permisos', descripcion: 'Gestionar permisos por cargo', icono: 'fa-key', color: 'danger', url: '/usuarios/colaboradores/permisos/permisos.html' }
+            { modulo: 'permisosLista', titulo: 'Configurar Permisos', descripcion: 'Gestionar permisos por cargo', icono: 'fa-solid fa-gear', color: 'danger', url: '/usuarios/colaboradores/permisos/permisos.html' }
         ]
     }
 ];
@@ -264,6 +268,7 @@ document.addEventListener('DOMContentLoaded', async function () {
         renderizarAccesoRapido();
         renderizarColumnas();
         configurarEventosTarjetas();
+        configurarEventosKPIs();  // NUEVO: Configurar eventos click para los KPIs
 
         await cargarDatosKPIs();
     } catch (error) {
@@ -303,7 +308,6 @@ async function obtenerPermisosUsuario() {
                 areas: true, categorias: true, sucursales: true, regiones: true,
                 incidencias: true, usuarios: true, estadisticas: true, tareas: true,
                 monitoreo: true, permisos: true, loginMonitoreo: true, admin: true,
-                // Permisos para mercancía perdida
                 incidenciasRecuperacion: true,
                 crearIncidenciasRecuperacion: true,
                 estadisticasIncidenciasRecuperacion: true
@@ -343,7 +347,6 @@ async function obtenerPermisosUsuario() {
                     permisos: permiso.puedeAcceder('permisos'),
                     loginMonitoreo: permiso.puedeAcceder('loginMonitoreo'),
                     admin: false,
-                    // Permisos para mercancía perdida (heredan de incidencias o específicos)
                     incidenciasRecuperacion: permiso.puedeAcceder('incidenciasRecuperacion') || tieneIncidencias,
                     crearIncidenciasRecuperacion: permiso.puedeAcceder('crearIncidenciasRecuperacion') || tieneIncidencias,
                     estadisticasIncidenciasRecuperacion: permiso.puedeAcceder('estadisticasIncidenciasRecuperacion') || tieneIncidencias
@@ -410,11 +413,21 @@ function renderizarKPIs() {
         const config = KPI_CONFIG[kpiKey];
         const card = document.createElement('div');
         card.className = 'kpi-card';
+
+        // Agregar clase para cursor pointer y estilo de botón
+        card.style.cursor = 'pointer';
+        card.style.transition = 'all 0.3s ease';
+
         if (config.color === 'danger') {
             card.classList.add('danger');
             card.id = 'kpi-incidencias';
         }
+
+        // Guardar la URL en un atributo data
+        card.setAttribute('data-url', config.url);
         card.setAttribute('data-modulo', config.modulo);
+        card.setAttribute('data-titulo', config.titulo);
+
         card.innerHTML = `
             <i class="fa-solid ${config.icono}" style="color: var(--color-icon-${config.color});"></i>
             <span class="kpi-number" id="kpi-number-${config.modulo}">0</span>
@@ -423,6 +436,46 @@ function renderizarKPIs() {
         `;
         container.appendChild(card);
     }
+}
+
+// NUEVA FUNCIÓN: Configurar eventos click para los KPIs
+function configurarEventosKPIs() {
+    const kpis = document.querySelectorAll('.kpi-card');
+    kpis.forEach(kpi => {
+        // Efecto hover adicional
+        kpi.addEventListener('mouseenter', () => {
+            kpi.style.transform = 'translateY(-4px)';
+            kpi.style.boxShadow = '0 0 20px rgba(255, 77, 0, 0.4)';
+        });
+
+        kpi.addEventListener('mouseleave', () => {
+            kpi.style.transform = 'translateY(0)';
+            kpi.style.boxShadow = '';
+        });
+
+        // Evento click
+        kpi.addEventListener('click', (e) => {
+            e.preventDefault();
+            const url = kpi.dataset.url;
+            const titulo = kpi.dataset.titulo;
+
+            if (url) {
+                console.log(`Navegando a ${titulo}: ${url}`);
+                window.location.href = url;
+            } else {
+                console.warn(`No hay URL definida para ${titulo}`);
+                // Mostrar mensaje de error amigable
+                Swal.fire({
+                    icon: 'info',
+                    title: 'Módulo en construcción',
+                    text: `La vista de ${titulo} estará disponible pronto.`,
+                    background: '#1a1a1a',
+                    color: '#fff',
+                    confirmButtonColor: '#ff4d00'
+                });
+            }
+        });
+    });
 }
 
 function renderizarAccesoRapido() {
@@ -468,7 +521,6 @@ function renderizarColumnas() {
     container.innerHTML = '';
 
     for (const columna of COLUMNAS_CONFIG) {
-        // Verificar si tiene algún permiso de la columna (permisos array)
         const tieneAlgunPermiso = columna.permisos.some(p => permisosUsuario[p] === true);
         if (!tieneAlgunPermiso) continue;
 
@@ -491,7 +543,6 @@ function renderizarColumnas() {
         for (const tarjeta of columna.tarjetas) {
             let tienePermiso = false;
 
-            // Verificar permiso específico de la tarjeta si existe
             if (tarjeta.permisoEspecifico) {
                 tienePermiso = permisosUsuario[tarjeta.permisoEspecifico] === true;
             } else if (tarjeta.modulo) {

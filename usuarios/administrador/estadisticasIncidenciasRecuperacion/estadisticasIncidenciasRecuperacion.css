@@ -1,6 +1,7 @@
 /* estadisticasExtravios.css - Dashboard de Pérdidas y Recuperaciones */
 /* VERSIÓN SUPER RESPONSIVE - OPTIMIZADA PARA TODOS LOS TAMAÑOS */
 /* BASADO EN EL ESTILO DE operaciones.css PARA CONSISTENCIA */
+/* ACTUALIZADO: gráficas responsive, top sucursales con color glow #FF6600 */
 
 /* =============================================
    RESET Y CONFIGURACIÓN BASE
@@ -47,6 +48,7 @@ body {
     --breakpoint-lg: 1024px;
     --breakpoint-xl: 1280px;
     --breakpoint-2xl: 1536px;
+    --color-glow: #FF6600;
 }
 
 /* =============================================
@@ -380,7 +382,7 @@ body {
 }
 
 /* =============================================
-   GRÁFICAS
+   GRÁFICAS - VERSIÓN SUPER RESPONSIVE
    ============================================= */
 .graficas-container {
     width: 100%;
@@ -400,6 +402,10 @@ body {
     overflow: hidden;
     transition: all 0.3s ease;
     backdrop-filter: blur(5px);
+    display: flex;
+    flex-direction: column;
+    /* FIX: Evita que el contenido interno cause reflow al hacer zoom */
+    contain: layout style paint;
 }
 
 .card-grafica:hover {
@@ -420,6 +426,7 @@ body {
     align-items: center;
     flex-wrap: wrap;
     gap: 10px;
+    flex-shrink: 0;
 }
 
 .card-header h5 {
@@ -439,21 +446,45 @@ body {
     font-size: 0.8rem;
 }
 
+/* FIX: Contenedor con dimensiones estables para evitar "bailoteo" */
 .card-body {
     padding: 20px;
     display: flex;
     justify-content: center;
     align-items: center;
     min-height: 320px;
+    flex: 1;
+    position: relative;
+    width: 100%;
+    /* FIX: Mantiene proporción estable */
+    aspect-ratio: 16 / 9;
+    max-height: 400px;
+}
+
+/* FIX específico para la gráfica de tipo de evento (doughnut) - mantiene forma circular */
+.card-grafica:first-child .card-body {
+    aspect-ratio: 1 / 1;
+    max-height: 450px;
+    min-height: auto;
+    padding: 15px;
 }
 
 canvas {
     max-width: 100%;
-    width: 100% !important;
+    width: auto !important;
     height: auto !important;
-    min-height: 280px;
-    max-height: 320px;
     display: block;
+    /* FIX: Sin transiciones que causen rebote visual */
+    transition: none !important;
+    object-fit: contain;
+}
+
+/* FIX específico para el canvas doughnut */
+#graficoTipoEvento {
+    width: auto !important;
+    height: auto !important;
+    max-width: 100%;
+    max-height: 100%;
 }
 
 /* =============================================
@@ -813,6 +844,21 @@ canvas {
         height: 44px;
         font-size: 1.2rem;
     }
+
+    .card-body {
+        min-height: 300px;
+        aspect-ratio: 16 / 9;
+    }
+
+    .card-grafica:first-child .card-body {
+        aspect-ratio: 1 / 1;
+        max-height: 400px;
+    }
+
+    canvas {
+        min-height: 260px;
+        max-height: 300px;
+    }
 }
 
 /* =============================================
@@ -902,6 +948,12 @@ canvas {
     .card-body {
         padding: 15px;
         min-height: 280px;
+        aspect-ratio: 16 / 9;
+    }
+    
+    .card-grafica:first-child .card-body {
+        aspect-ratio: 1 / 1;
+        max-height: 350px;
     }
     
     canvas {
@@ -984,12 +1036,18 @@ canvas {
     
     .card-body {
         padding: 12px;
-        min-height: 240px;
+        min-height: 260px;
+        aspect-ratio: 16 / 9;
+    }
+    
+    .card-grafica:first-child .card-body {
+        aspect-ratio: 1 / 1;
+        max-height: 300px;
     }
     
     canvas {
-        min-height: 200px;
-        max-height: 240px;
+        min-height: 220px;
+        max-height: 260px;
     }
     
     .empty-state-content i {
@@ -1056,12 +1114,18 @@ canvas {
     
     .card-body {
         padding: 10px;
-        min-height: 220px;
+        min-height: 240px;
+        aspect-ratio: 16 / 9;
+    }
+    
+    .card-grafica:first-child .card-body {
+        aspect-ratio: 1 / 1;
+        max-height: 280px;
     }
     
     canvas {
-        min-height: 180px;
-        max-height: 220px;
+        min-height: 200px;
+        max-height: 240px;
     }
     
     .resumen-tabla {
@@ -1103,12 +1167,18 @@ canvas {
     }
     
     .card-body {
-        min-height: 200px;
+        min-height: 220px;
+        aspect-ratio: 16 / 9;
+    }
+    
+    .card-grafica:first-child .card-body {
+        aspect-ratio: 1 / 1;
+        max-height: 250px;
     }
     
     canvas {
-        min-height: 160px;
-        max-height: 200px;
+        min-height: 180px;
+        max-height: 220px;
     }
     
     .resumen-tabla {
@@ -1165,13 +1235,19 @@ canvas {
     }
     
     .card-body {
-        min-height: 160px;
+        min-height: 180px;
         padding: 10px;
+        aspect-ratio: 16 / 9;
+    }
+    
+    .card-grafica:first-child .card-body {
+        aspect-ratio: 1 / 1;
+        max-height: 220px;
     }
     
     canvas {
-        min-height: 140px;
-        max-height: 180px;
+        min-height: 160px;
+        max-height: 200px;
     }
     
     .filtros-body {

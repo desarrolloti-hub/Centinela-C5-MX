@@ -83,7 +83,7 @@ class CrearCategoriaController {
         try {
             const { HistorialUsuarioManager } = await import('/clases/historialUsuario.js');
             this.historialManager = new HistorialUsuarioManager();
-            console.log('📋 HistorialManager inicializado para categorías');
+
         } catch (error) {
             console.error('Error inicializando historialManager:', error);
         }
@@ -92,11 +92,11 @@ class CrearCategoriaController {
     // ✅ NUEVO: Registrar creación de categoría
     async _registrarCreacionCategoria(categoria) {
         if (!this.historialManager) return;
-        
+
         try {
-            const numSubcategorias = categoria.subcategorias ? 
+            const numSubcategorias = categoria.subcategorias ?
                 (categoria.subcategorias.size || Object.keys(categoria.subcategorias).length) : 0;
-            
+
             await this.historialManager.registrarActividad({
                 usuario: this.usuarioActual,
                 tipo: 'crear',
@@ -110,7 +110,7 @@ class CrearCategoriaController {
                     subcategorias: this._getSubcategoriasNombres(categoria.subcategorias)
                 }
             });
-            console.log(`✅ Creación de categoría "${categoria.nombre}" registrada en bitácora`);
+
         } catch (error) {
             console.error('Error registrando creación de categoría:', error);
         }
@@ -119,7 +119,7 @@ class CrearCategoriaController {
     // ✅ NUEVO: Obtener nombres de subcategorías para detalles
     _getSubcategoriasNombres(subcategorias) {
         if (!subcategorias) return [];
-        
+
         const nombres = [];
         try {
             if (subcategorias.forEach) {
@@ -262,8 +262,8 @@ class CrearCategoriaController {
         if (nombreCategoria) {
             nombreCategoria.maxLength = LIMITES.NOMBRE_CATEGORIA;
             nombreCategoria.addEventListener('input', () => this._validarLongitudCampo(
-                nombreCategoria, 
-                LIMITES.NOMBRE_CATEGORIA, 
+                nombreCategoria,
+                LIMITES.NOMBRE_CATEGORIA,
                 'El nombre de la categoría'
             ));
         }
@@ -274,8 +274,8 @@ class CrearCategoriaController {
             descripcionCategoria.maxLength = LIMITES.DESCRIPCION_CATEGORIA;
             descripcionCategoria.addEventListener('input', () => {
                 this._validarLongitudCampo(
-                    descripcionCategoria, 
-                    LIMITES.DESCRIPCION_CATEGORIA, 
+                    descripcionCategoria,
+                    LIMITES.DESCRIPCION_CATEGORIA,
                     'La descripción'
                 );
                 this._actualizarContadorCaracteres();
@@ -350,7 +350,7 @@ class CrearCategoriaController {
                     const color = e.target.value;
                     const colorDisplay = document.getElementById('colorDisplay');
                     const colorHex = document.getElementById('colorHex');
-                    
+
                     if (colorDisplay) {
                         colorDisplay.style.backgroundColor = color;
                     }
@@ -461,7 +461,7 @@ class CrearCategoriaController {
                 this._mostrarNotificacion(`La descripción no puede exceder ${LIMITES.DESCRIPCION_SUBCATEGORIA} caracteres`, 'warning', 3000);
             }
             subcategoria[campo] = valor;
-            
+
             // Actualizar contador si existe
             this._actualizarContadorSubcategoria(subcatId, campo, valor);
         }
@@ -568,7 +568,7 @@ class CrearCategoriaController {
                                 <input type="checkbox" 
                                        ${subcat.heredaColor ? 'checked' : ''}
                                        onchange="window.crearCategoriaDebug.controller._cambiarHerenciaColor('${subcat.id}', this.checked)">
-                                <span>Heredar color de categoría</span>
+                                <span> color de categoría</span>
                             </label>
                         </div>
                         
@@ -646,7 +646,7 @@ class CrearCategoriaController {
         // Validar descripción
         const descripcionInput = document.getElementById('descripcionCategoria');
         const descripcion = descripcionInput.value.trim();
-        
+
         if (descripcion.length > LIMITES.DESCRIPCION_CATEGORIA) {
             descripcionInput.classList.add('is-invalid');
             this._mostrarError(`La descripción no puede exceder ${LIMITES.DESCRIPCION_CATEGORIA} caracteres`);
@@ -793,9 +793,9 @@ class CrearCategoriaController {
 
     _mostrarNotificacion(mensaje, tipo = 'info', duracion = 5000) {
         Swal.fire({
-            title: tipo === 'success' ? 'Éxito' : 
-                   tipo === 'error' ? 'Error' : 
-                   tipo === 'warning' ? 'Advertencia' : 'Información',
+            title: tipo === 'success' ? 'Éxito' :
+                tipo === 'error' ? 'Error' :
+                    tipo === 'warning' ? 'Advertencia' : 'Información',
             text: mensaje,
             icon: tipo,
             timer: duracion,

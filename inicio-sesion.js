@@ -60,7 +60,7 @@ function isProduction() {
 document.addEventListener('DOMContentLoaded', function () {
     const estilos = configurarSweetAlertEstilos();
     const entorno = isProduction() ? 'PRODUCCIÓN' : 'DESARROLLO';
-    console.log(`🌐 Entorno detectado: ${entorno} (${window.location.protocol}//${window.location.hostname})`);
+    // console.log(`🌐 Entorno detectado: ${entorno} (${window.location.protocol}//${window.location.hostname})`); // COMENTADO
 
     const loginForm = document.getElementById('loginForm');
     const emailInput = document.getElementById('email');
@@ -167,104 +167,104 @@ document.addEventListener('DOMContentLoaded', function () {
             // ✅ ✅ ✅ NUEVO: OBTENER EL PLAN DEL USUARIO
             // El plan puede venir en user.plan (ID del documento en colección 'planes')
             const planId = user.plan || user.planId || null;
-            console.log(`📋 Plan del usuario: ${planId || 'No asignado'}`);
+            // console.log(`📋 Plan del usuario: ${planId || 'No asignado'}`); // COMENTADO
 
             // ✅ GUARDAR TODOS LOS DATOS DEL USUARIO INCLUYENDO ÁREA, CARGO, PLAN Y SUCURSAL
-const userData = {
-    id: user.id,
-    email: user.email || user.correoElectronico,
-    correoElectronico: user.email || user.correoElectronico,
-    nombreCompleto: user.nombreCompleto,
-    nombre: user.nombreCompleto,
-    rol: user.rol,
+            const userData = {
+                id: user.id,
+                email: user.email || user.correoElectronico,
+                correoElectronico: user.email || user.correoElectronico,
+                nombreCompleto: user.nombreCompleto,
+                nombre: user.nombreCompleto,
+                rol: user.rol,
 
-    // ✅ GUARDAR ORGANIZACIÓN
-    organizacion: user.organizacion,
-    organizacionCamelCase: organizacionCamelCase,
+                // ✅ GUARDAR ORGANIZACIÓN
+                organizacion: user.organizacion,
+                organizacionCamelCase: organizacionCamelCase,
 
-    // ✅ GUARDAR ÁREA Y CARGO (SEGÚN LA CLASE USER)
-    areaAsignadaId: user.areaAsignadaId || '',
-    cargoId: user.cargoId || '',
+                // ✅ GUARDAR ÁREA Y CARGO (SEGÚN LA CLASE USER)
+                areaAsignadaId: user.areaAsignadaId || '',
+                cargoId: user.cargoId || '',
 
-    // ✅ ✅ ✅ NUEVO: GUARDAR SUCURSAL ASIGNADA
-    sucursalAsignadaId: user.sucursalAsignadaId || '',
-    sucursalAsignadaNombre: user.sucursalAsignadaNombre || '',
-    sucursalAsignadaCiudad: user.sucursalAsignadaCiudad || '',
+                // ✅ ✅ ✅ NUEVO: GUARDAR SUCURSAL ASIGNADA
+                sucursalAsignadaId: user.sucursalAsignadaId || '',
+                sucursalAsignadaNombre: user.sucursalAsignadaNombre || '',
+                sucursalAsignadaCiudad: user.sucursalAsignadaCiudad || '',
 
-    // ✅ GUARDAR EL PLAN (ID del documento en colección 'planes')
-    plan: planId,
-    planId: planId, // Por compatibilidad
+                // ✅ GUARDAR EL PLAN (ID del documento en colección 'planes')
+                plan: planId,
+                planId: planId, // Por compatibilidad
 
-    // ✅ GUARDAR ESTADO
-    status: user.status,
-    verificado: user.verificado,
+                // ✅ GUARDAR ESTADO
+                status: user.status,
+                verificado: user.verificado,
 
-    // ✅ GUARDAR IMÁGENES
-    fotoUsuario: fotoUsuario || '',
-    fotoOrganizacion: fotoOrganizacion || '',
+                // ✅ GUARDAR IMÁGENES
+                fotoUsuario: fotoUsuario || '',
+                fotoOrganizacion: fotoOrganizacion || '',
 
-    // ✅ METADATOS DE SESIÓN
-    ultimoAcceso: new Date().toISOString(),
-    sessionStart: new Date().toISOString(),
-    fechaLogin: new Date().toLocaleDateString('es-ES', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-    })
-};
+                // ✅ METADATOS DE SESIÓN
+                ultimoAcceso: new Date().toISOString(),
+                sessionStart: new Date().toISOString(),
+                fechaLogin: new Date().toLocaleDateString('es-ES', {
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                })
+            };
 
-// Guardar en localStorage
-localStorage.setItem('userData', JSON.stringify(userData));
+            // Guardar en localStorage
+            localStorage.setItem('userData', JSON.stringify(userData));
 
-// ✅ También guardar en localStorage individualmente para fácil acceso
-if (user.sucursalAsignadaId) {
-    localStorage.setItem('userSucursalId', user.sucursalAsignadaId);
-}
-if (user.sucursalAsignadaNombre) {
-    localStorage.setItem('userSucursalNombre', user.sucursalAsignadaNombre);
-}
-if (user.areaAsignadaId) {
-    localStorage.setItem('userAreaId', user.areaAsignadaId);
-}
-if (user.cargoId) {
-    localStorage.setItem('userCargoId', user.cargoId);
-}
-if (user.nombreCompleto) {
-    localStorage.setItem('userNombre', user.nombreCompleto);
-}
-if (user.email || user.correoElectronico) {
-    localStorage.setItem('userEmail', user.email || user.correoElectronico);
-}
-if (user.rol) {
-    localStorage.setItem('userRole', user.rol);
-}
-if (organizacionCamelCase) {
-    localStorage.setItem('userOrganizacionCamelCase', organizacionCamelCase);
-}
-if (user.organizacion) {
-    localStorage.setItem('userOrganizacion', user.organizacion);
-}
-if (planId) {
-    localStorage.setItem('userPlan', planId);
-}
+            // ✅ También guardar en localStorage individualmente para fácil acceso
+            if (user.sucursalAsignadaId) {
+                localStorage.setItem('userSucursalId', user.sucursalAsignadaId);
+            }
+            if (user.sucursalAsignadaNombre) {
+                localStorage.setItem('userSucursalNombre', user.sucursalAsignadaNombre);
+            }
+            if (user.areaAsignadaId) {
+                localStorage.setItem('userAreaId', user.areaAsignadaId);
+            }
+            if (user.cargoId) {
+                localStorage.setItem('userCargoId', user.cargoId);
+            }
+            if (user.nombreCompleto) {
+                localStorage.setItem('userNombre', user.nombreCompleto);
+            }
+            if (user.email || user.correoElectronico) {
+                localStorage.setItem('userEmail', user.email || user.correoElectronico);
+            }
+            if (user.rol) {
+                localStorage.setItem('userRole', user.rol);
+            }
+            if (organizacionCamelCase) {
+                localStorage.setItem('userOrganizacionCamelCase', organizacionCamelCase);
+            }
+            if (user.organizacion) {
+                localStorage.setItem('userOrganizacion', user.organizacion);
+            }
+            if (planId) {
+                localStorage.setItem('userPlan', planId);
+            }
             localStorage.setItem('isLoggedIn', 'true');
             localStorage.setItem('userRole', user.rol);
             localStorage.setItem('userOrganizacion', user.organizacion);
             localStorage.setItem('userOrganizacionCamelCase', organizacionCamelCase);
             localStorage.setItem('userNombre', user.nombreCompleto);
             localStorage.setItem('userEmail', user.email || user.correoElectronico || '');
-            
+
             // ✅ ✅ ✅ NUEVO: Guardar el plan en localStorage para acceso rápido
             if (planId) {
                 localStorage.setItem('userPlan', planId);
                 localStorage.setItem('plan', planId); // Por compatibilidad con navbar
-                console.log(`✅ Plan guardado en localStorage: ${planId}`);
+                // console.log(`✅ Plan guardado en localStorage: ${planId}`); // COMENTADO
             } else {
                 localStorage.removeItem('userPlan');
                 localStorage.removeItem('plan');
-                console.log('⚠️ No se encontró plan para este usuario');
+                // console.log('⚠️ No se encontró plan para este usuario'); // COMENTADO
             }
 
             // Guardar fotos si existen
@@ -280,13 +280,13 @@ if (planId) {
                 localStorage.removeItem('organizacionLogo');
             }
 
-            console.log('✅ Usuario guardado en localStorage:', {
-                nombre: user.nombreCompleto,
-                areaAsignadaId: user.areaAsignadaId || 'NO ASIGNADA',
-                cargoId: user.cargoId || 'NO ASIGNADO',
-                rol: user.rol,
-                plan: planId || 'NO ASIGNADO'
-            });
+            // console.log('✅ Usuario guardado en localStorage:', { // COMENTADO
+            //     nombre: user.nombreCompleto,
+            //     areaAsignadaId: user.areaAsignadaId || 'NO ASIGNADA',
+            //     cargoId: user.cargoId || 'NO ASIGNADO',
+            //     rol: user.rol,
+            //     plan: planId || 'NO ASIGNADO'
+            // });
 
             return true;
         } catch (error) {
@@ -301,7 +301,7 @@ if (planId) {
     function saveUserToSessionStorage(user) {
         try {
             const organizacionCamelCase = toCamelCase(user.organizacion);
-            
+
             // ✅ ✅ ✅ OBTENER EL PLAN
             const planId = user.plan || user.planId || null;
 
@@ -318,7 +318,7 @@ if (planId) {
                 //  GUARDAR ÁREA Y CARGO EN SESSION TAMBIÉN
                 areaAsignadaId: user.areaAsignadaId || '',
                 cargoId: user.cargoId || '',
-                
+
                 // NUEVO: GUARDAR PLAN EN SESSION TAMBIÉN
                 plan: planId,
                 planId: planId,
@@ -338,7 +338,7 @@ if (planId) {
             sessionStorage.setItem('sessionOrganizacionCamelCase', organizacionCamelCase);
             sessionStorage.setItem('sessionUser', user.nombreCompleto);
             sessionStorage.setItem('sessionRole', user.rol);
-            
+
             // Guardar plan en sessionStorage
             if (planId) {
                 sessionStorage.setItem('sessionPlan', planId);
@@ -360,16 +360,16 @@ if (planId) {
                 const userData = JSON.parse(localStorage.getItem('userData') || '{}');
                 const sessionData = JSON.parse(sessionStorage.getItem('currentSession') || '{}');
 
-                console.log('Sesión existente encontrada:', {
-                    usuario: userData.nombreCompleto,
-                    organizacion: userData.organizacion,
-                    rol: userData.rol,
-                    areaAsignadaId: userData.areaAsignadaId || 'NO ASIGNADA',
-                    cargoId: userData.cargoId || 'NO ASIGNADO',
-                    plan: userData.plan || 'NO ASIGNADO',
-                    tieneFotoUsuario: !!userData.fotoUsuario,
-                    tieneFotoOrganizacion: !!userData.fotoOrganizacion
-                });
+                // console.log('Sesión existente encontrada:', { // COMENTADO
+                //     usuario: userData.nombreCompleto,
+                //     organizacion: userData.organizacion,
+                //     rol: userData.rol,
+                //     areaAsignadaId: userData.areaAsignadaId || 'NO ASIGNADA',
+                //     cargoId: userData.cargoId || 'NO ASIGNADO',
+                //     plan: userData.plan || 'NO ASIGNADO',
+                //     tieneFotoUsuario: !!userData.fotoUsuario,
+                //     tieneFotoOrganizacion: !!userData.fotoOrganizacion
+                // });
             }
 
             return false;
@@ -380,7 +380,7 @@ if (planId) {
     }
 
     function logOrganizationInfo(organizacion, organizacionCamelCase) {
-        console.log('INFORMACIÓN DE ORGANIZACIÓN:', organizacion, organizacionCamelCase);
+        // console.log('INFORMACIÓN DE ORGANIZACIÓN:', organizacion, organizacionCamelCase); // COMENTADO
     }
 
     // FUNCIÓN: Mostrar SweetAlert2 de éxito en login
@@ -664,17 +664,17 @@ if (planId) {
         try {
             const user = await userManager.iniciarSesion(email, password);
 
-            console.log('✅ Login exitoso:', {
-                id: user.id,
-                nombre: user.nombreCompleto,
-                rol: user.rol,
-                organizacion: user.organizacion,
-                areaAsignadaId: user.areaAsignadaId || 'NO ASIGNADA',
-                cargoId: user.cargoId || 'NO ASIGNADO',
-                plan: user.plan || 'NO ASIGNADO',
-                tieneFotoUsuario: !!(user.fotoUsuario || user.fotoURL),
-                tieneFotoOrganizacion: !!user.fotoOrganizacion
-            });
+            // console.log('✅ Login exitoso:', { // COMENTADO
+            //     id: user.id,
+            //     nombre: user.nombreCompleto,
+            //     rol: user.rol,
+            //     organizacion: user.organizacion,
+            //     areaAsignadaId: user.areaAsignadaId || 'NO ASIGNADA',
+            //     cargoId: user.cargoId || 'NO ASIGNADO',
+            //     plan: user.plan || 'NO ASIGNADO',
+            //     tieneFotoUsuario: !!(user.fotoUsuario || user.fotoURL),
+            //     tieneFotoOrganizacion: !!user.fotoOrganizacion
+            // });
 
             const organizacionCamelCase = toCamelCase(user.organizacion);
             logOrganizationInfo(user.organizacion, organizacionCamelCase);
@@ -696,7 +696,7 @@ if (planId) {
 
                     // Verificar si el usuario ya había tomado una decisión
                     if (fcmInitializer.isEnabled()) {
-                        console.log('Notificaciones ya estaban activadas para este dispositivo.');
+                        // console.log('Notificaciones ya estaban activadas para este dispositivo.'); // COMENTADO
                     } else {
                         // Preguntar solo si el permiso del navegador aún no ha sido concedido
                         if (Notification.permission !== 'granted' && Notification.permission !== 'denied') {
@@ -738,14 +738,14 @@ if (planId) {
                                 await fcmInitializer.disableNotifications();
                             }
                         } else if (Notification.permission === 'denied') {
-                            console.log('Notificaciones bloqueadas por el navegador.');
+                            // console.log('Notificaciones bloqueadas por el navegador.'); // COMENTADO
                         }
                     }
                 } catch (fcmError) {
                     console.error('Error al inicializar FCM:', fcmError);
                 }
             } else {
-                console.log('🔔 Entorno de desarrollo: no se activan notificaciones push');
+                // console.log('🔔 Entorno de desarrollo: no se activan notificaciones push'); // COMENTADO
             }
 
             // ===========================================================

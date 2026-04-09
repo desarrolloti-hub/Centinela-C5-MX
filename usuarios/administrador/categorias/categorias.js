@@ -462,7 +462,7 @@ async function crearFilaCategoria(categoria, tbody) {
         <td colspan="5" style="padding:0; border-top:none;">
             <div style="background: linear-gradient(to bottom, rgba(0,0,0,0.3), rgba(0,0,0,0.5)); padding: 20px; border-radius: 0 0 20px 20px;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px;">
-                    <h6 style="color: white; font-size: 1rem; font-weight: 600; margin: 0; display: flex; align-items: center; gap: 8px;">
+                    <h6 style="color: white; font-size: 93%; font-weight: 580; margin: 0; display: flex; align-items: center; gap: 8px;">
                         <i class="fas fa-list-ul" style="color: white; filter: "></i>
                         Subcategorías de <span style="color:#2f8cff;">"${escapeHTML(categoria.nombre)}"</span>
                     </h6>
@@ -715,27 +715,10 @@ window.verDetallesSubcategoria = async function (categoriaId, subcategoriaId, ev
                     <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
                         <span style="display:inline-block; width:30px; height:30px; background:${colorSub}; border-radius:4px; border:2px solid rgba(255,255,255,0.1);"></span>
                         <span style="color: var(--color-text-secondary);">${colorSub}</span>
-                        ${hereda ? '<span style="background:rgba(16,185,129,0.1); color:#10b981; padding:2px 8px; border-radius:12px; font-size:0.7rem;">HEREDA</span>' : ''}
+                        ${hereda ? '<span style="background:rgba(16,185,129,0.1); color:#10b981; padding:2px 8px; border-radius:12px; font-size:0.7rem;">CONSERVA</span>' : ''}
                     </div>
                 </div>
 
-                <div>
-                    <h4 style="color: var(--color-accent-primary); margin: 0 0 10px 0; font-size: 0.9rem; text-transform: uppercase;">
-                        <i class="fas fa-info-circle" style="margin-right: 8px;"></i>INFORMACIÓN DEL SISTEMA
-                    </h4>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-                        <div>
-                            <small style="color: var(--color-accent-primary); display: block; font-size: 0.7rem; text-transform: uppercase;">ID</small>
-                            <span style="color: var(--color-text-secondary);"><i class="fas fa-fingerprint" style="margin-right: 5px;"></i> ${subcategoriaId.substring(0, 8)}...</span>
-                        </div>
-                        <div>
-                            <small style="color: var(--color-accent-primary); display: block; font-size: 0.7rem; text-transform: uppercase;">HEREDA</small>
-                            <span style="color: var(--color-text-secondary);"><i class="fas ${hereda ? 'fa-check-circle' : 'fa-times-circle'}" style="margin-right: 5px;"></i> ${hereda ? 'SÍ' : 'NO'}</span>
-                        </div>
-                        <div style="grid-column: span 2;">
-                            <small style="color: var(--color-accent-primary); display: block; font-size: 0.7rem; text-transform: uppercase;">FECHA CREACIÓN</small>
-                            <span style="color: var(--color-text-secondary);"><i class="fas fa-calendar" style="margin-right: 5px;"></i> ${subcategoria.fechaCreacion ? new Date(subcategoria.fechaCreacion).toLocaleString('es-ES', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'No disponible'}</span>
-                        </div>
                     </div>
                 </div>
             </div>
@@ -1037,7 +1020,7 @@ async function cargarSubcategorias(categoriaId) {
                     <div style="display: flex; align-items: center; flex-wrap: nowrap; gap: 8px;">
                         <span style="display:inline-block; width:12px; height:12px; background-color: ${colorSub}; border-radius: 6px; flex-shrink:0;"></span>
                         <span style="max-width:120px; color: white;" title="${escapeHTML(sub.nombre || '')}">${escapeHTML(nombreTruncado)}</span>
-                        ${hereda ? '<span style="background:rgba(16,185,129,0.1); color:#10b981; padding:2px 6px; border-radius:12px; font-size:0.7rem; white-space:nowrap; flex-shrink:0;">HEREDA</span>' : ''}
+                        ${hereda ? '<span style="background:rgba(16,185,129,0.1); color:#10b981; padding:2px 6px; border-radius:12px; font-size:0.7rem; white-space:nowrap; flex-shrink:0;">CONSERVA</span>' : ''}
                         ${!hereda && sub.color ? '<span style="background:rgba(249,115,22,0.1); color:#f97316; padding:2px 6px; border-radius:12px; font-size:0.7rem; white-space:nowrap; flex-shrink:0;">PROPIO</span>' : ''}
                     </div>
                 </td>

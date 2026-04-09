@@ -1,11 +1,10 @@
 // EstadisticasExtraviosPDF.js
-// Componente para generar PDF del dashboard de Pérdidas y Recuperaciones
-// VERSIÓN: 1.3 - CORREGIDO ERROR DE COLOR Y MOSTRARALERTA
+// VERSIÓN: 2.2 - SIN EMOJIS + LEYENDA DE COLORES + FILTROS COMPACTOS
 
 import { PDFBaseGenerator, coloresBase } from './pdf-base-generator.js';
 
 // =============================================
-// CONFIGURACIÓN DE COLORES PARA ESTADÍSTICAS DE EXTRAVÍOS
+// CONFIGURACIÓN DE COLORES
 // =============================================
 export const coloresExtravios = {
     ...coloresBase,
@@ -20,13 +19,25 @@ export const coloresExtravios = {
         extravio: '#f59e0b',
         accidente: '#3b82f6',
         otro: '#8b5cf6',
-        topSucursales: '#3b82f6'  // Color azul para destacar la gráfica
+        topSucursales: '#3b82f6',
+        topSucursalesBarra: '#2563eb'
     }
 };
 
-// =============================================
-// CLASE PDF ESTADÍSTICAS EXTRAVÍOS GENERATOR
-// =============================================
+// CONFIGURACIÓN DEL GRID
+const GRID_CONFIG = {
+    ANCHO_CONTENEDOR: 90,
+    ALTO_CONTENEDOR: 65,
+    ALTO_CONTENEDOR_CIRCULAR: 90,
+    MARGEN_PAGINA: 12,
+    ESPACIADO_HORIZONTAL: 8,
+    ESPACIADO_VERTICAL: 8,
+    ALTURA_TITULO: 8,
+    ALTURA_GRAFICA: 50,
+    // Altura de la leyenda de colores
+    ALTURA_LEYENDA: 12
+};
+
 class EstadisticasExtraviosPDFGenerator extends PDFBaseGenerator {
     constructor() {
         super();
@@ -39,7 +50,6 @@ class EstadisticasExtraviosPDFGenerator extends PDFBaseGenerator {
         this.fechaFin = null;
         this.tipoEvento = null;
 
-        // Captura de gráficas como imágenes (alta calidad)
         this.graficasCapturadas = {
             tipoEvento: null,
             evolucionMensual: null,
@@ -47,25 +57,17 @@ class EstadisticasExtraviosPDFGenerator extends PDFBaseGenerator {
             comparativa: null
         };
 
-        // Tamaños de fuente optimizados
         this.fonts = {
-            tituloPrincipal: 16,
-            titulo: 14,
-            subtitulo: 12,
-            normal: 10,
-            small: 9,
-            mini: 8,
-            micro: 7
+            tituloPrincipal: 12,
+            titulo: 10,
+            subtitulo: 9,
+            normal: 8,
+            small: 7,
+            mini: 6,
+            micro: 5
         };
-        
-        // Alturas ajustadas para gráficas
-        this.alturaGrafica = 70;
-        this.alturaEncabezado = 42;
     }
 
-    // =============================================
-    // CAPTURAR GRÁFICAS COMO IMÁGENES (ALTA CALIDAD)
-    // =============================================
     async capturarGraficas() {
         const canvasIds = [
             { id: 'graficoTipoEvento', key: 'tipoEvento' },
@@ -78,23 +80,13 @@ class EstadisticasExtraviosPDFGenerator extends PDFBaseGenerator {
             const canvas = document.getElementById(item.id);
             if (canvas && canvas instanceof HTMLCanvasElement) {
                 try {
-                    // Capturar con mayor calidad (usar 2x para mejor resolución)
                     const scale = 2;
-                    const originalWidth = canvas.width;
-                    const originalHeight = canvas.height;
-                    
-                    // Crear canvas temporal de alta resolución
                     const tempCanvas = document.createElement('canvas');
-                    tempCanvas.width = originalWidth * scale;
-                    tempCanvas.height = originalHeight * scale;
+                    tempCanvas.width = canvas.width * scale;
+                    tempCanvas.height = canvas.height * scale;
                     const tempCtx = tempCanvas.getContext('2d');
-                    
-                    // Dibujar el canvas original escalado
                     tempCtx.drawImage(canvas, 0, 0, tempCanvas.width, tempCanvas.height);
-                    
-                    // Convertir a dataURL con calidad alta
-                    const dataURL = tempCanvas.toDataURL('image/png', 1.0);
-                    this.graficasCapturadas[item.key] = dataURL;
+                    this.graficasCapturadas[item.key] = tempCanvas.toDataURL('image/png', 1.0);
                 } catch (error) {
                     console.error(`Error capturando gráfica ${item.id}:`, error);
                     this.graficasCapturadas[item.key] = null;
@@ -105,9 +97,6 @@ class EstadisticasExtraviosPDFGenerator extends PDFBaseGenerator {
         }
     }
 
-    // =============================================
-    // CONFIGURAR DATOS PARA EL REPORTE
-    // =============================================
     configurarDatos(datos) {
         this.datos = datos;
         this.estadisticas = datos.estadisticas;
@@ -122,30 +111,20 @@ class EstadisticasExtraviosPDFGenerator extends PDFBaseGenerator {
         }
     }
 
-    // =============================================
-    // FUNCIÓN PRINCIPAL - GENERAR REPORTE
-    // =============================================
     async generarReporte(datos, opciones = {}) {
         try {
-            const {
-                mostrarAlerta = true,
-                tituloPersonalizado = 'REPORTE DE PÉRDIDAS Y RECUPERACIONES'
-            } = opciones;
+            const { mostrarAlerta = true, tituloPersonalizado = 'RECUPERACIONES' } = opciones;
 
             this.configurarDatos(datos);
 
             if (mostrarAlerta) {
                 Swal.fire({
                     title: 'Generando Reporte PDF...',
-                    html: `
-                        <div style="margin-bottom: 10px;">
-                            <i class="fas fa-chart-line" style="font-size: 32px; color: #c9a03d;"></i>
-                        </div>
+                    html: `<div style="margin-bottom:10px;"><i class="fas fa-chart-line" style="font-size:32px; color:#c9a03d;"></i></div>
                         <div class="progress-bar-container" style="width:100%; height:20px; background:rgba(0,0,0,0.1); border-radius:10px; margin-top:10px;">
-                            <div class="progress-bar" style="width:0%; height:100%; background:linear-gradient(90deg, #1a3b5d, #c9a03d); border-radius:10px; transition:width 0.3s;"></div>
+                            <div class="progress-bar" style="width:0%; height:100%; background:linear-gradient(90deg, #1a3b5d, #c9a03d); border-radius:10px;"></div>
                         </div>
-                        <p style="margin-top: 12px; color: #666;">Procesando datos y capturando gráficas...</p>
-                    `,
+                        <p style="margin-top:12px;">Procesando datos y capturando gráficas...</p>`,
                     allowOutsideClick: false,
                     showConfirmButton: false,
                     didOpen: () => {
@@ -174,7 +153,6 @@ class EstadisticasExtraviosPDFGenerator extends PDFBaseGenerator {
             }
 
             const pdf = new this.jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-            
             this.totalPaginas = 2;
             this.paginaActualReal = 1;
 
@@ -196,233 +174,150 @@ class EstadisticasExtraviosPDFGenerator extends PDFBaseGenerator {
             if (window._intervaloProgreso) clearInterval(window._intervaloProgreso);
             if (mostrarAlerta) {
                 Swal.close();
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Error',
-                    text: 'No se pudo generar el reporte: ' + error.message,
-                    confirmButtonText: 'Entendido'
-                });
+                Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo generar el reporte: ' + error.message });
             }
             throw error;
         }
     }
 
-    // =============================================
-    // GENERAR CONTENIDO DEL PDF
-    // =============================================
     async _generarContenido(pdf, tituloPersonalizado) {
-        const margen = 12;
-        const anchoPagina = pdf.internal.pageSize.getWidth();
-        const anchoContenido = anchoPagina - (margen * 2);
-        let yPos = this.alturaEncabezado + 5;
-
-        // =============================================
         // PÁGINA 1
-        // =============================================
+        this.dibujarEncabezadoBase(pdf, tituloPersonalizado, this.organizacionActual?.nombre || 'SISTEMA CENTINELA');
 
-        this.dibujarEncabezadoBase(
-            pdf,
-            tituloPersonalizado,
-            this.organizacionActual?.nombre || 'SISTEMA CENTINELA'
-        );
+        let yPos = this.alturaEncabezado + 3; // Reducido de +5
+        yPos = this._dibujarInformacionFiltrosCompacto(pdf, yPos);
+        yPos += 3; // Reducido de +5
+        yPos = this._dibujarKPIsSinEmojis(pdf, yPos);
+        yPos += 6; // Reducido de +8
 
-        yPos = this._dibujarInformacionFiltros(pdf, margen, anchoContenido, yPos);
-        yPos = this._dibujarKPIs(pdf, margen, anchoContenido, yPos);
-        yPos += 5;
-
-        // Gráfica 1: Distribución por tipo de evento
-        if (this.graficasCapturadas.tipoEvento) {
-            yPos = this._dibujarGraficaConTitulo(pdf, 'DISTRIBUCIÓN POR TIPO DE EVENTO', 
-                this.graficasCapturadas.tipoEvento, margen, anchoContenido, yPos, this.alturaGrafica);
-        } else {
-            yPos = this._dibujarGraficaVaciaConTitulo(pdf, 'DISTRIBUCIÓN POR TIPO DE EVENTO',
-                'Sin datos de tipo de evento', margen, anchoContenido, yPos, this.alturaGrafica);
-        }
-        yPos += 3;
-
-        // Gráfica 2: Evolución mensual
-        if (this.graficasCapturadas.evolucionMensual) {
-            yPos = this._dibujarGraficaConTitulo(pdf, 'EVOLUCIÓN MENSUAL',
-                this.graficasCapturadas.evolucionMensual, margen, anchoContenido, yPos, this.alturaGrafica);
-        } else {
-            yPos = this._dibujarGraficaVaciaConTitulo(pdf, 'EVOLUCIÓN MENSUAL',
-                'Sin datos de evolución mensual', margen, anchoContenido, yPos, this.alturaGrafica);
-        }
+        await this._dibujarGridGraficas(pdf, yPos);
 
         this.dibujarPiePagina(pdf);
 
-        // =============================================
-        // PÁGINA 2
-        // =============================================
+        // PÁGINA 2: TABLA
         pdf.addPage();
         this.paginaActualReal++;
-        this.dibujarEncabezadoBase(pdf, tituloPersonalizado, 'CONTINUACIÓN');
-        yPos = this.alturaEncabezado + 5;
+        this.dibujarEncabezadoBase(pdf, tituloPersonalizado, 'RESUMEN POR SUCURSAL');
 
-        // Gráfica 3: Top sucursales con más pérdidas (CON COLOR PERSONALIZADO)
-        if (this.graficasCapturadas.topSucursales) {
-            yPos = this._dibujarGraficaConTituloColor(pdf, 'TOP SUCURSALES CON MÁS PÉRDIDAS',
-                this.graficasCapturadas.topSucursales, margen, anchoContenido, yPos, this.alturaGrafica,
-                coloresExtravios.graficas.topSucursales);
-        } else {
-            yPos = this._dibujarGraficaVaciaConTitulo(pdf, 'TOP SUCURSALES CON MÁS PÉRDIDAS',
-                'Sin datos de sucursales', margen, anchoContenido, yPos, this.alturaGrafica);
-        }
-        yPos += 3;
-
-        // Gráfica 4: Pérdida vs Recuperación
-        if (this.graficasCapturadas.comparativa) {
-            yPos = this._dibujarGraficaConTitulo(pdf, 'PÉRDIDA VS RECUPERACIÓN',
-                this.graficasCapturadas.comparativa, margen, anchoContenido, yPos, this.alturaGrafica);
-        } else {
-            yPos = this._dibujarGraficaVaciaConTitulo(pdf, 'PÉRDIDA VS RECUPERACIÓN',
-                'Sin datos comparativos', margen, anchoContenido, yPos, this.alturaGrafica);
-        }
-        yPos += 5;
-
-        // Tabla de resumen por sucursal
+        let yPosTabla = this.alturaEncabezado + 8;
+        
         if (this.sucursales && this.sucursales.length > 0) {
-            yPos = this._dibujarTablaResumen(pdf, margen, anchoContenido, yPos);
+            this._dibujarTablaResumenConBordes(pdf, yPosTabla);
         } else {
             pdf.setFont('helvetica', 'italic');
-            pdf.setFontSize(this.fonts.small);
+            pdf.setFontSize(this.fonts.normal);
             pdf.setTextColor(150, 150, 150);
-            pdf.text('No hay datos de sucursales para mostrar', margen, yPos);
+            pdf.text('No hay datos de sucursales para mostrar', GRID_CONFIG.MARGEN_PAGINA, yPosTabla + 20);
         }
 
+        this._dibujarAvisoPrivacidad(pdf);
         this.dibujarPiePagina(pdf);
     }
 
     // =============================================
-    // DIBUJAR INFORMACIÓN DE FILTROS
+    // FILTROS APLICADOS - VERSIÓN MÁS COMPACTA
     // =============================================
-    _dibujarInformacionFiltros(pdf, margen, anchoContenido, yPos) {
+    _dibujarInformacionFiltrosCompacto(pdf, yPos) {
+        const margen = GRID_CONFIG.MARGEN_PAGINA;
+        const anchoContenido = pdf.internal.pageSize.getWidth() - (margen * 2);
+
         pdf.setFillColor(245, 245, 245);
         pdf.setDrawColor(200, 200, 200);
-        pdf.roundedRect(margen, yPos - 2, anchoContenido, 22, 2, 2, 'FD');
+        pdf.roundedRect(margen, yPos, anchoContenido, 10, 2, 2, 'FD');
 
         pdf.setFont('helvetica', 'bold');
-        pdf.setFontSize(this.fonts.normal);
+        pdf.setFontSize(this.fonts.mini);
         pdf.setTextColor(26, 59, 93);
-        pdf.text('FILTROS APLICADOS', margen + 5, yPos);
-        yPos += 5;
+        pdf.text('FILTROS:', margen + 5, yPos + 4);
 
         pdf.setFont('helvetica', 'normal');
-        pdf.setFontSize(this.fonts.small);
+        pdf.setFontSize(this.fonts.mini);
         pdf.setTextColor(80, 80, 80);
 
         let filtroText = '';
-
         if (this.fechaInicio && this.fechaFin) {
-            filtroText += `Período: ${this.formatearFechaVisualizacion(new Date(this.fechaInicio))} al ${this.formatearFechaVisualizacion(new Date(this.fechaFin))} | `;
+            filtroText += `${this.formatearFechaVisualizacion(new Date(this.fechaInicio))} - ${this.formatearFechaVisualizacion(new Date(this.fechaFin))}`;
         } else {
-            filtroText += 'Período: Todo el historial | ';
+            filtroText += 'Todo el historial';
         }
 
+        filtroText += ' | ';
+        
         if (this.filtrosAplicados.sucursal && this.filtrosAplicados.sucursal !== 'todas') {
-            filtroText += `Sucursal: ${this.filtrosAplicados.sucursal} | `;
+            filtroText += `${this.filtrosAplicados.sucursal}`;
         } else {
-            filtroText += 'Sucursal: Todas | ';
+            filtroText += 'Todas las sucursales';
         }
+
+        filtroText += ' | ';
 
         if (this.tipoEvento && this.tipoEvento !== 'todos') {
-            filtroText += `Tipo: ${this._capitalize(this.tipoEvento)}`;
+            filtroText += `${this._capitalize(this.tipoEvento)}`;
         } else {
-            filtroText += 'Tipo: Todos';
+            filtroText += 'Todos los tipos';
         }
 
-        const lineas = this.dividirTextoEnLineas(pdf, filtroText, anchoContenido - 10);
-        for (let i = 0; i < Math.min(lineas.length, 2); i++) {
-            pdf.text(lineas[i], margen + 5, yPos + (i * 4));
-        }
+        pdf.text(filtroText, margen + 45, yPos + 4);
 
-        return yPos + 18;
+        return yPos + 10;
     }
 
     // =============================================
-    // DIBUJAR KPI CARDS
+    // KPIs SIN EMOJIS
     // =============================================
-    _dibujarKPIs(pdf, margen, anchoContenido, yPos) {
+    _dibujarKPIsSinEmojis(pdf, yPos) {
         if (!this.estadisticas) return yPos;
 
-        const anchoKPI = (anchoContenido - 15) / 3;
+        const margen = GRID_CONFIG.MARGEN_PAGINA;
+        const anchoPagina = pdf.internal.pageSize.getWidth();
+        const anchoKPI = (anchoPagina - (margen * 2) - 15) / 3;
         const espacioKPI = 7.5;
+        const alturaKPI = 22;
 
-        const kpis = [
-            { 
-                titulo: 'Total Perdido', 
-                valor: this.estadisticas.totalPerdido,
-                color: [239, 68, 68],
-                icono: '💰'
-            },
-            { 
-                titulo: 'Total Recuperado', 
-                valor: this.estadisticas.totalRecuperado,
-                color: [16, 185, 129],
-                icono: '🔄'
-            },
-            { 
-                titulo: 'Pérdida Neta', 
-                valor: this.estadisticas.totalNeto,
-                color: [245, 158, 11],
-                icono: '📊'
-            },
-            { 
-                titulo: 'Tasa Recuperación', 
-                valor: this.estadisticas.porcentajeRecuperacion,
-                esPorcentaje: true,
-                color: [59, 130, 246],
-                icono: '📈'
-            },
-            { 
-                titulo: 'Total Eventos', 
-                valor: this.estadisticas.totalEventos,
-                color: [139, 92, 246],
-                icono: '📋'
-            },
-            { 
-                titulo: 'Promedio por Evento', 
-                valor: this.estadisticas.promedioPerdida,
-                color: [236, 72, 153],
-                icono: '⚖️'
-            }
-        ];
-
-        const formatter = new Intl.NumberFormat('es-MX', { 
-            style: 'currency', 
+        const formatter = new Intl.NumberFormat('es-MX', {
+            style: 'currency',
             currency: 'MXN',
             minimumFractionDigits: 0,
             maximumFractionDigits: 0
         });
+
+        const kpis = [
+            { titulo: 'Total Perdido', valor: this.estadisticas.totalPerdido, color: [239, 68, 68] },
+            { titulo: 'Total Recuperado', valor: this.estadisticas.totalRecuperado, color: [16, 185, 129] },
+            { titulo: 'Pérdida Neta', valor: this.estadisticas.totalNeto, color: [245, 158, 11] },
+            { titulo: 'Tasa Recuperación', valor: this.estadisticas.porcentajeRecuperacion, esPorcentaje: true, color: [59, 130, 246] },
+            { titulo: 'Total Eventos', valor: this.estadisticas.totalEventos, color: [139, 92, 246] },
+            { titulo: 'Promedio x Evento', valor: this.estadisticas.promedioPerdida, color: [236, 72, 153] }
+        ];
 
         for (let i = 0; i < kpis.length; i++) {
             const kpi = kpis[i];
             const columna = i % 3;
             const fila = Math.floor(i / 3);
             const xKPI = margen + (columna * (anchoKPI + espacioKPI));
-            const yKPI = yPos + (fila * 32);
+            const yKPI = yPos + (fila * (alturaKPI + 4));
 
             pdf.setFillColor(248, 248, 248);
             pdf.setDrawColor(220, 220, 220);
-            pdf.roundedRect(xKPI, yKPI, anchoKPI, 30, 3, 3, 'FD');
+            pdf.roundedRect(xKPI, yKPI, anchoKPI, alturaKPI, 2, 2, 'FD');
 
             pdf.setFillColor(kpi.color[0], kpi.color[1], kpi.color[2]);
-            pdf.rect(xKPI, yKPI, anchoKPI, 3, 'F');
+            pdf.rect(xKPI, yKPI, anchoKPI, 2, 'F');
 
             pdf.setFont('helvetica', 'bold');
-            pdf.setFontSize(8);
+            pdf.setFontSize(this.fonts.mini);
             pdf.setTextColor(80, 80, 80);
-            pdf.text(`${kpi.icono} ${kpi.titulo}`, xKPI + 6, yKPI + 10);
+            pdf.text(kpi.titulo, xKPI + 4, yKPI + 8);
 
             pdf.setFont('helvetica', 'bold');
-            pdf.setFontSize(12);
+            pdf.setFontSize(9);
             pdf.setTextColor(kpi.color[0], kpi.color[1], kpi.color[2]);
 
             let valorTexto;
             if (kpi.esPorcentaje) {
                 valorTexto = `${kpi.valor.toFixed(2)}%`;
             } else if (typeof kpi.valor === 'number') {
-                if (kpi.titulo.includes('Eventos') || kpi.titulo === 'Total Eventos') {
+                if (kpi.titulo === 'Total Eventos') {
                     valorTexto = kpi.valor.toLocaleString('es-MX');
                 } else {
                     valorTexto = formatter.format(kpi.valor);
@@ -431,145 +326,218 @@ class EstadisticasExtraviosPDFGenerator extends PDFBaseGenerator {
                 valorTexto = kpi.valor;
             }
 
-            pdf.text(valorTexto, xKPI + 6, yKPI + 24);
+            pdf.text(valorTexto, xKPI + 4, yKPI + 18);
         }
 
-        return yPos + 66;
+        return yPos + (alturaKPI * 2) + 10;
     }
 
     // =============================================
-    // DIBUJAR GRÁFICA CON TÍTULO (VERSIÓN NORMAL)
+    // GRID DE GRÁFICAS 2x2
     // =============================================
-    _dibujarGraficaConTitulo(pdf, titulo, imagenDataURL, x, anchoContenido, y, altura) {
-        pdf.setFont('helvetica', 'bold');
-        pdf.setFontSize(this.fonts.subtitulo);
-        pdf.setTextColor(26, 59, 93);
-        pdf.text(titulo, x, y);
-        y += 5;
+    async _dibujarGridGraficas(pdf, yPosInicial) {
+        const margen = GRID_CONFIG.MARGEN_PAGINA;
+        const anchoContenedor = GRID_CONFIG.ANCHO_CONTENEDOR;
+        const altoContenedorNormal = GRID_CONFIG.ALTO_CONTENEDOR;
+        const altoContenedorCircular = GRID_CONFIG.ALTO_CONTENEDOR_CIRCULAR;
+        const espaciadoH = GRID_CONFIG.ESPACIADO_HORIZONTAL;
+        const espaciadoV = GRID_CONFIG.ESPACIADO_VERTICAL;
+
+        const anchoTotal = (anchoContenedor * 2) + espaciadoH;
+        const inicioX = margen + ((pdf.internal.pageSize.getWidth() - (margen * 2) - anchoTotal) / 2);
+        
+        const col1X = inicioX;
+        const col2X = inicioX + anchoContenedor + espaciadoH;
+        
+        const fila1Y = yPosInicial;
+        const fila2Y = fila1Y + altoContenedorCircular + espaciadoV;
+
+        // GRÁFICA 1: DISTRIBUCIÓN POR TIPO (con leyenda de colores)
+        await this._dibujarContenedorGraficaCircularConLeyenda(
+            pdf,
+            'DISTRIBUCIÓN POR TIPO',
+            this.graficasCapturadas.tipoEvento,
+            col1X,
+            fila1Y,
+            anchoContenedor,
+            altoContenedorCircular
+        );
+
+        // GRÁFICA 2: EVOLUCIÓN MENSUAL
+        await this._dibujarContenedorGraficaNormal(
+            pdf,
+            'EVOLUCIÓN MENSUAL',
+            this.graficasCapturadas.evolucionMensual,
+            col2X,
+            fila1Y,
+            anchoContenedor,
+            altoContenedorNormal
+        );
+
+        // GRÁFICA 3: TOP SUCURSALES
+        await this._dibujarContenedorGraficaNormal(
+            pdf,
+            'TOP SUCURSALES',
+            this.graficasCapturadas.topSucursales,
+            col1X,
+            fila2Y,
+            anchoContenedor,
+            altoContenedorNormal
+        );
+
+        // GRÁFICA 4: PÉRDIDA VS RECUPERACIÓN
+        await this._dibujarContenedorGraficaNormal(
+            pdf,
+            'PÉRDIDA VS RECUPERACIÓN',
+            this.graficasCapturadas.comparativa,
+            col2X,
+            fila2Y,
+            anchoContenedor,
+            altoContenedorNormal
+        );
+    }
+
+    // =============================================
+    // CONTENEDOR PARA GRÁFICAS NORMALES
+    // =============================================
+    async _dibujarContenedorGraficaNormal(pdf, titulo, imagenDataURL, x, y, ancho, alto) {
+        const padding = 3;
+        const alturaTitulo = GRID_CONFIG.ALTURA_TITULO;
+
+        pdf.setFillColor(252, 252, 252);
+        pdf.setDrawColor(200, 200, 200);
+        pdf.roundedRect(x, y, ancho, alto, 3, 3, 'FD');
 
         pdf.setDrawColor(201, 160, 61);
         pdf.setLineWidth(0.5);
-        pdf.line(x, y - 1, x + 60, y - 1);
+        pdf.line(x + 4, y + alturaTitulo - 1, x + ancho - 4, y + alturaTitulo - 1);
 
-        const anchoGrafica = anchoContenido;
-        const alturaGrafica = altura;
+        pdf.setFont('helvetica', 'bold');
+        pdf.setFontSize(this.fonts.mini + 0.5);
+        pdf.setTextColor(26, 59, 93);
+        pdf.text(titulo, x + (ancho / 2), y + 5, { align: 'center' });
 
-        pdf.setFillColor(250, 250, 250);
-        pdf.setDrawColor(200, 200, 200);
-        pdf.roundedRect(x, y, anchoGrafica, alturaGrafica, 2, 2, 'FD');
+        const graficaX = x + padding;
+        const graficaY = y + alturaTitulo + 2;
+        const graficaAncho = ancho - (padding * 2);
+        const graficaAlto = alto - alturaTitulo - 6;
+
+        pdf.setFillColor(255, 255, 255);
+        pdf.rect(graficaX, graficaY, graficaAncho, graficaAlto, 'F');
 
         if (imagenDataURL) {
             try {
-                pdf.addImage(
-                    imagenDataURL,
-                    'PNG',
-                    x + 2,
-                    y + 2,
-                    anchoGrafica - 4,
-                    alturaGrafica - 4
-                );
+                pdf.addImage(imagenDataURL, 'PNG', graficaX + 1, graficaY + 1, graficaAncho - 2, graficaAlto - 2);
             } catch (error) {
-                console.error('Error agregando gráfica:', error);
                 pdf.setFont('helvetica', 'italic');
-                pdf.setFontSize(8);
+                pdf.setFontSize(this.fonts.mini);
                 pdf.setTextColor(150, 150, 150);
-                pdf.text('Error al cargar la gráfica', x + anchoGrafica / 2, y + alturaGrafica / 2, { align: 'center' });
+                pdf.text('Error al cargar gráfica', graficaX + (graficaAncho / 2), graficaY + (graficaAlto / 2), { align: 'center' });
             }
+        } else {
+            pdf.setFont('helvetica', 'italic');
+            pdf.setFontSize(this.fonts.mini);
+            pdf.setTextColor(150, 150, 150);
+            pdf.text('Sin datos', graficaX + (graficaAncho / 2), graficaY + (graficaAlto / 2), { align: 'center' });
         }
-
-        return y + alturaGrafica + 3;
     }
 
     // =============================================
-    // DIBUJAR GRÁFICA CON TÍTULO Y COLOR PERSONALIZADO (Para Top Sucursales)
+    // CONTENEDOR PARA GRÁFICA CIRCULAR CON LEYENDA DE COLORES
     // =============================================
-    _dibujarGraficaConTituloColor(pdf, titulo, imagenDataURL, x, anchoContenido, y, altura, colorHex) {
-        pdf.setFont('helvetica', 'bold');
-        pdf.setFontSize(this.fonts.subtitulo);
-        pdf.setTextColor(26, 59, 93);
-        pdf.text(titulo, x, y);
-        y += 5;
+    async _dibujarContenedorGraficaCircularConLeyenda(pdf, titulo, imagenDataURL, x, y, ancho, alto) {
+        const padding = 5;
+        const alturaTitulo = GRID_CONFIG.ALTURA_TITULO;
+        const alturaLeyenda = GRID_CONFIG.ALTURA_LEYENDA;
 
-        // Línea decorativa con color personalizado - usar el string hex directamente
-        pdf.setDrawColor(colorHex);
-        pdf.setLineWidth(0.8);
-        pdf.line(x, y - 1, x + 60, y - 1);
-
-        const anchoGrafica = anchoContenido;
-        const alturaGrafica = altura;
-
-        pdf.setFillColor(250, 250, 250);
+        pdf.setFillColor(252, 252, 252);
         pdf.setDrawColor(200, 200, 200);
-        pdf.roundedRect(x, y, anchoGrafica, alturaGrafica, 2, 2, 'FD');
-
-        if (imagenDataURL) {
-            try {
-                pdf.addImage(
-                    imagenDataURL,
-                    'PNG',
-                    x + 2,
-                    y + 2,
-                    anchoGrafica - 4,
-                    alturaGrafica - 4
-                );
-            } catch (error) {
-                console.error('Error agregando gráfica:', error);
-                pdf.setFont('helvetica', 'italic');
-                pdf.setFontSize(8);
-                pdf.setTextColor(150, 150, 150);
-                pdf.text('Error al cargar la gráfica', x + anchoGrafica / 2, y + alturaGrafica / 2, { align: 'center' });
-            }
-        }
-
-        return y + alturaGrafica + 3;
-    }
-
-    // =============================================
-    // DIBUJAR GRÁFICA VACÍA CON TÍTULO
-    // =============================================
-    _dibujarGraficaVaciaConTitulo(pdf, titulo, mensaje, x, anchoContenido, y, altura) {
-        pdf.setFont('helvetica', 'bold');
-        pdf.setFontSize(this.fonts.subtitulo);
-        pdf.setTextColor(26, 59, 93);
-        pdf.text(titulo, x, y);
-        y += 5;
+        pdf.roundedRect(x, y, ancho, alto, 3, 3, 'FD');
 
         pdf.setDrawColor(201, 160, 61);
         pdf.setLineWidth(0.5);
-        pdf.line(x, y - 1, x + 60, y - 1);
+        pdf.line(x + 4, y + alturaTitulo - 1, x + ancho - 4, y + alturaTitulo - 1);
 
-        pdf.setFillColor(250, 250, 250);
-        pdf.setDrawColor(200, 200, 200);
-        pdf.roundedRect(x, y, anchoContenido, altura, 2, 2, 'FD');
+        pdf.setFont('helvetica', 'bold');
+        pdf.setFontSize(this.fonts.mini + 0.5);
+        pdf.setTextColor(26, 59, 93);
+        pdf.text(titulo, x + (ancho / 2), y + 5, { align: 'center' });
 
-        pdf.setFont('helvetica', 'italic');
-        pdf.setFontSize(9);
-        pdf.setTextColor(150, 150, 150);
-        pdf.text(mensaje, x + anchoContenido / 2, y + altura / 2, { align: 'center' });
+        // Área CUADRADA para la gráfica circular
+        const graficaLado = Math.min(ancho - (padding * 2), alto - alturaTitulo - alturaLeyenda - 10);
+        const graficaX = x + (ancho - graficaLado) / 2;
+        const graficaY = y + alturaTitulo + 5;
 
-        return y + altura + 3;
+        pdf.setFillColor(255, 255, 255);
+        pdf.rect(graficaX, graficaY, graficaLado, graficaLado, 'F');
+
+        if (imagenDataURL) {
+            try {
+                pdf.addImage(imagenDataURL, 'PNG', graficaX + 1, graficaY + 1, graficaLado - 2, graficaLado - 2);
+            } catch (error) {
+                pdf.setFont('helvetica', 'italic');
+                pdf.setFontSize(this.fonts.mini);
+                pdf.setTextColor(150, 150, 150);
+                pdf.text('Error', graficaX + (graficaLado / 2), graficaY + (graficaLado / 2), { align: 'center' });
+            }
+        } else {
+            pdf.setFont('helvetica', 'italic');
+            pdf.setFontSize(this.fonts.mini);
+            pdf.setTextColor(150, 150, 150);
+            pdf.text('Sin datos', graficaX + (graficaLado / 2), graficaY + (graficaLado / 2), { align: 'center' });
+        }
+
+        // LEYENDA DE COLORES
+        const leyendaY = graficaY + graficaLado + 3;
+        const coloresLeyenda = [
+            { color: '#ef4444', nombre: 'Robo' },
+            { color: '#f59e0b', nombre: 'Extravío' },
+            { color: '#3b82f6', nombre: 'Accidente' },
+            { color: '#8b5cf6', nombre: 'Otro' }
+        ];
+        
+        const anchoCuadro = 5;
+        const espacioEntreItems = 18;
+        const inicioXleyenda = x + (ancho / 2) - ((coloresLeyenda.length * espacioEntreItems) / 2);
+        
+        pdf.setFont('helvetica', 'normal');
+        pdf.setFontSize(this.fonts.mini - 0.5);
+        
+        for (let i = 0; i < coloresLeyenda.length; i++) {
+            const item = coloresLeyenda[i];
+            const itemX = inicioXleyenda + (i * espacioEntreItems);
+            
+            pdf.setFillColor(item.color);
+            pdf.rect(itemX, leyendaY, anchoCuadro, anchoCuadro, 'F');
+            
+            pdf.setTextColor(80, 80, 80);
+            pdf.text(item.nombre, itemX + anchoCuadro + 2, leyendaY + 4);
+        }
     }
 
     // =============================================
-    // DIBUJAR TABLA DE RESUMEN
+    // TABLA DE RESUMEN CON BORDES
     // =============================================
-    _dibujarTablaResumen(pdf, margen, anchoContenido, yPos) {
-        if (!this.sucursales || this.sucursales.length === 0) return yPos;
+    _dibujarTablaResumenConBordes(pdf, yPos) {
+        const margen = GRID_CONFIG.MARGEN_PAGINA;
+        const anchoPagina = pdf.internal.pageSize.getWidth();
+        const anchoContenido = anchoPagina - (margen * 2);
+
+        if (!this.sucursales || this.sucursales.length === 0) return;
 
         pdf.setFont('helvetica', 'bold');
-        pdf.setFontSize(this.fonts.subtitulo);
+        pdf.setFontSize(this.fonts.titulo);
         pdf.setTextColor(26, 59, 93);
         pdf.text('RESUMEN POR SUCURSAL', margen, yPos);
         yPos += 5;
-
         pdf.setDrawColor(201, 160, 61);
         pdf.setLineWidth(0.5);
-        pdf.line(margen, yPos - 1, margen + 70, yPos - 1);
-        yPos += 6;
+        pdf.line(margen, yPos, margen + 70, yPos);
+        yPos += 8;
 
         const colAnchos = {
             sucursal: 50,
-            eventos: 20,
+            eventos: 18,
             perdido: 32,
             recuperado: 32,
             neto: 32,
@@ -578,15 +546,35 @@ class EstadisticasExtraviosPDFGenerator extends PDFBaseGenerator {
 
         const xInicio = margen;
         let xActual = xInicio;
+        const altoFila = 6;
+
+        const dibujarLineaHorizontal = (y, desdeX, hastaX) => {
+            pdf.setDrawColor(200, 200, 200);
+            pdf.setLineWidth(0.2);
+            pdf.line(desdeX, y, hastaX, y);
+        };
+        
+        const dibujarLineaVertical = (x, desdeY, hastaY) => {
+            pdf.setDrawColor(200, 200, 200);
+            pdf.setLineWidth(0.2);
+            pdf.line(x, desdeY, x, hastaY);
+        };
+
+        const colPositions = [xInicio];
+        let acumulado = xInicio;
+        for (const key of Object.keys(colAnchos)) {
+            acumulado += colAnchos[key];
+            colPositions.push(acumulado);
+        }
 
         pdf.setFont('helvetica', 'bold');
-        pdf.setFontSize(this.fonts.micro);
+        pdf.setFontSize(this.fonts.small);
         pdf.setTextColor(26, 59, 93);
-        pdf.setFillColor(240, 240, 240);
-        pdf.rect(xInicio, yPos - 2, anchoContenido, 7, 'F');
+        pdf.setFillColor(230, 230, 230);
+        pdf.rect(xInicio, yPos - 2, anchoContenido, altoFila + 1, 'F');
 
         const headers = [
-            { text: 'Sucursal', width: colAnchos.sucursal },
+            { text: 'Sucursal', width: colAnchos.sucursal, align: 'left' },
             { text: 'Eventos', width: colAnchos.eventos, align: 'center' },
             { text: 'Perdido', width: colAnchos.perdido, align: 'right' },
             { text: 'Recuperado', width: colAnchos.recuperado, align: 'right' },
@@ -594,172 +582,195 @@ class EstadisticasExtraviosPDFGenerator extends PDFBaseGenerator {
             { text: '% Rec.', width: colAnchos.porcentaje, align: 'center' }
         ];
 
-        for (const header of headers) {
-            pdf.text(header.text, xActual + (header.align === 'center' ? header.width / 2 : header.align === 'right' ? header.width - 2 : 2), yPos, { align: header.align || 'left' });
-            xActual += header.width;
+        let currentX = xInicio;
+        for (let i = 0; i < headers.length; i++) {
+            const header = headers[i];
+            const xCentro = currentX + (header.width / 2);
+            pdf.text(header.text, header.align === 'center' ? xCentro : currentX + 2, yPos, { align: header.align });
+            currentX += header.width;
         }
-        yPos += 6;
 
-        const formatter = new Intl.NumberFormat('es-MX', { 
-            style: 'currency', 
+        for (const pos of colPositions) {
+            dibujarLineaVertical(pos, yPos - 2, yPos + altoFila - 1);
+        }
+        dibujarLineaHorizontal(yPos + altoFila - 1, xInicio, xInicio + anchoContenido);
+
+        yPos += altoFila + 2;
+
+        const formatter = new Intl.NumberFormat('es-MX', {
+            style: 'currency',
             currency: 'MXN',
             minimumFractionDigits: 0,
             maximumFractionDigits: 0
         });
 
         pdf.setFont('helvetica', 'normal');
-        pdf.setFontSize(this.fonts.micro);
+        pdf.setFontSize(this.fonts.small);
 
-        const maxFilas = Math.min(this.sucursales.length, 8);
+        const maxFilas = Math.min(this.sucursales.length, 14);
         
         for (let i = 0; i < maxFilas; i++) {
             const suc = this.sucursales[i];
-            xActual = xInicio;
-
-            if (yPos > 265) {
+            
+            if (yPos > 260) {
                 pdf.setFont('helvetica', 'italic');
-                pdf.setFontSize(this.fonts.micro);
+                pdf.setFontSize(this.fonts.mini);
                 pdf.setTextColor(150, 150, 150);
-                pdf.text(`... y ${this.sucursales.length - i} sucursales más`, margen, yPos);
-                yPos += 5;
+                pdf.text(`... y ${this.sucursales.length - i} sucursales mas`, margen, yPos + 5);
                 break;
             }
 
-            const nombreSuc = suc.nombre && suc.nombre.length > 22 ? suc.nombre.substring(0, 19) + '...' : (suc.nombre || 'N/A');
-            pdf.text(nombreSuc, xActual + 2, yPos);
-            xActual += colAnchos.sucursal;
+            if (i % 2 === 0) {
+                pdf.setFillColor(252, 252, 252);
+                pdf.rect(xInicio, yPos - 2, anchoContenido, altoFila + 1, 'F');
+            }
 
-            pdf.text(suc.eventos?.toString() || '0', xActual + colAnchos.eventos / 2, yPos, { align: 'center' });
-            xActual += colAnchos.eventos;
-
+            currentX = xInicio;
+            
+            const nombreSuc = suc.nombre && suc.nombre.length > 28 ? suc.nombre.substring(0, 25) + '...' : (suc.nombre || 'N/A');
+            pdf.text(nombreSuc, currentX + 2, yPos);
+            currentX += colAnchos.sucursal;
+            
+            pdf.text(suc.eventos?.toString() || '0', currentX + (colAnchos.eventos / 2), yPos, { align: 'center' });
+            currentX += colAnchos.eventos;
+            
             const perdido = suc.perdido || 0;
             pdf.setTextColor(239, 68, 68);
-            pdf.text(formatter.format(perdido), xActual + colAnchos.perdido - 2, yPos, { align: 'right' });
-            xActual += colAnchos.perdido;
-
+            pdf.text(formatter.format(perdido), currentX + colAnchos.perdido - 2, yPos, { align: 'right' });
+            currentX += colAnchos.perdido;
+            
             const recuperado = suc.recuperado || 0;
             pdf.setTextColor(16, 185, 129);
-            pdf.text(formatter.format(recuperado), xActual + colAnchos.recuperado - 2, yPos, { align: 'right' });
-            xActual += colAnchos.recuperado;
-
-            const neto = (perdido - recuperado);
+            pdf.text(formatter.format(recuperado), currentX + colAnchos.recuperado - 2, yPos, { align: 'right' });
+            currentX += colAnchos.recuperado;
+            
+            const neto = perdido - recuperado;
             pdf.setTextColor(neto > 0 ? 239 : 16, neto > 0 ? 68 : 185, neto > 0 ? 68 : 129);
-            pdf.text(formatter.format(neto), xActual + colAnchos.neto - 2, yPos, { align: 'right' });
-            xActual += colAnchos.neto;
-
+            pdf.text(formatter.format(neto), currentX + colAnchos.neto - 2, yPos, { align: 'right' });
+            currentX += colAnchos.neto;
+            
             const porcentaje = suc.porcentaje || 0;
             pdf.setTextColor(59, 130, 246);
-            pdf.text(`${porcentaje.toFixed(2)}%`, xActual + colAnchos.porcentaje / 2, yPos, { align: 'center' });
+            pdf.text(`${porcentaje.toFixed(2)}%`, currentX + (colAnchos.porcentaje / 2), yPos, { align: 'center' });
             
-            yPos += 5;
+            dibujarLineaHorizontal(yPos + altoFila - 1, xInicio, xInicio + anchoContenido);
+            for (const pos of colPositions) {
+                dibujarLineaVertical(pos, yPos - 2, yPos + altoFila - 1);
+            }
+            
+            yPos += altoFila + 1;
+            pdf.setTextColor(80, 80, 80);
         }
 
-        pdf.setTextColor(80, 80, 80);
-
-        if (this.sucursales.length > maxFilas) {
-            yPos += 2;
-            pdf.setFont('helvetica', 'italic');
-            pdf.setFontSize(this.fonts.micro);
-            pdf.setTextColor(150, 150, 150);
-            pdf.text(`... y ${this.sucursales.length - maxFilas} sucursales más`, margen, yPos);
-            yPos += 5;
-        }
-
-        return yPos + 5;
-    }
-
-    // =============================================
-    // DIBUJAR ENCABEZADO
-    // =============================================
-    dibujarEncabezadoBase(pdf, titulo, subtitulo) {
-        const margen = 12;
-        const anchoPagina = pdf.internal.pageSize.getWidth();
-        const dimensiones = this.dimensionesLogo;
-        const radio = dimensiones.diametro / 2;
-
-        pdf.saveGraphicsState();
-
-        pdf.setFillColor(255, 255, 255);
-        pdf.rect(0, 0, anchoPagina, this.alturaEncabezado, 'F');
-
-        pdf.setDrawColor(coloresBase.primario);
-        pdf.setFillColor(coloresBase.primario);
-        pdf.rect(0, 0, anchoPagina, 3, 'F');
-
-        const yLogo = 20;
-        const xLogoDerecha = anchoPagina - margen - (dimensiones.diametro * 2) - dimensiones.separacion;
-        const xCentinela = xLogoDerecha;
-        const xOrganizacion = xCentinela + dimensiones.diametro + dimensiones.separacion;
-
-        this._dibujarLogos(pdf, xCentinela, xOrganizacion, yLogo, radio);
-
-        pdf.setTextColor(coloresBase.primario);
-        pdf.setFont('helvetica', 'bold');
-        pdf.setFontSize(this.fonts.titulo);
-        pdf.text(titulo, anchoPagina / 2, 16, { align: 'center' });
-
-        pdf.setFont('helvetica', 'normal');
-        pdf.setFontSize(this.fonts.small);
-        pdf.setTextColor(coloresBase.textoClaro);
-        pdf.text(subtitulo, anchoPagina / 2, 23, { align: 'center' });
-
-        pdf.setFont('helvetica', 'normal');
-        pdf.setFontSize(this.fonts.micro);
-        pdf.setTextColor(coloresBase.textoClaro);
-        pdf.text(`Generado: ${this.formatearFecha(new Date())}`, margen, 29);
-
-        pdf.setDrawColor(coloresBase.secundario);
+        pdf.setDrawColor(180, 180, 180);
         pdf.setLineWidth(0.5);
-        pdf.line(margen, this.alturaEncabezado - 2, anchoPagina - margen, this.alturaEncabezado - 2);
-
-        pdf.restoreGraphicsState();
+        pdf.rect(xInicio, yPos - (maxFilas * (altoFila + 1)) - 4, anchoContenido, (maxFilas * (altoFila + 1)) + 6, 'S');
     }
 
-    // =============================================
-    // DIBUJAR PIE DE PÁGINA
-    // =============================================
-    dibujarPiePagina(pdf) {
-        const margen = 12;
-        const anchoPagina = pdf.internal.pageSize.getWidth();
+    _dibujarAvisoPrivacidad(pdf) {
+        const margen = GRID_CONFIG.MARGEN_PAGINA;
+        const anchoContenido = pdf.internal.pageSize.getWidth() - (margen * 2);
         const altoPagina = pdf.internal.pageSize.getHeight();
-        const alturaPie = 12;
-        const yPos = altoPagina - alturaPie - 1;
+        const alturaAviso = 24;
 
-        pdf.saveGraphicsState();
-        pdf.setFillColor(255, 255, 255);
-        pdf.rect(0, yPos - 2, anchoPagina, alturaPie + 3, 'F');
+        pdf.setFillColor(248, 248, 248);
+        pdf.rect(margen, altoPagina - alturaAviso - 8, anchoContenido, alturaAviso, 'F');
         
-        pdf.setDrawColor(coloresBase.secundario);
-        pdf.setLineWidth(0.3);
-        pdf.line(margen, yPos, anchoPagina - margen, yPos);
+        pdf.setFont('helvetica', 'bold');
+        pdf.setFontSize(this.fonts.mini);
+        pdf.setTextColor(80, 80, 80);
+        pdf.text("AVISO DE PRIVACIDAD", margen + 5, altoPagina - alturaAviso - 3);
         
-        pdf.setFont('helvetica', 'italic');
-        pdf.setFontSize(this.fonts.micro);
-        pdf.setTextColor(coloresBase.textoClaro);
-        pdf.text('Reporte Generado con Sistema Centinela', margen, yPos + 4);
-
         pdf.setFont('helvetica', 'normal');
-        pdf.setTextColor(coloresBase.textoClaro);
-        pdf.text(`Página ${this.paginaActualReal} de ${this.totalPaginas}`, anchoPagina - margen, yPos + 4, { align: 'right' });
+        pdf.setFontSize(this.fonts.mini - 0.5);
+        pdf.setTextColor(100, 100, 100);
         
-        pdf.setDrawColor(coloresBase.primario);
-        pdf.setFillColor(coloresBase.primario);
-        pdf.rect(0, altoPagina - 2, anchoPagina, 2, 'F');
+        const aviso = "La informacion contenida en este documento es responsabilidad exclusiva de quien utiliza el Sistema Centinela. Este reporte tiene caracter informativo.";
+        const lineasAviso = this.dividirTextoEnLineas(pdf, aviso, anchoContenido - 15);
         
-        pdf.restoreGraphicsState();
+        let yAviso = altoPagina - alturaAviso + 2;
+        for (let i = 0; i < Math.min(lineasAviso.length, 2); i++) {
+            pdf.text(lineasAviso[i], margen + 5, yAviso + (i * 4));
+        }
     }
 
-    // =============================================
-    // UTILIDADES
-    // =============================================
     _capitalize(str) {
         if (!str) return '';
         return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
     }
+
+    dibujarEncabezadoBase(pdf, titulo, subtitulo) {
+        const margen = GRID_CONFIG.MARGEN_PAGINA;
+        const anchoPagina = pdf.internal.pageSize.getWidth();
+        const alturaEncabezado = 38;
+
+        pdf.saveGraphicsState();
+
+        pdf.setFillColor(255, 255, 255);
+        pdf.rect(0, 0, anchoPagina, alturaEncabezado, 'F');
+
+        pdf.setDrawColor(coloresBase.primario);
+        pdf.setFillColor(coloresBase.primario);
+        pdf.rect(0, 0, anchoPagina, 2, 'F');
+
+        const dimensiones = this.dimensionesLogo;
+        const yLogo = 18;
+        const xLogoDerecha = anchoPagina - margen - (dimensiones.diametro * 2) - dimensiones.separacion;
+        const xCentinela = xLogoDerecha;
+        const xOrganizacion = xCentinela + dimensiones.diametro + dimensiones.separacion;
+
+        this._dibujarLogos(pdf, xCentinela, xOrganizacion, yLogo, dimensiones.diametro / 2);
+
+        pdf.setTextColor(coloresBase.primario);
+        pdf.setFont('helvetica', 'bold');
+        pdf.setFontSize(this.fonts.tituloPrincipal);
+        pdf.text(titulo, anchoPagina / 2, 14, { align: 'center' });
+
+        pdf.setFont('helvetica', 'normal');
+        pdf.setFontSize(this.fonts.small);
+        pdf.setTextColor(coloresBase.textoClaro);
+        pdf.text(subtitulo, anchoPagina / 2, 21, { align: 'center' });
+
+        pdf.setFont('helvetica', 'normal');
+        pdf.setFontSize(this.fonts.micro);
+        pdf.setTextColor(coloresBase.textoClaro);
+        pdf.text(`Generado: ${this.formatearFecha(new Date())}`, margen, 30);
+
+        pdf.setDrawColor(coloresBase.secundario);
+        pdf.setLineWidth(0.5);
+        pdf.line(margen, alturaEncabezado - 2, anchoPagina - margen, alturaEncabezado - 2);
+
+        pdf.restoreGraphicsState();
+    }
+
+    dibujarPiePagina(pdf) {
+        const margen = GRID_CONFIG.MARGEN_PAGINA;
+        const anchoPagina = pdf.internal.pageSize.getWidth();
+        const altoPagina = pdf.internal.pageSize.getHeight();
+        const alturaPie = 8;
+
+        pdf.saveGraphicsState();
+        
+        pdf.setDrawColor(coloresBase.secundario);
+        pdf.setLineWidth(0.3);
+        pdf.line(margen, altoPagina - alturaPie - 2, anchoPagina - margen, altoPagina - alturaPie - 2);
+        
+        pdf.setFont('helvetica', 'italic');
+        pdf.setFontSize(this.fonts.micro);
+        pdf.setTextColor(coloresBase.textoClaro);
+        pdf.text('Sistema Centinela -  Recuperaciones', margen, altoPagina - 4);
+
+        pdf.setFont('helvetica', 'normal');
+        pdf.setTextColor(coloresBase.textoClaro);
+        pdf.text(`Pagina ${this.paginaActualReal} de ${this.totalPaginas}`, anchoPagina - margen, altoPagina - 4, { align: 'right' });
+        
+        pdf.setDrawColor(coloresBase.primario);
+        pdf.setFillColor(coloresBase.primario);
+        pdf.rect(0, altoPagina - 1.5, anchoPagina, 1.5, 'F');
+        
+        pdf.restoreGraphicsState();
+    }
 }
 
-// =============================================
-// EXPORTAR INSTANCIA GLOBAL
-// =============================================
 export const generadorPDFEstadisticasExtravios = new EstadisticasExtraviosPDFGenerator();
 export default generadorPDFEstadisticasExtravios;
