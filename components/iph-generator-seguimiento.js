@@ -953,8 +953,15 @@ async dibujarSeguimiento(pdf, seguimiento, x, y, ancho, numero) {
         pdf.text(`Org: ${organizacion}`, margen + 4, yPos + 11);
         const sucursalNombre = incidencia.sucursalNombre || this.obtenerNombreSucursal(incidencia.sucursalId);
         pdf.text(`Suc: ${sucursalNombre}`, margen + 4, yPos + 16);
-        const nombreReportante = incidencia.reportadoPorNombre || this.obtenerNombreUsuario(incidencia.reportadoPorId) || incidencia.creadoPorNombre || 'No especificado';
-        pdf.text(`Reporta: ${nombreReportante}`, margen + 4, yPos + 21);
+        // 🔥 CAMBIO: Mostrar código de colaborador en lugar del nombre
+let codigoReportante = incidencia.reportadoPorCodigo || '';
+if (codigoReportante && codigoReportante.trim() !== '') {
+    pdf.text(`Reportado por operador: ${codigoReportante}`, margen + 4, yPos + 21);
+} else {
+    // Fallback: mostrar nombre si no hay código
+    const nombreReportante = incidencia.reportadoPorNombre || this.obtenerNombreUsuario(incidencia.reportadoPorId) || incidencia.creadoPorNombre || 'No especificado';
+    pdf.text(`Reportado por operador: ${nombreReportante}`, margen + 4, yPos + 21);
+}
         pdf.restoreGraphicsState();
         yPos += 26;
         

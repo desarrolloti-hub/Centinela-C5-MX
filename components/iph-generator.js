@@ -915,7 +915,14 @@ async dibujarSeguimiento(pdf, seguimiento, x, y, ancho, numero) {
 
 
 // Obtener código del colaborador desde incidencia
-let codigoReportante = '';
+// 🔥 CAMBIO: Mostrar código de colaborador
+let codigoReportante = incidencia.reportadoPorCodigo || '';
+if (codigoReportante && codigoReportante.trim() !== '') {
+    pdf.text(`Reportado por operador: ${codigoReportante}`, margen + 6, yPos + 32);
+} else {
+    const nombreReportante = incidencia.reportadoPorNombre || this.obtenerNombreUsuario(incidencia.reportadoPorId) || incidencia.creadoPorNombre || 'No especificado';
+    pdf.text(`Reportado por operador: ${nombreReportante}`, margen + 6, yPos + 32);
+}
 
 // Primero intentar usar reportadoPorCodigo (si viene en la incidencia)
 if (incidencia.reportadoPorCodigo && incidencia.reportadoPorCodigo.trim() !== '') {

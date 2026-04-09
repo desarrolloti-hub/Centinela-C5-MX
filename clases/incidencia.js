@@ -35,6 +35,7 @@ class Incidencia {
         this.id = id;
         this.sucursalId = data.sucursalId || '';
         this.reportadoPorId = data.reportadoPorId || '';
+            this.reportadoPorCodigo = data.reportadoPorCodigo || '';  // ← AGREGAR ESTA LÍNEA
         this.categoriaId = data.categoriaId || '';
         this.subcategoriaId = data.subcategoriaId || '';
         this.fechaInicio = data.fechaInicio ? this._convertirFecha(data.fechaInicio) : new Date();
@@ -535,6 +536,7 @@ class IncidenciaManager {
                         const incidencia = new Incidencia(doc.id, {
                             ...data,
                             id: doc.id,
+                                reportadoPorCodigo: data.reportadoPorCodigo || '',  // ← AGREGAR
                             fechaCreacion: data.fechaCreacion?.toDate?.() || data.fechaCreacion,
                             fechaInicio: data.fechaInicio?.toDate?.() || data.fechaInicio,
                             fechaActualizacion: data.fechaActualizacion?.toDate?.() || data.fechaActualizacion
@@ -807,9 +809,10 @@ class IncidenciaManager {
                 });
             }
 
-            const incidenciaData = {
+                    const incidenciaData = {
                 sucursalId: data.sucursalId,
                 reportadoPorId: data.reportadoPorId || usuarioActual.id,
+                reportadoPorCodigo: data.reportadoPorCodigo || usuarioActual.codigoColaborador || '',  // ← AGREGAR ESTA LÍNEA
                 categoriaId: data.categoriaId,
                 subcategoriaId: data.subcategoriaId || '',
                 fechaInicio: fechaInicio,

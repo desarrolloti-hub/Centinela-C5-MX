@@ -1245,57 +1245,57 @@ class CrearIncidenciaController {
         }
     }
 
-    async _guardarIncidencia(datos) {
-        const btnCrear = document.getElementById('btnCrearIncidencia');
-        const originalHTML = btnCrear ? btnCrear.innerHTML : '<i class="fas fa-check me-2"></i>Crear Incidencia';
+async _guardarIncidencia(datos) {
+    const btnCrear = document.getElementById('btnCrearIncidencia');
+    const originalHTML = btnCrear ? btnCrear.innerHTML : '<i class="fas fa-check me-2"></i>Crear Incidencia';
 
+    try {
+        if (btnCrear) {
+            btnCrear.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> Guardando...';
+            btnCrear.disabled = true;
+        }
+
+        Swal.fire({
+            title: 'Preparando incidencia...',
+            text: 'Generando informe y preparando imágenes...',
+            allowOutsideClick: false,
+            allowEscapeKey: false,
+            showConfirmButton: false,
+            didOpen: () => {
+                Swal.showLoading();
+            }
+        });
+
+        const fechaObj = new Date(datos.fechaHora);
+        
+        const incidenciaTemporal = this._crearRegistroTemporal(datos);
+        
+        Swal.update({
+            title: 'Generando PDF...',
+            text: 'Creando el documento de la incidencia...'
+        });
+        
+        let pdfBlob = null;
         try {
-            if (btnCrear) {
-                btnCrear.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> Guardando...';
-                btnCrear.disabled = true;
-            }
-
-            Swal.fire({
-                title: 'Preparando incidencia...',
-                text: 'Generando informe y preparando imágenes...',
-                allowOutsideClick: false,
-                allowEscapeKey: false,
-                showConfirmButton: false,
-                didOpen: () => {
-                    Swal.showLoading();
-                }
+            pdfBlob = await this.pdfGenerator.generarIPH(incidenciaTemporal, {
+                mostrarAlerta: false,
+                returnBlob: true,
+                diagnosticar: false
             });
+        } catch (pdfError) {
+            console.error('Error generando PDF:', pdfError);
+            throw new Error('No se pudo generar el PDF');
+        }
+        
+        if (!pdfBlob || pdfBlob.size === 0) {
+            throw new Error('El PDF generado está vacío');
+        }
 
-            const fechaObj = new Date(datos.fechaHora);
-            
-            const incidenciaTemporal = this._crearRegistroTemporal(datos);
-            
-            Swal.update({
-                title: 'Generando PDF...',
-                text: 'Creando el documento de la incidencia...'
-            });
-            
-            let pdfBlob = null;
-            try {
-                pdfBlob = await this.pdfGenerator.generarIPH(incidenciaTemporal, {
-                    mostrarAlerta: false,
-                    returnBlob: true,
-                    diagnosticar: false
-                });
-            } catch (pdfError) {
-                console.error('Error generando PDF:', pdfError);
-                throw new Error('No se pudo generar el PDF');
-            }
-            
-            if (!pdfBlob || pdfBlob.size === 0) {
-                throw new Error('El PDF generado está vacío');
-            }
-
-            Swal.update({
-                title: 'Creando incidencia...',
-                text: 'Guardando la información en la base de datos...'
-            });
-            
+        Swal.update({
+            title: 'Creando incidencia...',
+            text: 'Guardando la información en la base de datos...'
+        });
+        
             const incidenciaData = {
                 sucursalId: datos.sucursalId,
                 categoriaId: datos.categoriaId,
@@ -1304,15 +1304,16 @@ class CrearIncidenciaController {
                 estado: datos.estado,
                 fechaInicio: fechaObj,
                 detalles: datos.detalles,
-                reportadoPorId: this.usuarioActual.id
+                reportadoPorId: this.usuarioActual.id,
+                reportadoPorCodigo: this.usuarioActual.codigoColaborador || '',  // ← ESTA LÍNEA
             };
-            
-            const nuevaIncidencia = await this.incidenciaManager.crearIncidencia(
-                incidenciaData,
-                this.usuarioActual,
-                [],
-                []
-            );
+                    
+        const nuevaIncidencia = await this.incidenciaManager.crearIncidencia(
+            incidenciaData,
+            this.usuarioActual,
+            [],
+            []
+        );
             
             
             // SUBIR IMÁGENES SOLO SI HAY (OPCIONAL)
