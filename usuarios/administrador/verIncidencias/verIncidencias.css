@@ -892,11 +892,51 @@ body {
 }
 
 /* =============================================
-   RESPONSIVE
+   OVERLAY PARA IMÁGENES DE SEGUIMIENTO (LUPA)
    ============================================= */
+.timeline-simple-evidencia {
+    position: relative;
+    cursor: pointer;
+}
+
+.timeline-simple-evidencia > div {
+    position: relative;
+}
+
+.timeline-evidencia-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    border-radius: 8px;
+}
+
+.timeline-simple-evidencia:hover .timeline-evidencia-overlay {
+    opacity: 1;
+}
+
+.timeline-evidencia-overlay i {
+    color: white;
+    font-size: 24px;
+    filter: drop-shadow(0 0 4px rgba(0, 0, 0, 0.5));
+}
+
+/* =============================================
+   RESPONSIVE - PRO
+   ============================================= */
+
+/* Tablets (pantallas entre 768px y 1023px) */
 @media (max-width: 1023px) {
     body {
         padding-top: 70px;
+        padding: 15px;
     }
 
     .custom-container {
@@ -905,6 +945,7 @@ body {
 
     .info-grid-2col {
         grid-template-columns: 1fr !important;
+        gap: 15px;
     }
 
     .card-body {
@@ -926,59 +967,35 @@ body {
         gap: 10px !important;
         align-items: flex-start !important;
     }
-}
 
-@media (max-width: 768px) {
-    body {
-        padding: 10px !important;
-        padding-top: 70px !important;
-    }
-
-    .custom-container {
-        padding: 12px !important;
-    }
-
-    .main-title {
-        font-size: 20px !important;
-        justify-content: center !important;
-        text-align: center !important;
-    }
-
-    .card-header {
-        padding: 12px 15px !important;
-    }
-
-    .card-header h5 {
-        font-size: 14px !important;
-    }
-
-    .btn {
-        padding: 8px 15px !important;
-        font-size: 12px !important;
-        min-width: auto !important;
-    }
-
-    .images-gallery {
-        grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    .incidencia-id-container {
+        margin-right: 0;
     }
 
     .timeline-simple-evidencias-grid {
-        grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+        gap: 10px;
     }
-
+    
     .timeline-simple-evidencia {
-        width: 100%;
+        width: calc(33.33% - 10px);
+        min-width: 90px;
     }
 }
 
-@media (max-width: 480px) {
+/* Móviles grandes y tablets pequeñas (entre 600px y 767px) */
+@media (max-width: 767px) {
     body {
-        padding: 8px !important;
+        padding: 12px !important;
         padding-top: 65px !important;
     }
 
+    .custom-container {
+        padding: 10px !important;
+    }
+
     .main-title {
-        font-size: 18px !important;
+        font-size: 1.6rem !important;
+        gap: 8px;
     }
 
     .main-title i {
@@ -989,8 +1006,37 @@ body {
         font-size: 0.9rem !important;
     }
 
+    .header-section {
+        padding: 15px 18px !important;
+        margin-bottom: 20px;
+    }
+
+    .card-header {
+        padding: 12px 15px !important;
+    }
+
+    .card-header h5 {
+        font-size: 13px !important;
+    }
+
+    .info-value {
+        font-size: 14px !important;
+        padding: 8px 12px;
+    }
+
+    .info-description {
+        font-size: 13px;
+        padding: 12px;
+        max-height: 180px;
+    }
+
     .images-gallery {
-        grid-template-columns: 1fr;
+        grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+        gap: 10px;
+    }
+
+    .timeline-simple-item {
+        padding: 14px;
     }
 
     .timeline-simple-header {
@@ -998,7 +1044,230 @@ body {
         align-items: flex-start;
     }
 
+    .timeline-simple-name {
+        font-size: 13px;
+    }
+
+    .timeline-simple-description {
+        font-size: 12px;
+        padding: 8px 12px;
+    }
+
     .timeline-simple-evidencias-grid {
+        gap: 8px;
+    }
+
+    .timeline-simple-evidencia {
+        width: calc(50% - 8px);
+        min-width: 100px;
+    }
+
+    .btn {
+        padding: 8px 15px !important;
+        font-size: 12px !important;
+        min-width: auto !important;
+    }
+    
+    .btn-volver {
+        font-size: 11px !important;
+        padding: 6px 12px !important;
+    }
+}
+
+/* Móviles pequeños (hasta 599px) */
+@media (max-width: 599px) {
+    body {
+        padding: 8px !important;
+        padding-top: 60px !important;
+    }
+
+    .custom-container {
+        padding: 8px !important;
+    }
+
+    .main-title {
+        font-size: 1.4rem !important;
+        flex-wrap: wrap;
+        text-align: center;
+    }
+
+    .main-title i {
+        font-size: 18px !important;
+    }
+
+    .header-description-text {
+        font-size: 0.8rem !important;
+    }
+
+    .header-section {
+        padding: 12px 15px !important;
+    }
+
+    .card-header {
+        padding: 10px 12px !important;
+    }
+
+    .card-header h5 {
+        font-size: 12px !important;
+    }
+
+    .incidencia-id-container {
+        font-size: 11px;
+        padding: 4px 12px;
+    }
+
+    .incidencia-id-container i {
+        font-size: 12px;
+    }
+
+    .badge-info {
+        font-size: 10px;
+        padding: 3px 8px;
+    }
+
+    .info-label {
+        font-size: 10px;
+    }
+
+    .info-label i {
+        font-size: 10px;
+    }
+
+    .info-value {
+        font-size: 13px !important;
+        padding: 6px 10px;
+    }
+
+    .info-description {
+        font-size: 12px;
+        padding: 10px;
+        max-height: 150px;
+    }
+
+    .riesgo-badge, .estado-badge {
+        font-size: 10px;
+        padding: 3px 8px;
+    }
+
+    .images-gallery {
         grid-template-columns: 1fr;
+        gap: 12px;
+    }
+    
+    .gallery-item {
+        aspect-ratio: 4/3;
+    }
+
+    .timeline-simple {
+        max-height: 450px;
+    }
+
+    .timeline-simple-item {
+        padding: 12px;
+        margin-bottom: 12px;
+    }
+
+    .timeline-simple-user {
+        flex-wrap: wrap;
+    }
+
+    .timeline-simple-name {
+        font-size: 12px;
+    }
+
+    .timeline-simple-badge {
+        font-size: 9px;
+        padding: 2px 8px;
+    }
+
+    .timeline-simple-date {
+        font-size: 10px;
+        padding: 3px 8px;
+    }
+
+    .timeline-simple-description {
+        font-size: 11px;
+        padding: 8px 10px;
+        margin-bottom: 12px;
+    }
+
+    .timeline-simple-evidencias-header {
+        font-size: 10px;
+        margin-bottom: 8px;
+    }
+
+    .timeline-simple-evidencias-grid {
+        gap: 8px;
+    }
+
+    .timeline-simple-evidencia {
+        width: 100%;
+        min-width: auto;
+    }
+    
+    .timeline-simple-evidencia img {
+        height: 70px;
+    }
+
+    .timeline-simple-evidencia-comentario {
+        font-size: 9px;
+        padding: 4px 6px;
+    }
+
+    .modal-content {
+        width: 98%;
+        margin: 20px auto;
+    }
+    
+    .modal-header h5 {
+        font-size: 14px;
+    }
+    
+    .modal-close {
+        width: 30px;
+        height: 30px;
+        font-size: 20px;
+    }
+}
+
+/* Ajustes para pantallas muy pequeñas (hasta 380px) */
+@media (max-width: 380px) {
+    .main-title {
+        font-size: 1.2rem !important;
+    }
+    
+    .header-description-text {
+        font-size: 0.7rem !important;
+    }
+    
+    .card-header h5 {
+        font-size: 11px !important;
+    }
+    
+    .info-value {
+        font-size: 12px !important;
+    }
+    
+    .timeline-simple-description {
+        font-size: 10px;
+    }
+}
+
+/* Orientación horizontal en móviles */
+@media (max-height: 500px) and (orientation: landscape) {
+    body {
+        padding-top: 60px;
+    }
+    
+    .timeline-simple {
+        max-height: 300px;
+    }
+    
+    .info-description {
+        max-height: 100px;
+    }
+    
+    .modal-body img {
+        max-height: 60vh;
     }
 }

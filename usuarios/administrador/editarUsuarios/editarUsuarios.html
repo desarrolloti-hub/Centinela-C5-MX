@@ -183,16 +183,6 @@
                                 <div class="timestamp" id="lastUpdateTime">--:-- --</div>
                             </div>
                         </div>
-
-                        <div class="info-item">
-                            <div class="info-label">
-                                <i class="fas fa-sign-in-alt"></i> Último Login
-                            </div>
-                            <div class="info-value">
-                                <div id="lastLoginDate">--/--/----</div>
-                                <div class="timestamp" id="lastLoginTime">--:-- --</div>
-                            </div>
-                        </div>
                     </div>
                 </section>
 
@@ -222,6 +212,20 @@
                             <div class="input-wrapper">
                                 <input class="form-input-field" type="text" id="fullName"
                                     placeholder="Ingresa el nombre completo" required>
+                            </div>
+                        </div>
+                        
+                        <!-- CÓDIGO DEL COLABORADOR (EDITABLE) -->
+                        <div class="form-field-group">
+                            <label class="field-label" for="codigoColaborador">
+                                <i class="fas fa-hashtag"></i> CÓDIGO DEL COLABORADOR <span style="font-weight: normal; font-size: 0.8rem;">(opcional)</span>
+                            </label>
+                            <div class="input-wrapper">
+                                <input class="form-input-field" type="text" id="codigoColaborador"
+                                    placeholder="Código de 3 dígitos (001-999) - Opcional" maxlength="3" pattern="[0-9]{3}">
+                            </div>
+                            <div class="field-hint">
+                                <i class="fas fa-info-circle"></i> Código único de 3 dígitos (001-999). Déjalo vacío si no quieres asignar código.
                             </div>
                         </div>
 
@@ -340,10 +344,10 @@
                     <!-- Acciones del formulario -->
                     <div class="form-actions">
                         <button type="button" class="action-btn save-btn" id="saveChangesBtn">
-                            <i class="fas fa-save"></i> GUARDAR CAMBIOS
+                            <i class="fas fa-save"></i> Guardar Cambios
                         </button>
                         <button type="button" class="action-btn cancel-btn" id="cancelBtn">
-                            <i class="fas fa-times"></i> CANCELAR
+                            <i class="fas fa-times"></i> Cancelar
                         </button>
                     </div>
                 </form>

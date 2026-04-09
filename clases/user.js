@@ -42,6 +42,7 @@ class User {
         this.nombreCompleto = data.nombreCompleto || '';
         this.correoElectronico = data.correoElectronico || '';
         this.telefono = data.telefono || ''; // Nuevo campo teléfono
+    this.codigoColaborador = data.codigoColaborador || ''; // Código del colaborador (opcional)
         this.status = data.status !== undefined ? data.status : true;
         this.idAuth = data.idAuth || '';
         this.fotoUsuario = data.fotoUsuario || data.fotoURL || data.foto || '';
@@ -302,7 +303,6 @@ class UserManager {
 
                 this.currentUser = user;
                 this.users.push(user);
-                console.log("✅ Usuario Master cargado:", user.correoElectronico);
                 return user;
             }
 
@@ -538,7 +538,6 @@ class UserManager {
             };
 
             if (masterData.fotoUsuario && masterData.fotoUsuario.startsWith('data:image')) {
-                console.log('📸 Se guardará foto en Firestore');
             }
 
             await updateProfile(userCredential.user, profileUpdates);
@@ -576,7 +575,6 @@ class UserManager {
 
             await signOut(auth);
 
-            console.log("✅ Administrador del Sistema (Master) creado exitosamente:", uid);
             return {
                 id: uid,
                 user: newMaster,
@@ -662,6 +660,7 @@ class UserManager {
             const colabFirestoreData = {
                 ...colaboradorData,
                 idAuth: uid,
+                 codigoColaborador: colaboradorData.codigoColaborador || '', // ← NUEVA LÍNEA
                 rol: 'colaborador',
                 cargo: colaboradorData.cargo || null,
                 cargoId: colaboradorData.cargoId || (colaboradorData.cargo && colaboradorData.cargo.id) || null,
@@ -1616,6 +1615,7 @@ class UserManager {
                     ...data,
                     cargo: 'colaborador',
                     // ✅ CAMPOS DE SUCURSAL
+                    codigoColaborador: data.codigoColaborador || '', // NUEVO CAMPO
                     sucursalAsignadaId: data.sucursalAsignadaId || null,
                     sucursalAsignadaNombre: data.sucursalAsignadaNombre || null,
                     sucursalAsignadaCiudad: data.sucursalAsignadaCiudad || null
@@ -1836,8 +1836,7 @@ class UserManager {
                     telefono: data.telefono || '' // Nuevo campo
                 });
 
-                this.users.push(user);
-                console.log('✅ Master encontrado:', user.correoElectronico);
+                this.users.push(user);        
                 return user;
             }
 
@@ -2026,9 +2025,7 @@ class UserManager {
             } catch (error) {
                 console.warn('No se pudo cargar el plan del colaborador:', error);
             }
-        }
-
-        console.log('✅ Datos de acceso guardados en localStorage');
+        }        
     }
 }
 

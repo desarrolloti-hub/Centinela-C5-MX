@@ -1159,16 +1159,15 @@ class MercanciaPDFGenerator extends PDFBaseGenerator {
             } = opciones;
             
             if (diagnosticar) {
-                console.log('🔍 Ejecutando diagnóstico de imágenes...');
-                console.log('📸 Total evidencias:', registro.evidencias?.length || 0);
+               
                 
                 if (registro.evidencias && registro.evidencias.length > 0) {
                     registro.evidencias.forEach((ev, i) => {
                         const url = this.extraerUrlImagen(ev);
-                        console.log(`📷 Evidencia ${i + 1}:`, url ? url.substring(0, 80) : '❌ SIN URL');
+                        
                         const comentario = this.extraerComentario(ev);
                         if (comentario) {
-                            console.log(`   💬 Comentario: ${comentario.substring(0, 50)}...`);
+                            
                         }
                     });
                 }
@@ -1268,34 +1267,14 @@ class MercanciaPDFGenerator extends PDFBaseGenerator {
     }
     
     async diagnosticarEstructuraImagen(registro) {
-        console.log('===== DIAGNÓSTICO DE EVIDENCIAS =====');
+        
         
         let evidencias = registro.evidencias || [];
         
-        console.log(`📸 Total evidencias encontradas: ${evidencias.length}`);
         
-        for (let i = 0; i < Math.min(evidencias.length, 5); i++) {
-            const img = evidencias[i];
-            console.log(`\n🔍 Evidencia #${i + 1}:`);
-            console.log(`   Tipo: ${typeof img}`);
-            console.log(`   Objeto:`, JSON.stringify(img, null, 2).substring(0, 200));
-            
-            const urlExtraida = this.extraerUrlImagen(img);
-            if (urlExtraida) {
-                const preview = urlExtraida.length > 100 ? urlExtraida.substring(0, 100) + '...' : urlExtraida;
-                console.log(`   ✅ URL extraída: ${preview}`);
-                
-                const comentario = this.extraerComentario(img);
-                if (comentario) {
-                    console.log(`   💬 Comentario: ${comentario.substring(0, 50)}...`);
-                }
-            } else {
-                console.log(`   ❌ No se pudo extraer URL de la evidencia`);
-                console.log(`   Propiedades disponibles:`, Object.keys(img));
-            }
-        }
         
-        console.log('\n===== FIN DIAGNÓSTICO =====');
+       
+        
         
         return {
             totalEvidencias: evidencias.length,

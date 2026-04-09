@@ -18,7 +18,7 @@
     <!-- Archivo para PWA -->
     <link rel="manifest" href="/manifest.json">
     <!-- Estilos modulo -->
-    <link rel="stylesheet" href="crearUsuarios.css">
+    <link rel="stylesheet" href="./crearUsuarios.css">
     <!-- SweetAlert2 -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
@@ -154,6 +154,13 @@
                     </div>
 
                     <p class="photo-info" id="orgInfoText">Logo heredado del administrador</p>
+                    
+                </section>
+                <section>
+                    <h2 class="section-title">
+                        <i class="fas fa-info-circle fa-beat-fade"></i> Creando Colaborador
+                    </h2>
+                    <div class="message-container" id="mainMessage"></div>
                 </section>
 
                 <!-- Botón volver -->
@@ -180,6 +187,20 @@
                         <div class="input-wrapper">
                             <input class="form-input-field readonly-field" type="text" id="organization"
                                 placeholder="Cargando..." readonly required>
+                        </div>
+                    </div>
+
+                     <!-- CÓDIGO DEL COLABORADOR (OPCIONAL) -->
+                    <div class="form-field-group">
+                        <label class="field-label" for="codigoColaborador">
+                            <i class="fas fa-hashtag"></i> CÓDIGO DEL COLABORADOR <span style="font-weight: normal; font-size: 0.8rem;">(opcional)</span>
+                        </label>
+                        <div class="input-wrapper">
+                            <input class="form-input-field" type="text" id="codigoColaborador"
+                                placeholder="Autogenerado (001, 002, ...) - Opcional" maxlength="3" pattern="[0-9]{3}">
+                        </div>
+                        <div class="field-hint">
+                            <i class="fas fa-info-circle"></i> Código de 3 dígitos (001-999). Se genera automáticamente, puedes modificarlo o dejarlo vacío.
                         </div>
                     </div>
 
@@ -300,16 +321,15 @@
                         </ul>
                     </div>
 
-                    <!-- Mensajes -->
-                    <div class="message-container" id="mainMessage"></div>
+                    
 
                     <!-- Acciones -->
                     <div class="action-buttons">
                         <button type="submit" class="action-btn save-btn" id="registerBtn">
-                            <i class="fas fa-user-plus"></i>CREAR COLABORADOR
+                            <i class="fas fa-user-plus"></i>Crear colaborador
                         </button>
                         <button type="button" class="action-btn cancel-btn" id="cancelBtn">
-                            <i class="fas fa-times"></i>CANCELAR
+                            <i class="fas fa-times"></i>Cancelar
                         </button>
                     </div>
                 </form>
@@ -317,7 +337,6 @@
         </div>
     </div>
     <br>
-
     <!-- Scripts -->
     <script type="module" src="/components/autenticador.js"></script>
     <script type="module" src="/components/cargadorTemas.js"></script>
@@ -325,9 +344,7 @@
     <script src="/components/footerAdministrador.js"></script>
     <script type="module" src="/components/particulas.js"></script>
     <script type="module" src="crearUsuarios.js"></script>
-    <script type="module" src="/components/autenticador.js"></script>
-    <script src="/components/protector-admin.js"> </script>
-
+    <script src="/components/protector-admin.js" data-modulo="usuarios"></script>
 </body>
 
 </html>

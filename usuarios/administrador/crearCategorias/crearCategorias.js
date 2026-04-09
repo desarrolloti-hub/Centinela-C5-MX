@@ -568,7 +568,7 @@ class CrearCategoriaController {
                                 <input type="checkbox" 
                                        ${subcat.heredaColor ? 'checked' : ''}
                                        onchange="window.crearCategoriaDebug.controller._cambiarHerenciaColor('${subcat.id}', this.checked)">
-                                <span>Heredar color de categoría</span>
+                                <span> color de categoría</span>
                             </label>
                         </div>
                         

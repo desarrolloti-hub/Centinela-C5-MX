@@ -1,13 +1,14 @@
-// ARCHIVO JS PARA CREAR COLABORADOR - VERSIÓN CORREGIDA (SIN DOBLE SELECCIÓN)
+// ARCHIVO JS PARA CREAR COLABORADOR - VERSIÓN CON CÓDIGO DE COLABORADOR
 // CON REGISTRO DE BITÁCORA Y CAMPO TELÉFONO NUMÉRICO
 // CON SUCURSALES - SOLO SI EL ÁREA ES "SUCURSALES"
 // ROL ELIMINADO - AHORA SE USA UN ROL POR DEFECTO "colaborador"
+// CÓDIGO DE COLABORADOR - OPCIONAL, AUTO GENERADO, EDITABLE MANUALMENTE
 // ==================== IMPORTS CORREGIDOS ====================
 import { UserManager } from '/clases/user.js';
 import { AreaManager } from '/clases/area.js';
 
-let historialManager = null; // ✅ NUEVO: Para registrar actividades
-let sucursalManager = null; // ✅ NUEVO: Para manejo de sucursales
+let historialManager = null;
+let sucursalManager = null;
 
 // ==================== INICIALIZACIÓN ====================
 document.addEventListener('DOMContentLoaded', function () {
@@ -15,13 +16,11 @@ document.addEventListener('DOMContentLoaded', function () {
         return;
     }
 
-    // ✅ NUEVO: Inicializar historialManager y sucursalManager
     inicializarManagers().then(() => {
         initCollaboratorForm();
     });
 });
 
-// ✅ NUEVO: Inicializar historialManager y sucursalManager
 async function inicializarManagers() {
     try {
         const { HistorialUsuarioManager } = await import('/clases/historialUsuario.js');
@@ -38,40 +37,188 @@ async function inicializarManagers() {
     }
 }
 
+// ========== FUNCIONES PARA CÓDIGO DE COLABORADOR ==========
+
+/**
+ * Genera el siguiente código disponible para una organización
+ * Formato: 001, 002, ..., 999
+ * Retorna string vacío si no hay códigos disponibles o hay error
+ */
+async function generarSiguienteCodigoColaborador(organizacionCamelCase) {
+    try {
+        const userManager = new UserManager();
+        const colaboradores = await userManager.getColaboradoresByOrganizacion(organizacionCamelCase, true);
+        
+        // Extraer solo códigos válidos que no estén vacíos
+        const codigosExistentes = colaboradores
+            .map(col => col.codigoColaborador)
+            .filter(cod => cod && /^\d{3}$/.test(cod))
+            .map(cod => parseInt(cod, 10));
+        
+        if (codigosExistentes.length === 0) {
+            return '001';
+        }
+        
+        // Encontrar el número más alto
+        const maxCodigo = Math.max(...codigosExistentes);
+        let siguiente = maxCodigo + 1;
+        
+        // Buscar huecos (por si hay códigos faltantes)
+        for (let i = 1; i <= maxCodigo; i++) {
+            if (!codigosExistentes.includes(i)) {
+                siguiente = i;
+                break;
+            }
+        }
+        
+        // Límite máximo 999
+        if (siguiente > 999) {
+            return ''; // Retorna vacío si no hay más códigos disponibles
+        }
+        
+        // Formatear a 3 dígitos
+        return siguiente.toString().padStart(3, '0');
+        
+    } catch (error) {
+        return '001';
+    }
+}
+
+/**
+ * Valida que el código tenga formato correcto y sea único en la organización
+ * Si el código está vacío, retorna válido (es opcional)
+ */
+async function validarCodigoColaborador(codigo, organizacionCamelCase, idActual = null) {
+    // Si está vacío, es válido (campo opcional)
+    if (!codigo || codigo.trim() === '') {
+        return { valido: true, mensaje: '' };
+    }
+    
+    // Validar formato: 3 dígitos exactos
+    if (!/^\d{3}$/.test(codigo)) {
+        return { valido: false, mensaje: 'El código debe tener exactamente 3 dígitos (001-999)' };
+    }
+    
+    const numero = parseInt(codigo, 10);
+    if (numero < 1 || numero > 999) {
+        return { valido: false, mensaje: 'El código debe estar entre 001 y 999' };
+    }
+    
+    try {
+        const userManager = new UserManager();
+        const colaboradores = await userManager.getColaboradoresByOrganizacion(organizacionCamelCase, true);
+        
+        // Verificar si el código ya existe (excluyendo al usuario actual en caso de edición)
+        const existe = colaboradores.some(col => 
+            col.codigoColaborador === codigo && col.id !== idActual
+        );
+        
+        if (existe) {
+            return { valido: false, mensaje: `El código ${codigo} ya está en uso por otro colaborador` };
+        }
+        
+        return { valido: true, mensaje: '' };
+        
+    } catch (error) {
+        return { valido: true, mensaje: '' };
+    }
+}
+
+/**
+ * Configurar autogeneración y validación del código (opcional)
+ */
+async function configurarCodigoColaborador(elements, organizacionCamelCase) {
+    if (!elements.codigoColaborador) return;
+    
+    // Generar código automáticamente (solo si está vacío)
+    if (!elements.codigoColaborador.value) {
+        const codigoGenerado = await generarSiguienteCodigoColaborador(organizacionCamelCase);
+        elements.codigoColaborador.value = codigoGenerado;
+    }
+    
+    // Validación en tiempo real
+    elements.codigoColaborador.addEventListener('input', async function(e) {
+        // Limitar a solo números
+        this.value = this.value.replace(/[^0-9]/g, '').slice(0, 3);
+        
+        // Si está vacío, resetear estilos
+        if (this.value.length === 0) {
+            this.style.borderColor = '';
+            const hint = this.closest('.form-field-group')?.querySelector('.field-hint');
+            if (hint) {
+                hint.style.color = '';
+                hint.innerHTML = `<i class="fas fa-info-circle"></i> Código de 3 dígitos (001-999). Se genera automáticamente, puedes modificarlo o dejarlo vacío.`;
+            }
+            return;
+        }
+        
+        // Validar formato solo si tiene contenido
+        if (this.value.length === 3) {
+            const validacion = await validarCodigoColaborador(this.value, organizacionCamelCase);
+            if (!validacion.valido) {
+                this.style.borderColor = 'var(--color-danger, #dc3545)';
+                const hint = this.closest('.form-field-group')?.querySelector('.field-hint');
+                if (hint) {
+                    hint.style.color = 'var(--color-danger, #dc3545)';
+                    hint.innerHTML = `<i class="fas fa-exclamation-triangle"></i> ${validacion.mensaje}`;
+                }
+            } else {
+                this.style.borderColor = 'var(--color-success, #28a745)';
+                const hint = this.closest('.form-field-group')?.querySelector('.field-hint');
+                if (hint) {
+                    hint.style.color = '';
+                    hint.innerHTML = `<i class="fas fa-check-circle"></i> Código válido y disponible`;
+                }
+            }
+        } else {
+            this.style.borderColor = 'var(--color-warning, #ff9800)';
+            const hint = this.closest('.form-field-group')?.querySelector('.field-hint');
+            if (hint) {
+                hint.style.color = 'var(--color-warning, #ff9800)';
+                hint.innerHTML = `<i class="fas fa-info-circle"></i> El código debe tener exactamente 3 dígitos`;
+            }
+        }
+    });
+    
+    // Evento blur para validar al salir del campo
+    elements.codigoColaborador.addEventListener('blur', async function() {
+        if (this.value.length > 0 && this.value.length !== 3) {
+            this.value = '';
+            this.style.borderColor = '';
+            const hint = this.closest('.form-field-group')?.querySelector('.field-hint');
+            if (hint) {
+                hint.style.color = '';
+                hint.innerHTML = `<i class="fas fa-info-circle"></i> Código de 3 dígitos (001-999). Se genera automáticamente, puedes modificarlo o dejarlo vacío.`;
+            }
+        }
+    });
+}
+
 // ========== FUNCIÓN PARA FILTRAR SOLO NÚMEROS ==========
 function configurarFiltroNumerico(elements) {
     if (elements.telefono) {
         elements.telefono.addEventListener('input', function (e) {
-            // Eliminar cualquier carácter que no sea número
             this.value = this.value.replace(/[^0-9]/g, '');
-
-            // Validar longitud máxima (15 dígitos)
             if (this.value.length > 15) {
                 this.value = this.value.slice(0, 15);
             }
         });
 
-        // Prevenir pegado de texto con caracteres no numéricos
         elements.telefono.addEventListener('paste', function (e) {
             e.preventDefault();
             const pastedText = (e.clipboardData || window.clipboardData).getData('text');
             const numericOnly = pastedText.replace(/[^0-9]/g, '');
             if (numericOnly) {
                 this.value = numericOnly.slice(0, 15);
-                // Disparar evento input para actualizar validación
                 const inputEvent = new Event('input', { bubbles: true });
                 this.dispatchEvent(inputEvent);
             }
         });
 
-        // Prevenir entrada de caracteres no numéricos en tiempo real
         elements.telefono.addEventListener('keypress', function (e) {
             const key = e.key;
-            // Permitir teclas de control (backspace, delete, tab, etc.)
             if (e.ctrlKey || e.altKey || e.metaKey) return;
             if (key === 'Backspace' || key === 'Delete' || key === 'Tab' || key === 'ArrowLeft' || key === 'ArrowRight') return;
-
-            // Solo permitir números
             if (!/^[0-9]$/.test(key)) {
                 e.preventDefault();
             }
@@ -80,20 +227,15 @@ function configurarFiltroNumerico(elements) {
 }
 
 async function initCollaboratorForm() {
-
-    // Obtener elementos del DOM
     const elements = obtenerElementosDOM();
     if (!elements) return;
 
-    // Configurar filtro de solo números para teléfono
     configurarFiltroNumerico(elements);
 
-    // Instanciar UserManager
     const userManager = new UserManager();
 
     try {
-        // Obtener usuario actual (temporal - será reemplazado por componente Auth)
-        const usuarioActual = obtenerUsuarioActual();
+        let usuarioActual = obtenerUsuarioActual();
 
         if (!usuarioActual) {
             usuarioActual = {
@@ -110,13 +252,12 @@ async function initCollaboratorForm() {
 
         window.usuarioActual = usuarioActual;
 
-        // Configurar interfaz con datos del usuario
         actualizarInterfazConUsuario(elements, usuarioActual);
 
-        // Cargar áreas desde Firebase usando AreaManager
-        await cargarAreas(elements, usuarioActual);
+        // Configurar código de colaborador (opcional, autogenerado)
+        await configurarCodigoColaborador(elements, usuarioActual.organizacionCamelCase);
 
-        // Configurar handlers
+        await cargarAreas(elements, usuarioActual);
         configurarHandlers(elements, userManager, usuarioActual);
 
     } catch (error) {
@@ -124,7 +265,6 @@ async function initCollaboratorForm() {
     }
 }
 
-// ✅ NUEVO: Registrar creación de colaborador
 async function registrarCreacionColaborador(colaboradorData, usuarioActual) {
     if (!historialManager) return;
 
@@ -139,7 +279,8 @@ async function registrarCreacionColaborador(colaboradorData, usuarioActual) {
                 colaboradorNombre: colaboradorData.nombreCompleto,
                 colaboradorEmail: colaboradorData.correoElectronico,
                 colaboradorTelefono: colaboradorData.telefono || 'No especificado',
-                colaboradorRol: 'colaborador', // Rol fijo por defecto
+                colaboradorCodigo: colaboradorData.codigoColaborador || 'Sin código',
+                colaboradorRol: 'colaborador',
                 areaAsignadaId: colaboradorData.areaAsignadaId || null,
                 sucursalAsignadaId: colaboradorData.sucursalAsignadaId || null,
                 fechaCreacion: new Date().toISOString()
@@ -152,9 +293,7 @@ async function registrarCreacionColaborador(colaboradorData, usuarioActual) {
 
 // ========== OBTENER USUARIO ACTUAL (TEMP) ==========
 function obtenerUsuarioActual() {
-    // TODO: Reemplazar con llamado al componente Auth
     try {
-        // Intentar obtener de localStorage primero
         const adminInfo = JSON.parse(localStorage.getItem('adminInfo') || '{}');
         if (adminInfo && Object.keys(adminInfo).length > 0) {
             return {
@@ -183,7 +322,6 @@ function obtenerUsuarioActual() {
             };
         }
 
-        // Si no hay datos, retornar null para usar valores por defecto
         return null;
 
     } catch (error) {
@@ -222,10 +360,10 @@ function obtenerElementosDOM() {
 
             // Campos del formulario
             organization: document.getElementById('organization'),
+            codigoColaborador: document.getElementById('codigoColaborador'),
             nombreCompleto: document.getElementById('nombreCompleto'),
             correoElectronico: document.getElementById('correoElectronico'),
-            telefono: document.getElementById('telefono'), // Nuevo campo
-            // NOTA: El campo 'rol' ha sido ELIMINADO
+            telefono: document.getElementById('telefono'),
             areaSelect: document.getElementById('areaSelect'),
             cargoEnAreaSelect: document.getElementById('cargoEnAreaSelect'),
             sucursalContainer: document.getElementById('sucursalContainer'),
@@ -260,41 +398,32 @@ function obtenerElementosDOM() {
 }
 
 function actualizarInterfazConUsuario(elements, usuario) {
-    // Actualizar campo de organización (solo lectura)
     if (elements.organization) {
         elements.organization.value = usuario.organizacion;
         elements.organization.classList.add('readonly-field');
     }
 
-    // Actualizar nombre del usuario en el subtítulo
     if (elements.adminNameSubtitle) {
         elements.adminNameSubtitle.textContent = `Usuario: ${usuario.nombreCompleto} | ${usuario.organizacion}`;
     }
 
-    // Cargar logo de organización heredado
     if (usuario.fotoOrganizacion && elements.orgCircle && elements.orgPlaceholder && elements.orgImage) {
         try {
             elements.orgPlaceholder.style.display = 'none';
             elements.orgImage.src = usuario.fotoOrganizacion;
             elements.orgImage.style.display = 'block';
-
-            // Deshabilitar interacción con el logo
             elements.orgCircle.classList.add('org-disabled');
             if (elements.editOrgOverlay) {
                 elements.editOrgOverlay.style.display = 'none';
             }
-
-            // Actualizar texto informativo
             if (elements.orgInfoText) {
                 elements.orgInfoText.textContent = 'Logo heredado. Los colaboradores verán este logo.';
             }
-
         } catch (error) {
             // Error handling without console
         }
     }
 
-    // Actualizar títulos con información del usuario
     if (elements.formMainTitle) {
         elements.formMainTitle.textContent = `CREAR COLABORADOR PARA ${usuario.organizacion.toUpperCase()}`;
     }
@@ -303,7 +432,6 @@ function actualizarInterfazConUsuario(elements, usuario) {
         elements.formSubTitle.textContent = `Completa los datos para crear un colaborador en ${usuario.organizacion}`;
     }
 
-    // Mostrar mensaje informativo
     mostrarMensajeInfoUsuario(elements.mainMessage, usuario);
 }
 
@@ -312,16 +440,12 @@ function mostrarMensajeInfoUsuario(element, usuario) {
 
     element.innerHTML = `
         <div class="message-container info" style="display: block;">
-            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
-                <i class="fas fa-user"></i>
-                <strong>Creando colaborador</strong>
-            </div>
+            
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 0.85rem;">
-                <div><strong>Usuario:</strong> ${usuario.nombreCompleto}</div>
+                <div><strong>Creado por:</strong> ${usuario.nombreCompleto}</div>
                 <div><strong>Organización:</strong> ${usuario.organizacion}</div>
-                <div><strong>Plan:</strong> ${usuario.plan ? usuario.plan.toUpperCase() : 'GRATIS'}</div>
             </div>
-            <div style="margin-top: 8px; padding: 8px; background: var(--color-bg-secondary); border-radius: 4px; font-size: 0.8rem;">
+            <div style="margin-top: 8px; padding: 8px; border-radius: 4px; font-size: 0.8rem;">
                 <i class="fas fa-info-circle" style="margin-right: 5px;"></i>
                 El colaborador heredará estos datos de la organización.
             </div>
@@ -331,7 +455,6 @@ function mostrarMensajeInfoUsuario(element, usuario) {
 }
 
 // ========== FUNCIONES PARA CARGAR ÁREAS Y CARGOS ==========
-
 async function cargarAreas(elements, usuario) {
     if (!elements.areaSelect) return;
 
@@ -344,18 +467,20 @@ async function cargarAreas(elements, usuario) {
         elements.cargoEnAreaSelect.disabled = true;
 
         const areas = await areaManager.getAreasByOrganizacion(usuario.organizacionCamelCase);
+        
+        // ✅ FILTRAR: Solo áreas ACTIVAS (estado === 'activa')
+        const areasActivas = areas.filter(area => area.estado === 'activa');
 
-        // Guardar las áreas en el elemento select para usarlas después
         elements.areaSelect._areasData = areas;
 
-        if (areas.length === 0) {
-            elements.areaSelect.innerHTML = '<option value="">No hay áreas disponibles</option>';
+        if (areasActivas.length === 0) {
+            elements.areaSelect.innerHTML = '<option value="">No hay áreas activas disponibles</option>';
             elements.areaSelect.disabled = false;
             return;
         }
 
         let options = '<option value="">Selecciona un área</option>';
-        areas.forEach(area => {
+        areasActivas.forEach(area => {
             options += `<option value="${area.id}" data-nombre="${area.nombreArea}">${area.nombreArea}</option>`;
         });
         elements.areaSelect.innerHTML = options;
@@ -384,7 +509,6 @@ function cargarCargosPorArea(elements) {
     elements.cargoEnAreaSelect.innerHTML = '';
     elements.cargoEnAreaSelect.disabled = true;
 
-    // Ocultar campo de sucursal por defecto
     if (elements.sucursalContainer) {
         elements.sucursalContainer.style.display = 'none';
     }
@@ -401,13 +525,17 @@ function cargarCargosPorArea(elements) {
         return;
     }
 
-    const cargos = areaSeleccionada.getCargosAsArray ? areaSeleccionada.getCargosAsArray() : [];
+    // Obtener todos los cargos del área
+    const todosLosCargos = areaSeleccionada.getCargosAsArray ? areaSeleccionada.getCargosAsArray() : [];
+    
+    // ✅ FILTRAR: Solo cargos ACTIVOS (estado === 'activo')
+    const cargosActivos = todosLosCargos.filter(cargo => cargo.estado === 'activo');
 
-    if (cargos.length === 0) {
-        elements.cargoEnAreaSelect.innerHTML = '<option value="">Esta área no tiene cargos</option>';
+    if (cargosActivos.length === 0) {
+        elements.cargoEnAreaSelect.innerHTML = '<option value="">Esta área no tiene cargos activos</option>';
     } else {
         let options = '<option value="">Selecciona un cargo</option>';
-        cargos.forEach((cargo, index) => {
+        cargosActivos.forEach((cargo, index) => {
             const cargoId = cargo.id || `cargo_${index}_${Date.now()}`;
             options += `<option value="${cargoId}">${cargo.nombre || 'Cargo sin nombre'}</option>`;
 
@@ -421,13 +549,11 @@ function cargarCargosPorArea(elements) {
 
     elements.cargoEnAreaSelect.disabled = false;
 
-    // ✅ NUEVO: Verificar si el área seleccionada es "sucursales" para mostrar el campo de sucursal
     if (areaNombre.toLowerCase() === 'sucursales' || areaNombre.toLowerCase() === 'sucursal') {
         cargarSucursales(elements);
     }
 }
 
-// ✅ NUEVO: Cargar sucursales para asociar al colaborador
 async function cargarSucursales(elements) {
     if (!elements.sucursalSelect || !sucursalManager) return;
 
@@ -460,12 +586,10 @@ async function cargarSucursales(elements) {
             }
         }
 
-        // Mostrar el contenedor de sucursal
         if (elements.sucursalContainer) {
             elements.sucursalContainer.style.display = 'block';
         }
 
-        // Guardar lista de sucursales para validaciones posteriores
         elements.sucursalSelect._sucursalesData = sucursales;
 
     } catch (error) {
@@ -476,18 +600,15 @@ async function cargarSucursales(elements) {
     }
 }
 
-// ✅ NUEVO: Verificar que la sucursal no tenga más de 2 colaboradores asignados
 async function verificarLimiteSucursal(sucursalId, organizacionCamelCase) {
     if (!sucursalId || !sucursalManager) return true;
 
     try {
-        // Obtener todos los colaboradores de la organización
         const { UserManager } = await import('/clases/user.js');
         const userManager = new UserManager();
 
         const colaboradores = await userManager.getColaboradoresByOrganizacion(organizacionCamelCase, true);
 
-        // Contar cuántos colaboradores tienen esta sucursal asignada
         const colaboradoresEnSucursal = colaboradores.filter(colab =>
             colab.sucursalAsignadaId === sucursalId
         );
@@ -499,34 +620,28 @@ async function verificarLimiteSucursal(sucursalId, organizacionCamelCase) {
         return true;
 
     } catch (error) {
-        return true; // Si hay error, permitir continuar
+        return true;
     }
 }
 
 // ========== MANEJO DE IMÁGENES CON SWEETALERT2 ==========
 
 function configurarHandlers(elements, userManager, usuario) {
-    // Foto de perfil
     if (elements.editProfileOverlay && elements.profileInput) {
         elements.editProfileOverlay.addEventListener('click', () => elements.profileInput.click());
         elements.profileCircle.addEventListener('click', () => elements.profileInput.click());
 
-        // IMPORTANTE: No limpiar el input aquí, solo cuando se abre
         elements.profileInput.addEventListener('click', function (e) {
-            // Detener propagación para evitar eventos múltiples
             e.stopPropagation();
-            // Limpiar solo cuando se abre el selector
             this.value = '';
         });
 
-        // Usar { once: false } pero asegurar que no se acumulen eventos
         elements.profileInput.removeEventListener('change', manejarCambioFoto);
         elements.profileInput.addEventListener('change', function (e) {
             manejarCambioFoto(e, elements);
         });
     }
 
-    // Mostrar/ocultar contraseña
     if (elements.toggleContrasenaBtns) {
         elements.toggleContrasenaBtns.forEach(btn => {
             btn.addEventListener('click', function () {
@@ -543,30 +658,24 @@ function configurarHandlers(elements, userManager, usuario) {
         });
     }
 
-    // Evento para cuando cambia el área seleccionada
     if (elements.areaSelect) {
         elements.areaSelect.addEventListener('change', () => cargarCargosPorArea(elements));
     }
 
-    // Validación en tiempo real
     configurarValidacionTiempoReal(elements);
 
-    // Botón de registro
     if (elements.registerBtn) {
         elements.registerBtn.addEventListener('click', (e) => registrarColaborador(e, elements, userManager, usuario));
     }
 
-    // Botón cancelar
     if (elements.cancelBtn) {
         elements.cancelBtn.addEventListener('click', () => cancelarRegistro());
     }
 }
 
-// Variable para controlar que no se procese el mismo archivo múltiples veces
 let procesandoFoto = false;
 
 function manejarCambioFoto(event, elements) {
-    // Prevenir procesamiento múltiple
     if (procesandoFoto) return;
 
     const file = event.target.files[0];
@@ -574,7 +683,6 @@ function manejarCambioFoto(event, elements) {
 
     procesandoFoto = true;
 
-    // Validar archivo
     if (!validarArchivo(file, 5)) {
         elements.profileInput.value = '';
         procesandoFoto = false;
@@ -601,11 +709,9 @@ function manejarCambioFoto(event, elements) {
             if (result.isConfirmed) {
                 actualizarFotoPerfil(imageBase64, elements);
             }
-            // SIEMPRE limpiar el input y resetear la bandera
             elements.profileInput.value = '';
             procesandoFoto = false;
         }).catch(() => {
-            // En caso de error, también limpiar
             elements.profileInput.value = '';
             procesandoFoto = false;
         });
@@ -670,11 +776,9 @@ function actualizarFotoPerfil(imageSrc, elements) {
 // ========== VALIDACIÓN ==========
 
 function configurarValidacionTiempoReal(elements) {
-    // Validar teléfono en tiempo real (solo números)
     if (elements.telefono) {
         elements.telefono.addEventListener('input', function () {
             if (this.value) {
-                // Validar que solo tenga números y longitud adecuada
                 const isValid = /^[0-9]{8,15}$/.test(this.value);
                 this.style.borderColor = isValid ? 'var(--color-success, #28a745)' : 'var(--color-danger, #dc3545)';
             } else {
@@ -683,7 +787,6 @@ function configurarValidacionTiempoReal(elements) {
         });
     }
 
-    // Validar coincidencia de contraseñas
     if (elements.confirmarContrasena) {
         elements.confirmarContrasena.addEventListener('input', function () {
             if (elements.contrasena.value && this.value) {
@@ -694,7 +797,6 @@ function configurarValidacionTiempoReal(elements) {
         });
     }
 
-    // Validar email
     if (elements.correoElectronico) {
         elements.correoElectronico.addEventListener('blur', function () {
             if (this.value) {
@@ -710,6 +812,13 @@ function configurarValidacionTiempoReal(elements) {
 function validarFormulario(elements) {
     const errores = [];
 
+    // Código del colaborador (opcional - solo validar si tiene valor)
+    if (elements.codigoColaborador.value.trim()) {
+        if (!/^\d{3}$/.test(elements.codigoColaborador.value.trim())) {
+            errores.push('El código debe tener exactamente 3 dígitos (001-999)');
+        }
+    }
+
     // Nombre completo
     if (!elements.nombreCompleto.value.trim()) {
         errores.push('El nombre completo es obligatorio');
@@ -724,7 +833,7 @@ function validarFormulario(elements) {
         errores.push('El correo electrónico no es válido');
     }
 
-    // Teléfono (validación: solo números, entre 8 y 15 dígitos)
+    // Teléfono
     if (elements.telefono && elements.telefono.value.trim()) {
         if (!/^[0-9]{8,15}$/.test(elements.telefono.value.trim())) {
             errores.push('El teléfono debe contener solo números y tener entre 8 y 15 dígitos');
@@ -744,9 +853,6 @@ function validarFormulario(elements) {
     } else if (elements.contrasena.value !== elements.confirmarContrasena.value) {
         errores.push('Las contraseñas no coinciden');
     }
-
-    // NOTA: La validación del campo ROL ha sido eliminada
-    // El rol se asignará automáticamente como "colaborador"
 
     return errores;
 }
@@ -770,7 +876,6 @@ function validarContrasena(password) {
 async function registrarColaborador(event, elements, userManager, usuario) {
     event.preventDefault();
 
-    // Validar formulario
     const errores = validarFormulario(elements);
     if (errores.length > 0) {
         Swal.fire({
@@ -782,7 +887,23 @@ async function registrarColaborador(event, elements, userManager, usuario) {
         return;
     }
 
-    // Obtener datos del área y cargo seleccionados (si existen)
+    // Validar unicidad del código SOLO si se ingresó un valor
+    if (elements.codigoColaborador.value.trim()) {
+        const codigoValidacion = await validarCodigoColaborador(
+            elements.codigoColaborador.value.trim(),
+            usuario.organizacionCamelCase
+        );
+        if (!codigoValidacion.valido) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Código inválido',
+                text: codigoValidacion.mensaje,
+                confirmButtonText: 'CORREGIR'
+            });
+            return;
+        }
+    }
+
     let areaNombre = 'No asignada';
     let cargoNombre = 'No asignado';
     let cargoDescripcion = '';
@@ -812,13 +933,11 @@ async function registrarColaborador(event, elements, userManager, usuario) {
         }
     }
 
-    // ✅ NUEVO: Obtener datos de sucursal si está seleccionada y visible
     let sucursalId = null;
     let sucursalNombre = null;
     let sucursalCiudad = null;
     let esAreaSucursales = false;
 
-    // Verificar si el área seleccionada es "sucursales"
     const areaSeleccionadaElement = elements.areaSelect.options[elements.areaSelect.selectedIndex];
     const areaSeleccionadaNombre = areaSeleccionadaElement?.getAttribute('data-nombre') || '';
     esAreaSucursales = areaSeleccionadaNombre.toLowerCase() === 'sucursales' || areaSeleccionadaNombre.toLowerCase() === 'sucursal';
@@ -826,7 +945,6 @@ async function registrarColaborador(event, elements, userManager, usuario) {
     if (esAreaSucursales && elements.sucursalSelect && elements.sucursalSelect.value) {
         sucursalId = elements.sucursalSelect.value;
 
-        // Obtener nombre y ciudad de la sucursal seleccionada
         const sucursalesData = elements.sucursalSelect._sucursalesData || [];
         const sucursalSeleccionada = sucursalesData.find(s => s.id === sucursalId);
         if (sucursalSeleccionada) {
@@ -834,7 +952,6 @@ async function registrarColaborador(event, elements, userManager, usuario) {
             sucursalCiudad = sucursalSeleccionada.ciudad;
         }
 
-        // Verificar límite de colaboradores por sucursal (máximo 2)
         if (sucursalId && usuario.organizacionCamelCase) {
             const limiteOk = await verificarLimiteSucursal(sucursalId, usuario.organizacionCamelCase);
             if (!limiteOk) {
@@ -850,9 +967,9 @@ async function registrarColaborador(event, elements, userManager, usuario) {
         }
     }
 
-    // Mostrar confirmación
     let confirmHtml = `
         <div style="text-align: left; padding: 10px 0;">
+            <p><strong>Código:</strong> ${elements.codigoColaborador.value.trim() || '(Sin código)'}</p>
             <p><strong>Nombre:</strong> ${elements.nombreCompleto.value.trim()}</p>
             <p><strong>Email:</strong> ${elements.correoElectronico.value.trim()}</p>
             <p><strong>Teléfono:</strong> ${elements.telefono?.value.trim() || 'No especificado'}</p>
@@ -884,7 +1001,6 @@ async function registrarColaborador(event, elements, userManager, usuario) {
 
     if (!confirmResult.isConfirmed) return;
 
-    // Mostrar loader
     Swal.fire({
         title: 'Creando colaborador...',
         text: 'Esto puede tomar unos segundos. Por favor espera...',
@@ -896,42 +1012,33 @@ async function registrarColaborador(event, elements, userManager, usuario) {
 
     try {
         const colaboradorData = {
+            codigoColaborador: elements.codigoColaborador.value.trim() || '',
             nombreCompleto: elements.nombreCompleto.value.trim(),
             correoElectronico: elements.correoElectronico.value.trim(),
-            telefono: elements.telefono?.value.trim() || '', // Nuevo campo - solo números
+            telefono: elements.telefono?.value.trim() || '',
             fotoUsuario: elements.profileImage.src || null,
 
-            // Campos heredados del usuario
             organizacion: usuario.organizacion,
             organizacionCamelCase: usuario.organizacionCamelCase,
             fotoOrganizacion: usuario.fotoOrganizacion,
             theme: usuario.theme || 'light',
             plan: usuario.plan || 'gratis',
 
-            // Usar el objeto cargo para la información del puesto
             cargo: cargoObjeto,
-
-            // Solo el ID del área, no el nombre
             areaAsignadaId: areaId,
 
-            // ✅ NUEVO: Sucursal asignada (solo si el área es sucursales)
             sucursalAsignadaId: sucursalId,
             sucursalAsignadaNombre: sucursalNombre,
             sucursalAsignadaCiudad: sucursalCiudad,
 
-            // ROL POR DEFECTO: "colaborador" (campo eliminado del formulario)
             rol: 'colaborador',
-
-            // Campos de sistema
             status: true,
 
-            // Campos de trazabilidad
             creadoPor: usuario.id,
             creadoPorEmail: usuario.correoElectronico,
             creadoPorNombre: usuario.nombreCompleto,
             fechaCreacion: new Date(),
 
-            // Permisos básicos
             permisosPersonalizados: {
                 dashboard: true,
                 verPerfil: true,
@@ -941,20 +1048,17 @@ async function registrarColaborador(event, elements, userManager, usuario) {
             }
         };
 
-        // Crear colaborador usando UserManager
         const resultado = await userManager.createColaborador(
             colaboradorData,
             elements.contrasena.value,
             usuario.id
         );
 
-        // ✅ NUEVO: Registrar creación en bitácora
         if (resultado && resultado.id) {
             colaboradorData.id = resultado.id;
             await registrarCreacionColaborador(colaboradorData, usuario);
         }
 
-        // Mostrar éxito
         Swal.close();
         await mostrarExitoRegistro(colaboradorData, esAreaSucursales, sucursalNombre);
 
@@ -975,6 +1079,7 @@ async function mostrarExitoRegistro(colaboradorData, esAreaSucursales = false, s
         title: '¡Colaborador creado!',
         html: `
             <div style="text-align: center;">
+                <p><strong>Código:</strong> ${colaboradorData.codigoColaborador || '(Sin código)'}</p>
                 <p><strong>Nombre:</strong> ${colaboradorData.nombreCompleto}</p>
                 <p><strong>Email:</strong> ${colaboradorData.correoElectronico}</p>
                 <p><strong>Teléfono:</strong> ${colaboradorData.telefono || 'No especificado'}</p>
@@ -991,7 +1096,6 @@ async function mostrarExitoRegistro(colaboradorData, esAreaSucursales = false, s
     });
 
     if (result.isConfirmed) {
-        // Recargar página para nuevo registro
         location.reload();
     } else {
         window.location.href = '../usuarios/usuarios.html';
@@ -1002,7 +1106,6 @@ function manejarErrorRegistro(error) {
     let errorMessage = 'Ocurrió un error al crear el colaborador';
     let errorTitle = 'Error al crear colaborador';
 
-    // Manejar errores específicos
     if (error.code) {
         switch (error.code) {
             case 'auth/email-already-in-use':

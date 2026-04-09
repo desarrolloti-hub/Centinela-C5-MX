@@ -819,6 +819,8 @@ function setupSaveHandler(elements, userManager) {
 
 // ========== FUNCIÓN PARA CAMBIAR CONTRASEÑA ==========
 
+
+
 function setupPasswordChangeHandler(elements, userManager) {
     if (!document.getElementById('changePasswordBtn')) {
         const permissionsNote = document.querySelector('.permissions-note');
@@ -902,31 +904,34 @@ async function showPasswordResetConfirmation(userManager) {
             });
 
             try {
-                const firebaseModule = await import('/config/firebase-config.js');
-                const { sendPasswordResetEmail } = await import("https://www.gstatic.com/firebasejs/12.8.0/firebase-auth.js");
-
-                const actionCodeSettings = {
-                    url: 'https://centinela-mx.web.app/verifyEmail.html',
-                    handleCodeInApp: false
-                };
-
-                await sendPasswordResetEmail(firebaseModule.auth, userEmail, actionCodeSettings);
+                // ✅ USAR EL MÉTODO DE UserManager en lugar de conexión directa
+                const resultado = await userManager.enviarCorreoRecuperacion(userEmail);
 
                 Swal.close();
 
-                await Swal.fire({
-                    icon: 'success',
-                    title: '¡Enlace enviado!',
-                    html: `
-                        <div>
-                            <p><strong>Destinatario:</strong> ${userEmail}</p>
-                            <p>Revisa tu correo (incluyendo spam).</p>
-                        </div>
-                    `,
-                    confirmButtonText: 'ENTENDIDO',
-                    allowOutsideClick: false,
-                    timer: 5000
-                });
+                if (resultado.success) {
+                    await Swal.fire({
+                        icon: 'success',
+                        title: '¡Enlace enviado!',
+                        html: `
+                            <div>
+                                <p><strong>Destinatario:</strong> ${userEmail}</p>
+                                <p><strong>Válido por:</strong> 1 hora</p>
+                                <p>Revisa tu correo (incluyendo spam).</p>
+                            </div>
+                        `,
+                        confirmButtonText: 'ENTENDIDO',
+                        allowOutsideClick: false,
+                        timer: 5000
+                    });
+                } else {
+                    await Swal.fire({
+                        icon: 'error',
+                        title: 'Error al enviar',
+                        text: resultado.message || 'Ocurrió un error al enviar el correo',
+                        confirmButtonText: 'ENTENDIDO'
+                    });
+                }
 
             } catch (error) {
                 Swal.close();
@@ -934,27 +939,22 @@ async function showPasswordResetConfirmation(userManager) {
 
                 let errorMessage = 'Ocurrió un error al enviar el correo';
 
-                switch (error.code) {
-                    case 'auth/user-not-found':
-                        errorMessage = 'Usuario no encontrado';
-                        break;
-                    case 'auth/invalid-email':
-                        errorMessage = 'Correo inválido';
-                        break;
-                    case 'auth/too-many-requests':
-                        errorMessage = 'Demasiados intentos';
-                        break;
-                    case 'auth/network-request-failed':
-                        errorMessage = 'Error de conexión';
-                        break;
-                    default:
-                        errorMessage = 'Error del sistema';
+                if (error.code === 'auth/user-not-found') {
+                    errorMessage = 'Usuario no encontrado';
+                } else if (error.code === 'auth/invalid-email') {
+                    errorMessage = 'Correo inválido';
+                } else if (error.code === 'auth/too-many-requests') {
+                    errorMessage = 'Demasiados intentos';
+                } else if (error.code === 'auth/network-request-failed') {
+                    errorMessage = 'Error de conexión';
+                } else if (error.message) {
+                    errorMessage = error.message;
                 }
 
                 Swal.fire({
                     icon: 'error',
                     title: errorMessage,
-                    text: 'Intenta nuevamente más tarde.',
+                    text: 'Por favor, intenta nuevamente más tarde.',
                     confirmButtonText: 'ENTENDIDO'
                 });
             }
@@ -970,3 +970,5 @@ async function showPasswordResetConfirmation(userManager) {
         });
     }
 }
+
+

@@ -589,8 +589,8 @@ function actualizarGraficoTopSucursales(registros) {
                 datasets: [{
                     label: 'Monto perdido',
                     data: perdidosData,
-                    backgroundColor: '#ffffff',
-                    borderColor: '#ffffff',
+                    backgroundColor: '#FF6600',
+                    borderColor: '#FF6600',
                     borderRadius: 8,
                     barPercentage: 0.7,
                     categoryPercentage: 0.8
@@ -1203,7 +1203,7 @@ async function generarReportePDF() {
         // Generar PDF
         await generadorPDFEstadisticasExtravios.generarReporte(datosPDF, {
             mostrarAlerta: true,
-            tituloPersonalizado: 'REPORTE DE PÉRDIDAS Y RECUPERACIONES'
+            tituloPersonalizado: 'RECUPERACIONES'
         });
 
     } catch (error) {

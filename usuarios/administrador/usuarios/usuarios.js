@@ -451,6 +451,10 @@ function renderCollaboratorsTable(collaborators) {
                 </td>
             <td data-label="ACCIONES">
                 <div class="btn-group">
+                    <button type="button" class="btn btn-view" data-action="view" 
+                            data-id="${col.id}" data-name="${escapeHTML(fullName)}" title="Ver detalles">
+                        <i class="fas fa-eye"></i>
+                    </button>
                     <button type="button" class="btn ${isActive ? 'btn-disable' : 'btn-enable'}" 
                             data-action="toggle" data-id="${col.id}" data-name="${escapeHTML(fullName)}" 
                             data-status="${isActive}" title="${isActive ? 'Inhabilitar' : 'Habilitar'}">
@@ -459,10 +463,6 @@ function renderCollaboratorsTable(collaborators) {
                     <button type="button" class="btn btn-edit" data-action="edit" 
                             data-id="${col.id}" data-name="${escapeHTML(fullName)}" title="Editar">
                         <i class="fas fa-edit"></i>
-                    </button>
-                    <button type="button" class="btn btn-view" data-action="view" 
-                            data-id="${col.id}" data-name="${escapeHTML(fullName)}" title="Ver detalles">
-                        <i class="fas fa-eye"></i>
                     </button>
                 </div>
                 </td>
@@ -629,9 +629,13 @@ async function viewUserDetails(collaboratorId, collaboratorName) {
 }
 
 // ========== MOSTRAR DETALLES EN MODAL ==========
+// ========== MOSTRAR DETALLES EN MODAL ==========
+// ========== MOSTRAR DETALLES EN MODAL ==========
 function showCollaboratorDetails(collaborator, collaboratorName) {
     let fechaCreacion = 'No disponible';
+    let fechaUltimoLogin = 'No disponible';
 
+    // Procesar fecha de creación
     if (collaborator.fechaCreacion) {
         try {
             if (typeof collaborator.fechaCreacion.toDate === 'function') {
@@ -639,7 +643,9 @@ function showCollaboratorDetails(collaborator, collaboratorName) {
                 fechaCreacion = date.toLocaleDateString('es-MX', {
                     year: 'numeric',
                     month: 'long',
-                    day: 'numeric'
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
                 });
             }
             else if (typeof collaborator.fechaCreacion === 'string') {
@@ -648,7 +654,9 @@ function showCollaboratorDetails(collaborator, collaboratorName) {
                     fechaCreacion = date.toLocaleDateString('es-MX', {
                         year: 'numeric',
                         month: 'long',
-                        day: 'numeric'
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
                     });
                 }
             }
@@ -657,18 +665,71 @@ function showCollaboratorDetails(collaborator, collaboratorName) {
                 fechaCreacion = date.toLocaleDateString('es-MX', {
                     year: 'numeric',
                     month: 'long',
-                    day: 'numeric'
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
                 });
             }
             else if (collaborator.fechaCreacion instanceof Date) {
                 fechaCreacion = collaborator.fechaCreacion.toLocaleDateString('es-MX', {
                     year: 'numeric',
                     month: 'long',
-                    day: 'numeric'
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
                 });
             }
         } catch (e) {
             fechaCreacion = 'No disponible';
+        }
+    }
+
+    // Procesar fecha de último inicio de sesión (ultimoLogin)
+    if (collaborator.ultimoLogin) {
+        try {
+            if (typeof collaborator.ultimoLogin.toDate === 'function') {
+                const date = collaborator.ultimoLogin.toDate();
+                fechaUltimoLogin = date.toLocaleDateString('es-MX', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+            }
+            else if (typeof collaborator.ultimoLogin === 'string') {
+                const date = new Date(collaborator.ultimoLogin);
+                if (!isNaN(date.getTime())) {
+                    fechaUltimoLogin = date.toLocaleDateString('es-MX', {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                    });
+                }
+            }
+            else if (collaborator.ultimoLogin.seconds) {
+                const date = new Date(collaborator.ultimoLogin.seconds * 1000);
+                fechaUltimoLogin = date.toLocaleDateString('es-MX', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+            }
+            else if (collaborator.ultimoLogin instanceof Date) {
+                fechaUltimoLogin = collaborator.ultimoLogin.toLocaleDateString('es-MX', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+            }
+        } catch (e) {
+            fechaUltimoLogin = 'No disponible';
         }
     }
 
@@ -704,11 +765,15 @@ function showCollaboratorDetails(collaborator, collaboratorName) {
                                 ${isActive ? 'Activo' : 'Inactivo'}
                             </span>
                         </p>
-                        <p><strong>Organización</strong> <span>${escapeHTML(collaborator.organizacion || 'No especificado')}</span></p>
+                        <p><strong>Teléfono</strong> <span>${escapeHTML(collaborator.telefono || 'No especificado')}</span></p>
                     </div>
                     <div class="swal-detail-card">
                         <p><strong>Fecha creación</strong> <span>${fechaCreacion}</span></p>
-                        <p><strong>Plan</strong> <span>${escapeHTML(collaborator.plan || 'No especificado')}</span></p>
+                        <p><strong>Último inicio de sesión</strong> 
+                            <span>
+                                ${fechaUltimoLogin}
+                            </span>
+                        </p>
                         <p><strong>Verificado</strong> 
                             <span class="${collaborator.verificado ? 'verified' : 'not-verified'}">
                                 <i class="fas ${collaborator.verificado ? 'fa-check-circle' : 'fa-times-circle'}"></i> 

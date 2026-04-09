@@ -571,60 +571,72 @@ select.form-input-field option:any {
 
 /* ========== BOTONES ========== */
 .action-buttons {
-    display: flex;
-    gap: 1.25rem;
-    margin-top: 2.5rem;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+    margin-top: auto;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--color-border-light);
 }
 
 .action-btn {
-    flex: 1;
+    padding: 12px 30px !important;
+    font-family: var(--font-family-secondary) !important;
+    font-weight: 600 !important;
+    border-radius: var(--border-radius-medium) !important;
+    transition: all 0.3s ease !important;
+    min-width: 160px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 10px !important;
     border: none;
-    border-radius: var(--border-radius-small);
-    padding: 0.9375rem;
-    color: var(--color-text-primary);
-    font-size: 0.875rem;
-    font-weight: 600;
     cursor: pointer;
-    transition: var(--transition-default);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.625rem;
-    height: 50px;
-    text-transform: uppercase;
-    letter-spacing: 0.8px;
-    font-family: 'Rajdhani', sans-serif;
-    box-shadow: var(--shadow-small);
-    background: linear-gradient(135deg, var(--color-accent-primary), var(--color-accent-secondary));
+    position: relative;
+    overflow: hidden;
+}
+.action-btn::after {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 100%;
+    height: 200%;
+    background: linear-gradient(to bottom right, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0.1) 50%, rgba(255, 255, 255, 0) 100%);
+    transform: rotate(30deg);
+    transition: all 0.5s ease;
+    opacity: 0;
 }
 
-.action-btn:hover {
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-normal);
-    background: linear-gradient(135deg, var(--color-accent-secondary), var(--color-accent-primary));
+.action-btn:hover::after {
+    opacity: 1;
+    transform: rotate(30deg) translate(10%, 10%);
 }
 
-/* Botón REGISTRARSE (estilo específico) */
 .save-btn {
-    background: linear-gradient(135deg, var(--color-accent-primary), var(--color-accent-secondary));
-    color: var(--color-text-dark);
+    background: linear-gradient(145deg, #0f0f0f, #1a1a1a) !important;
+    border: 1px solid var(--color-accent-primary) !important;
+    color: var(--color-text-primary) !important;
 }
 
 .save-btn:hover {
-    background: linear-gradient(135deg, var(--color-accent-secondary), var(--color-accent-primary));
-    color: var(--color-text-dark);
+    background: linear-gradient(145deg, #1a1a1a, #0f0f0f) !important;
+    border-color: var(--color-accent-secondary) !important;
+    transform: translateY(-2px) !important;
+    box-shadow: 0 5px 15px rgba(47, 140, 255, 0.2) !important;
 }
 
-/* Botón CANCELAR (estilo específico) */
 .cancel-btn {
-    background: linear-gradient(135deg, var(--color-bg-tertiary), var(--color-text-secondary));
-    color: var(--color-text-primary);
-    border: 1px solid var(--color-border-light);
+    background: linear-gradient(145deg, #0f0f0f, #1a1a1a) !important;
+    border: 1px solid var(--color-border-light) !important;
+    color: var(--color-text-primary) !important;
 }
 
 .cancel-btn:hover {
-    background: linear-gradient(135deg, var(--color-text-secondary), var(--color-bg-tertiary));
-    border-color: var(--color-accent-primary);
+    background: linear-gradient(145deg, #1a1a1a, #0f0f0f) !important;
+    transform: translateY(-2px) !important;
+    border-color: var(--color-danger) !important;
+    color: var(--color-danger) !important;
 }
 
 /* Botón VOLVER AL LOGIN */
