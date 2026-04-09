@@ -13,7 +13,8 @@ import {
     where,
     orderBy,
     serverTimestamp,
-    addDoc
+    addDoc,
+    onSnapshot  // asincrono
 } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-firestore.js";
 
 import { db } from '/config/firebase-config.js';
@@ -319,7 +320,56 @@ class TareaManager {
     _getCollectionName(organizacionCamelCase) {
         return `tareas_${organizacionCamelCase}`;
     }
+// Agrega este método a la clase TareaManager en tarea.js
 
+/**
+ * NUEVO: Suscripción en tiempo real a cambios en las tareas
+ */
+suscribirATareas(organizacionCamelCase, callback) {
+    if (!organizacionCamelCase) return null;
+    
+    const collectionName = this._getCollectionName(organizacionCamelCase);
+    const tareasCollection = collection(db, collectionName);
+    const q = query(tareasCollection, orderBy("fechaCreacion", "desc"));
+    
+    // [MODIFICACIÓN]: Registrar lectura inicial
+    consumo.registrarFirestoreLectura(collectionName, 'suscripcion tiempo real');
+    
+    // Retornar unsubscribe function
+    return onSnapshot(q, async (snapshot) => {
+        const tareasActualizadas = [];
+        
+        snapshot.docChanges().forEach(change => {
+    
+            
+            // Registrar consumo por cada cambio
+            if (change.type === 'modified') {
+                consumo.registrarFirestoreActualizacion(collectionName, change.doc.id);
+            } else if (change.type === 'added') {
+                consumo.registrarFirestoreEscritura(collectionName, change.doc.id);
+            } else if (change.type === 'removed') {
+                consumo.registrarFirestoreEliminacion(collectionName, change.doc.id);
+            }
+        });
+        
+        snapshot.forEach(doc => {
+            try {
+                const tarea = new Tarea(doc.id, doc.data());
+                tareasActualizadas.push(tarea);
+            } catch (error) {
+                console.error('Error procesando tarea:', error);
+            }
+        });
+        
+        this.tareas = tareasActualizadas;
+        
+        if (callback) {
+            callback(tareasActualizadas);
+        }
+    }, (error) => {
+        console.error('Error en suscripción de tareas:', error);
+    });
+}
     // =============================================
     // MÉTODOS CRUD (MEJORADOS)
     // =============================================
