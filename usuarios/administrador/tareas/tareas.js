@@ -1,4 +1,4 @@
-// tareas.js - VERSIÓN FINAL CON CHECKLIST POR USUARIO Y CLICK EN TARJETA
+// tareas.js - VERSIÓN COMPLETAMENTE ASÍNCRONA CON TIEMPO REAL
 
 import { TareaManager } from '/clases/tarea.js';
 import { UserManager } from '/clases/user.js';
@@ -9,29 +9,38 @@ let historialManager = null;
 
 class TareasController {
     constructor() {
+        // Estado inicial
+        this.initialized = false;
+        this.initPromise = null;
+        
+        // Managers
         this.tareaManager = null;
         this.userManager = null;
         this.areaManager = null;
         this.categoriaManager = null;
         this.usuarioActual = null;
-
+        
+        // Datos
         this.todasLasTareas = [];
         this.tareasFiltradas = [];
         this.tipoActual = 'todas';
         this.terminoBusqueda = '';
         this.cargando = false;
-
+        
+        // Cachés
         this.cacheUsuarios = {};
         this.cacheAreas = {};
         this.usuariosDisponibles = [];
         this.areasDisponibles = [];
         this.categoriasDisponibles = [];
-
+        
+        // Estado del formulario
         this.modoEdicion = false;
         this.tareaActual = null;
         this.tipoSeleccionado = 'personal';
         this.itemsActuales = [];
-
+        
+        // Datos adicionales
         this.usuarios = [];
         this.usuariosFiltrados = [];
         this.areas = [];
@@ -40,379 +49,101 @@ class TareasController {
         this.cargosFiltrados = [];
         this.areaSeleccionada = null;
         this.categoriaSeleccionada = null;
-
+        
+        // Modal
         this.modalVisible = false;
         this.tareaModalActual = null;
-
+        
+        // Tiempo real
+        this.unsubscribeTareas = null;
+        this.actualizacionEnProceso = false;
+        
+        // Iniciar
         this.init();
     }
-
+    
+    // =============================================
+    // INICIALIZACIÓN ASÍNCRONA PRINCIPAL
+    // =============================================
+    
     async init() {
+        if (this.initPromise) return this.initPromise;
+        this.initPromise = this._initAsync();
+        return this.initPromise;
+    }
+    
+    async _initAsync() {
         try {
             await this._initHistorial();
-
+            
             this.userManager = new UserManager();
             this.areaManager = new AreaManager();
             this.categoriaManager = new CategoriaManager();
             const { TareaManager } = await import('/clases/tarea.js');
             this.tareaManager = new TareaManager();
-
-            await this._esperarUsuario();
-
-            if (!this.usuarioActual) {
+            
+            const usuarioObtenido = await this._obtenerUsuarioAsincrono();
+            if (!usuarioObtenido) {
                 window.location.href = '/usuarios/visitantes/inicioSesion/inicioSesion.html';
                 return;
             }
-
-            localStorage.setItem('adminInfo', JSON.stringify({
-                id: this.usuarioActual.id,
-                uid: this.usuarioActual.uid,
-                nombreCompleto: this.usuarioActual.nombreCompleto,
-                organizacion: this.usuarioActual.organizacion,
-                organizacionCamelCase: this.usuarioActual.organizacionCamelCase,
-                rol: this.usuarioActual.rol,
-                correoElectronico: this.usuarioActual.correoElectronico,
-                areaAsignadaId: this.usuarioActual.areaAsignadaId,
-                cargoId: this.usuarioActual.cargoId
-            }));
-
-            await Promise.all([
-                this._cargarUsuarios(),
-                this._cargarAreas(),
-                this._cargarCategorias()
-            ]);
-
-            await this._cargarTareas();
-
+            
+            this._guardarUsuarioEnLocalStorage();
+            
+            await this._cargarDatosAuxiliares();
+            
+            this._suscribirATareasTiempoReal();
+            
             this._configurarEventos();
             this._crearModalTarea();
-
+            
+            this.initialized = true;
+            
         } catch (error) {
+         
             this._mostrarError(error.message);
         }
     }
-
-    _crearModalTarea() {
-        // Verificar si ya existe el modal
-        if (document.getElementById('modalTareaDetalle')) return;
-
-        const modalHTML = `
-            <div id="modalTareaDetalle" class="tarea-modal">
-                <div class="tarea-modal-content">
-                    <div class="tarea-modal-header">
-                        <h3 id="modalTareaTitulo">Detalle de Nota</h3>
-                        <button class="tarea-modal-close" id="cerrarModalTarea">
-                            <i class="fas fa-times"></i>
-                        </button>
-                    </div>
-                    <div class="tarea-modal-body" id="modalTareaBody">
-                        <!-- Contenido dinámico -->
-                    </div>
-                    <div class="tarea-modal-footer" id="modalTareaFooter">
-                        <!-- Botones dinámicos -->
-                    </div>
-                </div>
-            </div>
-        `;
-
-        document.body.insertAdjacentHTML('beforeend', modalHTML);
-
-        const modal = document.getElementById('modalTareaDetalle');
-        const closeBtn = document.getElementById('cerrarModalTarea');
-
-        closeBtn.addEventListener('click', () => {
-            modal.classList.remove('show');
-            this.modalVisible = false;
-        });
-
-        window.addEventListener('click', (e) => {
-            if (e.target === modal) {
-                modal.classList.remove('show');
-                this.modalVisible = false;
-            }
-        });
-
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape' && this.modalVisible) {
-                modal.classList.remove('show');
-                this.modalVisible = false;
-            }
-        });
-    }
-
-    _abrirModalTarea(tarea) {
-        this.tareaModalActual = tarea;
-        const modal = document.getElementById('modalTareaDetalle');
-        const modalTitulo = document.getElementById('modalTareaTitulo');
-        const modalBody = document.getElementById('modalTareaBody');
-        const modalFooter = document.getElementById('modalTareaFooter');
-
-        const esCreador = tarea.creadoPor === this.usuarioActual?.id;
-        const esAdmin = this.usuarioActual.rol === 'administrador' || this.usuarioActual.rol === 'admin';
-        const puedeEditar = esCreador;
-
-        // Tipo de nota
-        const tipoClass = {
-            'global': 'tipo-general',
-            'general': 'tipo-general',
-            'personal': 'tipo-personal',
-            'compartida': 'tipo-compartida',
-            'area': 'tipo-area'
-        }[tarea.tipo] || 'tipo-general';
-
-        const tipoTexto = {
-            'global': 'General',
-            'general': 'General',
-            'personal': 'Personal',
-            'compartida': 'Compartida',
-            'area': 'Área'
-        }[tarea.tipo] || 'General';
-
-        const fecha = tarea.fechaCreacion ? new Date(tarea.fechaCreacion) : new Date();
-        const fechaStr = fecha.toLocaleDateString('es-MX', {
-            day: '2-digit', month: '2-digit', year: 'numeric',
-            hour: '2-digit', minute: '2-digit'
-        });
-
-        const fechaLimite = tarea.fechaLimite ? new Date(tarea.fechaLimite) : null;
-        const fechaLimiteStr = fechaLimite ? fechaLimite.toLocaleDateString('es-MX', {
-            day: '2-digit', month: '2-digit', year: 'numeric'
-        }) : null;
-
-        // Categoría y subcategoría
-        let categoriaNombre = 'Sin categoría';
-        let subcategoriaNombre = '';
-        
-        if (tarea.categoriaId && this.categoriasDisponibles) {
-            const categoria = this.categoriasDisponibles.find(c => c.id === tarea.categoriaId);
-            if (categoria) {
-                categoriaNombre = categoria.nombre;
-                if (tarea.subcategoriaId && categoria.subcategorias && categoria.subcategorias[tarea.subcategoriaId]) {
-                    subcategoriaNombre = categoria.subcategorias[tarea.subcategoriaId].nombre || '';
-                }
-            }
-        }
-
-        const items = tarea.items ? Object.values(tarea.items) : [];
-        const totalItems = items.length;
-        const completados = items.filter(i => i.completado).length;
-
-        // Construir lista de items con lógica de quien marcó
-        let itemsHtml = '';
-        if (items.length > 0) {
-            itemsHtml = '<div class="modal-items-list">';
-            items.forEach(item => {
-                const marcadoPor = item.marcadoPor || null;
-                const marcadoPorNombre = marcadoPor === this.usuarioActual.id ? 'tú' : (this.cacheUsuarios[marcadoPor] || 'otro usuario');
-                const puedeDesmarcar = marcadoPor === this.usuarioActual.id;
-                
-                itemsHtml += `
-                    <div class="modal-item-row ${item.completado ? 'completado' : ''}" data-item-id="${item.id}">
-                        <div class="modal-item-checkbox-wrapper">
-                            <input type="checkbox" class="modal-item-checkbox" 
-                                   data-item-id="${item.id}"
-                                   ${item.completado ? 'checked' : ''}
-                                   ${item.completado && !puedeDesmarcar ? 'disabled' : ''}>
-                        </div>
-                        <div class="modal-item-texto">${this._escapeHTML(item.texto)}</div>
-                        ${item.completado && marcadoPor ? `
-                            <div class="modal-item-marcado-por">
-                                <i class="fas fa-user-check"></i>
-                                <span>Marcado por: ${this._escapeHTML(marcadoPorNombre)}</span>
-                            </div>
-                        ` : ''}
-                    </div>
-                `;
-            });
-            itemsHtml += `
-                <div class="modal-progreso">
-                    <span class="progreso-texto">${completados}/${totalItems} completados</span>
-                    <div class="progreso-bar">
-                        <div class="progreso-fill" style="width: ${totalItems > 0 ? (completados / totalItems) * 100 : 0}%"></div>
-                    </div>
-                </div>
-            </div>`;
-        } else {
-            itemsHtml = '<p class="no-items">No hay items en el checklist</p>';
-        }
-
-        modalTitulo.innerHTML = `
-            <span class="tarea-tipo-badge ${tipoClass}" style="font-size: 12px; margin-right: 12px;">${tipoTexto}</span>
-            ${this._escapeHTML(tarea.nombreActividad || 'Sin título')}
-        `;
-
-        modalBody.innerHTML = `
-            <div class="modal-metadatos">
-                <div class="modal-categoria">
-                    <i class="fas fa-tag"></i>
-                    <span>Categoría: ${this._escapeHTML(categoriaNombre)}</span>
-                    ${subcategoriaNombre ? `<span class="tarea-subcategoria"> / ${this._escapeHTML(subcategoriaNombre)}</span>` : ''}
-                </div>
-                <div class="modal-fechas">
-                    <div class="modal-fecha-inicio">
-                        <i class="fas fa-calendar-plus"></i>
-                        <span>Creada: ${fechaStr}</span>
-                    </div>
-                    ${fechaLimiteStr ? `
-                        <div class="modal-fecha-limite">
-                            <i class="fas fa-calendar-check"></i>
-                            <span>Límite: ${fechaLimiteStr}</span>
-                        </div>
-                    ` : ''}
-                </div>
-                <div class="modal-creador">
-                    <i class="fas fa-user"></i>
-                    <span>Creador: ${this._escapeHTML(tarea.creadoPorNombre || 'Usuario')}</span>
-                    ${esCreador ? '<span class="creador-badge">(tú)</span>' : ''}
-                </div>
-            </div>
-            
-            ${tarea.descripcion ? `
-                <div class="modal-descripcion">
-                    <h4><i class="fas fa-align-left"></i> Descripción</h4>
-                    <p>${this._escapeHTML(tarea.descripcion)}</p>
-                </div>
-            ` : ''}
-            
-            <div class="modal-checklist">
-                <h4><i class="fas fa-check-square"></i> Checklist</h4>
-                ${itemsHtml}
-            </div>
-        `;
-
-        modalFooter.innerHTML = '';
-        if (puedeEditar) {
-            modalFooter.innerHTML = `
-                <button class="btn-modal-editar" id="btnModalEditar">
-                    <i class="fas fa-edit"></i> Editar Nota
-                </button>
-                <button class="btn-modal-eliminar" id="btnModalEliminar">
-                    <i class="fas fa-trash-alt"></i> Eliminar Nota
-                </button>
-            `;
-
-            document.getElementById('btnModalEditar')?.addEventListener('click', () => {
-                modal.classList.remove('show');
-                this.modalVisible = false;
-                this._abrirFormularioEdicion(tarea.id);
-            });
-
-            document.getElementById('btnModalEliminar')?.addEventListener('click', () => {
-                modal.classList.remove('show');
-                this.modalVisible = false;
-                this._eliminarTarea(tarea.id);
-            });
-        }
-
-        // Eventos de checkbox en modal
-        modalBody.querySelectorAll('.modal-item-checkbox').forEach(checkbox => {
-            checkbox.addEventListener('change', async (e) => {
-                e.stopPropagation();
-                const itemId = checkbox.dataset.itemId;
-                const completado = checkbox.checked;
-                
-                // Deshabilitar temporalmente para evitar clics múltiples
-                checkbox.disabled = true;
-                
-                await this._marcarItemModal(tarea.id, itemId, completado);
-                
-                // Recargar modal con datos actualizados
-                const tareaActualizada = await this.tareaManager.getTareaById(
-                    tarea.id, this.usuarioActual.organizacionCamelCase
-                );
-                if (tareaActualizada) {
-                    this.tareaModalActual = tareaActualizada;
-                    this._abrirModalTarea(tareaActualizada);
-                } else {
-                    checkbox.disabled = false;
-                }
-            });
-        });
-
-        modal.classList.add('show');
-        this.modalVisible = true;
-    }
-
-    async _marcarItemModal(tareaId, itemId, completado) {
-        try {
-            const tarea = this.todasLasTareas.find(t => t.id === tareaId);
-            const item = tarea?.items?.[itemId];
-            const itemTexto = item?.texto || 'Item sin texto';
-
-            // Registrar quién marcó/desmarcó
-            const marcadoPor = completado ? this.usuarioActual.id : null;
-            const marcadoPorNombre = completado ? this.usuarioActual.nombreCompleto : null;
-
-            await this.tareaManager.marcarItemTareaConAutor(
-                tareaId, itemId, completado, marcadoPor, marcadoPorNombre,
-                this.usuarioActual, this.usuarioActual.organizacionCamelCase
-            );
-
-            // Actualizar caché local
-            if (tarea && tarea.items && tarea.items[itemId]) {
-                tarea.items[itemId].completado = completado;
-                tarea.items[itemId].marcadoPor = marcadoPor;
-                tarea.items[itemId].marcadoPorNombre = marcadoPorNombre;
-                tarea._calcularProgreso();
-            }
-
-            await this._registrarMarcadoItem(tarea, itemId, itemTexto, completado);
-
-        } catch (error) {
-            console.error('Error marcando item:', error);
-            Swal.fire({
-                icon: 'error',
-                title: 'Error',
-                text: error.message || 'No se pudo actualizar el item',
-                timer: 2000,
-                showConfirmButton: false,
-                background: 'var(--color-bg-secondary)'
-            });
-        }
-    }
-
+    
     async _initHistorial() {
         try {
             const { HistorialUsuarioManager } = await import('/clases/historialUsuario.js');
             historialManager = new HistorialUsuarioManager();
         } catch (error) {
-            console.error('Error inicializando historialManager:', error);
+  
         }
     }
-
-    async _registrarMarcadoItem(tarea, itemId, itemTexto, completado) {
-        if (!historialManager) return;
-        try {
-            await historialManager.registrarActividad({
-                usuario: this.usuarioActual,
-                tipo: 'editar',
-                modulo: 'tareas',
-                descripcion: completado ? 
-                    `Marcó como completado item en nota "${tarea.nombreActividad}"` : 
-                    `Desmarcó item en nota "${tarea.nombreActividad}"`,
-                detalles: {
-                    tareaId: tarea.id,
-                    tareaTitulo: tarea.nombreActividad,
-                    itemId: itemId,
-                    itemTexto: itemTexto
-                }
-            });
-        } catch (error) {
-            console.error('Error registrando marcado de item:', error);
-        }
-    }
-
-    async _esperarUsuario() {
-        for (let i = 0; i < 30; i++) {
+    
+    async _obtenerUsuarioAsincrono() {
+        let intentos = 0;
+        const maxIntentos = 50;
+        
+        while (intentos < maxIntentos) {
             if (this.userManager.currentUser) {
                 this.usuarioActual = this.userManager.currentUser;
                 return true;
             }
             await new Promise(resolve => setTimeout(resolve, 100));
+            intentos++;
         }
+        
         return this._cargarUsuarioLocalStorage();
     }
-
+    
+    _guardarUsuarioEnLocalStorage() {
+        localStorage.setItem('adminInfo', JSON.stringify({
+            id: this.usuarioActual.id,
+            uid: this.usuarioActual.uid,
+            nombreCompleto: this.usuarioActual.nombreCompleto,
+            organizacion: this.usuarioActual.organizacion,
+            organizacionCamelCase: this.usuarioActual.organizacionCamelCase,
+            rol: this.usuarioActual.rol,
+            correoElectronico: this.usuarioActual.correoElectronico,
+            areaAsignadaId: this.usuarioActual.areaAsignadaId,
+            cargoId: this.usuarioActual.cargoId
+        }));
+    }
+    
     _cargarUsuarioLocalStorage() {
         try {
             const adminInfo = localStorage.getItem('adminInfo');
@@ -436,61 +167,123 @@ class TareasController {
             return false;
         }
     }
-
-    _generarCamelCase(texto) {
-        if (!texto) return 'sinOrganizacion';
-        return texto.toLowerCase().replace(/[^a-zA-Z0-9]+(.)/g, (m, chr) => chr.toUpperCase()).replace(/[^a-zA-Z0-9]/g, '');
+    
+    async _cargarDatosAuxiliares() {
+        this._mostrarCarga();
+        
+        const [usuarios, areas, categorias] = await Promise.all([
+            this._cargarUsuariosAsync(),
+            this._cargarAreasAsync(),
+            this._cargarCategoriasAsync()
+        ]);
+        
+        this.usuariosDisponibles = usuarios;
+        this.areasDisponibles = areas;
+        this.categoriasDisponibles = categorias;
     }
-
-    async _cargarUsuarios() {
+    
+    async _cargarUsuariosAsync() {
         try {
-            if (!this.usuarioActual?.organizacionCamelCase) return;
-
+            if (!this.usuarioActual?.organizacionCamelCase) return [];
+            
             const colaboradores = await this.userManager.getColaboradoresByOrganizacion(
                 this.usuarioActual.organizacionCamelCase, true
             );
             const administradores = await this.userManager.getAdministradores(true);
-
-            this.usuariosDisponibles = [
+            
+            const usuarios = [
                 ...colaboradores.filter(u => u.id !== this.usuarioActual.id),
-                ...administradores.filter(a => a.organizacionCamelCase === this.usuarioActual.organizacionCamelCase && a.id !== this.usuarioActual.id)
+                ...administradores.filter(a => 
+                    a.organizacionCamelCase === this.usuarioActual.organizacionCamelCase && 
+                    a.id !== this.usuarioActual.id
+                )
             ];
-
-            this.usuariosDisponibles.forEach(u => {
+            
+            usuarios.forEach(u => {
                 this.cacheUsuarios[u.id] = u.nombreCompleto || 'Usuario';
             });
-
-        } catch (error) {
-            this.usuariosDisponibles = [];
-        }
-    }
-
-    async _cargarAreas() {
-        try {
-            if (!this.usuarioActual?.organizacionCamelCase) return;
-
-            this.areasDisponibles = await this.areaManager.getAreasByOrganizacion(
-                this.usuarioActual.organizacionCamelCase
-            );
-            this.areasDisponibles = this.areasDisponibles.filter(a => a.estado === 'activa');
-
-        } catch (error) {
-            this.areasDisponibles = [];
-        }
-    }
-
-    async _cargarCategorias() {
-        try {
-            if (!this.usuarioActual?.organizacionCamelCase) return;
             
-            this.categoriasDisponibles = await this.categoriaManager.obtenerCategoriasPorOrganizacion(
-                this.usuarioActual.organizacionCamelCase
-            );
+            return usuarios;
+            
         } catch (error) {
-            this.categoriasDisponibles = [];
+        
+            return [];
         }
     }
-
+    
+    async _cargarAreasAsync() {
+        try {
+            if (!this.usuarioActual?.organizacionCamelCase) return [];
+            
+            const areas = await this.areaManager.getAreasByOrganizacion(
+                this.usuarioActual.organizacionCamelCase
+            );
+            
+            return areas.filter(a => a.estado === 'activa');
+            
+        } catch (error) {
+         
+            return [];
+        }
+    }
+    
+    async _cargarCategoriasAsync() {
+        try {
+            if (!this.usuarioActual?.organizacionCamelCase) return [];
+            
+            return await this.categoriaManager.obtenerCategoriasPorOrganizacion(
+                this.usuarioActual.organizacionCamelCase
+            );
+            
+        } catch (error) {
+      
+            return [];
+        }
+    }
+    
+    _suscribirATareasTiempoReal() {
+        if (!this.usuarioActual?.organizacionCamelCase) return;
+        
+        if (this.unsubscribeTareas) {
+            this.unsubscribeTareas();
+        }
+        
+        this.unsubscribeTareas = this.tareaManager.suscribirATareas(
+            this.usuarioActual.organizacionCamelCase,
+            (tareasActualizadas) => {
+                const tareasVisibles = tareasActualizadas.filter(tarea => 
+                    this._esTareaVisible(tarea)
+                );
+                
+                this.todasLasTareas = tareasVisibles;
+                this._aplicarFiltros();
+                this._mostrarNotificacionCambio();
+            }
+        );
+    }
+    
+    _mostrarNotificacionCambio() {
+        if (this.actualizacionEnProceso) return;
+        
+        this.actualizacionEnProceso = true;
+        
+        const grid = document.getElementById('tareasGrid');
+        if (grid) {
+            grid.style.opacity = '0.7';
+            setTimeout(() => {
+                if (grid) grid.style.opacity = '1';
+            }, 300);
+        }
+        
+        setTimeout(() => {
+            this.actualizacionEnProceso = false;
+        }, 500);
+    }
+    
+    // =============================================
+    // VISIBILIDAD
+    // =============================================
+    
     _esTareaVisible(tarea) {
         const esCreador = tarea.creadoPor === this.usuarioActual.id;
         const esAdmin = this.usuarioActual.rol === 'administrador' || this.usuarioActual.rol === 'admin';
@@ -524,45 +317,22 @@ class TareasController {
         
         return false;
     }
-
-    async _cargarTareas() {
-        if (this.cargando) return;
-        this.cargando = true;
-
-        try {
-            if (!this.usuarioActual?.organizacionCamelCase) {
-                throw new Error('No hay organización definida');
-            }
-
-            this._mostrarCarga();
-
-            const todasLasTareas = await this.tareaManager.getTodasLasTareas(
-                this.usuarioActual.organizacionCamelCase
-            );
-
-            this.todasLasTareas = todasLasTareas.filter(tarea => this._esTareaVisible(tarea));
-
-            console.log(`📋 Total tareas en org: ${todasLasTareas.length}, Visibles para ${this.usuarioActual.nombreCompleto} (${this.usuarioActual.rol}): ${this.todasLasTareas.length}`);
-
-            this._aplicarFiltros();
-
-        } catch (error) {
-            this._mostrarErrorEnGrid(error.message);
-        } finally {
-            this.cargando = false;
-        }
-    }
-
+    
+    // =============================================
+    // FILTRADO Y RENDERIZADO
+    // =============================================
+    
     _aplicarFiltros() {
         let tareasFiltradas = [...this.todasLasTareas];
-
+        
         if (this.terminoBusqueda && this.terminoBusqueda.length >= 2) {
+            const term = this.terminoBusqueda.toLowerCase();
             tareasFiltradas = tareasFiltradas.filter(t =>
-                (t.nombreActividad && t.nombreActividad.toLowerCase().includes(this.terminoBusqueda)) ||
-                (t.descripcion && t.descripcion.toLowerCase().includes(this.terminoBusqueda))
+                (t.nombreActividad && t.nombreActividad.toLowerCase().includes(term)) ||
+                (t.descripcion && t.descripcion.toLowerCase().includes(term))
             );
         }
-
+        
         if (this.tipoActual !== 'todas') {
             tareasFiltradas = tareasFiltradas.filter(t => {
                 if (this.tipoActual === 'generales') {
@@ -580,34 +350,32 @@ class TareasController {
                 return true;
             });
         }
-
+        
         tareasFiltradas.sort((a, b) => b.fechaCreacion - a.fechaCreacion);
-
+        
         this.tareasFiltradas = tareasFiltradas;
         this._renderizarTareas();
     }
-
+    
     _renderizarTareas() {
         const container = document.getElementById('tareasGrid');
         if (!container) return;
-
+        
         if (!this.tareasFiltradas || this.tareasFiltradas.length === 0) {
             container.innerHTML = this._getEmptyStateHTML();
             return;
         }
-
+        
         let html = '';
         this.tareasFiltradas.forEach(tarea => {
             html += this._crearTarjetaNota(tarea);
         });
-
+        
         container.innerHTML = html;
-
-        // Evento de clic en tarjeta para abrir modal
+        
         container.querySelectorAll('.tarea-card').forEach(card => {
             const tareaId = card.dataset.tareaId;
             card.addEventListener('click', (e) => {
-                // No abrir modal si se hizo clic en botones internos
                 if (e.target.closest('.btn-card-action')) return;
                 if (e.target.closest('.tarea-item-checkbox')) return;
                 
@@ -617,27 +385,40 @@ class TareasController {
                 }
             });
         });
-
-        // Eventos de edición y eliminación (solo para creador)
+        
         container.querySelectorAll('.btn-card-action.edit').forEach(btn => {
-            btn.addEventListener('click', (e) => {
+            btn.addEventListener('click', async (e) => {
                 e.preventDefault();
                 e.stopPropagation();
                 const tareaId = btn.dataset.id;
-                this._abrirFormularioEdicion(tareaId);
+                await this._abrirFormularioEdicion(tareaId);
             });
         });
-
+        
         container.querySelectorAll('.btn-card-action.delete').forEach(btn => {
-            btn.addEventListener('click', (e) => {
+            btn.addEventListener('click', async (e) => {
                 e.preventDefault();
                 e.stopPropagation();
                 const tareaId = btn.dataset.id;
-                this._eliminarTarea(tareaId);
+                await this._eliminarTarea(tareaId);
+            });
+        });
+        
+        // Eventos de checkbox en tarjetas
+        container.querySelectorAll('.tarea-item-checkbox').forEach(checkbox => {
+            checkbox.addEventListener('change', async (e) => {
+                e.stopPropagation();
+                const tareaId = checkbox.dataset.tareaId;
+                const itemId = checkbox.dataset.itemId;
+                const completado = checkbox.checked;
+                
+                checkbox.disabled = true;
+                await this._marcarItem(tareaId, itemId, completado);
+                checkbox.disabled = false;
             });
         });
     }
-
+    
     _crearTarjetaNota(tarea) {
         const tipoClass = {
             'global': 'tipo-general',
@@ -646,7 +427,7 @@ class TareasController {
             'compartida': 'tipo-compartida',
             'area': 'tipo-area'
         }[tarea.tipo] || 'tipo-general';
-
+        
         const tipoTexto = {
             'global': 'General',
             'general': 'General',
@@ -654,21 +435,21 @@ class TareasController {
             'compartida': 'Compartida',
             'area': 'Área'
         }[tarea.tipo] || 'General';
-
+        
         const fecha = tarea.fechaCreacion ? new Date(tarea.fechaCreacion) : new Date();
         const fechaStr = fecha.toLocaleDateString('es-MX', {
             day: '2-digit', month: '2-digit', year: 'numeric',
             hour: '2-digit', minute: '2-digit'
         });
-
+        
         const fechaLimite = tarea.fechaLimite ? new Date(tarea.fechaLimite) : null;
         const fechaLimiteStr = fechaLimite ? fechaLimite.toLocaleDateString('es-MX', {
             day: '2-digit', month: '2-digit', year: 'numeric'
         }) : null;
-
+        
         const esCreador = tarea.creadoPor === this.usuarioActual?.id;
         const puedeEditar = esCreador;
-
+        
         let categoriaNombre = 'Sin categoría';
         let subcategoriaNombre = '';
         
@@ -681,17 +462,18 @@ class TareasController {
                 }
             }
         }
-
+        
         const items = tarea.items ? Object.values(tarea.items) : [];
         const totalItems = items.length;
         const completados = items.filter(i => i.completado).length;
-
+        
         let itemsPreview = '';
         if (items.length > 0) {
             itemsPreview = '<div class="tarea-items-preview">';
             items.slice(0, 3).forEach(item => {
-                // Verificar si el usuario actual puede desmarcar este item
                 const puedeDesmarcar = item.completado ? (item.marcadoPor === this.usuarioActual.id) : true;
+                const marcadoPorTexto = item.completado && item.marcadoPorNombre ? 
+                    ` <small style="font-size: 10px; color: var(--color-text-dim);">(por: ${this._escapeHTML(item.marcadoPorNombre)})</small>` : '';
                 
                 itemsPreview += `
                     <div class="tarea-item-preview ${item.completado ? 'completado' : ''}">
@@ -700,7 +482,7 @@ class TareasController {
                                data-item-id="${item.id}"
                                ${item.completado ? 'checked' : ''}
                                ${item.completado && !puedeDesmarcar ? 'disabled' : ''}>
-                        <span>${this._escapeHTML(item.texto)}</span>
+                        <span>${this._escapeHTML(item.texto)}${marcadoPorTexto}</span>
                     </div>
                 `;
             });
@@ -716,7 +498,7 @@ class TareasController {
                 </div>
             </div>`;
         }
-
+        
         return `
             <div class="tarea-card" data-tarea-id="${tarea.id}">
                 <div class="tarea-header">
@@ -771,58 +553,325 @@ class TareasController {
             </div>
         `;
     }
-
-    // ========== FUNCIONES DEL FORMULARIO ==========
-
-    _mostrarFormularioCreacion() {
+    
+    async _marcarItem(tareaId, itemId, completado) {
+        try {
+            const marcadoPor = completado ? this.usuarioActual.id : null;
+            const marcadoPorNombre = completado ? this.usuarioActual.nombreCompleto : null;
+            
+            await this.tareaManager.marcarItemTareaConAutor(
+                tareaId, itemId, completado, marcadoPor, marcadoPorNombre,
+                this.usuarioActual, this.usuarioActual.organizacionCamelCase
+            );
+            
+        } catch (error) {
+      
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: error.message || 'No se pudo actualizar el item',
+                timer: 2000,
+                showConfirmButton: false,
+                background: 'var(--color-bg-secondary)'
+            });
+        }
+    }
+    
+    // =============================================
+    // MODAL
+    // =============================================
+    
+    _crearModalTarea() {
+        if (document.getElementById('modalTareaDetalle')) return;
+        
+        const modalHTML = `
+            <div id="modalTareaDetalle" class="tarea-modal">
+                <div class="tarea-modal-content">
+                    <div class="tarea-modal-header">
+                        <h3 id="modalTareaTitulo">Detalle de Nota</h3>
+                        <button class="tarea-modal-close" id="cerrarModalTarea">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <div class="tarea-modal-body" id="modalTareaBody"></div>
+                    <div class="tarea-modal-footer" id="modalTareaFooter"></div>
+                </div>
+            </div>
+        `;
+        
+        document.body.insertAdjacentHTML('beforeend', modalHTML);
+        
+        const modal = document.getElementById('modalTareaDetalle');
+        const closeBtn = document.getElementById('cerrarModalTarea');
+        
+        closeBtn.addEventListener('click', () => {
+            modal.classList.remove('show');
+            this.modalVisible = false;
+        });
+        
+        window.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                modal.classList.remove('show');
+                this.modalVisible = false;
+            }
+        });
+        
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && this.modalVisible) {
+                modal.classList.remove('show');
+                this.modalVisible = false;
+            }
+        });
+    }
+    
+    _abrirModalTarea(tarea) {
+        this.tareaModalActual = tarea;
+        const modal = document.getElementById('modalTareaDetalle');
+        const modalTitulo = document.getElementById('modalTareaTitulo');
+        const modalBody = document.getElementById('modalTareaBody');
+        const modalFooter = document.getElementById('modalTareaFooter');
+        
+        const esCreador = tarea.creadoPor === this.usuarioActual?.id;
+        const puedeEditar = esCreador;
+        
+        const tipoClass = {
+            'global': 'tipo-general',
+            'general': 'tipo-general',
+            'personal': 'tipo-personal',
+            'compartida': 'tipo-compartida',
+            'area': 'tipo-area'
+        }[tarea.tipo] || 'tipo-general';
+        
+        const tipoTexto = {
+            'global': 'General',
+            'general': 'General',
+            'personal': 'Personal',
+            'compartida': 'Compartida',
+            'area': 'Área'
+        }[tarea.tipo] || 'General';
+        
+        const fecha = tarea.fechaCreacion ? new Date(tarea.fechaCreacion) : new Date();
+        const fechaStr = fecha.toLocaleDateString('es-MX', {
+            day: '2-digit', month: '2-digit', year: 'numeric',
+            hour: '2-digit', minute: '2-digit'
+        });
+        
+        const fechaLimite = tarea.fechaLimite ? new Date(tarea.fechaLimite) : null;
+        const fechaLimiteStr = fechaLimite ? fechaLimite.toLocaleDateString('es-MX', {
+            day: '2-digit', month: '2-digit', year: 'numeric'
+        }) : null;
+        
+        let categoriaNombre = 'Sin categoría';
+        let subcategoriaNombre = '';
+        
+        if (tarea.categoriaId && this.categoriasDisponibles) {
+            const categoria = this.categoriasDisponibles.find(c => c.id === tarea.categoriaId);
+            if (categoria) {
+                categoriaNombre = categoria.nombre;
+                if (tarea.subcategoriaId && categoria.subcategorias && categoria.subcategorias[tarea.subcategoriaId]) {
+                    subcategoriaNombre = categoria.subcategorias[tarea.subcategoriaId].nombre || '';
+                }
+            }
+        }
+        
+        const items = tarea.items ? Object.values(tarea.items) : [];
+        const totalItems = items.length;
+        const completados = items.filter(i => i.completado).length;
+        
+        let itemsHtml = '';
+        if (items.length > 0) {
+            itemsHtml = '<div class="modal-items-list">';
+            items.forEach(item => {
+                const marcadoPor = item.marcadoPor || null;
+                const marcadoPorNombre = marcadoPor === this.usuarioActual.id ? 'tú' : (this.cacheUsuarios[marcadoPor] || 'otro usuario');
+                const puedeDesmarcar = marcadoPor === this.usuarioActual.id;
+                
+                itemsHtml += `
+                    <div class="modal-item-row ${item.completado ? 'completado' : ''}" data-item-id="${item.id}">
+                        <div class="modal-item-checkbox-wrapper">
+                            <input type="checkbox" class="modal-item-checkbox" 
+                                   data-item-id="${item.id}"
+                                   ${item.completado ? 'checked' : ''}
+                                   ${item.completado && !puedeDesmarcar ? 'disabled' : ''}>
+                        </div>
+                        <div class="modal-item-texto">${this._escapeHTML(item.texto)}</div>
+                        ${item.completado && marcadoPor ? `
+                            <div class="modal-item-marcado-por">
+                                <i class="fas fa-user-check"></i>
+                                <span>Marcado por: ${this._escapeHTML(marcadoPorNombre)}</span>
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+            });
+            itemsHtml += `
+                <div class="modal-progreso">
+                    <span class="progreso-texto">${completados}/${totalItems} completados</span>
+                    <div class="progreso-bar">
+                        <div class="progreso-fill" style="width: ${totalItems > 0 ? (completados / totalItems) * 100 : 0}%"></div>
+                    </div>
+                </div>
+            </div>`;
+        } else {
+            itemsHtml = '<p class="no-items">No hay items en el checklist</p>';
+        }
+        
+        modalTitulo.innerHTML = `
+            <span class="tarea-tipo-badge ${tipoClass}" style="font-size: 12px; margin-right: 12px;">${tipoTexto}</span>
+            ${this._escapeHTML(tarea.nombreActividad || 'Sin título')}
+        `;
+        
+        modalBody.innerHTML = `
+            <div class="modal-metadatos">
+                <div class="modal-categoria">
+                    <i class="fas fa-tag"></i>
+                    <span>Categoría: ${this._escapeHTML(categoriaNombre)}</span>
+                    ${subcategoriaNombre ? `<span class="tarea-subcategoria"> / ${this._escapeHTML(subcategoriaNombre)}</span>` : ''}
+                </div>
+                <div class="modal-fechas">
+                    <div class="modal-fecha-inicio">
+                        <i class="fas fa-calendar-plus"></i>
+                        <span>Creada: ${fechaStr}</span>
+                    </div>
+                    ${fechaLimiteStr ? `
+                        <div class="modal-fecha-limite">
+                            <i class="fas fa-calendar-check"></i>
+                            <span>Límite: ${fechaLimiteStr}</span>
+                        </div>
+                    ` : ''}
+                </div>
+                <div class="modal-creador">
+                    <i class="fas fa-user"></i>
+                    <span>Creador: ${this._escapeHTML(tarea.creadoPorNombre || 'Usuario')}</span>
+                    ${esCreador ? '<span class="creador-badge">(tú)</span>' : ''}
+                </div>
+            </div>
+            
+            ${tarea.descripcion ? `
+                <div class="modal-descripcion">
+                    <h4><i class="fas fa-align-left"></i> Descripción</h4>
+                    <p>${this._escapeHTML(tarea.descripcion)}</p>
+                </div>
+            ` : ''}
+            
+            <div class="modal-checklist">
+                <h4><i class="fas fa-check-square"></i> Checklist</h4>
+                ${itemsHtml}
+            </div>
+        `;
+        
+        modalFooter.innerHTML = '';
+        if (puedeEditar) {
+            modalFooter.innerHTML = `
+                <button class="btn-modal-editar" id="btnModalEditar">
+                    <i class="fas fa-edit"></i> Editar Nota
+                </button>
+                <button class="btn-modal-eliminar" id="btnModalEliminar">
+                    <i class="fas fa-trash-alt"></i> Eliminar Nota
+                </button>
+            `;
+            
+            document.getElementById('btnModalEditar')?.addEventListener('click', async () => {
+                modal.classList.remove('show');
+                this.modalVisible = false;
+                await this._abrirFormularioEdicion(tarea.id);
+            });
+            
+            document.getElementById('btnModalEliminar')?.addEventListener('click', async () => {
+                modal.classList.remove('show');
+                this.modalVisible = false;
+                await this._eliminarTarea(tarea.id);
+            });
+        }
+        
+        modalBody.querySelectorAll('.modal-item-checkbox').forEach(checkbox => {
+            checkbox.addEventListener('change', async (e) => {
+                e.stopPropagation();
+                const itemId = checkbox.dataset.itemId;
+                const completado = checkbox.checked;
+                checkbox.disabled = true;
+                await this._marcarItem(tarea.id, itemId, completado);
+            });
+        });
+        
+        modal.classList.add('show');
+        this.modalVisible = true;
+    }
+    
+    // =============================================
+    // FORMULARIO
+    // =============================================
+    
+    async _mostrarFormularioCreacion() {
+        await this._asegurarDatosCargados();
+        
         this.modoEdicion = false;
         this.tareaActual = null;
         this.tipoSeleccionado = 'personal';
         this.areaSeleccionada = null;
         this.categoriaSeleccionada = null;
         this.itemsActuales = [];
-
+        
+        this._limpiarCamposFormulario();
+        this._renderizarItemsInline([]);
+        this._seleccionarTipoFormulario('personal');
+        
+        const formulario = document.getElementById('formularioCreacion');
+        if (formulario) formulario.style.display = 'block';
+        
+        setTimeout(() => {
+            if (formulario) formulario.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            const tituloInput = document.getElementById('notaTitulo');
+            if (tituloInput) tituloInput.focus();
+        }, 100);
+    }
+    
+    async _asegurarDatosCargados() {
+        if (this.usuariosDisponibles.length > 0 && this.areasDisponibles.length > 0) {
+            return;
+        }
+        
+        Swal.fire({
+            title: 'Cargando datos...',
+            html: '<i class="fas fa-spinner fa-spin"></i>',
+            allowOutsideClick: false,
+            showConfirmButton: false,
+            background: 'var(--color-bg-secondary)'
+        });
+        
+        try {
+            await this._cargarDatosAuxiliares();
+            Swal.close();
+        } catch (error) {
+            Swal.close();
+            this._mostrarError('Error cargando datos necesarios');
+        }
+    }
+    
+    _limpiarCamposFormulario() {
         const notaId = document.getElementById('notaId');
         const notaTitulo = document.getElementById('notaTitulo');
         const notaDescripcion = document.getElementById('notaDescripcion');
         const tieneRecordatorio = document.getElementById('tieneRecordatorio');
         const fechaLimite = document.getElementById('fechaLimite');
         const fechaContainer = document.getElementById('fechaContainer');
-        const categoriaNota = document.getElementById('categoriaNota');
-        const subcategoriaNota = document.getElementById('subcategoriaNota');
-
+        
         if (notaId) notaId.value = '';
         if (notaTitulo) notaTitulo.value = '';
         if (notaDescripcion) notaDescripcion.value = '';
         if (tieneRecordatorio) tieneRecordatorio.checked = false;
         if (fechaLimite) fechaLimite.value = this._getFechaPorDefecto('personal');
         if (fechaContainer) fechaContainer.style.display = 'none';
-        if (categoriaNota) categoriaNota.value = '';
-        if (subcategoriaNota) {
-            subcategoriaNota.innerHTML = '<option value="">-- Selecciona subcategoría --</option>';
-            subcategoriaNota.disabled = true;
-        }
-
-        this._renderizarItemsInline([]);
-        this._seleccionarTipoFormulario('personal');
-
-        const formulario = document.getElementById('formularioCreacion');
-        if (formulario) formulario.style.display = 'block';
-
-        setTimeout(() => {
-            if (formulario) formulario.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            if (notaTitulo) notaTitulo.focus();
-        }, 100);
     }
-
+    
     _ocultarFormulario() {
         const formulario = document.getElementById('formularioCreacion');
         if (formulario) formulario.style.display = 'none';
     }
-
+    
     _seleccionarTipoFormulario(tipo) {
         this.tipoSeleccionado = tipo;
-
+        
         document.querySelectorAll('.tipo-option').forEach(opt => {
             if (opt.dataset.tipo === tipo) {
                 opt.classList.add('seleccionado');
@@ -830,7 +879,7 @@ class TareasController {
                 opt.classList.remove('seleccionado');
             }
         });
-
+        
         const titulos = {
             'general': 'Nueva Nota General',
             'personal': 'Nueva Nota Personal',
@@ -839,18 +888,18 @@ class TareasController {
         };
         const formularioTitulo = document.getElementById('formularioTitulo');
         if (formularioTitulo) formularioTitulo.textContent = titulos[tipo] || 'Nueva Nota';
-
-        this._renderizarCamposEspecificosInline(tipo);
+        
+        this._renderizarCamposEspecificos(tipo);
         this._actualizarFechaPorDefecto();
     }
-
+    
     _actualizarFechaPorDefecto() {
         const fechaInput = document.getElementById('fechaLimite');
         if (fechaInput) {
             fechaInput.value = this._getFechaPorDefecto(this.tipoSeleccionado);
         }
     }
-
+    
     _getFechaPorDefecto(tipo) {
         const fecha = new Date();
         switch (tipo) {
@@ -860,14 +909,14 @@ class TareasController {
         }
         return fecha.toISOString().split('T')[0];
     }
-
+    
     _agregarItemFormulario() {
         const itemsList = document.getElementById('itemsList');
         if (!itemsList) return;
-
+        
         const noItems = itemsList.querySelector('.no-items');
         if (noItems) noItems.remove();
-
+        
         const newItemId = `item_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
         const html = `
             <div class="item-row" data-item-id="${newItemId}">
@@ -878,15 +927,15 @@ class TareasController {
                 </button>
             </div>
         `;
-
+        
         itemsList.insertAdjacentHTML('beforeend', html);
-
+        
         const newRow = itemsList.lastElementChild;
         const input = newRow.querySelector('.item-texto');
         const deleteBtn = newRow.querySelector('.btn-eliminar-item');
-
+        
         if (input) input.focus();
-
+        
         if (deleteBtn) {
             deleteBtn.addEventListener('click', (e) => {
                 e.preventDefault();
@@ -894,16 +943,16 @@ class TareasController {
             });
         }
     }
-
+    
     _renderizarItemsInline(items) {
         const container = document.getElementById('itemsList');
         if (!container) return;
-
+        
         if (!items || items.length === 0) {
             container.innerHTML = '<p class="no-items">No hay items. Agrega uno nuevo.</p>';
             return;
         }
-
+        
         let html = '';
         items.forEach(item => {
             html += `
@@ -916,9 +965,9 @@ class TareasController {
                 </div>
             `;
         });
-
+        
         container.innerHTML = html;
-
+        
         container.querySelectorAll('.item-checkbox').forEach(cb => {
             cb.addEventListener('change', (e) => {
                 const row = e.target.closest('.item-row');
@@ -934,7 +983,7 @@ class TareasController {
                 }
             });
         });
-
+        
         container.querySelectorAll('.btn-eliminar-item').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 e.preventDefault();
@@ -943,39 +992,39 @@ class TareasController {
             });
         });
     }
-
-    _renderizarCamposEspecificosInline(tipo) {
+    
+    _renderizarCamposEspecificos(tipo) {
         const container = document.getElementById('camposEspecificos');
         if (!container) return;
-
+        
         let html = '';
         html += this._getHTMLCategorias();
-
+        
         switch (tipo) {
             case 'personal':
                 break;
             case 'compartida':
-                html += this._getHTMLUsuariosCreacion();
+                html += this._getHTMLUsuarios();
                 break;
             case 'area':
-                html += this._getHTMLAreasCreacion();
+                html += this._getHTMLAreas();
                 break;
             case 'general':
                 html += this._getHTMLGeneral();
                 break;
         }
-
+        
         container.innerHTML = html;
-
-        if (tipo === 'compartida' && html.includes('usuariosContainer')) {
-            this._configurarSelectorUsuariosCreacion();
-        } else if (tipo === 'area' && html.includes('areasContainer')) {
-            this._configurarSelectorAreasCreacion();
+        
+        if (tipo === 'compartida') {
+            this._configurarSelectorUsuarios();
+        } else if (tipo === 'area') {
+            this._configurarSelectorAreas();
         }
-
+        
         this._configurarSelectorCategorias();
     }
-
+    
     _getHTMLCategorias() {
         if (this.categoriasDisponibles.length === 0) {
             return `
@@ -994,12 +1043,12 @@ class TareasController {
                 </div>
             `;
         }
-
+        
         let options = '<option value="">Sin categoría</option>';
         this.categoriasDisponibles.forEach(cat => {
             options += `<option value="${cat.id}">${this._escapeHTML(cat.nombre)}</option>`;
         });
-
+        
         return `
             <div class="form-field">
                 <label class="form-label">Categoría</label>
@@ -1015,13 +1064,13 @@ class TareasController {
             </div>
         `;
     }
-
+    
     _configurarSelectorCategorias() {
         const categoriaSelect = document.getElementById('categoriaNota');
         const subcategoriaSelect = document.getElementById('subcategoriaNota');
-
+        
         if (!categoriaSelect) return;
-
+        
         categoriaSelect.addEventListener('change', async (e) => {
             const categoriaId = e.target.value;
             
@@ -1032,7 +1081,7 @@ class TareasController {
                 }
                 return;
             }
-
+            
             const categoria = this.categoriasDisponibles.find(c => c.id === categoriaId);
             if (!categoria || !categoria.subcategorias || Object.keys(categoria.subcategorias).length === 0) {
                 if (subcategoriaSelect) {
@@ -1041,24 +1090,24 @@ class TareasController {
                 }
                 return;
             }
-
+            
             let options = '<option value="">-- Selecciona subcategoría --</option>';
             Object.values(categoria.subcategorias).forEach(sub => {
                 options += `<option value="${sub.id}">${this._escapeHTML(sub.nombre)}</option>`;
             });
-
+            
             if (subcategoriaSelect) {
                 subcategoriaSelect.innerHTML = options;
                 subcategoriaSelect.disabled = false;
             }
         });
     }
-
-    _getHTMLUsuariosCreacion() {
+    
+    _getHTMLUsuarios() {
         if (this.usuariosDisponibles.length === 0) {
             return '<p class="no-items">No hay usuarios disponibles</p>';
         }
-
+        
         let html = `
             <div class="campos-especificos">
                 <h6 class="section-title"><i class="fas fa-users"></i> Compartir con usuarios</h6>
@@ -1074,7 +1123,7 @@ class TareasController {
                 
                 <div class="usuarios-container" id="usuariosContainer">
         `;
-
+        
         this.usuariosDisponibles.forEach(usuario => {
             const iniciales = this._obtenerIniciales(usuario.nombreCompleto);
             html += `
@@ -1088,7 +1137,7 @@ class TareasController {
                 </div>
             `;
         });
-
+        
         html += `
                 </div>
                 <div class="selected-summary" id="selectedUsersSummary">
@@ -1097,17 +1146,17 @@ class TareasController {
                 </div>
             </div>
         `;
-
+        
         return html;
     }
-
-    _configurarSelectorUsuariosCreacion() {
+    
+    _configurarSelectorUsuarios() {
         const container = document.getElementById('usuariosContainer');
         if (!container) return;
-
+        
         container.querySelectorAll('.usuario-item').forEach(item => {
             const checkbox = item.querySelector('.usuario-checkbox');
-
+            
             item.addEventListener('click', (e) => {
                 if (e.target !== checkbox) {
                     checkbox.checked = !checkbox.checked;
@@ -1115,16 +1164,16 @@ class TareasController {
                 }
                 this._actualizarContadorUsuarios();
             });
-
+            
             checkbox.addEventListener('change', (e) => {
                 this._actualizarEstiloItem(item, e.target.checked);
                 this._actualizarContadorUsuarios();
             });
         });
-
+        
         const seleccionarTodos = document.getElementById('seleccionarTodosUsuarios');
         const deseleccionarTodos = document.getElementById('deseleccionarTodosUsuarios');
-
+        
         if (seleccionarTodos) {
             seleccionarTodos.addEventListener('click', () => {
                 container.querySelectorAll('.usuario-checkbox').forEach(cb => {
@@ -1134,7 +1183,7 @@ class TareasController {
                 this._actualizarContadorUsuarios();
             });
         }
-
+        
         if (deseleccionarTodos) {
             deseleccionarTodos.addEventListener('click', () => {
                 container.querySelectorAll('.usuario-checkbox').forEach(cb => {
@@ -1144,26 +1193,26 @@ class TareasController {
                 this._actualizarContadorUsuarios();
             });
         }
-
+        
         this._actualizarContadorUsuarios();
     }
-
-    _getHTMLAreasCreacion() {
+    
+    _getHTMLAreas() {
         if (this.areasDisponibles.length === 0) {
             return '<p class="no-items">No hay áreas disponibles</p>';
         }
-
+        
         let html = `
             <div class="campos-especificos">
                 <h6 class="section-title"><i class="fas fa-building"></i> Asignar a Área</h6>
                 
                 <div class="areas-container" id="areasContainer">
         `;
-
+        
         this.areasDisponibles.forEach(area => {
             const iniciales = this._obtenerIniciales(area.nombreArea);
             const totalCargos = area.cargos ? Object.keys(area.cargos).length : 0;
-
+            
             html += `
                 <div class="area-item" data-area-id="${area.id}">
                     <input type="radio" class="area-radio" name="areaSeleccionada" value="${area.id}">
@@ -1176,9 +1225,9 @@ class TareasController {
                 </div>
             `;
         });
-
+        
         html += `</div>`;
-
+        
         html += `
             <div id="cargosSection" style="margin-top: 20px; display: none;">
                 <h6 class="section-title"><i class="fas fa-user-tag"></i> Cargos específicos (opcional)</h6>
@@ -1191,35 +1240,35 @@ class TareasController {
                 </div>
             </div>
         `;
-
+        
         html += `</div>`;
-
+        
         return html;
     }
-
-    _configurarSelectorAreasCreacion() {
+    
+    _configurarSelectorAreas() {
         const areasContainer = document.getElementById('areasContainer');
         if (!areasContainer) return;
-
+        
         areasContainer.querySelectorAll('.area-item').forEach(item => {
             const radio = item.querySelector('.area-radio');
-
+            
             item.addEventListener('click', (e) => {
                 if (e.target !== radio) {
                     radio.checked = true;
-                    this._seleccionarAreaCreacion(item.dataset.areaId);
+                    this._seleccionarArea(item.dataset.areaId);
                 }
             });
-
+            
             radio.addEventListener('change', (e) => {
                 if (e.target.checked) {
-                    this._seleccionarAreaCreacion(item.dataset.areaId);
+                    this._seleccionarArea(item.dataset.areaId);
                 }
             });
         });
     }
-
-    async _seleccionarAreaCreacion(areaId) {
+    
+    async _seleccionarArea(areaId) {
         document.querySelectorAll('.area-item').forEach(item => {
             if (item.dataset.areaId === areaId) {
                 item.classList.add('seleccionado');
@@ -1227,32 +1276,32 @@ class TareasController {
                 item.classList.remove('seleccionado');
             }
         });
-
+        
         this.areaSeleccionada = this.areasDisponibles.find(a => a.id === areaId);
         const cargosSection = document.getElementById('cargosSection');
         if (cargosSection) cargosSection.style.display = 'block';
-        await this._cargarCargosAreaCreacion(areaId);
+        await this._cargarCargosArea(areaId);
     }
-
-    async _cargarCargosAreaCreacion(areaId) {
+    
+    async _cargarCargosArea(areaId) {
         const area = this.areasDisponibles.find(a => a.id === areaId);
         if (!area) return;
-
+        
         const cargosContainer = document.getElementById('cargosContainer');
         if (!cargosContainer) return;
-
+        
         let cargos = [];
         if (area.cargos) {
             cargos = Object.entries(area.cargos)
                 .filter(([_, cargo]) => cargo.estado !== 'inactivo')
                 .map(([id, cargo]) => ({ id, ...cargo }));
         }
-
+        
         if (cargos.length === 0) {
             cargosContainer.innerHTML = '<p class="no-items">No hay cargos disponibles en esta área</p>';
             return;
         }
-
+        
         let html = '';
         cargos.forEach(cargo => {
             html += `
@@ -1266,12 +1315,12 @@ class TareasController {
                 </div>
             `;
         });
-
+        
         cargosContainer.innerHTML = html;
-
+        
         cargosContainer.querySelectorAll('.cargo-item').forEach(item => {
             const checkbox = item.querySelector('.cargo-checkbox');
-
+            
             item.addEventListener('click', (e) => {
                 if (e.target !== checkbox) {
                     checkbox.checked = !checkbox.checked;
@@ -1279,16 +1328,16 @@ class TareasController {
                 }
                 this._actualizarContadorCargos();
             });
-
+            
             checkbox.addEventListener('change', (e) => {
                 this._actualizarEstiloItem(item, e.target.checked);
                 this._actualizarContadorCargos();
             });
         });
-
+        
         this._actualizarContadorCargos();
     }
-
+    
     _getHTMLGeneral() {
         return `
             <div class="campos-especificos">
@@ -1299,7 +1348,7 @@ class TareasController {
             </div>
         `;
     }
-
+    
     _actualizarEstiloItem(item, seleccionado) {
         if (seleccionado) {
             item.classList.add('seleccionado');
@@ -1307,18 +1356,18 @@ class TareasController {
             item.classList.remove('seleccionado');
         }
     }
-
+    
     _actualizarContadorUsuarios() {
         const count = document.querySelectorAll('.usuario-checkbox:checked').length;
         const span = document.getElementById('selectedUsersCount');
         if (span) span.textContent = count;
     }
-
+    
     _actualizarContadorCargos() {
         const count = document.querySelectorAll('.cargo-checkbox:checked').length;
         const summary = document.getElementById('selectedCargosSummary');
         const span = document.getElementById('selectedCargosCount');
-
+        
         if (summary && span) {
             if (count > 0) {
                 span.textContent = count;
@@ -1328,14 +1377,14 @@ class TareasController {
             }
         }
     }
-
+    
     async _guardarNota() {
         const titulo = document.getElementById('notaTitulo');
         if (!titulo || !titulo.value.trim()) {
             this._mostrarError('El título es requerido');
             return;
         }
-
+        
         const tipo = this.tipoSeleccionado;
         const notaId = document.getElementById('notaId')?.value || '';
         const descripcion = document.getElementById('notaDescripcion')?.value.trim() || '';
@@ -1345,13 +1394,13 @@ class TareasController {
         const subcategoriaSelect = document.getElementById('subcategoriaNota');
         const categoriaId = categoriaSelect ? categoriaSelect.value : '';
         const subcategoriaId = subcategoriaSelect ? subcategoriaSelect.value : '';
-
+        
         const items = {};
         document.querySelectorAll('#itemsList .item-row').forEach((row, index) => {
             const checkbox = row.querySelector('.item-checkbox');
             const input = row.querySelector('.item-texto');
             const texto = input ? input.value.trim() : '';
-
+            
             if (texto) {
                 const itemId = row.dataset.itemId || `item_${Date.now()}_${index}`;
                 items[itemId] = {
@@ -1364,11 +1413,11 @@ class TareasController {
                 };
             }
         });
-
+        
         let usuariosCompartidosIds = [];
         let areaId = null;
         let cargosIds = [];
-
+        
         if (tipo === 'compartida') {
             usuariosCompartidosIds = Array.from(document.querySelectorAll('.usuario-checkbox:checked')).map(cb => cb.value);
             if (!usuariosCompartidosIds.includes(this.usuarioActual.id)) {
@@ -1384,15 +1433,15 @@ class TareasController {
                 return;
             }
         }
-
+        
         let fechaLimite = null;
         if (tieneRecordatorio && fechaLimiteInput) {
             fechaLimite = new Date(fechaLimiteInput);
             fechaLimite.setHours(23, 59, 59, 999);
         }
-
+        
         const tipoFirestore = tipo === 'general' ? 'global' : tipo;
-
+        
         const tareaData = {
             nombreActividad: titulo.value.trim(),
             descripcion: descripcion,
@@ -1403,14 +1452,14 @@ class TareasController {
             categoriaId: categoriaId || null,
             subcategoriaId: subcategoriaId || null
         };
-
+        
         if (tipo === 'compartida') {
             tareaData.usuariosCompartidosIds = usuariosCompartidosIds;
         } else if (tipo === 'area') {
             tareaData.areaId = areaId;
             tareaData.cargosIds = cargosIds;
         }
-
+        
         Swal.fire({
             title: 'Guardando...',
             html: '<i class="fas fa-spinner fa-spin"></i>',
@@ -1418,7 +1467,7 @@ class TareasController {
             showConfirmButton: false,
             background: 'var(--color-bg-secondary)'
         });
-
+        
         try {
             if (notaId) {
                 await this.tareaManager.actualizarTarea(
@@ -1428,9 +1477,9 @@ class TareasController {
             } else {
                 await this.tareaManager.crearTarea(tareaData, this.usuarioActual);
             }
-
+            
             Swal.close();
-
+            
             await Swal.fire({
                 icon: 'success',
                 title: 'Éxito',
@@ -1439,16 +1488,15 @@ class TareasController {
                 showConfirmButton: false,
                 background: 'var(--color-bg-secondary)'
             });
-
+            
             this._ocultarFormulario();
-            await this._cargarTareas();
-
+            
         } catch (error) {
             Swal.close();
             this._mostrarError(error.message);
         }
     }
-
+    
     async _eliminarTarea(tareaId) {
         const result = await Swal.fire({
             title: '¿Eliminar nota?',
@@ -1460,9 +1508,9 @@ class TareasController {
             background: 'var(--color-bg-secondary)',
             confirmButtonColor: '#dc3545'
         });
-
+        
         if (!result.isConfirmed) return;
-
+        
         Swal.fire({
             title: 'Eliminando...',
             html: '<i class="fas fa-spinner fa-spin"></i>',
@@ -1470,14 +1518,14 @@ class TareasController {
             showConfirmButton: false,
             background: 'var(--color-bg-secondary)'
         });
-
+        
         try {
             await this.tareaManager.eliminarTarea(
                 tareaId, this.usuarioActual, this.usuarioActual.organizacionCamelCase
             );
-
+            
             Swal.close();
-
+            
             await Swal.fire({
                 icon: 'success',
                 title: 'Eliminada',
@@ -1486,16 +1534,16 @@ class TareasController {
                 showConfirmButton: false,
                 background: 'var(--color-bg-secondary)'
             });
-
-            await this._cargarTareas();
-
+            
         } catch (error) {
             Swal.close();
             this._mostrarError(error.message);
         }
     }
-
+    
     async _abrirFormularioEdicion(tareaId) {
+        await this._asegurarDatosCargados();
+        
         Swal.fire({
             title: 'Cargando...',
             html: '<i class="fas fa-spinner fa-spin"></i>',
@@ -1503,66 +1551,77 @@ class TareasController {
             showConfirmButton: false,
             background: 'var(--color-bg-secondary)'
         });
-
+        
         try {
             this.tareaActual = await this.tareaManager.getTareaById(
                 tareaId, this.usuarioActual.organizacionCamelCase
             );
-
+            
             if (!this.tareaActual) throw new Error('Nota no encontrada');
-
+            
             if (this.tareaActual.creadoPor !== this.usuarioActual.id) {
                 Swal.close();
                 this._mostrarError('No tienes permiso para editar esta nota');
                 return;
             }
-
-            Swal.close();
-
+            
             this.modoEdicion = true;
             this.tipoSeleccionado = this.tareaActual.tipo === 'global' ? 'general' : this.tareaActual.tipo;
             this.areaSeleccionada = null;
-
+            
             const notaIdInput = document.getElementById('notaId');
             const notaTitulo = document.getElementById('notaTitulo');
             const notaDescripcion = document.getElementById('notaDescripcion');
             const tieneRecordatorio = document.getElementById('tieneRecordatorio');
             const fechaLimite = document.getElementById('fechaLimite');
             const fechaContainer = document.getElementById('fechaContainer');
-            const categoriaSelect = document.getElementById('categoriaNota');
-            const subcategoriaSelect = document.getElementById('subcategoriaNota');
-
+            
             if (notaIdInput) notaIdInput.value = this.tareaActual.id;
             if (notaTitulo) notaTitulo.value = this.tareaActual.nombreActividad || '';
             if (notaDescripcion) notaDescripcion.value = this.tareaActual.descripcion || '';
-
+            
             const items = this.tareaActual.items ? Object.values(this.tareaActual.items) : [];
             this._renderizarItemsInline(items);
-
+            
             const tieneRecordatorioVal = this.tareaActual.tieneRecordatorio || false;
             if (tieneRecordatorio) tieneRecordatorio.checked = tieneRecordatorioVal;
             if (fechaContainer) fechaContainer.style.display = tieneRecordatorioVal ? 'block' : 'none';
-
+            
             if (this.tareaActual.fechaLimite) {
                 const fecha = new Date(this.tareaActual.fechaLimite);
                 if (fechaLimite) fechaLimite.value = fecha.toISOString().split('T')[0];
             } else {
                 if (fechaLimite) fechaLimite.value = '';
             }
-
-            if (this.tareaActual.categoriaId && this.categoriasDisponibles.length > 0 && categoriaSelect) {
-                categoriaSelect.value = this.tareaActual.categoriaId;
-                const categoria = this.categoriasDisponibles.find(c => c.id === this.tareaActual.categoriaId);
-                if (categoria && categoria.subcategorias && subcategoriaSelect) {
-                    let options = '<option value="">-- Selecciona subcategoría --</option>';
-                    Object.values(categoria.subcategorias).forEach(sub => {
-                        options += `<option value="${sub.id}" ${this.tareaActual.subcategoriaId === sub.id ? 'selected' : ''}>${this._escapeHTML(sub.nombre)}</option>`;
-                    });
-                    subcategoriaSelect.innerHTML = options;
-                    subcategoriaSelect.disabled = false;
+            
+            document.querySelectorAll('.tipo-option').forEach(opt => {
+                if (opt.dataset.tipo === this.tipoSeleccionado) {
+                    opt.classList.add('seleccionado');
+                } else {
+                    opt.classList.remove('seleccionado');
+                }
+            });
+            
+            await this._renderizarCamposEspecificosEdicion(this.tipoSeleccionado, this.tareaActual);
+            
+            if (this.tareaActual.categoriaId) {
+                const categoriaSelect = document.getElementById('categoriaNota');
+                if (categoriaSelect) {
+                    categoriaSelect.value = this.tareaActual.categoriaId;
+                    const event = new Event('change');
+                    categoriaSelect.dispatchEvent(event);
+                    
+                    await new Promise(resolve => setTimeout(resolve, 50));
+                    
+                    if (this.tareaActual.subcategoriaId) {
+                        const subcategoriaSelect = document.getElementById('subcategoriaNota');
+                        if (subcategoriaSelect && !subcategoriaSelect.disabled) {
+                            subcategoriaSelect.value = this.tareaActual.subcategoriaId;
+                        }
+                    }
                 }
             }
-
+            
             const titulos = {
                 'general': 'Editar Nota General',
                 'personal': 'Editar Nota Personal',
@@ -1571,20 +1630,12 @@ class TareasController {
             };
             const formularioTitulo = document.getElementById('formularioTitulo');
             if (formularioTitulo) formularioTitulo.textContent = titulos[this.tipoSeleccionado] || 'Editar Nota';
-
-            document.querySelectorAll('.tipo-option').forEach(opt => {
-                if (opt.dataset.tipo === this.tipoSeleccionado) {
-                    opt.classList.add('seleccionado');
-                } else {
-                    opt.classList.remove('seleccionado');
-                }
-            });
-
-            await this._renderizarCamposEspecificosEdicion(this.tipoSeleccionado, this.tareaActual);
-
+            
+            Swal.close();
+            
             const formulario = document.getElementById('formularioCreacion');
             if (formulario) formulario.style.display = 'block';
-
+            
             setTimeout(() => {
                 if (formulario) formulario.scrollIntoView({ behavior: 'smooth', block: 'start' });
                 if (notaTitulo) {
@@ -1592,19 +1643,20 @@ class TareasController {
                     notaTitulo.select();
                 }
             }, 100);
-
+            
         } catch (error) {
             Swal.close();
+            console.error(error);
             this._mostrarError('Error al cargar la nota');
         }
     }
-
+    
     async _renderizarCamposEspecificosEdicion(tipo, tareaData) {
         const container = document.getElementById('camposEspecificos');
         if (!container) return;
-
+        
         let html = this._getHTMLCategorias();
-
+        
         switch (tipo) {
             case 'personal':
                 break;
@@ -1618,43 +1670,25 @@ class TareasController {
                 html += this._getHTMLGeneral();
                 break;
         }
-
+        
         container.innerHTML = html;
-
-        if (tipo === 'compartida' && html.includes('usuariosContainer')) {
+        
+        if (tipo === 'compartida') {
             this._configurarSelectorUsuariosEdicion(tareaData);
-        } else if (tipo === 'area' && html.includes('areasContainer')) {
+        } else if (tipo === 'area') {
             await this._configurarSelectorAreasEdicion(tareaData);
         }
-
-        this._configurarSelectorCategorias();
         
-        if (tareaData.categoriaId) {
-            const categoriaSelect = document.getElementById('categoriaNota');
-            if (categoriaSelect) {
-                categoriaSelect.value = tareaData.categoriaId;
-                const event = new Event('change');
-                categoriaSelect.dispatchEvent(event);
-                
-                setTimeout(() => {
-                    if (tareaData.subcategoriaId) {
-                        const subcategoriaSelect = document.getElementById('subcategoriaNota');
-                        if (subcategoriaSelect) {
-                            subcategoriaSelect.value = tareaData.subcategoriaId;
-                        }
-                    }
-                }, 100);
-            }
-        }
+        this._configurarSelectorCategorias();
     }
-
+    
     _getHTMLUsuariosEdicion(tareaData) {
         if (this.usuariosDisponibles.length === 0) {
             return '<p class="no-items">No hay usuarios disponibles</p>';
         }
-
+        
         const seleccionados = tareaData?.usuariosCompartidosIds || [];
-
+        
         let html = `
             <div class="campos-especificos">
                 <h6 class="section-title"><i class="fas fa-users"></i> Compartir con usuarios</h6>
@@ -1670,11 +1704,11 @@ class TareasController {
                 
                 <div class="usuarios-container" id="usuariosContainer">
         `;
-
+        
         this.usuariosDisponibles.forEach(usuario => {
             const iniciales = this._obtenerIniciales(usuario.nombreCompleto);
             const seleccionado = seleccionados.includes(usuario.id) ? 'checked' : '';
-
+            
             html += `
                 <div class="usuario-item" data-usuario-id="${usuario.id}">
                     <input type="checkbox" class="usuario-checkbox" value="${usuario.id}" ${seleccionado}>
@@ -1686,7 +1720,7 @@ class TareasController {
                 </div>
             `;
         });
-
+        
         html += `
                 </div>
                 <div class="selected-summary" id="selectedUsersSummary">
@@ -1695,21 +1729,21 @@ class TareasController {
                 </div>
             </div>
         `;
-
+        
         return html;
     }
-
+    
     _configurarSelectorUsuariosEdicion(tareaData) {
         const container = document.getElementById('usuariosContainer');
         if (!container) return;
-
+        
         container.querySelectorAll('.usuario-item').forEach(item => {
             const checkbox = item.querySelector('.usuario-checkbox');
-
+            
             if (checkbox.checked) {
                 item.classList.add('seleccionado');
             }
-
+            
             item.addEventListener('click', (e) => {
                 if (e.target !== checkbox) {
                     checkbox.checked = !checkbox.checked;
@@ -1717,16 +1751,16 @@ class TareasController {
                 }
                 this._actualizarContadorUsuarios();
             });
-
+            
             checkbox.addEventListener('change', (e) => {
                 this._actualizarEstiloItem(item, e.target.checked);
                 this._actualizarContadorUsuarios();
             });
         });
-
+        
         const seleccionarTodos = document.getElementById('seleccionarTodosUsuarios');
         const deseleccionarTodos = document.getElementById('deseleccionarTodosUsuarios');
-
+        
         if (seleccionarTodos) {
             seleccionarTodos.addEventListener('click', () => {
                 container.querySelectorAll('.usuario-checkbox').forEach(cb => {
@@ -1736,7 +1770,7 @@ class TareasController {
                 this._actualizarContadorUsuarios();
             });
         }
-
+        
         if (deseleccionarTodos) {
             deseleccionarTodos.addEventListener('click', () => {
                 container.querySelectorAll('.usuario-checkbox').forEach(cb => {
@@ -1746,30 +1780,30 @@ class TareasController {
                 this._actualizarContadorUsuarios();
             });
         }
-
+        
         this._actualizarContadorUsuarios();
     }
-
+    
     _getHTMLAreasEdicion(tareaData) {
         if (this.areasDisponibles.length === 0) {
             return '<p class="no-items">No hay áreas disponibles</p>';
         }
-
+        
         const areaSeleccionada = tareaData?.areaId || null;
         const cargosSeleccionados = tareaData?.cargosIds || [];
-
+        
         let html = `
             <div class="campos-especificos">
                 <h6 class="section-title"><i class="fas fa-building"></i> Asignar a Área</h6>
                 
                 <div class="areas-container" id="areasContainer">
         `;
-
+        
         this.areasDisponibles.forEach(area => {
             const iniciales = this._obtenerIniciales(area.nombreArea);
             const totalCargos = area.cargos ? Object.keys(area.cargos).length : 0;
             const seleccionado = areaSeleccionada === area.id ? 'checked' : '';
-
+            
             html += `
                 <div class="area-item" data-area-id="${area.id}">
                     <input type="radio" class="area-radio" name="areaSeleccionada" value="${area.id}" ${seleccionado}>
@@ -1782,9 +1816,9 @@ class TareasController {
                 </div>
             `;
         });
-
+        
         html += `</div>`;
-
+        
         html += `
             <div id="cargosSection" style="margin-top: 20px; ${!areaSeleccionada ? 'display: none;' : ''}">
                 <h6 class="section-title"><i class="fas fa-user-tag"></i> Cargos específicos (opcional)</h6>
@@ -1797,42 +1831,42 @@ class TareasController {
                 </div>
             </div>
         `;
-
+        
         html += `</div>`;
-
+        
         return html;
     }
-
+    
     async _configurarSelectorAreasEdicion(tareaData) {
         const areasContainer = document.getElementById('areasContainer');
         if (!areasContainer) return;
-
+        
         areasContainer.querySelectorAll('.area-item').forEach(item => {
             const radio = item.querySelector('.area-radio');
-
+            
             if (radio.checked) {
                 item.classList.add('seleccionado');
             }
-
+            
             item.addEventListener('click', (e) => {
                 if (e.target !== radio) {
                     radio.checked = true;
                     this._seleccionarAreaEdicion(item.dataset.areaId, tareaData);
                 }
             });
-
+            
             radio.addEventListener('change', (e) => {
                 if (e.target.checked) {
                     this._seleccionarAreaEdicion(item.dataset.areaId, tareaData);
                 }
             });
         });
-
+        
         if (tareaData?.areaId) {
             await this._cargarCargosAreaEdicion(tareaData.areaId, tareaData);
         }
     }
-
+    
     async _seleccionarAreaEdicion(areaId, tareaData) {
         document.querySelectorAll('.area-item').forEach(item => {
             if (item.dataset.areaId === areaId) {
@@ -1841,34 +1875,34 @@ class TareasController {
                 item.classList.remove('seleccionado');
             }
         });
-
+        
         this.areaSeleccionada = this.areasDisponibles.find(a => a.id === areaId);
         const cargosSection = document.getElementById('cargosSection');
         if (cargosSection) cargosSection.style.display = 'block';
         await this._cargarCargosAreaEdicion(areaId, tareaData);
     }
-
+    
     async _cargarCargosAreaEdicion(areaId, tareaData = null) {
         const area = this.areasDisponibles.find(a => a.id === areaId);
         if (!area) return;
-
+        
         const cargosContainer = document.getElementById('cargosContainer');
         if (!cargosContainer) return;
-
+        
         let cargos = [];
         if (area.cargos) {
             cargos = Object.entries(area.cargos)
                 .filter(([_, cargo]) => cargo.estado !== 'inactivo')
                 .map(([id, cargo]) => ({ id, ...cargo }));
         }
-
+        
         if (cargos.length === 0) {
             cargosContainer.innerHTML = '<p class="no-items">No hay cargos disponibles en esta área</p>';
             return;
         }
-
+        
         const cargosSeleccionados = tareaData?.cargosIds || [];
-
+        
         let html = '';
         cargos.forEach(cargo => {
             const seleccionado = cargosSeleccionados.includes(cargo.id) ? 'checked' : '';
@@ -1883,16 +1917,16 @@ class TareasController {
                 </div>
             `;
         });
-
+        
         cargosContainer.innerHTML = html;
-
+        
         cargosContainer.querySelectorAll('.cargo-item').forEach(item => {
             const checkbox = item.querySelector('.cargo-checkbox');
-
+            
             if (checkbox.checked) {
                 item.classList.add('seleccionado');
             }
-
+            
             item.addEventListener('click', (e) => {
                 if (e.target !== checkbox) {
                     checkbox.checked = !checkbox.checked;
@@ -1900,18 +1934,20 @@ class TareasController {
                 }
                 this._actualizarContadorCargos();
             });
-
+            
             checkbox.addEventListener('change', (e) => {
                 this._actualizarEstiloItem(item, e.target.checked);
                 this._actualizarContadorCargos();
             });
         });
-
+        
         this._actualizarContadorCargos();
     }
-
-    // ========== CONFIGURACIÓN DE EVENTOS ==========
-
+    
+    // =============================================
+    // CONFIGURACIÓN DE EVENTOS
+    // =============================================
+    
     _configurarEventos() {
         const btnCrearNota = document.getElementById('btnCrearNota');
         if (btnCrearNota) {
@@ -1919,21 +1955,21 @@ class TareasController {
                 this._mostrarFormularioCreacion();
             });
         }
-
+        
         const cerrarFormulario = document.getElementById('cerrarFormulario');
         if (cerrarFormulario) {
             cerrarFormulario.addEventListener('click', () => {
                 this._ocultarFormulario();
             });
         }
-
+        
         const cancelarNota = document.getElementById('cancelarNota');
         if (cancelarNota) {
             cancelarNota.addEventListener('click', () => {
                 this._ocultarFormulario();
             });
         }
-
+        
         document.querySelectorAll('.tab-btn').forEach(btn => {
             btn.addEventListener('click', () => {
                 document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -1942,7 +1978,7 @@ class TareasController {
                 this._aplicarFiltros();
             });
         });
-
+        
         const searchInput = document.getElementById('searchInput');
         if (searchInput) {
             searchInput.addEventListener('input', (e) => {
@@ -1953,19 +1989,19 @@ class TareasController {
                 }, 300);
             });
         }
-
+        
         document.querySelectorAll('.tipo-option').forEach(opt => {
             opt.addEventListener('click', () => {
                 const tipo = opt.dataset.tipo;
                 this._seleccionarTipoFormulario(tipo);
             });
         });
-
+        
         const guardarNota = document.getElementById('guardarNota');
         if (guardarNota) {
             guardarNota.addEventListener('click', () => this._guardarNota());
         }
-
+        
         const tieneRecordatorio = document.getElementById('tieneRecordatorio');
         if (tieneRecordatorio) {
             tieneRecordatorio.addEventListener('change', (e) => {
@@ -1975,7 +2011,7 @@ class TareasController {
                 }
             });
         }
-
+        
         const btnAgregarItem = document.getElementById('btnAgregarItem');
         if (btnAgregarItem) {
             btnAgregarItem.addEventListener('click', () => {
@@ -1983,9 +2019,11 @@ class TareasController {
             });
         }
     }
-
-    // ========== ESTADOS DE UI ==========
-
+    
+    // =============================================
+    // UTILIDADES DE UI
+    // =============================================
+    
     _mostrarCarga() {
         const container = document.getElementById('tareasGrid');
         if (container) {
@@ -1999,7 +2037,7 @@ class TareasController {
             `;
         }
     }
-
+    
     _mostrarErrorEnGrid(mensaje) {
         const container = document.getElementById('tareasGrid');
         if (container) {
@@ -2017,7 +2055,7 @@ class TareasController {
             `;
         }
     }
-
+    
     _getEmptyStateHTML() {
         return `
             <div class="empty-state">
@@ -2029,14 +2067,21 @@ class TareasController {
             </div>
         `;
     }
-
-    // ========== UTILIDADES ==========
-
+    
+    // =============================================
+    // UTILIDADES GENERALES
+    // =============================================
+    
+    _generarCamelCase(texto) {
+        if (!texto) return 'sinOrganizacion';
+        return texto.toLowerCase().replace(/[^a-zA-Z0-9]+(.)/g, (m, chr) => chr.toUpperCase()).replace(/[^a-zA-Z0-9]/g, '');
+    }
+    
     _obtenerIniciales(nombre) {
         if (!nombre) return 'U';
         return nombre.split(' ').map(p => p[0]).join('').toUpperCase().substring(0, 2);
     }
-
+    
     _escapeHTML(text) {
         if (!text) return '';
         return String(text)
@@ -2046,7 +2091,7 @@ class TareasController {
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#039;');
     }
-
+    
     _mostrarError(mensaje) {
         Swal.fire({
             icon: 'error',
@@ -2056,8 +2101,16 @@ class TareasController {
             confirmButtonColor: '#2f8cff'
         });
     }
+    
+    _desconectar() {
+        if (this.unsubscribeTareas) {
+            this.unsubscribeTareas();
+            this.unsubscribeTareas = null;
+        }
+    }
 }
 
+// Inicializar
 document.addEventListener('DOMContentLoaded', () => {
     new TareasController();
 });
