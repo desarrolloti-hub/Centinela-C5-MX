@@ -199,6 +199,18 @@ class VisualizadorImagen {
         this.modal.style.display = 'block';
         document.body.style.overflow = 'hidden';
     }
+        // Nuevo método para abrir el visualizador directamente con datos
+    abrirDesdeDatos(images, index = 0) {
+        this.images = images.map((img, i) => ({
+            url: img.url,
+            comentario: img.comentario || (typeof img === 'object' && img.comentario ? img.comentario : '')
+        }));
+        
+        this.currentIndex = Math.min(index, this.images.length - 1);
+        this.actualizarImagen();
+        this.modal.style.display = 'block';
+        document.body.style.overflow = 'hidden';
+    }
 
     cerrar() {
         this.modal.style.display = 'none';

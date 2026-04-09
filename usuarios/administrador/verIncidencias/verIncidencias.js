@@ -44,7 +44,6 @@ function convertirFechaFirestore(fecha) {
 // =============================================
 async function inicializarVerIncidencia() {
     try {
-        console.log('Inicializando vista de incidencia...');
 
         const urlParams = new URLSearchParams(window.location.search);
         const incidenciaId = urlParams.get('id');
@@ -71,7 +70,6 @@ async function inicializarVerIncidencia() {
 
         await registrarLecturaIncidencia();
 
-        console.log('Vista de incidencia inicializada correctamente');
 
     } catch (error) {
         console.error('Error inicializando:', error);
@@ -371,8 +369,12 @@ function formatearFechaCompacta(fecha) {
     }
 }
 
+
 // =============================================
-// MOSTRAR EVIDENCIAS ORIGINALES (MODIFICADO PARA USAR VISUALIZADOR)
+// MOSTRAR EVIDENCIAS ORIGINALES (MODIFICADO - IMAGEN COMPLETA CLICKEABLE + LUPA)
+// =============================================
+// =============================================
+// MOSTRAR EVIDENCIAS ORIGINALES (CORREGIDO)
 // =============================================
 function mostrarEvidenciasOriginales() {
     const container = document.getElementById('galeriaOriginal');
@@ -396,16 +398,25 @@ function mostrarEvidenciasOriginales() {
         return;
     }
 
+    // Preparar array de imágenes para el visualizador
+    const imagenesData = imagenes.map(img => ({
+        url: typeof img === 'string' ? img : img.url,
+        comentario: (typeof img === 'object' && img.comentario) ? img.comentario : ''
+    }));
+
+    // Guardar los datos globalmente para este grupo
+    window._imagenesOriginales = imagenesData;
+
     let html = '';
     imagenes.forEach((img, index) => {
         const url = typeof img === 'string' ? img : img.url;
-        const comentario = typeof img === 'object' && img.comentario ? img.comentario : '';
+        const comentario = (typeof img === 'object' && img.comentario) ? img.comentario : '';
         
         html += `
-            <div class="gallery-item" data-index="${index}" data-url="${url}" data-comentario="${escapeHTML(comentario)}">
+            <div class="gallery-item" data-index="${index}" data-url="${url}" data-comentario="${escapeHTML(comentario)}" data-grupo="original" onclick="window.visualizadorImagen.abrirDesdeDatos(window._imagenesOriginales, ${index})">
                 <img src="${url}" alt="Evidencia ${index + 1}" loading="lazy">
                 <div class="gallery-overlay">
-                    <button type="button" class="gallery-btn" onclick="event.stopPropagation(); window.visualizadorImagen.abrir(Array.from(document.querySelectorAll('.gallery-item')).map(item => ({url: item.dataset.url, comentario: item.dataset.comentario})), ${index})">
+                    <button type="button" class="gallery-btn" onclick="event.stopPropagation(); window.visualizadorImagen.abrirDesdeDatos(window._imagenesOriginales, ${index})">
                         <i class="fas fa-search-plus"></i>
                     </button>
                 </div>
@@ -417,8 +428,9 @@ function mostrarEvidenciasOriginales() {
     container.innerHTML = html;
 }
 
+
 // =============================================
-// MOSTRAR HISTORIAL DE SEGUIMIENTO (MODIFICADO PARA USAR VISUALIZADOR)
+// MOSTRAR HISTORIAL DE SEGUIMIENTO (CORREGIDO)
 // =============================================
 function mostrarHistorialSeguimiento() {
     const container = document.getElementById('timelineSeguimientos');
@@ -443,11 +455,24 @@ function mostrarHistorialSeguimiento() {
         return;
     }
 
+    // Objeto global para almacenar las imágenes de cada seguimiento
+    if (!window._imagenesSeguimientos) window._imagenesSeguimientos = {};
+
     let html = '<div class="timeline-simple">';
     seguimientos.forEach((seg, index) => {
         const fecha = seg.fecha ? formatearFechaCompacta(seg.fecha) : 'Fecha no disponible';
         const evidencias = seg.evidencias || [];
         const idSeguimiento = seg.id || `SEG-${index + 1}`;
+        
+        // Preparar array de imágenes para este seguimiento específico
+        const imagenesData = evidencias.map(ev => ({
+            url: typeof ev === 'string' ? ev : ev.url,
+            comentario: (typeof ev === 'object' && ev.comentario) ? ev.comentario : ''
+        }));
+        
+        // Guardar en objeto global con clave única
+        const claveImagenes = `seguimiento_${idSeguimiento}`;
+        window._imagenesSeguimientos[claveImagenes] = imagenesData;
         
         html += `
             <div class="timeline-simple-item">
@@ -481,11 +506,16 @@ function mostrarHistorialSeguimiento() {
 
             evidencias.forEach((ev, evIndex) => {
                 const url = typeof ev === 'string' ? ev : ev.url;
-                const comentario = typeof ev === 'object' && ev.comentario ? ev.comentario : '';
+                const comentario = (typeof ev === 'object' && ev.comentario) ? ev.comentario : '';
                 
                 html += `
-                            <div class="timeline-simple-evidencia" onclick="window.visualizadorImagen.abrir([{url: '${url}', comentario: '${escapeHTML(comentario)}'}], 0)">
-                                <img src="${url}" alt="Evidencia ${evIndex + 1}" loading="lazy">
+                            <div class="timeline-simple-evidencia" onclick="window.visualizadorImagen.abrirDesdeDatos(window._imagenesSeguimientos['${claveImagenes}'], ${evIndex})">
+                                <div style="position: relative;">
+                                    <img src="${url}" alt="Evidencia ${evIndex + 1}" loading="lazy">
+                                    <div class="timeline-evidencia-overlay">
+                                        <i class="fas fa-search-plus"></i>
+                                    </div>
+                                </div>
                                 ${comentario ? `<div class="timeline-simple-evidencia-comentario" title="${escapeHTML(comentario)}">${escapeHTML(comentario.substring(0, 30))}${comentario.length > 30 ? '...' : ''}</div>` : ''}
                             </div>
                 `;

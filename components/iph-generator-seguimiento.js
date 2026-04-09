@@ -64,7 +64,7 @@ class IPHGeneratorSeguimiento extends PDFBaseGenerator {
     }
 
     async initStorage() {
-        console.log('✅ IPHSeguimiento listo');
+        console.log('IPHSeguimiento listo');
     }
 
     configurar(config) {
@@ -326,7 +326,7 @@ class IPHGeneratorSeguimiento extends PDFBaseGenerator {
             return;
         }
         
-        console.log(`📸 Precargando ${itemsValidos.length} imágenes...`);
+
         
         let completadas = 0;
         
@@ -363,7 +363,7 @@ class IPHGeneratorSeguimiento extends PDFBaseGenerator {
             await Promise.all(lote.map(item => procesarImagen(item)));
         }
         
-        console.log(`✅ Precarga completada: ${itemsValidos.length} imágenes procesadas`);
+       
     }
     
     async obtenerImagen(item) {
