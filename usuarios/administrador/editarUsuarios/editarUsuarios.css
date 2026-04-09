@@ -831,7 +831,7 @@ select.form-input-field option:any {
     border-radius: var(--border-radius-medium) !important;
     transition: all 0.3s ease !important;
     min-width: 160px !important;
-    display: inline-flex !important;
+    display: flex;
     align-items: center !important;
     justify-content: center !important;
     gap: 10px !important;
