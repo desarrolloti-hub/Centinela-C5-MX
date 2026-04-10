@@ -1138,18 +1138,26 @@ class CrearMercanciaPerdidaController {
             );
 
             // 🔽 DESCARGAR PDF AUTOMÁTICAMENTE 🔽
-            const pdfUrl = URL.createObjectURL(pdfBlob);
-            const link = document.createElement('a');
-            link.href = pdfUrl;
-            link.download = `reporte_${registroId}.pdf`;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            setTimeout(() => URL.revokeObjectURL(pdfUrl), 1000);
+                        // 🔽 SUBIR PDF A STORAGE Y LUEGO MOSTRAR DIÁLOGO PARA COMPARTIR 🔽
+                let pdfStorageUrl = resultado.url; // La URL que ya tienes del storage
 
-            Swal.close();
+                Swal.close();
 
-            const historial = await this._initHistorialManager();
+                // Mostrar diálogo para compartir
+                const accionCompartir = await this._mostrarDialogoCompartir(pdfStorageUrl, datos);
+
+                // También descargar el PDF localmente (opcional)
+                const pdfUrlLocal = URL.createObjectURL(pdfBlob);
+                const link = document.createElement('a');
+                link.href = pdfUrlLocal;
+                link.download = `reporte_${registroId}.pdf`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                setTimeout(() => URL.revokeObjectURL(pdfUrlLocal), 1000);
+
+                const historial = await this._initHistorialManager();
+
             if (historial) {
                 await historial.registrarActividad({
                     usuario: this.usuarioActual,
@@ -1197,6 +1205,143 @@ class CrearMercanciaPerdidaController {
             }
         }
     }
+    async _mostrarDialogoCompartir(pdfUrl, datos) {
+    return new Promise((resolve) => {
+        Swal.fire({
+            title: 'Compartir reporte',
+            html: `
+                <div style="text-align: center;">
+                    <i class="fas fa-file-pdf" style="font-size: 48px; color: #e74c3c; margin-bottom: 15px; display: inline-block;"></i>
+                    <p style="margin-bottom: 20px;">El PDF se ha generado correctamente</p>
+                    <p style="font-size: 13px; color: #aaa; margin-bottom: 20px;">¿Como deseas compartirlo?</p>
+                    <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 15px;">
+                        <button id="shareWhatsAppBtn" class="btn-compartir" style="background: linear-gradient(145deg, #0f0f0f, #1a1a1a); border: 1px solid #25D366; border-radius: 8px; padding: 12px; color: white; font-weight: 600; font-family: 'Orbitron', sans-serif; text-transform: uppercase; letter-spacing: 0.5px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; transition: all 0.3s ease;">
+                            <i class="fab fa-whatsapp" style="color: #25D366; font-size: 18px;"></i> WhatsApp
+                        </button>
+                        <button id="shareEmailBtn" class="btn-compartir" style="background: linear-gradient(145deg, #0f0f0f, #1a1a1a); border: 1px solid #0077B5; border-radius: 8px; padding: 12px; color: white; font-weight: 600; font-family: 'Orbitron', sans-serif; text-transform: uppercase; letter-spacing: 0.5px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; transition: all 0.3s ease;">
+                            <i class="fas fa-envelope" style="color: #0077B5; font-size: 18px;"></i> Correo Electronico
+                        </button>
+                        <button id="shareLinkBtn" class="btn-compartir" style="background: linear-gradient(145deg, #0f0f0f, #1a1a1a); border: 1px solid var(--color-accent-primary); border-radius: 8px; padding: 12px; color: white; font-weight: 600; font-family: 'Orbitron', sans-serif; text-transform: uppercase; letter-spacing: 0.5px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; transition: all 0.3s ease;">
+                            <i class="fas fa-link" style="color: var(--color-accent-primary); font-size: 18px;"></i> Copiar Enlace
+                        </button>
+                        <button id="shareCancelBtn" class="btn-compartir" style="background: linear-gradient(145deg, #0f0f0f, #1a1a1a); border: 1px solid var(--color-border-light); border-radius: 8px; padding: 12px; color: #aaa; font-weight: 600; font-family: 'Orbitron', sans-serif; text-transform: uppercase; letter-spacing: 0.5px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; margin-top: 5px; transition: all 0.3s ease;">
+                            <i class="fas fa-times" style="color: #aaa; font-size: 18px;"></i> No compartir ahora
+                        </button>
+                    </div>
+                </div>
+            `,
+            icon: 'info',
+            showConfirmButton: false,
+            showCancelButton: false,
+            didOpen: () => {
+                const tituloReporte = `REPORTE: ${datos.nombreEmpresaCC} - ${this._getTipoEventoTexto(datos.tipoEvento)}`;
+                const montoFormateado = `$${datos.montoPerdido.toLocaleString('es-MX', { minimumFractionDigits: 2 })}`;
+                
+                document.getElementById('shareWhatsAppBtn').onclick = () => {
+                    Swal.close();
+                    const mensajeWhatsApp = `${tituloReporte}\n\nEmpresa: ${datos.nombreEmpresaCC}\nTipo: ${this._getTipoEventoTexto(datos.tipoEvento)}\nMonto: ${montoFormateado}\n\nPDF del reporte:\n${pdfUrl}\n\n--\nPDF enviado por el sistema Centinela.`;
+                    const urlWhatsapp = `https://wa.me/?text=${encodeURIComponent(mensajeWhatsApp)}`;
+                    window.open(urlWhatsapp, '_blank');
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'WhatsApp abierto',
+                        text: 'Se abrió WhatsApp con el enlace del PDF.',
+                        timer: 2500,
+                        showConfirmButton: false
+                    });
+                    resolve('whatsapp');
+                };
+                
+                document.getElementById('shareEmailBtn').onclick = async () => {
+                    Swal.close();
+                    
+                    const { value: servicio } = await Swal.fire({
+                        title: 'Enviar por correo',
+                        text: 'Selecciona tu servicio de correo',
+                        icon: 'question',
+                        input: 'select',
+                        inputOptions: {
+                            'gmail': 'Gmail',
+                            'outlook': 'Outlook / Hotmail'
+                        },
+                        inputPlaceholder: 'Selecciona un servicio',
+                        showCancelButton: true,
+                        confirmButtonText: 'Abrir Correo',
+                        cancelButtonText: 'Cancelar',
+                        confirmButtonColor: '#ff9122'
+                    });
+                    
+                    if (!servicio) {
+                        resolve('cancel');
+                        return;
+                    }
+                    
+                    const empresaNombre = datos.nombreEmpresaCC;
+                    const tipoEventoTexto = this._getTipoEventoTexto(datos.tipoEvento);
+                    const fechaInicio = new Date(datos.fechaHora).toLocaleDateString('es-MX');
+                    
+                    const tituloReporte = `REPORTE: ${empresaNombre} - ${tipoEventoTexto}`;
+                    
+                    const cuerpoTexto = 
+                        `${tituloReporte}\n\n` +
+                        `Empresa: ${empresaNombre}\n` +
+                        `Tipo de evento: ${tipoEventoTexto}\n` +
+                        `Monto perdido: ${montoFormateado}\n` +
+                        `Fecha: ${fechaInicio}\n\n` +
+                        `PDF del reporte:\n${pdfUrl}\n\n` +
+                        `--\nPDF enviado por el sistema Centinela.`;
+                    
+                    const asunto = encodeURIComponent(tituloReporte);
+                    const cuerpoCodificado = encodeURIComponent(cuerpoTexto);
+                    
+                    if (servicio === 'gmail') {
+                        window.open(`https://mail.google.com/mail/?view=cm&fs=1&su=${asunto}&body=${cuerpoCodificado}`, '_blank');
+                    } else if (servicio === 'outlook') {
+                        window.open(`https://outlook.live.com/mail/0/deeplink/compose?subject=${asunto}&body=${cuerpoCodificado}`, '_blank');
+                    }
+                    
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Correo abierto',
+                        text: 'Se abrió tu correo con el enlace del PDF.',
+                        timer: 2500,
+                        showConfirmButton: false
+                    });
+                    resolve('email');
+                };
+                
+                document.getElementById('shareLinkBtn').onclick = async () => {
+                    Swal.close();
+                    try {
+                        await navigator.clipboard.writeText(pdfUrl);
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Enlace copiado',
+                            text: 'El enlace del PDF ha sido copiado al portapapeles',
+                            timer: 2000,
+                            showConfirmButton: false
+                        });
+                    } catch (err) {
+                        Swal.fire({
+                            icon: 'info',
+                            title: 'Enlace del PDF',
+                            html: `<input type="text" value="${pdfUrl}" style="width:100%; padding:8px; margin-top:10px; border-radius:5px; background: #1a1a1a; color: white; border: 1px solid #333;" readonly onclick="this.select()">`,
+                            confirmButtonText: 'Cerrar',
+                            confirmButtonColor: '#28a745'
+                        });
+                    }
+                    resolve('link');
+                };
+                
+                document.getElementById('shareCancelBtn').onclick = () => {
+                    Swal.close();
+                    resolve('cancel');
+                };
+            }
+        });
+    });
+}
+
 
     async _subirEvidencias(registroId, imagenes) {
         if (!imagenes || imagenes.length === 0) return [];
