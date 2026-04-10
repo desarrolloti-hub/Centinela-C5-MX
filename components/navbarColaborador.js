@@ -1704,13 +1704,13 @@ class NavbarComplete {
                 <!-- SECCIÓN GESTIONAR -->
                 <div class="nav-section">
                     <button class="gestionar-dropdown-btn" id="gestionarDropdownBtn">
-                        <span>Gestionar</span>
+                        <span><i class="fa-solid fa-gear"></i> Gestionar</span>
                         <i class="fa-solid fa-chevron-down"></i>
                     </button>
 
                     <div class="gestionar-dropdown-options" id="gestionarDropdownOptions">
                         <a href="../areas/areas.html" class="gestionar-dropdown-option" id="areasBtn">
-                            <i class="fa-solid fa-sitemap"></i>
+                            <i class="fa-solid fa-map"></i>
                             <span>Áreas</span>
                         </a>
                         <a href="../categorias/categorias.html" class="gestionar-dropdown-option" id="categoriasBtn">
@@ -1722,7 +1722,7 @@ class NavbarComplete {
                             <span>Sucursales</span>
                         </a>
                         <a href="../regiones/regiones.html" class="gestionar-dropdown-option" id="regionesBtn">
-                            <i class="fa-solid fa-map-marked-alt"></i>
+                               <i class="fa-solid fa-location-dot"></i>
                             <span>Regiones</span>
                         </a>
                         <a href="../permisos/permisos.html" class="gestionar-dropdown-option" id="permisosBtn">
@@ -1743,7 +1743,7 @@ class NavbarComplete {
                 <!-- SECCIÓN INCIDENCIAS -->
                 <div class="nav-section" id="incidenciasNavSection">
                     <button class="incidencias-dropdown-btn" id="incidenciasDropdownBtn">
-                        <span>Incidencias</span>
+                        <span><i class="fa-solid fa-exclamation-triangle"></i> Incidencias</span>
                         <i class="fa-solid fa-chevron-down"></i>
                     </button>
 
@@ -1769,7 +1769,7 @@ class NavbarComplete {
             
                         
                         <a href="../incidenciasRecuperacion/incidenciasRecuperacion.html" class="incidencias-dropdown-option" id="incidenciasRecuperacionBtn">
-                            <i class="fa-solid fa-box-open"></i>
+                            <i class="fa-solid fa-list"></i>
                             <span>Lista de extravíos</span>
                         </a>
                         <a href="../crearIncidenciasRecuperacion/crearIncidenciasRecuperacion.html" class="incidencias-dropdown-option" id="crearIncidenciasRecuperacionBtn">
@@ -1786,7 +1786,7 @@ class NavbarComplete {
                 <!-- SECCIÓN MONITOREO (NUEVO) -->
                 <div class="nav-section" id="monitoreoNavSection">
                     <button class="monitoreo-dropdown-btn" id="monitoreoDropdownBtn">
-                        <span>Monitoreo</span>
+                        <span><i class="fa-solid fa-map-marker-alt"></i> Monitoreo</span>
                         <i class="fa-solid fa-chevron-down"></i>
                     </button>
 
@@ -1796,7 +1796,7 @@ class NavbarComplete {
                             <span>Mapa de Alertas</span>
                         </a>
                         <a href="../loginMonitoreo/loginMonitoreo.html" class="monitoreo-dropdown-option" id="loginMonitoreoBtn">
-                            <i class="fa-solid fa-sign-in-alt"></i>
+                            <i class="fa-solid fa-tachometer-alt"></i>
                             <span>Tablero de Control</span>
                         </a>
                     </div>
@@ -1819,7 +1819,7 @@ class NavbarComplete {
                 <!-- SECCIÓN CONFIGURACIÓN -->
                 <div class="configuracion-options-section">
                     <button class="configuracion-dropdown-btn" id="configuracionDropdownBtn">
-                        <span>Configuración</span>
+                        <span><i class="fa-solid fa-user-gear"></i> Configuración</span>
                         <i class="fa-solid fa-chevron-down"></i>
                     </button>
 
