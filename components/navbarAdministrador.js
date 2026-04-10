@@ -1808,9 +1808,14 @@ class NavbarComplete {
                               <i class="fa-solid fa-map-location-dot"></i>
                             <span>Mapa de Alertas</span>
                         </a>
+                        <a href="/usuarios/administrador/monitoreo/monitoreo.html" class="administracion-dropdown-option">
+                            <i class="fa-solid fa-tachometer-alt"></i>
+                            <span>Monitoreo</span>
+                        </a>
+                        
                         
                         <a href="/usuarios/administrador/loginMonitoreo/loginMonitoreo.html" class="administracion-dropdown-option">
-                            <i class="fa-solid fa-tachometer-alt"></i>
+                            <i class="fas fa-server"></i>
                             <span>Tablero de Control</span>
                         </a>
                     </div>
