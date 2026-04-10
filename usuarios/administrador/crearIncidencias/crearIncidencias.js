@@ -1086,164 +1086,129 @@ class CrearIncidenciaController {
         return riesgos[riesgo] || riesgo;
     }
 
-    async _validarYGuardar() {
-        const sucursalInput = document.getElementById('sucursalIncidencia');
-        const categoriaInput = document.getElementById('categoriaIncidencia');
+  async _validarYGuardar() {
+    const sucursalInput = document.getElementById('sucursalIncidencia');
+    const categoriaInput = document.getElementById('categoriaIncidencia');
 
-        const sucursalId = sucursalInput.dataset.selectedId;
-        const categoriaId = categoriaInput.dataset.selectedId;
+    const sucursalId = sucursalInput.dataset.selectedId;
+    const categoriaId = categoriaInput.dataset.selectedId;
 
-        if (!sucursalId) {
-            this._mostrarError('⚠️ Es necesario seleccionar una sucursal primero');
-            sucursalInput.focus();
-            return;
-        }
-
-        if (!categoriaId) {
-            this._mostrarError('Debe seleccionar una categoría válida de la lista');
-            categoriaInput.focus();
-            return;
-        }
-
-        const riesgoSelect = document.getElementById('nivelRiesgo');
-        const nivelRiesgo = riesgoSelect.value;
-        if (!nivelRiesgo) {
-            this._mostrarError('Debe seleccionar el nivel de riesgo');
-            riesgoSelect.focus();
-            return;
-        }
-
-        const estadoSelect = document.getElementById('estadoIncidencia');
-        const estado = estadoSelect.value;
-        if (!estado) {
-            this._mostrarError('Debe seleccionar el estado');
-            estadoSelect.focus();
-            return;
-        }
-
-        const fechaInput = document.getElementById('fechaHoraIncidencia');
-        let fechaHora = fechaInput.value;
-
-        if (!fechaHora) {
-            this._mostrarError('Debe seleccionar fecha y hora');
-            fechaInput.focus();
-            return;
-        }
-
-        const fechaSeleccionada = new Date(fechaHora);
-        const ahora = new Date();
-
-        if (fechaSeleccionada > ahora) {
-            this._mostrarError('No puede seleccionar una fecha futura');
-            fechaInput.focus();
-            return;
-        }
-
-        const detallesInput = document.getElementById('detallesIncidencia');
-        const detalles = detallesInput.value.trim();
-        if (!detalles) {
-            detallesInput.classList.add('is-invalid');
-            this._mostrarError('La descripción de la incidencia es obligatoria');
-            detallesInput.focus();
-            return;
-        }
-        if (detalles.length < 10) {
-            detallesInput.classList.add('is-invalid');
-            this._mostrarError('La descripción debe tener al menos 10 caracteres');
-            detallesInput.focus();
-            return;
-        }
-        if (detalles.length > LIMITES.DETALLES_INCIDENCIA) {
-            detallesInput.classList.add('is-invalid');
-            this._mostrarError(`La descripción no puede exceder ${LIMITES.DETALLES_INCIDENCIA} caracteres`);
-            detallesInput.focus();
-            return;
-        }
-        detallesInput.classList.remove('is-invalid');
-
-        const subcategoriaSelect = document.getElementById('subcategoriaIncidencia');
-        const subcategoriaId = subcategoriaSelect.value;
-
-        const sucursalNombre = sucursalInput.value;
-        const categoriaNombre = categoriaInput.value;
-        
-        const subcategoriaNombre = subcategoriaId ? 
-            subcategoriaSelect.options[subcategoriaSelect.selectedIndex]?.text : '';
-
-        const datos = {
-            sucursalId,
-            sucursalNombre,
-            categoriaId,
-            categoriaNombre,
-            subcategoriaId: subcategoriaId || '',
-            subcategoriaNombre: subcategoriaNombre || '',
-            nivelRiesgo,
-            estado,
-            fechaHora,
-            detalles,
-            imagenes: this.imagenesSeleccionadas
-        };
-
-        const result = await Swal.fire({
-            title: 'Confirmar creación de incidencia',
-            html: `
-                <div style="text-align: left;">
-                    <p><strong>Sucursal:</strong> ${this._escapeHTML(sucursalNombre)}</p>
-                    <p><strong>Categoría:</strong> ${this._escapeHTML(categoriaNombre)}</p>
-                    ${subcategoriaId ? `<p><strong>Subcategoría:</strong> ${this._escapeHTML(subcategoriaNombre)}</p>` : ''}
-                    <p><strong>Riesgo:</strong> ${this._getRiesgoTexto(nivelRiesgo)}</p>
-                    <p><strong>Estado:</strong> ${estado === 'pendiente' ? 'Pendiente' : 'Finalizada'}</p>
-                    <p><strong>Fecha:</strong> ${new Date(fechaHora).toLocaleString('es-MX')}</p>
-                    <p><strong>Evidencias:</strong> ${this.imagenesSeleccionadas.length} imagen(es)</p>
-                </div>
-            `,
-            icon: 'question',
-            showCancelButton: true,
-            confirmButtonText: '<i class="fas fa-save"></i> Crear',
-            cancelButtonText: '<i class="fas fa-times"></i> Cancelar',
-            confirmButtonColor: '#28a745',
-            cancelButtonColor: '#6c757d'
-        });
-
-        if (result.isConfirmed) {
-            Swal.fire({
-                title: 'Generando PDF...',
-                text: 'Preparando el documento para descargar',
-                allowOutsideClick: false,
-                showConfirmButton: false,
-                didOpen: () => Swal.showLoading()
-            });
-
-            const incidenciaTemporal = this._crearRegistroTemporal(datos);
-            let pdfBlob = null;
-
-            try {
-                pdfBlob = await this.pdfGenerator.generarIPH(incidenciaTemporal, {
-                    mostrarAlerta: false,
-                    returnBlob: true,
-                    diagnosticar: false
-                });
-                
-                const pdfUrl = URL.createObjectURL(pdfBlob);
-                const link = document.createElement('a');
-                link.href = pdfUrl;
-                const fechaParaNombre = new Date(datos.fechaHora).toISOString().slice(0, 19).replace(/:/g, '-');
-                link.download = `incidencia_${datos.sucursalNombre}_${fechaParaNombre}.pdf`;
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-                URL.revokeObjectURL(pdfUrl);
-                
-                Swal.close();
-            } catch (pdfError) {
-                console.error('Error generando PDF:', pdfError);
-                Swal.close();
-                this._mostrarError('No se pudo generar el PDF, pero continuaremos con el guardado');
-            }
-            
-            await this._guardarIncidencia(datos);
-        }
+    if (!sucursalId) {
+        this._mostrarError('⚠️ Es necesario seleccionar una sucursal primero');
+        sucursalInput.focus();
+        return;
     }
+
+    if (!categoriaId) {
+        this._mostrarError('Debe seleccionar una categoría válida de la lista');
+        categoriaInput.focus();
+        return;
+    }
+
+    const riesgoSelect = document.getElementById('nivelRiesgo');
+    const nivelRiesgo = riesgoSelect.value;
+    if (!nivelRiesgo) {
+        this._mostrarError('Debe seleccionar el nivel de riesgo');
+        riesgoSelect.focus();
+        return;
+    }
+
+    const estadoSelect = document.getElementById('estadoIncidencia');
+    const estado = estadoSelect.value;
+    if (!estado) {
+        this._mostrarError('Debe seleccionar el estado');
+        estadoSelect.focus();
+        return;
+    }
+
+    const fechaInput = document.getElementById('fechaHoraIncidencia');
+    let fechaHora = fechaInput.value;
+
+    if (!fechaHora) {
+        this._mostrarError('Debe seleccionar fecha y hora');
+        fechaInput.focus();
+        return;
+    }
+
+    const fechaSeleccionada = new Date(fechaHora);
+    const ahora = new Date();
+
+    if (fechaSeleccionada > ahora) {
+        this._mostrarError('No puede seleccionar una fecha futura');
+        fechaInput.focus();
+        return;
+    }
+
+    const detallesInput = document.getElementById('detallesIncidencia');
+    const detalles = detallesInput.value.trim();
+    if (!detalles) {
+        detallesInput.classList.add('is-invalid');
+        this._mostrarError('La descripción de la incidencia es obligatoria');
+        detallesInput.focus();
+        return;
+    }
+    if (detalles.length < 10) {
+        detallesInput.classList.add('is-invalid');
+        this._mostrarError('La descripción debe tener al menos 10 caracteres');
+        detallesInput.focus();
+        return;
+    }
+    if (detalles.length > LIMITES.DETALLES_INCIDENCIA) {
+        detallesInput.classList.add('is-invalid');
+        this._mostrarError(`La descripción no puede exceder ${LIMITES.DETALLES_INCIDENCIA} caracteres`);
+        detallesInput.focus();
+        return;
+    }
+    detallesInput.classList.remove('is-invalid');
+
+    const subcategoriaSelect = document.getElementById('subcategoriaIncidencia');
+    const subcategoriaId = subcategoriaSelect.value;
+
+    const sucursalNombre = sucursalInput.value;
+    const categoriaNombre = categoriaInput.value;
+    
+    const subcategoriaNombre = subcategoriaId ? 
+        subcategoriaSelect.options[subcategoriaSelect.selectedIndex]?.text : '';
+
+    const datos = {
+        sucursalId,
+        sucursalNombre,
+        categoriaId,
+        categoriaNombre,
+        subcategoriaId: subcategoriaId || '',
+        subcategoriaNombre: subcategoriaNombre || '',
+        nivelRiesgo,
+        estado,
+        fechaHora,
+        detalles,
+        imagenes: this.imagenesSeleccionadas
+    };
+
+    const result = await Swal.fire({
+        title: 'Confirmar creación de incidencia',
+        html: `
+            <div style="text-align: left;">
+                <p><strong>Sucursal:</strong> ${this._escapeHTML(sucursalNombre)}</p>
+                <p><strong>Categoría:</strong> ${this._escapeHTML(categoriaNombre)}</p>
+                ${subcategoriaId ? `<p><strong>Subcategoría:</strong> ${this._escapeHTML(subcategoriaNombre)}</p>` : ''}
+                <p><strong>Riesgo:</strong> ${this._getRiesgoTexto(nivelRiesgo)}</p>
+                <p><strong>Estado:</strong> ${estado === 'pendiente' ? 'Pendiente' : 'Finalizada'}</p>
+                <p><strong>Fecha:</strong> ${new Date(fechaHora).toLocaleString('es-MX')}</p>
+                <p><strong>Evidencias:</strong> ${this.imagenesSeleccionadas.length} imagen(es)</p>
+            </div>
+        `,
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: '<i class="fas fa-save"></i> Crear',
+        cancelButtonText: '<i class="fas fa-times"></i> Cancelar',
+        confirmButtonColor: '#28a745',
+        cancelButtonColor: '#6c757d'
+    });
+
+    if (result.isConfirmed) {
+        await this._guardarIncidencia(datos);
+    }
+}
 
 async _guardarIncidencia(datos) {
     const btnCrear = document.getElementById('btnCrearIncidencia');
@@ -1256,28 +1221,104 @@ async _guardarIncidencia(datos) {
         }
 
         Swal.fire({
-            title: 'Preparando incidencia...',
-            text: 'Generando informe y preparando imágenes...',
+            title: 'Guardando incidencia...',
+            text: 'Creando registro en la base de datos...',
             allowOutsideClick: false,
             allowEscapeKey: false,
             showConfirmButton: false,
-            didOpen: () => {
-                Swal.showLoading();
-            }
+            didOpen: () => Swal.showLoading()
         });
 
         const fechaObj = new Date(datos.fechaHora);
         
-        const incidenciaTemporal = this._crearRegistroTemporal(datos);
+        const incidenciaData = {
+            sucursalId: datos.sucursalId,
+            categoriaId: datos.categoriaId,
+            subcategoriaId: datos.subcategoriaId || '',
+            nivelRiesgo: datos.nivelRiesgo,
+            estado: datos.estado,
+            fechaInicio: fechaObj,
+            detalles: datos.detalles,
+            reportadoPorId: this.usuarioActual.id,
+            reportadoPorCodigo: this.usuarioActual.codigoColaborador || '',
+        };
         
+        // 🔥 PRIMERO: Guardar en Firestore para obtener el ID REAL
+        const nuevaIncidencia = await this.incidenciaManager.crearIncidencia(
+            incidenciaData,
+            this.usuarioActual,
+            [],
+            []
+        );
+        
+        const folioReal = nuevaIncidencia.id; // ← Este es el ID real de Firestore
+        console.log('ID real de la incidencia:', folioReal);
+        
+        // SUBIR IMÁGENES
+        let imagenesSubidas = [];
+        
+        if (datos.imagenes && datos.imagenes.length > 0) {
+            Swal.update({
+                title: 'Subiendo imágenes...',
+                text: `Subiendo ${datos.imagenes.length} imagen(es)...`
+            });
+            
+            const uploadPromises = datos.imagenes.map(async (img, index) => {
+                const rutaStorage = `incidencias_${this.usuarioActual.organizacionCamelCase}/${nuevaIncidencia.id}/imagenes/${img.generatedName}`;
+                const resultado = await this.incidenciaManager.subirArchivo(img.file, rutaStorage);
+                
+                return {
+                    url: resultado.url,
+                    path: resultado.path,
+                    comentario: img.comentario || '',
+                    elementos: img.elementos || [],
+                    nombre: img.file.name,
+                    generatedName: img.generatedName,
+                    tipo: img.file.type,
+                    tamaño: img.file.size
+                };
+            });
+            
+            imagenesSubidas = await Promise.all(uploadPromises);
+            
+            await this.incidenciaManager.actualizarImagenes(
+                nuevaIncidencia.id,
+                imagenesSubidas,
+                this.usuarioActual.organizacionCamelCase,
+                this.usuarioActual.id,
+                this.usuarioActual.nombreCompleto
+            );
+            
+            nuevaIncidencia.imagenes = imagenesSubidas;
+        } else {
+            nuevaIncidencia.imagenes = [];
+        }
+        
+        // 🔥 SEGUNDO: Generar PDF con el ID REAL de Firestore
         Swal.update({
             title: 'Generando PDF...',
             text: 'Creando el documento de la incidencia...'
         });
         
+        // Crear objeto temporal con el ID REAL para el PDF
+        const incidenciaParaPDF = {
+            ...nuevaIncidencia,
+            id: folioReal,  // ← Usar el ID real
+            sucursalNombre: datos.sucursalNombre,
+            categoriaNombre: datos.categoriaNombre,
+            subcategoriaNombre: datos.subcategoriaNombre,
+            detalles: datos.detalles,
+            fechaInicio: fechaObj,
+            fechaCreacion: new Date(),
+            imagenes: imagenesSubidas,
+            reportadoPorNombre: this.usuarioActual.nombreCompleto,
+            reportadoPorCodigo: this.usuarioActual.codigoColaborador || '',
+            getSeguimientosArray: () => []
+        };
+        
         let pdfBlob = null;
         try {
-            pdfBlob = await this.pdfGenerator.generarIPH(incidenciaTemporal, {
+            pdfBlob = await this.pdfGenerator.generarIPH(incidenciaParaPDF, {
                 mostrarAlerta: false,
                 returnBlob: true,
                 diagnosticar: false
@@ -1290,236 +1331,156 @@ async _guardarIncidencia(datos) {
         if (!pdfBlob || pdfBlob.size === 0) {
             throw new Error('El PDF generado está vacío');
         }
-
+        
+        // SUBIR PDF
         Swal.update({
-            title: 'Creando incidencia...',
-            text: 'Guardando la información en la base de datos...'
+            title: 'Subiendo PDF...',
+            text: 'Guardando el documento PDF...'
         });
         
-            const incidenciaData = {
-                sucursalId: datos.sucursalId,
-                categoriaId: datos.categoriaId,
-                subcategoriaId: datos.subcategoriaId || '',
-                nivelRiesgo: datos.nivelRiesgo,
-                estado: datos.estado,
-                fechaInicio: fechaObj,
-                detalles: datos.detalles,
-                reportadoPorId: this.usuarioActual.id,
-                reportadoPorCodigo: this.usuarioActual.codigoColaborador || '',  // ← ESTA LÍNEA
-            };
-                    
-        const nuevaIncidencia = await this.incidenciaManager.crearIncidencia(
-            incidenciaData,
-            this.usuarioActual,
-            [],
-            []
-        );
+        let pdfUrl = null;
+        if (pdfBlob && pdfBlob.size > 0) {
+            const pdfFile = new File([pdfBlob], `incidencia_${nuevaIncidencia.id}.pdf`, { type: 'application/pdf' });
+            const rutaPDF = `incidencias_${this.usuarioActual.organizacionCamelCase}/${nuevaIncidencia.id}/pdf/incidencia_${nuevaIncidencia.id}.pdf`;
             
+            const resultadoPDF = await this.incidenciaManager.subirArchivo(pdfFile, rutaPDF);
+            pdfUrl = resultadoPDF.url;
             
-            // SUBIR IMÁGENES SOLO SI HAY (OPCIONAL)
-            let imagenesSubidas = [];
-
-            if (datos.imagenes && datos.imagenes.length > 0) {
-                Swal.update({
-                    title: 'Subiendo imágenes...',
-                    text: `Subiendo ${datos.imagenes.length} imagen(es)...`
-                });
-                
-                const uploadPromises = datos.imagenes.map(async (img, index) => {
-                    const rutaStorage = `incidencias_${this.usuarioActual.organizacionCamelCase}/${nuevaIncidencia.id}/imagenes/${img.generatedName}`;
-                    const resultado = await this.incidenciaManager.subirArchivo(img.file, rutaStorage);
-                    
-                    return {
-                        url: resultado.url,
-                        path: resultado.path,
-                        comentario: img.comentario || '',
-                        elementos: img.elementos || [],
-                        nombre: img.file.name,
-                        generatedName: img.generatedName,
-                        tipo: img.file.type,
-                        tamaño: img.file.size
-                    };
-                });
-                
-                imagenesSubidas = await Promise.all(uploadPromises);
-                
-                // Actualizar Firestore con las URLs de las imágenes
-                await this.incidenciaManager.actualizarImagenes(
-                    nuevaIncidencia.id,
-                    imagenesSubidas,
-                    this.usuarioActual.organizacionCamelCase,
-                    this.usuarioActual.id,
-                    this.usuarioActual.nombreCompleto
-                );
-                
-                nuevaIncidencia.imagenes = imagenesSubidas;
-            } else {
-                // Sin imágenes, asignar array vacío
-                nuevaIncidencia.imagenes = [];
-            }
-
-            // SUBIR PDF SOLO SI SE GENERÓ CORRECTAMENTE
+            await this.incidenciaManager.actualizarPDF(
+                nuevaIncidencia.id,
+                pdfUrl,
+                this.usuarioActual.organizacionCamelCase,
+                this.usuarioActual.id,
+                this.usuarioActual.nombreCompleto
+            );
+        }
         
-                        // SUBIR PDF Y OBTENER URL
-            let pdfUrl = null;
-            if (pdfBlob && pdfBlob.size > 0) {
-                Swal.update({
-                    title: 'Subiendo PDF...',
-                    text: 'Guardando el documento PDF...'
-                });
-                
-                const pdfFile = new File([pdfBlob], `incidencia_${nuevaIncidencia.id}.pdf`, { type: 'application/pdf' });
-                const rutaPDF = `incidencias_${this.usuarioActual.organizacionCamelCase}/${nuevaIncidencia.id}/pdf/incidencia_${nuevaIncidencia.id}.pdf`;
-                
-                const resultadoPDF = await this.incidenciaManager.subirArchivo(pdfFile, rutaPDF);
-                pdfUrl = resultadoPDF.url; // ← GUARDAMOS LA URL
-                
-                await this.incidenciaManager.actualizarPDF(
-                    nuevaIncidencia.id,
-                    pdfUrl,
-                    this.usuarioActual.organizacionCamelCase,
-                    this.usuarioActual.id,
-                    this.usuarioActual.nombreCompleto
-                );
-            }
+        Swal.close();
+        
+        // ===== COMPARTIR PDF =====
+        if (pdfUrl) {
+            const accionCompartir = await this._mostrarDialogoCompartir(pdfUrl, datos);
             
-            Swal.close();
+            const tituloIncidencia = `INCIDENCIA: ${datos.sucursalNombre} - ${datos.categoriaNombre}`;
+            const mensajeTexto = ` *${tituloIncidencia}*\n\n` +
+                ` *Folio:* ${folioReal}\n` +
+                ` *PDF:* ${pdfUrl}`;
             
-            // ===== COMPARTIR PDF DIRECTAMENTE =====
-            if (pdfUrl) {
-                const accionCompartir = await this._mostrarDialogoCompartir(pdfUrl, datos);
+            if (accionCompartir === 'whatsapp') {
+                const urlWhatsapp = `https://wa.me/?text=${encodeURIComponent(mensajeTexto)}`;
+                window.open(urlWhatsapp, '_blank');
                 
-                // Título para el mensaje
-                const tituloIncidencia = `INCIDENCIA: ${datos.sucursalNombre} - ${datos.categoriaNombre}`;
-                const mensajeTexto = ` *${tituloIncidencia}*\n\n` +
-                    ` *(PDF):* ${pdfUrl}`;
-                
-                if (accionCompartir === 'whatsapp') {
-                    // Compartir PDF por WhatsApp - enviar enlace directo al PDF
-                    const urlWhatsapp = `https://wa.me/?text=${encodeURIComponent(mensajeTexto)}`;
-                    window.open(urlWhatsapp, '_blank');
-                    
-                    await Swal.fire({
-                        icon: 'success',
-                        title: ' WhatsApp abierto',
-                        text: 'Se abrirá WhatsApp con el enlace del PDF. Pega y envía el mensaje.',
-                        timer: 3000,
-                        showConfirmButton: false
-                    });
-                } 
-           
-                else if (accionCompartir === 'link') {
-                    // Copiar enlace del PDF al portapapeles
-                    try {
-                        await navigator.clipboard.writeText(pdfUrl);
-                        await Swal.fire({
-                            icon: 'success',
-                            title: ' Enlace del PDF copiado',
-                            text: 'El enlace directo al PDF ha sido copiado al portapapeles',
-                            timer: 2500,
-                            showConfirmButton: false
-                        });
-                    } catch (err) {
-                        // Fallback manual
-                        await Swal.fire({
-                            icon: 'info',
-                            title: 'Enlace del PDF',
-                            html: `<input type="text" value="${pdfUrl}" style="width:100%; padding:8px; margin-top:10px; border-radius:5px;" readonly onclick="this.select()">`,
-                            confirmButtonText: 'Cerrar'
-                        });
-                    }
-                }
-                // Si es 'cancel', no hacer nada
-            } else {
-                console.warn('No se pudo generar el PDF, no se puede compartir');
                 await Swal.fire({
-                    icon: 'warning',
-                    title: 'PDF no disponible',
-                    text: 'No se pudo generar el PDF para compartir, pero la incidencia se guardó correctamente.',
+                    icon: 'success',
+                    title: 'WhatsApp abierto',
+                    text: 'Se abrirá WhatsApp con el enlace del PDF.',
                     timer: 3000,
                     showConfirmButton: false
                 });
+            } else if (accionCompartir === 'link') {
+                try {
+                    await navigator.clipboard.writeText(pdfUrl);
+                    await Swal.fire({
+                        icon: 'success',
+                        title: 'Enlace del PDF copiado',
+                        text: 'El enlace directo al PDF ha sido copiado al portapapeles',
+                        timer: 2500,
+                        showConfirmButton: false
+                    });
+                } catch (err) {
+                    await Swal.fire({
+                        icon: 'info',
+                        title: 'Enlace del PDF',
+                        html: `<input type="text" value="${pdfUrl}" style="width:100%; padding:8px; margin-top:10px; border-radius:5px;" readonly onclick="this.select()">`,
+                        confirmButtonText: 'Cerrar'
+                    });
+                }
             }
-            // ===== FIN DE COMPARTIR PDF =====
-            // Si es 'cancel', no hacer nada y continuar con la canalización
-            // ===== FIN DE LA NUEVA SECCIÓN =====
-
-            // Canalización a sucursal
-            let sucursalCanalizada = null;
-            let areasCanalizadas = [];
-
-            const quiereCanalizarSucursal = await Swal.fire({
-                icon: 'question',
-                title: '¿Canalizar a la sucursal?',
-                text: '¿Deseas canalizar esta incidencia a la sucursal seleccionada?',
-                showCancelButton: true,
-                confirmButtonText: 'SÍ, CANALIZAR',
-                cancelButtonText: 'NO, CONTINUAR',
-                confirmButtonColor: '#28a745'
-            });
-
-            if (quiereCanalizarSucursal.isConfirmed) {
-                sucursalCanalizada = await this._canalizarSucursal(nuevaIncidencia.id, datos.detalles.substring(0, 50));
-            }
-            
-            const quiereCanalizarArea = await Swal.fire({
-                icon: 'question',
-                title: '¿Canalizar a área(s)?',
-                text: '¿Deseas canalizar esta incidencia a alguna área adicional?',
-                showCancelButton: true,
-                confirmButtonText: 'SÍ, CANALIZAR A ÁREA',
-                cancelButtonText: 'NO, FINALIZAR',
-                confirmButtonColor: '#28a745'
-            });
-
-
-
-            
-            if (quiereCanalizarArea.isConfirmed) {
-                areasCanalizadas = await this._canalizarAreas(nuevaIncidencia.id, datos.detalles.substring(0, 50));
-            }
-            
-            const tieneSucursal = sucursalCanalizada !== null;
-            const totalAreas = areasCanalizadas.length;
-            
-            let mensajeCanalizacion = '';
-            if (tieneSucursal && totalAreas > 0) {
-                mensajeCanalizacion = `Canalizada a sucursal ${sucursalCanalizada.nombre} y ${totalAreas} área(s).`;
-            } else if (tieneSucursal) {
-                mensajeCanalizacion = `Canalizada a sucursal ${sucursalCanalizada.nombre}.`;
-            } else if (totalAreas > 0) {
-                mensajeCanalizacion = `Canalizada a ${totalAreas} área(s).`;
-            } else {
-                mensajeCanalizacion = 'No se canalizó a ninguna sucursal o área.';
-            }
-            
+        } else {
+            console.warn('No se pudo generar el PDF');
             await Swal.fire({
-                icon: 'success',
-                title: '¡Incidencia creada!',
-                html: `
-                    <div style="text-align: left;">
-                        <p>Incidencia guardada ${nuevaIncidencia.imagenes?.length > 0 ? `con ${nuevaIncidencia.imagenes.length} imagen(es)` : 'sin imágenes'}.</p>
-                        ${pdfBlob && pdfBlob.size > 0 ? '<p>El PDF se ha generado correctamente.</p>' : '<p>No se pudo generar el PDF, pero la incidencia se guardó.</p>'}
-                        <p>${mensajeCanalizacion}</p>
-                    </div>
-                `,
-                confirmButtonText: 'Ver incidencias',
-                confirmButtonColor: '#28a745'
+                icon: 'warning',
+                title: 'PDF no disponible',
+                text: 'No se pudo generar el PDF, pero la incidencia se guardó correctamente.',
+                timer: 3000,
+                showConfirmButton: false
             });
-            
-            this._volverALista();
-            
-        } catch (error) {
-            console.error('Error guardando incidencia:', error);
-            Swal.close();
-            this._mostrarError(error.message || 'No se pudo crear la incidencia');
-        } finally {
-            if (btnCrear) {
-                btnCrear.innerHTML = originalHTML;
-                btnCrear.disabled = false;
-            }
+        }
+        
+        // Canalizaciones (resto igual)
+        let sucursalCanalizada = null;
+        let areasCanalizadas = [];
+
+        const quiereCanalizarSucursal = await Swal.fire({
+            icon: 'question',
+            title: '¿Canalizar a la sucursal?',
+            text: '¿Deseas canalizar esta incidencia a la sucursal seleccionada?',
+            showCancelButton: true,
+            confirmButtonText: 'SÍ, CANALIZAR',
+            cancelButtonText: 'NO, CONTINUAR',
+            confirmButtonColor: '#28a745'
+        });
+
+        if (quiereCanalizarSucursal.isConfirmed) {
+            sucursalCanalizada = await this._canalizarSucursal(nuevaIncidencia.id, datos.detalles.substring(0, 50));
+        }
+        
+        const quiereCanalizarArea = await Swal.fire({
+            icon: 'question',
+            title: '¿Canalizar a área(s)?',
+            text: '¿Deseas canalizar esta incidencia a alguna área adicional?',
+            showCancelButton: true,
+            confirmButtonText: 'SÍ, CANALIZAR A ÁREA',
+            cancelButtonText: 'NO, FINALIZAR',
+            confirmButtonColor: '#28a745'
+        });
+
+        if (quiereCanalizarArea.isConfirmed) {
+            areasCanalizadas = await this._canalizarAreas(nuevaIncidencia.id, datos.detalles.substring(0, 50));
+        }
+        
+        const tieneSucursal = sucursalCanalizada !== null;
+        const totalAreas = areasCanalizadas.length;
+        
+        let mensajeCanalizacion = '';
+        if (tieneSucursal && totalAreas > 0) {
+            mensajeCanalizacion = `Canalizada a sucursal ${sucursalCanalizada.nombre} y ${totalAreas} área(s).`;
+        } else if (tieneSucursal) {
+            mensajeCanalizacion = `Canalizada a sucursal ${sucursalCanalizada.nombre}.`;
+        } else if (totalAreas > 0) {
+            mensajeCanalizacion = `Canalizada a ${totalAreas} área(s).`;
+        } else {
+            mensajeCanalizacion = 'No se canalizó a ninguna sucursal o área.';
+        }
+        
+        await Swal.fire({
+            icon: 'success',
+            title: '¡Incidencia creada!',
+            html: `
+                <div style="text-align: left;">
+                    <p><strong>Folio:</strong> ${folioReal}</p>
+                    <p>Incidencia guardada ${nuevaIncidencia.imagenes?.length > 0 ? `con ${nuevaIncidencia.imagenes.length} imagen(es)` : 'sin imágenes'}.</p>
+                    ${pdfBlob && pdfBlob.size > 0 ? '<p>El PDF se ha generado correctamente.</p>' : '<p>No se pudo generar el PDF, pero la incidencia se guardó.</p>'}
+                    <p>${mensajeCanalizacion}</p>
+                </div>
+            `,
+            confirmButtonText: 'Ver incidencias',
+            confirmButtonColor: '#28a745'
+        });
+        
+        this._volverALista();
+        
+    } catch (error) {
+        console.error('Error guardando incidencia:', error);
+        Swal.close();
+        this._mostrarError(error.message || 'No se pudo crear la incidencia');
+    } finally {
+        if (btnCrear) {
+            btnCrear.innerHTML = originalHTML;
+            btnCrear.disabled = false;
         }
     }
+}
 async _mostrarDialogoCompartir(pdfUrl, datos) {
     return new Promise((resolve) => {
         Swal.fire({
