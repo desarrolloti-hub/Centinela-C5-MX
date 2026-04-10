@@ -398,26 +398,66 @@ window.compartirIncidencia = async function (incidenciaId, event) {
                         showConfirmButton: false
                     });
                 };
-                               document.getElementById('shareEmailBtn').onclick = () => {
+                              document.getElementById('shareEmailBtn').onclick = async () => {
                     Swal.close();
                     
-                    const asunto = encodeURIComponent(tituloIncidencia);
+                    // Preguntar qué servicio de correo usa
+                    const { value: servicio } = await Swal.fire({
+                        title: ' Enviar por correo',
+                        text: 'Selecciona tu servicio de correo',
+                        icon: 'question',
+                        input: 'select',
+                        inputOptions: {
+                            'gmail': 'Gmail',
+                            'outlook': 'Outlook / Hotmail'
+                        },
+                        inputPlaceholder: 'Selecciona un servicio',
+                        showCancelButton: true,
+                        confirmButtonText: 'Abrir Correo',
+                        cancelButtonText: 'Cancelar',
+                        confirmButtonColor: '#ff9122'
+                    });
                     
-                    // Mensaje simple con URL que será automáticamente clickeable
+                    if (!servicio) return;
+                    
+                    const sucursalNombre = obtenerNombreSucursal(incidencia.sucursalId);
+                    const categoriaNombre = obtenerNombreCategoria(incidencia.categoriaId);
+                    const riesgoTexto = incidencia.getNivelRiesgoTexto ? incidencia.getNivelRiesgoTexto() : incidencia.nivelRiesgo;
+                    const estadoTexto = incidencia.getEstadoTexto ? incidencia.getEstadoTexto() : incidencia.estado;
+                    const fechaInicio = incidencia.fechaInicio ? 
+                        (incidencia.fechaInicio.toDate ? 
+                            incidencia.fechaInicio.toDate().toLocaleDateString('es-MX') : 
+                            new Date(incidencia.fechaInicio).toLocaleDateString('es-MX')) : 
+                        'Fecha no disponible';
+                    const pdfUrl = incidencia.pdfUrl;
+                    
+                    // Título
+                    const tituloIncidencia = `INCIDENCIA: ${sucursalNombre} - ${categoriaNombre}`;
+                    
+                    // Mensaje SIMPLE sin etiquetas HTML
                     const cuerpoTexto = 
                         `${tituloIncidencia}\n\n` +
-                        `Sucursal: ${obtenerNombreSucursal(incidencia.sucursalId)}\n` +
+                        `Sucursal: ${sucursalNombre}\n` +
+                        `Categoría: ${categoriaNombre}\n` +
                         `Riesgo: ${riesgoTexto}\n` +
-                        `Fecha: ${fechaInicio}\n\n` +
-                        ` PDF de la incidencia:\n${pdfUrl}\n\n` +
-                        `--\nEste informe ha sido generado automáticamente por el sistema Centinela.`;
+                        `Fecha: ${fechaInicio}\n` +
+                        `Estado: ${estadoTexto}\n\n` +
+                        `PDF de la incidencia:\n${pdfUrl}\n\n` +
+                        `--\nPDF enviado por el sistema Centinela.`;
                     
-                    window.location.href = `mailto:?subject=${asunto}&body=${encodeURIComponent(cuerpoTexto)}`;
+                    const asunto = encodeURIComponent(tituloIncidencia);
+                    const cuerpoCodificado = encodeURIComponent(cuerpoTexto);
+                    
+                    if (servicio === 'gmail') {
+                        window.open(`https://mail.google.com/mail/?view=cm&fs=1&su=${asunto}&body=${cuerpoCodificado}`, '_blank');
+                    } else {
+                        window.open(`https://outlook.live.com/mail/0/deeplink/compose?subject=${asunto}&body=${cuerpoCodificado}`, '_blank');
+                    }
                     
                     Swal.fire({
                         icon: 'success',
-                        title: ' Cliente de correo abierto',
-                        text: 'Se abrió tu cliente de correo con el enlace del PDF.',
+                        title: ' Correo abierto',
+                        text: 'Se abrió tu correo con el enlace del PDF.',
                         timer: 2500,
                         showConfirmButton: false
                     });

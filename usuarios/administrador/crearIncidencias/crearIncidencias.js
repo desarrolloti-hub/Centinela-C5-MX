@@ -1401,33 +1401,20 @@ async _guardarIncidencia(datos) {
                     
                     await Swal.fire({
                         icon: 'success',
-                        title: '📱 WhatsApp abierto',
+                        title: ' WhatsApp abierto',
                         text: 'Se abrirá WhatsApp con el enlace del PDF. Pega y envía el mensaje.',
                         timer: 3000,
                         showConfirmButton: false
                     });
                 } 
-                else if (accionCompartir === 'email') {
-                    // Compartir PDF por Correo - incluir enlace directo
-                    const asunto = encodeURIComponent(`Incidencia: ${datos.sucursalNombre} - ${datos.categoriaNombre}`);
-                    const cuerpo = encodeURIComponent(`${mensajeTexto}\n\n--\nEste informe ha sido generado automáticamente por el sistema Centinela.`);
-                    window.location.href = `mailto:?subject=${asunto}&body=${cuerpo}`;
-                    
-                    await Swal.fire({
-                        icon: 'success',
-                        title: '📧 Cliente de correo abierto',
-                        text: 'Se abrió tu cliente de correo con el enlace del PDF.',
-                        timer: 3000,
-                        showConfirmButton: false
-                    });
-                }
+           
                 else if (accionCompartir === 'link') {
                     // Copiar enlace del PDF al portapapeles
                     try {
                         await navigator.clipboard.writeText(pdfUrl);
                         await Swal.fire({
                             icon: 'success',
-                            title: '✅ Enlace del PDF copiado',
+                            title: ' Enlace del PDF copiado',
                             text: 'El enlace directo al PDF ha sido copiado al portapapeles',
                             timer: 2500,
                             showConfirmButton: false
@@ -1536,18 +1523,18 @@ async _guardarIncidencia(datos) {
 async _mostrarDialogoCompartir(pdfUrl, datos) {
     return new Promise((resolve) => {
         Swal.fire({
-            title: ' Compartir incidencia',
+            title: 'Compartir incidencia',
             html: `
                 <div style="text-align: center;">
                     <i class="fas fa-file-pdf" style="font-size: 48px; color: #e74c3c; margin-bottom: 15px; display: inline-block;"></i>
                     <p style="margin-bottom: 20px;">El PDF se ha generado correctamente</p>
-                    <p style="font-size: 13px; color: #aaa; margin-bottom: 20px;">¿Cómo deseas compartirlo?</p>
+                    <p style="font-size: 13px; color: #aaa; margin-bottom: 20px;">¿Como deseas compartirlo?</p>
                     <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 15px;">
                         <button id="shareWhatsAppBtn" class="btn-compartir" style="background: linear-gradient(145deg, #0f0f0f, #1a1a1a); border: 1px solid #25D366; border-radius: 8px; padding: 12px; color: white; font-weight: 600; font-family: 'Orbitron', sans-serif; text-transform: uppercase; letter-spacing: 0.5px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; transition: all 0.3s ease;">
                             <i class="fab fa-whatsapp" style="color: #25D366; font-size: 18px;"></i> WhatsApp
                         </button>
                         <button id="shareEmailBtn" class="btn-compartir" style="background: linear-gradient(145deg, #0f0f0f, #1a1a1a); border: 1px solid #0077B5; border-radius: 8px; padding: 12px; color: white; font-weight: 600; font-family: 'Orbitron', sans-serif; text-transform: uppercase; letter-spacing: 0.5px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; transition: all 0.3s ease;">
-                            <i class="fas fa-envelope" style="color: #0077B5; font-size: 18px;"></i> Correo Electrónico
+                            <i class="fas fa-envelope" style="color: #0077B5; font-size: 18px;"></i> Correo Electronico
                         </button>
                         <button id="shareLinkBtn" class="btn-compartir" style="background: linear-gradient(145deg, #0f0f0f, #1a1a1a); border: 1px solid var(--color-accent-primary); border-radius: 8px; padding: 12px; color: white; font-weight: 600; font-family: 'Orbitron', sans-serif; text-transform: uppercase; letter-spacing: 0.5px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; transition: all 0.3s ease;">
                             <i class="fas fa-link" style="color: var(--color-accent-primary); font-size: 18px;"></i> Copiar Enlace
@@ -1563,34 +1550,77 @@ async _mostrarDialogoCompartir(pdfUrl, datos) {
             showCancelButton: false,
             didOpen: () => {
                 const tituloIncidencia = `INCIDENCIA: ${datos.sucursalNombre} - ${datos.categoriaNombre}`;
-                const mensajeTexto = ` *${tituloIncidencia}*\n\n` +
-                    ` *Sucursal:* ${datos.sucursalNombre}\n` +
-                    ` *Riesgo:* ${this._getRiesgoTexto(datos.nivelRiesgo)}\n` +
-                    ` *Informe completo (PDF):* ${pdfUrl}`;
                 
                 document.getElementById('shareWhatsAppBtn').onclick = () => {
                     Swal.close();
-                    const urlWhatsapp = `https://wa.me/?text=${encodeURIComponent(mensajeTexto)}`;
+                    const mensajeWhatsApp = `${tituloIncidencia}\n\nSucursal: ${datos.sucursalNombre}\nRiesgo: ${this._getRiesgoTexto(datos.nivelRiesgo)}\n\nPDF de la incidencia:\n${pdfUrl}\n\n--\nPDF enviado por el sistema Centinela.`;
+                    const urlWhatsapp = `https://wa.me/?text=${encodeURIComponent(mensajeWhatsApp)}`;
                     window.open(urlWhatsapp, '_blank');
                     Swal.fire({
                         icon: 'success',
-                        title: ' WhatsApp abierto',
-                        text: 'Se abrirá WhatsApp con el enlace del PDF.',
+                        title: 'WhatsApp abierto',
+                        text: 'Se abrira WhatsApp con el enlace del PDF.',
                         timer: 2500,
                         showConfirmButton: false
                     });
                     resolve('whatsapp');
                 };
                 
-                document.getElementById('shareEmailBtn').onclick = () => {
+                document.getElementById('shareEmailBtn').onclick = async () => {
                     Swal.close();
+                    
+                    const { value: servicio } = await Swal.fire({
+                        title: 'Enviar por correo',
+                        text: 'Selecciona tu servicio de correo',
+                        icon: 'question',
+                        input: 'select',
+                        inputOptions: {
+                            'gmail': 'Gmail',
+                            'outlook': 'Outlook / Hotmail'
+                        },
+                        inputPlaceholder: 'Selecciona un servicio',
+                        showCancelButton: true,
+                        confirmButtonText: 'Abrir Correo',
+                        cancelButtonText: 'Cancelar',
+                        confirmButtonColor: '#ff9122'
+                    });
+                    
+                    if (!servicio) {
+                        resolve('cancel');
+                        return;
+                    }
+                    
+                    const sucursalNombre = datos.sucursalNombre;
+                    const categoriaNombre = datos.categoriaNombre;
+                    const riesgoTexto = this._getRiesgoTexto(datos.nivelRiesgo);
+                    const estadoTexto = datos.estado === 'pendiente' ? 'Pendiente' : 'Finalizada';
+                    const fechaInicio = new Date(datos.fechaHora).toLocaleDateString('es-MX');
+                    
+                    const tituloIncidencia = `INCIDENCIA: ${sucursalNombre} - ${categoriaNombre}`;
+                    
+                    const cuerpoTexto = 
+                        `${tituloIncidencia}\n\n` +
+                        `Sucursal: ${sucursalNombre}\n` +
+                        `Categoria: ${categoriaNombre}\n` +
+                        `Riesgo: ${riesgoTexto}\n` +
+                        `Fecha: ${fechaInicio}\n` +
+                        `Estado: ${estadoTexto}\n\n` +
+                        `PDF de la incidencia:\n${pdfUrl}\n\n` +
+                        `--\nPDF enviado por el sistema Centinela.`;
+                    
                     const asunto = encodeURIComponent(tituloIncidencia);
-                    const cuerpoTexto = `${mensajeTexto}\n\n--\nEste informe ha sido generado automáticamente por el sistema Centinela.`;
-                    window.location.href = `mailto:?subject=${asunto}&body=${encodeURIComponent(cuerpoTexto)}`;
+                    const cuerpoCodificado = encodeURIComponent(cuerpoTexto);
+                    
+                    if (servicio === 'gmail') {
+                        window.open(`https://mail.google.com/mail/?view=cm&fs=1&su=${asunto}&body=${cuerpoCodificado}`, '_blank');
+                    } else if (servicio === 'outlook') {
+                        window.open(`https://outlook.live.com/mail/0/deeplink/compose?subject=${asunto}&body=${cuerpoCodificado}`, '_blank');
+                    }
+                    
                     Swal.fire({
                         icon: 'success',
-                        title: ' Cliente de correo abierto',
-                        text: 'Se abrió tu cliente de correo con el enlace del PDF.',
+                        title: 'Correo abierto',
+                        text: 'Se abrio tu correo con el enlace del PDF.',
                         timer: 2500,
                         showConfirmButton: false
                     });
@@ -1603,7 +1633,7 @@ async _mostrarDialogoCompartir(pdfUrl, datos) {
                         await navigator.clipboard.writeText(pdfUrl);
                         Swal.fire({
                             icon: 'success',
-                            title: ' Enlace copiado',
+                            title: 'Enlace copiado',
                             text: 'El enlace del PDF ha sido copiado al portapapeles',
                             timer: 2000,
                             showConfirmButton: false
@@ -1747,7 +1777,7 @@ async _mostrarDialogoCompartir(pdfUrl, datos) {
                 mensaje += `<br>${resultado.totalAdministradores} administradores`;
                 
                 if (resultado.push && resultado.push.enviados > 0) {
-                    mensaje += `<br>📱 Push: ${resultado.push.enviados}/${resultado.push.total} enviados`;
+                    mensaje += `<br> Push: ${resultado.push.enviados}/${resultado.push.total} enviados`;
                 }
                 
                 await Swal.fire({
