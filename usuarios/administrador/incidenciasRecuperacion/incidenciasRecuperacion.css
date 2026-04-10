@@ -994,3 +994,52 @@
             border: none;
         }
    
+        /* =============================================
+   BOTONES DE COMPARTIR - ESTILO UNIFICADO
+   ============================================= */
+.btn-compartir {
+    transition: all 0.3s ease !important;
+    position: relative;
+    overflow: hidden;
+}
+
+.btn-compartir:hover {
+    transform: translateY(-2px) !important;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3) !important;
+}
+
+.btn-compartir#shareWhatsAppBtn:hover {
+    border-color: #25D366 !important;
+    box-shadow: 0 0 15px rgba(37, 211, 102, 0.3) !important;
+}
+
+.btn-compartir#shareWhatsAppBtn:hover i {
+    color: #25D366 !important;
+}
+
+.btn-compartir#shareEmailBtn:hover {
+    border-color: #0077B5 !important;
+    box-shadow: 0 0 15px rgba(0, 119, 181, 0.3) !important;
+}
+
+.btn-compartir#shareEmailBtn:hover i {
+    color: #0077B5 !important;
+}
+
+.btn-compartir#shareLinkBtn:hover {
+    border-color: var(--color-accent-primary) !important;
+    box-shadow: 0 0 15px rgba(0, 207, 255, 0.3) !important;
+}
+
+.btn-compartir#shareLinkBtn:hover i {
+    color: var(--color-accent-primary) !important;
+}
+
+.btn-compartir#shareCancelBtn:hover {
+    border-color: var(--color-danger) !important;
+    color: var(--color-danger) !important;
+}
+
+.btn-compartir#shareCancelBtn:hover i {
+    color: var(--color-danger) !important;
+}
