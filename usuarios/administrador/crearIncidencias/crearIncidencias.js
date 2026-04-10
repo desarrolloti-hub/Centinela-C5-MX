@@ -524,7 +524,7 @@ class CrearIncidenciaController {
 }
 
     _generarCamelCase(texto) {
-        if (!texto || typeof texto !== 'string') return 'sinOrganizacion';
+        if (!texto || typeof texto !== 'string') return 'Chedraui';
         return texto
             .toLowerCase()
             .normalize("NFD")

@@ -904,7 +904,7 @@ async dibujarSeguimiento(pdf, seguimiento, x, y, ancho, numero) {
         pdf.setFontSize(this.fonts.small);
         pdf.setTextColor(60, 60, 60);
 
-        const organizacion = this.organizacionActual?.nombre || incidencia.organizacion || 'No especificada';
+            const organizacion = 'Chedraui'; // Forzado estáticamente
         pdf.text(`Organización: ${organizacion}`, margen + 6, yPos + 16);
 
         const sucursalNombre = incidencia.sucursalNombre || this.obtenerNombreSucursal(incidencia.sucursalId);

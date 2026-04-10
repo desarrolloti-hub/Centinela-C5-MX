@@ -499,39 +499,58 @@ export class PDFBaseGenerator {
         pdf.text(texto, x, y, { align: 'center' });
     }
 
-    dibujarPiePagina(pdf) {
-        const margen = 15;
-        const anchoPagina = pdf.internal.pageSize.getWidth();
-        const altoPagina = pdf.internal.pageSize.getHeight();
-        const alturaPie = 15;
-        const yPos = altoPagina - alturaPie - 2;
+  dibujarPiePagina(pdf) {
+    const margen = 15;
+    const anchoPagina = pdf.internal.pageSize.getWidth();
+    const altoPagina = pdf.internal.pageSize.getHeight();
+    const alturaPie = 15;
+    const yPos = altoPagina - alturaPie - 2;
 
-        pdf.saveGraphicsState();
-        pdf.setFillColor(255, 255, 255);
-        pdf.rect(0, yPos - 2, anchoPagina, alturaPie + 4, 'F');
-        pdf.setDrawColor(coloresBase.secundario);
-        pdf.setLineWidth(0.5);
-        pdf.line(margen, yPos, anchoPagina - margen, yPos);
-        pdf.setFont('helvetica', 'italic');
-        pdf.setFontSize(this.fonts.micro);
-        pdf.setTextColor(coloresBase.textoClaro);
-        pdf.text('Reporte Generado con Sistema Centinela', margen, yPos + 5);
-
-        pdf.setFont('helvetica', 'normal');
-        pdf.setFontSize(this.fonts.micro);
-        pdf.setTextColor(coloresBase.textoClaro);
-        pdf.text(`Página ${this.paginaActualReal} de ${this.totalPaginas}`, anchoPagina - margen, yPos + 5, { align: 'right' });
-        pdf.setDrawColor(coloresBase.primario);
-        pdf.setFillColor(coloresBase.primario);
-        pdf.rect(0, altoPagina - 3, anchoPagina, 3, 'F');
-        pdf.restoreGraphicsState();
+    // ✅ OBTENER EL NÚMERO REAL DE PÁGINAS DEL PDF
+    const totalPaginasReales = pdf.internal.getNumberOfPages();
+    
+    // ✅ OBTENER LA PÁGINA ACTUAL (la que se está dibujando)
+    let paginaActual = this.paginaActualReal;
+    
+    // Si por alguna razón no está actualizado, usar la página actual del PDF
+    if (!paginaActual || paginaActual < 1) {
+        paginaActual = pdf.internal.getCurrentPageInfo().pageNumber;
     }
 
-    verificarEspacio(pdf, yPos, espacioNecesario) {
-        const altoPagina = pdf.internal.pageSize.getHeight();
-        const espacioDisponible = altoPagina - yPos - 30;
-        return espacioDisponible >= espacioNecesario;
+    pdf.saveGraphicsState();
+    pdf.setFillColor(255, 255, 255);
+    pdf.rect(0, yPos - 2, anchoPagina, alturaPie + 4, 'F');
+    pdf.setDrawColor(coloresBase.secundario);
+    pdf.setLineWidth(0.5);
+    pdf.line(margen, yPos, anchoPagina - margen, yPos);
+    pdf.setFont('helvetica', 'italic');
+    pdf.setFontSize(this.fonts.micro);
+    pdf.setTextColor(coloresBase.textoClaro);
+    pdf.text('Reporte Generado con Sistema Centinela', margen, yPos + 5);
+
+    pdf.setFont('helvetica', 'normal');
+    pdf.setFontSize(this.fonts.micro);
+    pdf.setTextColor(coloresBase.textoClaro);
+    // ✅ AHORA USA EL TOTAL REAL
+    pdf.text(`Página ${paginaActual} de ${totalPaginasReales}`, anchoPagina - margen, yPos + 5, { align: 'right' });
+    pdf.setDrawColor(coloresBase.primario);
+    pdf.setFillColor(coloresBase.primario);
+    pdf.rect(0, altoPagina - 3, anchoPagina, 3, 'F');
+    pdf.restoreGraphicsState();
+}
+
+   verificarEspacio(pdf, yPos, espacioNecesario) {
+    const altoPagina = pdf.internal.pageSize.getHeight();
+    const espacioDisponible = altoPagina - yPos - 30;
+    
+    // ✅ Si no hay espacio, actualizar contador de páginas ANTES de retornar false
+    if (espacioDisponible < espacioNecesario) {
+        // Actualizar el total de páginas reales antes de añadir nueva página
+        this.totalPaginas = pdf.internal.getNumberOfPages();
+        return false;
     }
+    return true;
+}
 
     async mostrarOpcionesDescarga(pdf, nombreArchivo) {
         const result = await Swal.fire({
