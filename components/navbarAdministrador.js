@@ -1743,7 +1743,7 @@ class NavbarComplete {
                             <span>Regiones</span>
                         </a>
                         <a href="/usuarios/administrador/permisos/permisos.html" class="administracion-dropdown-option">
-                            <i class="fa-solid fa-lock"></i>
+                            <i class="fa-solid fa-location-dot"></i>
                             <span>Permisos</span>
                         </a>
                         <a href="/usuarios/administrador/usuarios/usuarios.html" class="administracion-dropdown-option">
@@ -1774,11 +1774,11 @@ class NavbarComplete {
                             <span>Crear Incidencia</span>
                         </a>
                         <a href="/usuarios/administrador/incidenciasCanalizadas/incidenciasCanalizadas.html" class="administracion-dropdown-option incidencia-option" data-permiso-id="incidenciasCanalizadas">
-                            <i class="fa-solid fa-share-alt"></i>
+                            <i class="fa-solid fa-check-circle"></i>
                             <span>Incidencias Canalizadas</span>
                         </a>
                         <a href="/usuarios/administrador/estadisticas/estadisticas.html" class="administracion-dropdown-option incidencia-option" data-permiso-id="listaIncidencias">
-                            <i class="fa-solid fa-chart-bar"></i>
+                            <i class="fa-solid fa-chart-simple"></i>
                             <span>Estadisticas Incidencias</span>
                         </a>
                         <a href="/usuarios/administrador/incidenciasRecuperacion/incidenciasRecuperacion.html" class="administracion-dropdown-option incidencia-option" data-permiso-id="listaIncidencias">
@@ -1790,7 +1790,7 @@ class NavbarComplete {
                             <span>Crear Extravio</span>
                         </a>
                         <a href="/usuarios/administrador/estadisticasIncidenciasRecuperacion/estadisticasIncidenciasRecuperacion.html" class="administracion-dropdown-option incidencia-option" data-permiso-id="incidenciasCanalizadas">
-                            <i class="fa-solid fa-chart-bar"></i>
+                           <i class="fa-solid fa-chart-line"></i>
                             <span>Estadisticas Extravios</span>
                         </a>
                     </div>
@@ -1805,7 +1805,7 @@ class NavbarComplete {
 
                     <div class="administracion-dropdown-options" id="monitoreoDropdownOptions">
                         <a href="/usuarios/administrador/mapaAlertas/mapaAlertas.html" class="administracion-dropdown-option">
-                            <i class="fa-solid fa-map-marker-alt"></i>
+                              <i class="fa-solid fa-map-location-dot"></i>
                             <span>Mapa de Alertas</span>
                         </a>
                         
