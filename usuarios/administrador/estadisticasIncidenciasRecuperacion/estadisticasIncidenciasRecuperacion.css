@@ -1325,3 +1325,49 @@ p, h1, h2, h3, h4, h5, h6, span, div {
 ::-webkit-scrollbar-thumb:hover {
     background: var(--color-text-primary);
 }
+/* Estilos para KPI Cards clickeables */
+.kpi-card {
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.kpi-card::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: radial-gradient(circle at center, rgba(255,255,255,0.1) 0%, transparent 70%);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
+}
+
+.kpi-card:hover::after {
+    opacity: 1;
+}
+
+.kpi-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.3);
+    border-color: var(--color-accent-primary);
+}
+
+.kpi-card:active {
+    transform: translateY(0px);
+}
+
+/* Indicador visual de que es clickeable */
+.kpi-card .kpi-info p::after {
+    content: ' 🔍';
+    font-size: 0.6rem;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+
+.kpi-card:hover .kpi-info p::after {
+    opacity: 0.7;
+}

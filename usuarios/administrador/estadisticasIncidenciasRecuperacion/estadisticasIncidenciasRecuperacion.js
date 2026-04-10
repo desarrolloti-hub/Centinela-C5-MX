@@ -276,7 +276,233 @@ function mostrarKPIs(estadisticas) {
     document.getElementById('porcentajeRecuperacion').textContent = `${estadisticas.porcentajeRecuperacion.toFixed(2)}%`;
     document.getElementById('totalEventos').textContent = estadisticas.totalEventos;
     document.getElementById('promedioPerdida').textContent = formatter.format(estadisticas.promedioPerdida);
+    
+    // Configurar los KPI cards como clickeables después de actualizar los valores
+    setTimeout(() => {
+        configurarKpiCardsClickeables();
+    }, 100);
 }
+
+
+// =============================================
+// CONFIGURAR CLICS EN KPI CARDS
+// =============================================
+function configurarKpiCardsClickeables() {
+    // Total Perdido
+    const totalPerdidoCard = document.querySelector('.kpi-card:first-child');
+    if (totalPerdidoCard) {
+        totalPerdidoCard.style.cursor = 'pointer';
+        totalPerdidoCard.addEventListener('click', () => {
+            const registrosConPerdida = datosActuales.registros.filter(r => (r.montoPerdido || 0) > 0);
+            if (registrosConPerdida.length === 0) {
+                Swal.fire({
+                    icon: 'info',
+                    title: 'Sin registros',
+                    text: 'No hay registros con pérdidas',
+                    background: 'var(--color-bg-primary)',
+                    color: 'white'
+                });
+                return;
+            }
+            mostrarRegistrosEnSweet(registrosConPerdida, 'Registros con pérdidas', '<i class="fas fa-box-open"></i> Total perdido');
+        });
+    }
+
+    // Total Recuperado
+    const totalRecuperadoCard = document.querySelector('.kpi-card:nth-child(2)');
+    if (totalRecuperadoCard) {
+        totalRecuperadoCard.style.cursor = 'pointer';
+        totalRecuperadoCard.addEventListener('click', () => {
+            const registrosConRecuperacion = datosActuales.registros.filter(r => (r.montoRecuperado || 0) > 0);
+            if (registrosConRecuperacion.length === 0) {
+                Swal.fire({
+                    icon: 'info',
+                    title: 'Sin registros',
+                    text: 'No hay registros con recuperaciones',
+                    background: 'var(--color-bg-primary)',
+                    color: 'white'
+                });
+                return;
+            }
+            mostrarRegistrosEnSweet(registrosConRecuperacion, 'Registros con recuperaciones', '<i class="fas fa-undo-alt"></i> Total recuperado');
+        });
+    }
+
+    // Pérdida Neta
+    const totalNetoCard = document.querySelector('.kpi-card:nth-child(3)');
+    if (totalNetoCard) {
+        totalNetoCard.style.cursor = 'pointer';
+        totalNetoCard.addEventListener('click', () => {
+            const registrosConPerdidaNeta = datosActuales.registros.filter(r => (r.montoPerdido - (r.montoRecuperado || 0)) > 0);
+            if (registrosConPerdidaNeta.length === 0) {
+                Swal.fire({
+                    icon: 'info',
+                    title: 'Sin registros',
+                    text: 'No hay registros con pérdida neta',
+                    background: 'var(--color-bg-primary)',
+                    color: 'white'
+                });
+                return;
+            }
+            mostrarRegistrosEnSweet(registrosConPerdidaNeta, 'Registros con pérdida neta', '<i class="fas fa-chart-line"></i> Pérdida neta');
+        });
+    }
+
+    // Tasa de Recuperación
+    const porcentajeCard = document.querySelector('.kpi-card:nth-child(4)');
+    if (porcentajeCard) {
+        porcentajeCard.style.cursor = 'pointer';
+        porcentajeCard.addEventListener('click', () => {
+            const tasaRecuperacion = datosActuales.estadisticas?.porcentajeRecuperacion || 0;
+            const totalPerdido = datosActuales.estadisticas?.totalPerdido || 0;
+            const totalRecuperado = datosActuales.estadisticas?.totalRecuperado || 0;
+            
+            Swal.fire({
+                title: '<i class="fas fa-percent"></i> Detalle de tasa de recuperación',
+                html: `
+                    <div style="text-align: left;">
+                        <div style="background: rgba(0,0,0,0.4); border-radius: 16px; padding: 16px; margin-bottom: 16px;">
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 12px;">
+                                <span style="color: #9ca3af;">Total perdido:</span>
+                                <span style="color: #ef4444; font-weight: 700;">${new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(totalPerdido)}</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 12px;">
+                                <span style="color: #9ca3af;">Total recuperado:</span>
+                                <span style="color: #10b981; font-weight: 700;">${new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(totalRecuperado)}</span>
+                            </div>
+                            <div class="progress-bar-container" style="background: rgba(255,255,255,0.1); border-radius: 10px; height: 12px; margin: 16px 0 8px 0;">
+                                <div class="progress-bar-fill" style="width: ${tasaRecuperacion}%; background: linear-gradient(90deg, #10b981, #34d399); border-radius: 10px; height: 100%; transition: width 0.3s ease;"></div>
+                            </div>
+                            <div style="text-align: center; margin-top: 12px;">
+                                <span style="font-size: 1.5rem; font-weight: 700; color: #3b82f6;">${tasaRecuperacion.toFixed(2)}%</span>
+                                <span style="color: #9ca3af; margin-left: 8px;">de recuperación</span>
+                            </div>
+                        </div>
+                        <div style="background: rgba(0,0,0,0.3); border-radius: 16px; padding: 12px;">
+                            <div style="font-size: 0.7rem; color: #9ca3af; text-align: center;">
+                                <i class="fas fa-chart-line"></i> Por cada $100 perdidos, se han recuperado $${tasaRecuperacion.toFixed(2)}
+                            </div>
+                        </div>
+                    </div>
+                `,
+                icon: 'info',
+                confirmButtonText: '<i class="fas fa-check"></i> Entendido',
+                background: 'var(--color-bg-primary)',
+                color: 'white',
+                customClass: {
+                    popup: 'swal2-popup-custom'
+                }
+            });
+        });
+    }
+
+    // Total Eventos
+    const totalEventosCard = document.querySelector('.kpi-card:nth-child(5)');
+    if (totalEventosCard) {
+        totalEventosCard.style.cursor = 'pointer';
+        totalEventosCard.addEventListener('click', () => {
+            const registros = datosActuales.registros;
+            if (registros.length === 0) {
+                Swal.fire({
+                    icon: 'info',
+                    title: 'Sin registros',
+                    text: 'No hay eventos registrados',
+                    background: 'var(--color-bg-primary)',
+                    color: 'white'
+                });
+                return;
+            }
+            mostrarRegistrosEnSweet(registros, 'Todos los eventos', '<i class="fas fa-calendar-week"></i> Total eventos');
+        });
+    }
+
+    // Promedio por evento
+    const promedioCard = document.querySelector('.kpi-card:nth-child(6)');
+    if (promedioCard) {
+        promedioCard.style.cursor = 'pointer';
+        promedioCard.addEventListener('click', () => {
+            const promedio = datosActuales.estadisticas?.promedioPerdida || 0;
+            const totalEventos = datosActuales.estadisticas?.totalEventos || 0;
+            const totalPerdido = datosActuales.estadisticas?.totalPerdido || 0;
+            
+            // Encontrar registros por encima y por debajo del promedio
+            const registrosSobrePromedio = datosActuales.registros.filter(r => (r.montoPerdido || 0) > promedio);
+            const registrosBajoPromedio = datosActuales.registros.filter(r => (r.montoPerdido || 0) <= promedio && (r.montoPerdido || 0) > 0);
+            
+            Swal.fire({
+                title: '<i class="fas fa-chart-line"></i> Detalle del promedio por evento',
+                html: `
+                    <div style="text-align: left;">
+                        <div style="background: rgba(0,0,0,0.4); border-radius: 16px; padding: 16px; margin-bottom: 16px;">
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 12px;">
+                                <span style="color: #9ca3af;">Total eventos:</span>
+                                <span style="color: #3b82f6; font-weight: 700;">${totalEventos}</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 12px;">
+                                <span style="color: #9ca3af;">Total perdido:</span>
+                                <span style="color: #ef4444; font-weight: 700;">${new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(totalPerdido)}</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 12px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.1);">
+                                <span style="color: #9ca3af;">Promedio por evento:</span>
+                                <span style="color: #f59e0b; font-weight: 700; font-size: 1.1rem;">${new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(promedio)}</span>
+                            </div>
+                        </div>
+                        
+                        <div style="display: flex; gap: 12px; margin-bottom: 16px;">
+                            <div style="flex: 1; background: rgba(239, 68, 68, 0.1); border-radius: 12px; padding: 12px; text-align: center; cursor: pointer;" onclick="window.verRegistrosSobrePromedio()">
+                                <div style="font-size: 1.2rem; font-weight: 700; color: #ef4444;">${registrosSobrePromedio.length}</div>
+                                <div style="font-size: 0.65rem; color: #9ca3af;">Eventos sobre el promedio</div>
+                                <div style="font-size: 0.7rem; color: #ef4444; margin-top: 4px;"><i class="fas fa-arrow-up"></i> Click para ver</div>
+                            </div>
+                            <div style="flex: 1; background: rgba(16, 185, 129, 0.1); border-radius: 12px; padding: 12px; text-align: center; cursor: pointer;" onclick="window.verRegistrosBajoPromedio()">
+                                <div style="font-size: 1.2rem; font-weight: 700; color: #10b981;">${registrosBajoPromedio.length}</div>
+                                <div style="font-size: 0.65rem; color: #9ca3af;">Eventos bajo el promedio</div>
+                                <div style="font-size: 0.7rem; color: #10b981; margin-top: 4px;"><i class="fas fa-arrow-down"></i> Click para ver</div>
+                            </div>
+                        </div>
+                        
+                        <div style="background: rgba(0,0,0,0.3); border-radius: 16px; padding: 12px;">
+                            <div style="font-size: 0.7rem; color: #9ca3af; text-align: center;">
+                                <i class="fas fa-calculator"></i> El promedio se calcula dividiendo el total perdido entre el número total de eventos
+                            </div>
+                        </div>
+                    </div>
+                `,
+                confirmButtonText: '<i class="fas fa-check"></i> Cerrar',
+                background: 'var(--color-bg-primary)',
+                color: 'white',
+                customClass: {
+                    popup: 'swal2-popup-custom'
+                }
+            });
+        });
+    }
+}
+
+// Funciones auxiliares para los clics dentro del modal del promedio
+window.verRegistrosSobrePromedio = function() {
+    const promedio = datosActuales.estadisticas?.promedioPerdida || 0;
+    const registrosSobrePromedio = datosActuales.registros.filter(r => (r.montoPerdido || 0) > promedio);
+    if (registrosSobrePromedio.length > 0) {
+        Swal.close();
+        setTimeout(() => {
+            mostrarRegistrosEnSweet(registrosSobrePromedio, 'Eventos sobre el promedio', '<i class="fas fa-arrow-up"></i> Sobre el promedio');
+        }, 100);
+    }
+};
+
+window.verRegistrosBajoPromedio = function() {
+    const promedio = datosActuales.estadisticas?.promedioPerdida || 0;
+    const registrosBajoPromedio = datosActuales.registros.filter(r => (r.montoPerdido || 0) <= promedio && (r.montoPerdido || 0) > 0);
+    if (registrosBajoPromedio.length > 0) {
+        Swal.close();
+        setTimeout(() => {
+            mostrarRegistrosEnSweet(registrosBajoPromedio, 'Eventos bajo el promedio', '<i class="fas fa-arrow-down"></i> Bajo el promedio');
+        }, 100);
+    }
+};
+
+
 
 // =============================================
 // ACTUALIZAR GRÁFICAS
@@ -804,6 +1030,11 @@ function mostrarRegistrosEnSweet(registros, titulo, icono = '<i class="fas fa-ch
         const fecha = registro.getFechaFormateada ? registro.getFechaFormateada() : (registro.fecha ? new Date(registro.fecha).toLocaleDateString('es-MX') : 'N/A');
         const tipoTexto = registro.getTipoEventoTexto ? registro.getTipoEventoTexto() : (registro.tipoEvento || 'N/A');
         const estadoTexto = registro.getEstadoTexto ? registro.getEstadoTexto() : (registro.estado || 'activo');
+        
+        // Verificar si tiene PDF
+        const tienePDF = registro.pdfGenerado === true || (registro.pdfUrl && registro.pdfUrl.trim() !== '');
+        const pdfIcono = tienePDF ? '<i class="fas fa-file-pdf" style="color: #c0392b;"></i>' : '<i class="fas fa-file-pdf" style="color: #6c757d;"></i>';
+        const pdfTitle = tienePDF ? 'Ver PDF' : (registro.estadoGeneracion === 'generando' ? 'Generando PDF...' : 'PDF pendiente');
 
         // Clase de color para el estado
         let estadoColor = '#6c757d';
@@ -834,7 +1065,7 @@ function mostrarRegistrosEnSweet(registros, titulo, icono = '<i class="fas fa-ch
         }
 
         registrosHtml += `
-            <div class="swal-registro-card" onclick="window.verDetalleRegistroDesdeSweet('${registro.id}')">
+            <div class="swal-registro-card" data-registro-id="${registro.id}">
                 <div class="swal-card-header">
                     <span class="swal-id"><i class="fas fa-hashtag"></i> ${escapeHTML(registro.id.substring(0, 12))}...</span>
                     <span class="swal-fecha"><i class="fas fa-calendar-alt"></i> ${fecha}</span>
@@ -864,6 +1095,12 @@ function mostrarRegistrosEnSweet(registros, titulo, icono = '<i class="fas fa-ch
                     </div>
                 </div>
                 ` : ''}
+                <div class="swal-card-actions" style="display: flex; justify-content: flex-end; gap: 8px; padding: 8px 14px 12px 14px; border-top: 1px solid rgba(255,255,255,0.05);">
+                    <button class="swal-pdf-btn" data-registro-id="${registro.id}" data-pdf-url="${registro.pdfUrl || ''}" data-pdf-estado="${registro.estadoGeneracion || 'pendiente'}" style="background: rgba(0,0,0,0.5); border: none; border-radius: 8px; padding: 6px 12px; color: white; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; font-size: 0.7rem; transition: all 0.2s ease;">
+                        ${pdfIcono}
+                        <span>${pdfTitle}</span>
+                    </button>
+                </div>
             </div>
         `;
     });
@@ -871,7 +1108,7 @@ function mostrarRegistrosEnSweet(registros, titulo, icono = '<i class="fas fa-ch
     if (hayMas) {
         registrosHtml += `
             <div class="swal-mas-registros">
-                <i class="fas fa-ellipsis-h"></i> y ${registros.length - 15} registros más. Haz clic en un registro para ver detalles completos.
+                <i class="fas fa-ellipsis-h"></i> y ${registros.length - 15} registros más.
             </div>
         `;
     }
@@ -895,12 +1132,114 @@ function mostrarRegistrosEnSweet(registros, titulo, icono = '<i class="fas fa-ch
             rgba(0,0,0,0.8)
             left top
             no-repeat
-        `
+        `,
+        didOpen: () => {
+            // Agregar event listeners a los botones de PDF después de que el modal se abra
+            document.querySelectorAll('.swal-pdf-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const registroId = btn.dataset.registroId;
+                    const pdfUrl = btn.dataset.pdfUrl;
+                    const pdfEstado = btn.dataset.pdfEstado;
+                    
+                    abrirPDFDesdeSweet(registroId, pdfUrl, pdfEstado);
+                });
+            });
+            
+            // Mantener el click en la tarjeta para ver detalles
+            document.querySelectorAll('.swal-registro-card').forEach(card => {
+                const registroId = card.dataset.registroId;
+                card.addEventListener('click', (e) => {
+                    // Evitar que se dispare si se hizo clic en el botón
+                    if (!e.target.closest('.swal-pdf-btn')) {
+                        window.verDetalleRegistroDesdeSweet(registroId);
+                    }
+                });
+            });
+        }
     });
 }
 
 // =============================================
+// FUNCIÓN PARA ABRIR PDF DESDE SWEETALERT
+// =============================================
+function abrirPDFDesdeSweet(registroId, pdfUrl, pdfEstado) {
+    // Buscar el registro completo en datosActuales
+    const registro = datosActuales.registros.find(r => r.id === registroId);
+    
+    if (!registro) {
+        Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: 'No se encontró el registro',
+            background: 'var(--color-bg-primary)',
+            color: 'white'
+        });
+        return;
+    }
+    
+    // Obtener la URL del PDF actualizada
+    const urlActual = registro.pdfUrl || pdfUrl;
+    const estadoActual = registro.estadoGeneracion || pdfEstado;
+    
+    if (urlActual && urlActual.trim() !== '') {
+        // Abrir PDF en nueva pestaña
+        window.open(urlActual, '_blank');
+        
+        Swal.fire({
+            icon: 'success',
+            title: 'Abriendo PDF',
+            text: 'El PDF se abrirá en el visor del navegador',
+            timer: 1500,
+            showConfirmButton: false,
+            toast: true,
+            position: 'top-end',
+            background: 'var(--color-bg-primary)',
+            color: 'white'
+        });
+    } else if (estadoActual === 'generando') {
+        Swal.fire({
+            icon: 'info',
+            title: 'Generando PDF',
+            text: 'El PDF se está generando en segundo plano. Recibirás una notificación cuando esté listo.',
+            confirmButtonText: 'Entendido',
+            background: 'var(--color-bg-primary)',
+            color: 'white'
+        });
+    } else if (estadoActual === 'pendiente') {
+        Swal.fire({
+            icon: 'info',
+            title: 'PDF pendiente',
+            text: 'La generación del PDF comenzará en breve. Recibirás una notificación cuando esté listo.',
+            confirmButtonText: 'Entendido',
+            background: 'var(--color-bg-primary)',
+            color: 'white'
+        });
+    } else if (estadoActual === 'error') {
+        Swal.fire({
+            icon: 'error',
+            title: 'Error al generar PDF',
+            text: 'Hubo un problema al generar el PDF. Por favor, contacta al administrador.',
+            confirmButtonText: 'Entendido',
+            background: 'var(--color-bg-primary)',
+            color: 'white'
+        });
+    } else {
+        Swal.fire({
+            icon: 'info',
+            title: 'PDF no disponible',
+            text: 'Este registro aún no tiene un PDF generado. Se generará automáticamente en segundo plano.',
+            confirmButtonText: 'Entendido',
+            background: 'var(--color-bg-primary)',
+            color: 'white'
+        });
+    }
+}
+// =============================================
 // FUNCIÓN GLOBAL PARA VER DETALLE DE REGISTRO DESDE SWEET - VERSIÓN MEJORADA
+// =============================================
+// =============================================
+// FUNCIÓN GLOBAL PARA VER DETALLE DE REGISTRO DESDE SWEET - CON BOTÓN PDF
 // =============================================
 window.verDetalleRegistroDesdeSweet = function (registroId) {
     Swal.close();
@@ -925,6 +1264,31 @@ window.verDetalleRegistroDesdeSweet = function (registroId) {
     const fecha = registro.getFechaFormateada ? registro.getFechaFormateada() : (registro.fecha ? new Date(registro.fecha).toLocaleDateString('es-MX') : 'N/A');
     const tipoTexto = registro.getTipoEventoTexto ? registro.getTipoEventoTexto() : (registro.tipoEvento || 'N/A');
     const estadoTexto = registro.getEstadoTexto ? registro.getEstadoTexto() : (registro.estado || 'activo');
+    
+    // Verificar estado del PDF
+    const tienePDF = registro.pdfGenerado === true || (registro.pdfUrl && registro.pdfUrl.trim() !== '');
+    const pdfEstado = registro.estadoGeneracion || 'pendiente';
+    let pdfIcono = '';
+    let pdfTexto = '';
+    let pdfColor = '';
+    
+    if (tienePDF) {
+        pdfIcono = '<i class="fas fa-file-pdf" style="color: #c0392b;"></i>';
+        pdfTexto = 'Ver PDF';
+        pdfColor = '#c0392b';
+    } else if (pdfEstado === 'generando') {
+        pdfIcono = '<i class="fas fa-spinner fa-spin"></i>';
+        pdfTexto = 'Generando PDF...';
+        pdfColor = '#f59e0b';
+    } else if (pdfEstado === 'error') {
+        pdfIcono = '<i class="fas fa-exclamation-triangle"></i>';
+        pdfTexto = 'Error en PDF';
+        pdfColor = '#ef4444';
+    } else {
+        pdfIcono = '<i class="fas fa-file-pdf" style="color: #6c757d;"></i>';
+        pdfTexto = 'PDF pendiente';
+        pdfColor = '#6c757d';
+    }
 
     let estadoColor = '#6c757d';
     let estadoIcon = 'fa-circle';
@@ -940,6 +1304,47 @@ window.verDetalleRegistroDesdeSweet = function (registroId) {
     if (tipoTexto === 'robo' || tipoTexto === 'Robo') tipoIcon = 'fa-mask';
     else if (tipoTexto === 'extravio' || tipoTexto === 'Extravío') tipoIcon = 'fa-map-marker-alt';
     else if (tipoTexto === 'accidente' || tipoTexto === 'Accidente') tipoIcon = 'fa-car-crash';
+
+    // Construir HTML de evidencias si existen
+    let evidenciasHtml = '';
+    if (registro.evidencias && registro.evidencias.length > 0) {
+        const evidenciasMostrar = registro.evidencias.slice(0, 6);
+        evidenciasHtml = `
+            <div style="background: rgba(0,0,0,0.3); border-radius: 16px; padding: 16px; margin-top: 8px;">
+                <div style="font-size: 0.7rem; text-transform: uppercase; color: #9ca3af; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+                    <i class="fas fa-images"></i> Evidencias (${registro.evidencias.length})
+                </div>
+                <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 10px;">
+                    ${evidenciasMostrar.map(ev => `
+                        <div style="cursor: pointer; border-radius: 8px; overflow: hidden; aspect-ratio: 1/1; background: rgba(0,0,0,0.5);" onclick="window.verImagenGrandeSweet('${ev.url}')">
+                            <img src="${ev.url}" style="width: 100%; height: 100%; object-fit: cover;" alt="Evidencia">
+                            ${ev.comentario ? `<div style="font-size: 0.6rem; padding: 4px; text-align: center; background: rgba(0,0,0,0.7);">${escapeHTML(ev.comentario.substring(0, 20))}${ev.comentario.length > 20 ? '...' : ''}</div>` : ''}
+                        </div>
+                    `).join('')}
+                </div>
+                ${registro.evidencias.length > 6 ? `<div style="text-align: center; margin-top: 8px; font-size: 0.65rem; color: #9ca3af;">+ ${registro.evidencias.length - 6} evidencias más</div>` : ''}
+            </div>
+        `;
+    }
+
+    // Construir HTML de recuperaciones si existen
+    let recuperacionesHtml = '';
+    if (registro.historialRecuperaciones && registro.historialRecuperaciones.length > 0) {
+        recuperacionesHtml = `
+            <div style="background: rgba(0,0,0,0.3); border-radius: 16px; padding: 16px;">
+                <div style="font-size: 0.7rem; text-transform: uppercase; color: #9ca3af; margin-bottom: 12px;"><i class="fas fa-history"></i> Historial de recuperaciones</div>
+                <div style="display: flex; flex-direction: column; gap: 8px;">
+                    ${registro.historialRecuperaciones.map(rec => `
+                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px; background: rgba(0,0,0,0.2); border-radius: 10px;">
+                            <span style="color: #10b981; font-weight: 600;">${formatter.format(rec.monto)}</span>
+                            <span style="font-size: 0.7rem; color: #9ca3af;">${new Date(rec.fecha).toLocaleDateString('es-MX')}</span>
+                            ${rec.comentario ? `<span style="font-size: 0.65rem; color: #d1d5db;">${escapeHTML(rec.comentario.substring(0, 30))}${rec.comentario.length > 30 ? '...' : ''}</span>` : ''}
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        `;
+    }
 
     const detallesHtml = `
         <div style="display: flex; flex-direction: column; gap: 16px;">
@@ -990,29 +1395,76 @@ window.verDetalleRegistroDesdeSweet = function (registroId) {
                 </div>
             </div>
             
+            ${recuperacionesHtml}
+            
             ${registro.narracionEventos ? `
             <div style="background: rgba(0,0,0,0.3); border-radius: 16px; padding: 16px;">
                 <div style="font-size: 0.7rem; text-transform: uppercase; color: #9ca3af; margin-bottom: 8px;"><i class="fas fa-file-alt"></i> Narración del evento</div>
                 <div style="font-size: 0.85rem; line-height: 1.5; color: #d1d5db;">${escapeHTML(registro.narracionEventos)}</div>
             </div>
             ` : ''}
+            
+            ${registro.detallesPerdida ? `
+            <div style="background: rgba(0,0,0,0.3); border-radius: 16px; padding: 16px;">
+                <div style="font-size: 0.7rem; text-transform: uppercase; color: #9ca3af; margin-bottom: 8px;"><i class="fas fa-info-circle"></i> Detalles de la pérdida</div>
+                <div style="font-size: 0.85rem; line-height: 1.5; color: #d1d5db;">${escapeHTML(registro.detallesPerdida)}</div>
+            </div>
+            ` : ''}
+            
+            ${evidenciasHtml}
+            
+            <!-- Botón de PDF -->
+            <div style="display: flex; justify-content: center; gap: 12px; margin-top: 8px;">
+                <button id="btnPdfDesdeSweetDetalle" style="background: linear-gradient(145deg, #0f0f0f, #1a1a1a); border: 1px solid ${tienePDF ? '#c0392b' : '#6c757d'}; border-radius: 12px; padding: 10px 24px; color: white; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; font-size: 0.8rem; font-family: var(--font-family-primary, 'Orbitron', sans-serif); transition: all 0.2s ease;">
+                    ${pdfIcono}
+                    <span style="color: ${pdfColor};">${pdfTexto}</span>
+                </button>
+            </div>
         </div>
     `;
 
     Swal.fire({
         title: `<i class="fas fa-info-circle" style="color: var(--color-accent-primary);"></i> Detalles del registro`,
         html: detallesHtml,
-        width: '700px',
+        width: '750px',
         background: 'transparent',
+        showConfirmButton: true,
         confirmButtonText: '<i class="fas fa-check"></i> Cerrar',
         customClass: {
             popup: 'swal2-popup-custom',
             title: 'swal2-title-custom',
             confirmButton: 'swal2-confirm'
+        },
+        didOpen: () => {
+            // Agregar event listener al botón de PDF después de que el modal se abra
+            const btnPdf = document.getElementById('btnPdfDesdeSweetDetalle');
+            if (btnPdf) {
+                btnPdf.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    abrirPDFDesdeSweet(registro.id, registro.pdfUrl, registro.estadoGeneracion);
+                });
+            }
         }
     });
 };
-
+// =============================================
+// FUNCIÓN PARA VER IMAGEN GRANDE DESDE SWEETALERT
+// =============================================
+window.verImagenGrandeSweet = function (url) {
+    Swal.fire({
+        title: 'Evidencia',
+        imageUrl: url,
+        imageAlt: 'Evidencia ampliada',
+        background: 'rgba(0,0,0,0.95)',
+        backdrop: 'rgba(0,0,0,0.9)',
+        showConfirmButton: true,
+        confirmButtonText: '<i class="fas fa-times"></i> Cerrar',
+        confirmButtonColor: '#dc3545',
+        customClass: {
+            popup: 'swal2-popup-custom'
+        }
+    });
+};
 // =============================================
 // ACTUALIZAR GRÁFICA VACÍA
 // =============================================
