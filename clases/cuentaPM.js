@@ -24,9 +24,14 @@ class CuentaPM {
         this._status = data.status || 'pendiente';
         this._fechaCreacion = data.fechaCreacion || new Date();
         this._fechaActualizacion = data.fechaActualizacion || new Date();
+        
+        // ========== NUEVOS CAMPOS ==========
+        this._password = data.password || '';
+        this._panelPassword = data.panelPassword || '';
+        this._panelTokens = data.panelTokens || [];
     }
 
-    // ========== GETTERS Y SETTERS ==========
+    // ========== GETTERS Y SETTERS EXISTENTES ==========
     get id() { return this._id; }
     set id(value) { this._id = value; }
 
@@ -54,6 +59,16 @@ class CuentaPM {
     get fechaActualizacion() { return this._fechaActualizacion; }
     set fechaActualizacion(value) { this._fechaActualizacion = value; }
 
+    // ========== NUEVOS GETTERS Y SETTERS ==========
+    get password() { return this._password; }
+    set password(value) { this._password = value; }
+
+    get panelPassword() { return this._panelPassword; }
+    set panelPassword(value) { this._panelPassword = value; }
+
+    get panelTokens() { return this._panelTokens; }
+    set panelTokens(value) { this._panelTokens = value; }
+
     // ========== MÉTODOS PRIVADOS ==========
     _generateAppId() {
         // Genera ID único de 8 caracteres para la app
@@ -69,7 +84,11 @@ class CuentaPM {
             organizacionCamelCase: this._organizacionCamelCase,
             status: this._status,
             fechaCreacion: this._fechaCreacion instanceof Date ? this._fechaCreacion : new Date(this._fechaCreacion),
-            fechaActualizacion: new Date()
+            fechaActualizacion: new Date(),
+            // ========== NUEVOS CAMPOS EN FIRESTORE ==========
+            password: this._password,
+            panelPassword: this._panelPassword,
+            panelTokens: this._panelTokens
         };
     }
 
@@ -85,7 +104,11 @@ class CuentaPM {
             organizacionCamelCase: data.organizacionCamelCase,
             status: data.status,
             fechaCreacion: data.fechaCreacion?.toDate?.() || data.fechaCreacion,
-            fechaActualizacion: data.fechaActualizacion?.toDate?.() || data.fechaActualizacion
+            fechaActualizacion: data.fechaActualizacion?.toDate?.() || data.fechaActualizacion,
+            // ========== NUEVOS CAMPOS ==========
+            password: data.password || '',
+            panelPassword: data.panelPassword || '',
+            panelTokens: data.panelTokens || []
         });
         
         // Asegurar que el ID sea el correcto
@@ -111,7 +134,11 @@ class CuentaPM {
                 organizacionCamelCase: this._organizacionCamelCase,
                 status: this._status,
                 fechaCreacion: serverTimestamp(),
-                fechaActualizacion: serverTimestamp()
+                fechaActualizacion: serverTimestamp(),
+                // ========== NUEVOS CAMPOS ==========
+                password: this._password,
+                panelPassword: this._panelPassword,
+                panelTokens: this._panelTokens
             };
             await setDoc(docRef, dataToSave);
             return true;
@@ -121,103 +148,6 @@ class CuentaPM {
         }
     }
     
-    static async obtenerPorOrganizacion(organizacionCamelCase) {
-        try {
-            const cuentasRef = collection(db, "cuentas_tecnicas_pm");
-            const q = query(cuentasRef, where("organizacionCamelCase", "==", organizacionCamelCase));
-            const querySnapshot = await getDocs(q);
-            
-            const cuentas = [];
-            querySnapshot.forEach((doc) => {
-                const cuenta = this._fromFirestore(doc);
-                if (cuenta) cuentas.push(cuenta);
-            });
-            
-            return cuentas;
-        } catch (error) {
-            console.error("❌ Error obteniendo cuentas por organización:", error);
-            return [];
-        }
-    }
-
-    /**
-     * Obtiene una cuenta de monitoreo por su App ID
-     * @param {string} appId - App ID de la cuenta
-     * @returns {Promise<CuentaPM|null>} - Instancia de CuentaPM o null si no existe
-     */
-    static async obtenerPorAppId(appId) {
-        try {
-            if (!appId) {
-                console.log('❌ App ID no proporcionado');
-                return null;
-            }
-            
-            console.log(`🔍 Buscando cuenta con App ID: "${appId}"`);
-            
-            // Usar la colección correcta: "cuentas_tecnicas_pm"
-            const cuentasRef = collection(db, "cuentas_tecnicas_pm");
-            
-            // Query para buscar donde el campo "appId" sea igual al appId proporcionado
-            const q = query(cuentasRef, where("appId", "==", appId));
-            
-            const querySnapshot = await getDocs(q);
-            
-            console.log(`📊 Documentos encontrados: ${querySnapshot.size}`);
-            
-            if (querySnapshot.empty) {
-                console.log(`❌ No se encontró ningún documento con appId = "${appId}"`);
-                
-                // Mostrar algunos appIds existentes para depuración
-                const todasQuery = query(cuentasRef);
-                const todasSnapshot = await getDocs(todasQuery);
-                console.log(`📋 Total de cuentas en Firestore: ${todasSnapshot.size}`);
-                
-                if (!todasSnapshot.empty) {
-                    console.log('📋 App IDs existentes:');
-                    const appIdsExistentes = [];
-                    todasSnapshot.forEach(doc => {
-                        const data = doc.data();
-                        if (data.appId) {
-                            appIdsExistentes.push(data.appId);
-                            console.log(`   - ${data.appId} (${doc.id})`);
-                        }
-                    });
-                    
-                    // Verificar si el appId buscado está cerca de alguno existente
-                    const similar = appIdsExistentes.find(id => 
-                        id.toLowerCase().includes(appId.toLowerCase()) || 
-                        appId.toLowerCase().includes(id.toLowerCase())
-                    );
-                    if (similar) {
-                        console.log(`💡 Quizás quisiste decir: "${similar}"`);
-                    }
-                }
-                
-                return null;
-            }
-            
-            // Tomar el primer documento encontrado (debería ser único)
-            const docSnap = querySnapshot.docs[0];
-            const data = docSnap.data();
-            
-            console.log(`✅ Cuenta encontrada:`, {
-                id: docSnap.id,
-                email: data.email,
-                appId: data.appId,
-                status: data.status
-            });
-            
-            // Usar el método _fromFirestore para crear la instancia correctamente
-            const cuenta = this._fromFirestore(docSnap);
-            
-            return cuenta;
-            
-        } catch (error) {
-            console.error('❌ Error obteniendo cuenta por App ID:', error);
-            return null;
-        }
-    }
-
     /**
      * Actualiza los datos de la cuenta
      * @param {Object} datos - Datos a actualizar
@@ -225,12 +155,17 @@ class CuentaPM {
      */
     async actualizar(datos = {}) {
         try {
-            // Actualizar propiedades locales
+            // Actualizar propiedades locales (EXISTENTES)
             if (datos.userToken !== undefined) this._userToken = datos.userToken;
             if (datos.appId !== undefined) this._appId = datos.appId;
             if (datos.organizacion !== undefined) this._organizacion = datos.organizacion;
             if (datos.organizacionCamelCase !== undefined) this._organizacionCamelCase = datos.organizacionCamelCase;
             if (datos.status !== undefined) this._status = datos.status;
+            
+            // ========== NUEVOS CAMPOS EN ACTUALIZACIÓN ==========
+            if (datos.password !== undefined) this._password = datos.password;
+            if (datos.panelPassword !== undefined) this._panelPassword = datos.panelPassword;
+            if (datos.panelTokens !== undefined) this._panelTokens = datos.panelTokens;
             
             // Actualizar en Firestore
             const docRef = doc(db, "cuentas_tecnicas_pm", this._id);
@@ -389,6 +324,40 @@ class CuentaPM {
     }
 
     /**
+     * Obtiene una cuenta de monitoreo por su App ID
+     * @param {string} appId - App ID de la cuenta
+     * @returns {Promise<CuentaPM|null>} - Instancia de CuentaPM o null si no existe
+     */
+    static async obtenerPorAppId(appId) {
+        try {
+            if (!appId) {
+                console.log('❌ App ID no proporcionado');
+                return null;
+            }
+            
+            console.log(`🔍 Buscando cuenta con App ID: "${appId}"`);
+            
+            const cuentasRef = collection(db, "cuentas_tecnicas_pm");
+            const q = query(cuentasRef, where("appId", "==", appId));
+            const querySnapshot = await getDocs(q);
+            
+            console.log(`📊 Documentos encontrados: ${querySnapshot.size}`);
+            
+            if (querySnapshot.empty) {
+                console.log(`❌ No se encontró ningún documento con appId = "${appId}"`);
+                return null;
+            }
+            
+            const docSnap = querySnapshot.docs[0];
+            return this._fromFirestore(docSnap);
+            
+        } catch (error) {
+            console.error('❌ Error obteniendo cuenta por App ID:', error);
+            return null;
+        }
+    }
+
+    /**
      * Verifica si existe una cuenta con el email dado
      * @param {string} email - Email a verificar
      * @returns {Promise<boolean>}
@@ -458,6 +427,11 @@ class CuentaPM {
             this._fechaCreacion = cuenta.fechaCreacion;
             this._fechaActualizacion = cuenta.fechaActualizacion;
             
+            // ========== NUEVOS CAMPOS ==========
+            this._password = cuenta.password;
+            this._panelPassword = cuenta.panelPassword;
+            this._panelTokens = cuenta.panelTokens;
+            
             return true;
         } catch (error) {
             console.error("❌ Error recargando cuenta:", error);
@@ -479,7 +453,11 @@ class CuentaPM {
             organizacionCamelCase: this._organizacionCamelCase,
             status: this._status,
             fechaCreacion: this._fechaCreacion,
-            fechaActualizacion: this._fechaActualizacion
+            fechaActualizacion: this._fechaActualizacion,
+            // ========== NUEVOS CAMPOS ==========
+            password: this._password,
+            panelPassword: this._panelPassword,
+            panelTokens: this._panelTokens
         };
     }
 }
