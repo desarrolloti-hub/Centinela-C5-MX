@@ -515,185 +515,275 @@ class EstadisticasExtraviosPDFGenerator extends PDFBaseGenerator {
         }
     }
 
+ // =============================================
+// TABLA DE RESUMEN - DISEÑO PROFESIONAL Y RESPONSIVO
+// OCUPA EXACTAMENTE EL ANCHO DE LA PÁGINA SIN CORTES
+// =============================================
+_dibujarTablaResumenConBordes(pdf, yPos) {
+    const margen = GRID_CONFIG.MARGEN_PAGINA;
+    const anchoPagina = pdf.internal.pageSize.getWidth();
+    const anchoTotal = anchoPagina - (margen * 2);
+
+    if (!this.sucursales || this.sucursales.length === 0) return;
+
+    // Título de la sección
+    pdf.setFont('helvetica', 'bold');
+    pdf.setFontSize(this.fonts.titulo);
+    pdf.setTextColor(26, 59, 93);
+    pdf.text('RESUMEN POR SUCURSAL', margen, yPos);
+    yPos += 5;
+    
+    pdf.setDrawColor(201, 160, 61);
+    pdf.setLineWidth(0.5);
+    pdf.line(margen, yPos, margen + 60, yPos);
+    yPos += 8;
+
     // =============================================
-    // TABLA DE RESUMEN CON BORDES
+    // ANCHOS PROPORCIONALES (suman 100% del ancho total)
     // =============================================
-    _dibujarTablaResumenConBordes(pdf, yPos) {
-        const margen = GRID_CONFIG.MARGEN_PAGINA;
-        const anchoPagina = pdf.internal.pageSize.getWidth();
-        const anchoContenido = anchoPagina - (margen * 2);
+    const colPorcentajes = {
+        sucursal: 0.30,    // 30% - Sucursal
+        eventos: 0.09,     // 9%  - Eventos
+        perdido: 0.16,     // 16% - Total Perdido
+        recuperado: 0.16,  // 16% - Total Recuperado
+        neto: 0.16,        // 16% - Pérdida Neta
+        porcentaje: 0.13   // 13% - % Recuperación
+    };
 
-        if (!this.sucursales || this.sucursales.length === 0) return;
+    // Calcular anchos exactos en mm
+    const colAnchos = {};
+    for (let key in colPorcentajes) {
+        colAnchos[key] = anchoTotal * colPorcentajes[key];
+    }
 
-        pdf.setFont('helvetica', 'bold');
-        pdf.setFontSize(this.fonts.titulo);
-        pdf.setTextColor(26, 59, 93);
-        pdf.text('RESUMEN POR SUCURSAL', margen, yPos);
-        yPos += 5;
-        pdf.setDrawColor(201, 160, 61);
-        pdf.setLineWidth(0.5);
-        pdf.line(margen, yPos, margen + 70, yPos);
-        yPos += 8;
+    const xInicio = margen;
+    const altoFila = 6;
+    const paddingTexto = 2.5;
 
-        const colAnchos = {
-            sucursal: 50,
-            eventos: 18,
-            perdido: 32,
-            recuperado: 32,
-            neto: 32,
-            porcentaje: 24
-        };
+    // Función para dibujar línea horizontal
+    const dibujarLineaHorizontal = (y, desdeX, hastaX) => {
+        pdf.setDrawColor(200, 200, 200);
+        pdf.setLineWidth(0.15);
+        pdf.line(desdeX, y, hastaX, y);
+    };
+    
+    // Función para dibujar línea vertical
+    const dibujarLineaVertical = (x, desdeY, hastaY) => {
+        pdf.setDrawColor(200, 200, 200);
+        pdf.setLineWidth(0.15);
+        pdf.line(x, desdeY, x, hastaY);
+    };
 
-        const xInicio = margen;
-        let xActual = xInicio;
-        const altoFila = 6;
+    // Calcular posiciones de las columnas
+    const colPositions = [xInicio];
+    let acumulado = xInicio;
+    for (const key of Object.keys(colAnchos)) {
+        acumulado += colAnchos[key];
+        colPositions.push(acumulado);
+    }
 
-        const dibujarLineaHorizontal = (y, desdeX, hastaX) => {
-            pdf.setDrawColor(200, 200, 200);
-            pdf.setLineWidth(0.2);
-            pdf.line(desdeX, y, hastaX, y);
-        };
+    // =============================================
+    // CABECERA DE LA TABLA
+    // =============================================
+    pdf.setFont('helvetica', 'bold');
+    pdf.setFontSize(this.fonts.small);
+    pdf.setTextColor(255, 255, 255);
+    pdf.setFillColor(26, 59, 93);
+    pdf.rect(xInicio, yPos - 3, anchoTotal, altoFila + 2, 'F');
+
+    const headers = [
+        { text: 'SUCURSAL', width: colAnchos.sucursal, align: 'left' },
+        { text: 'EVT', width: colAnchos.eventos, align: 'center' },
+        { text: 'TOTAL PERDIDO', width: colAnchos.perdido, align: 'right' },
+        { text: 'RECUPERADO', width: colAnchos.recuperado, align: 'right' },
+        { text: 'PÉRDIDA NETA', width: colAnchos.neto, align: 'right' },
+        { text: '% REC', width: colAnchos.porcentaje, align: 'center' }
+    ];
+
+    let currentX = xInicio;
+    for (let i = 0; i < headers.length; i++) {
+        const header = headers[i];
+        const xCentro = currentX + (header.width / 2);
         
-        const dibujarLineaVertical = (x, desdeY, hastaY) => {
-            pdf.setDrawColor(200, 200, 200);
-            pdf.setLineWidth(0.2);
-            pdf.line(x, desdeY, x, hastaY);
-        };
-
-        const colPositions = [xInicio];
-        let acumulado = xInicio;
-        for (const key of Object.keys(colAnchos)) {
-            acumulado += colAnchos[key];
-            colPositions.push(acumulado);
+        if (header.align === 'center') {
+            pdf.text(header.text, xCentro, yPos, { align: 'center' });
+        } else if (header.align === 'right') {
+            pdf.text(header.text, currentX + header.width - paddingTexto, yPos, { align: 'right' });
+        } else {
+            pdf.text(header.text, currentX + paddingTexto, yPos);
         }
+        currentX += header.width;
+    }
 
-        pdf.setFont('helvetica', 'bold');
-        pdf.setFontSize(this.fonts.small);
-        pdf.setTextColor(26, 59, 93);
-        pdf.setFillColor(230, 230, 230);
-        pdf.rect(xInicio, yPos - 2, anchoContenido, altoFila + 1, 'F');
+    // Líneas divisorias de la cabecera
+    for (const pos of colPositions) {
+        dibujarLineaVertical(pos, yPos - 3, yPos + altoFila - 0.5);
+    }
+    dibujarLineaHorizontal(yPos + altoFila - 0.5, xInicio, xInicio + anchoTotal);
 
-        const headers = [
-            { text: 'Sucursal', width: colAnchos.sucursal, align: 'left' },
-            { text: 'Eventos', width: colAnchos.eventos, align: 'center' },
-            { text: 'Perdido', width: colAnchos.perdido, align: 'right' },
-            { text: 'Recuperado', width: colAnchos.recuperado, align: 'right' },
-            { text: 'Pérdida Neta', width: colAnchos.neto, align: 'right' },
-            { text: '% Rec.', width: colAnchos.porcentaje, align: 'center' }
-        ];
+    yPos += altoFila + 3;
 
-        let currentX = xInicio;
-        for (let i = 0; i < headers.length; i++) {
-            const header = headers[i];
-            const xCentro = currentX + (header.width / 2);
-            pdf.text(header.text, header.align === 'center' ? xCentro : currentX + 2, yPos, { align: header.align });
-            currentX += header.width;
-        }
+    // =============================================
+    // CUERPO DE LA TABLA
+    // =============================================
+    const formatter = new Intl.NumberFormat('es-MX', {
+        style: 'currency',
+        currency: 'MXN',
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0
+    });
 
-        for (const pos of colPositions) {
-            dibujarLineaVertical(pos, yPos - 2, yPos + altoFila - 1);
-        }
-        dibujarLineaHorizontal(yPos + altoFila - 1, xInicio, xInicio + anchoContenido);
+    pdf.setFont('helvetica', 'normal');
+    pdf.setFontSize(this.fonts.small);
 
-        yPos += altoFila + 2;
-
-        const formatter = new Intl.NumberFormat('es-MX', {
-            style: 'currency',
-            currency: 'MXN',
-            minimumFractionDigits: 0,
-            maximumFractionDigits: 0
-        });
-
-        pdf.setFont('helvetica', 'normal');
-        pdf.setFontSize(this.fonts.small);
-
-        const maxFilas = Math.min(this.sucursales.length, 14);
+    // Calcular cuántas filas caben (máximo 14)
+    const espacioRestante = pdf.internal.pageSize.getHeight() - yPos - 35;
+    const maxFilas = Math.min(Math.floor(espacioRestante / (altoFila + 2)), this.sucursales.length, 14);
+    
+    for (let i = 0; i < maxFilas; i++) {
+        const suc = this.sucursales[i];
         
-        for (let i = 0; i < maxFilas; i++) {
-            const suc = this.sucursales[i];
-            
-            if (yPos > 260) {
-                pdf.setFont('helvetica', 'italic');
-                pdf.setFontSize(this.fonts.mini);
-                pdf.setTextColor(150, 150, 150);
-                pdf.text(`... y ${this.sucursales.length - i} sucursales mas`, margen, yPos + 5);
-                break;
-            }
+        // Fondo alternado para mejor legibilidad
+        if (i % 2 === 0) {
+            pdf.setFillColor(248, 248, 252);
+            pdf.rect(xInicio, yPos - 2.5, anchoTotal, altoFila + 1.5, 'F');
+        }
 
-            if (i % 2 === 0) {
-                pdf.setFillColor(252, 252, 252);
-                pdf.rect(xInicio, yPos - 2, anchoContenido, altoFila + 1, 'F');
-            }
-
-            currentX = xInicio;
-            
-            const nombreSuc = suc.nombre && suc.nombre.length > 28 ? suc.nombre.substring(0, 25) + '...' : (suc.nombre || 'N/A');
-            pdf.text(nombreSuc, currentX + 2, yPos);
-            currentX += colAnchos.sucursal;
-            
-            pdf.text(suc.eventos?.toString() || '0', currentX + (colAnchos.eventos / 2), yPos, { align: 'center' });
-            currentX += colAnchos.eventos;
-            
-            const perdido = suc.perdido || 0;
+        currentX = xInicio;
+        
+        // ===== COLUMNA 1: SUCURSAL =====
+        let nombreSuc = suc.nombre || 'N/A';
+        // Calcular caracteres máximos según el ancho disponible (aprox 1.8mm por carácter)
+        const maxCharsSuc = Math.floor(colAnchos.sucursal / 1.8);
+        if (nombreSuc.length > maxCharsSuc) {
+            nombreSuc = nombreSuc.substring(0, maxCharsSuc - 2) + '..';
+        }
+        pdf.setTextColor(60, 60, 70);
+        pdf.text(nombreSuc, currentX + paddingTexto, yPos);
+        currentX += colAnchos.sucursal;
+        
+        // ===== COLUMNA 2: EVENTOS =====
+        pdf.setTextColor(100, 100, 120);
+        const eventosStr = (suc.eventos || 0).toString();
+        pdf.text(eventosStr, currentX + (colAnchos.eventos / 2), yPos, { align: 'center' });
+        currentX += colAnchos.eventos;
+        
+        // ===== COLUMNA 3: TOTAL PERDIDO =====
+        const perdido = suc.perdido || 0;
+        pdf.setTextColor(239, 68, 68);
+        let perdidoStr;
+        if (perdido >= 1000000) {
+            perdidoStr = `$${(perdido / 1000000).toFixed(1)}M`;
+        } else if (perdido >= 1000) {
+            perdidoStr = `$${(perdido / 1000).toFixed(0)}K`;
+        } else {
+            perdidoStr = formatter.format(perdido);
+        }
+        pdf.text(perdidoStr, currentX + colAnchos.perdido - paddingTexto, yPos, { align: 'right' });
+        currentX += colAnchos.perdido;
+        
+        // ===== COLUMNA 4: RECUPERADO =====
+        const recuperado = suc.recuperado || 0;
+        pdf.setTextColor(16, 185, 129);
+        let recuperadoStr;
+        if (recuperado >= 1000000) {
+            recuperadoStr = `$${(recuperado / 1000000).toFixed(1)}M`;
+        } else if (recuperado >= 1000) {
+            recuperadoStr = `$${(recuperado / 1000).toFixed(0)}K`;
+        } else {
+            recuperadoStr = formatter.format(recuperado);
+        }
+        pdf.text(recuperadoStr, currentX + colAnchos.recuperado - paddingTexto, yPos, { align: 'right' });
+        currentX += colAnchos.recuperado;
+        
+        // ===== COLUMNA 5: PÉRDIDA NETA =====
+        const neto = perdido - recuperado;
+        if (neto > 0) {
             pdf.setTextColor(239, 68, 68);
-            pdf.text(formatter.format(perdido), currentX + colAnchos.perdido - 2, yPos, { align: 'right' });
-            currentX += colAnchos.perdido;
-            
-            const recuperado = suc.recuperado || 0;
+        } else if (neto < 0) {
             pdf.setTextColor(16, 185, 129);
-            pdf.text(formatter.format(recuperado), currentX + colAnchos.recuperado - 2, yPos, { align: 'right' });
-            currentX += colAnchos.recuperado;
-            
-            const neto = perdido - recuperado;
-            pdf.setTextColor(neto > 0 ? 239 : 16, neto > 0 ? 68 : 185, neto > 0 ? 68 : 129);
-            pdf.text(formatter.format(neto), currentX + colAnchos.neto - 2, yPos, { align: 'right' });
-            currentX += colAnchos.neto;
-            
-            const porcentaje = suc.porcentaje || 0;
-            pdf.setTextColor(59, 130, 246);
-            pdf.text(`${porcentaje.toFixed(2)}%`, currentX + (colAnchos.porcentaje / 2), yPos, { align: 'center' });
-            
-            dibujarLineaHorizontal(yPos + altoFila - 1, xInicio, xInicio + anchoContenido);
-            for (const pos of colPositions) {
-                dibujarLineaVertical(pos, yPos - 2, yPos + altoFila - 1);
-            }
-            
-            yPos += altoFila + 1;
-            pdf.setTextColor(80, 80, 80);
+        } else {
+            pdf.setTextColor(100, 100, 120);
         }
-
-        pdf.setDrawColor(180, 180, 180);
-        pdf.setLineWidth(0.5);
-        pdf.rect(xInicio, yPos - (maxFilas * (altoFila + 1)) - 4, anchoContenido, (maxFilas * (altoFila + 1)) + 6, 'S');
+        let netoStr;
+        if (Math.abs(neto) >= 1000000) {
+            netoStr = `$${(neto / 1000000).toFixed(1)}M`;
+        } else if (Math.abs(neto) >= 1000) {
+            netoStr = `$${(neto / 1000).toFixed(0)}K`;
+        } else {
+            netoStr = formatter.format(neto);
+        }
+        pdf.text(netoStr, currentX + colAnchos.neto - paddingTexto, yPos, { align: 'right' });
+        currentX += colAnchos.neto;
+        
+        // ===== COLUMNA 6: PORCENTAJE =====
+        const porcentaje = suc.porcentaje || 0;
+        pdf.setTextColor(59, 130, 246);
+        pdf.text(`${porcentaje.toFixed(1)}%`, currentX + (colAnchos.porcentaje / 2), yPos, { align: 'center' });
+        
+        // Línea divisoria inferior de la fila
+        dibujarLineaHorizontal(yPos + altoFila - 1.5, xInicio, xInicio + anchoTotal);
+        
+        // Líneas verticales de la fila
+        for (const pos of colPositions) {
+            dibujarLineaVertical(pos, yPos - 2.5, yPos + altoFila - 1.5);
+        }
+        
+        yPos += altoFila + 1.5;
     }
 
-    _dibujarAvisoPrivacidad(pdf) {
-        const margen = GRID_CONFIG.MARGEN_PAGINA;
-        const anchoContenido = pdf.internal.pageSize.getWidth() - (margen * 2);
-        const altoPagina = pdf.internal.pageSize.getHeight();
-        const alturaAviso = 24;
-
-        pdf.setFillColor(248, 248, 248);
-        pdf.rect(margen, altoPagina - alturaAviso - 8, anchoContenido, alturaAviso, 'F');
-        
-        pdf.setFont('helvetica', 'bold');
-        pdf.setFontSize(this.fonts.mini);
-        pdf.setTextColor(80, 80, 80);
-        pdf.text("AVISO DE PRIVACIDAD", margen + 5, altoPagina - alturaAviso - 3);
-        
-        pdf.setFont('helvetica', 'normal');
-        pdf.setFontSize(this.fonts.mini - 0.5);
-        pdf.setTextColor(100, 100, 100);
-        
-        const aviso = "La informacion contenida en este documento es responsabilidad exclusiva de quien utiliza el Sistema Centinela. Este reporte tiene caracter informativo.";
-        const lineasAviso = this.dividirTextoEnLineas(pdf, aviso, anchoContenido - 15);
-        
-        let yAviso = altoPagina - alturaAviso + 2;
-        for (let i = 0; i < Math.min(lineasAviso.length, 2); i++) {
-            pdf.text(lineasAviso[i], margen + 5, yAviso + (i * 4));
-        }
+    // =============================================
+    // BORDE EXTERIOR DE LA TABLA (sutil)
+    // =============================================
+    pdf.setDrawColor(150, 150, 170);
+    pdf.setLineWidth(0.3);
+    const alturaTabla = (maxFilas * (altoFila + 1.5)) + altoFila + 4;
+    pdf.rect(xInicio, yPos - alturaTabla - 2, anchoTotal, alturaTabla + 3, 'S');
+    
+    // =============================================
+    // NOTA DE FORMATO COMPACTO (si aplica)
+    // =============================================
+    if (this.sucursales.length > maxFilas) {
+        yPos += 5;
+        pdf.setFont('helvetica', 'italic');
+        pdf.setFontSize(this.fonts.micro);
+        pdf.setTextColor(120, 120, 140);
+        pdf.text(`* Mostrando ${maxFilas} de ${this.sucursales.length} sucursales | K = miles, M = millones`, margen, yPos);
+    } else if (this.sucursales.some(s => (s.perdido || 0) >= 1000)) {
+        yPos += 5;
+        pdf.setFont('helvetica', 'italic');
+        pdf.setFontSize(this.fonts.micro);
+        pdf.setTextColor(120, 120, 140);
+        pdf.text(`* K = miles, M = millones`, margen, yPos);
     }
+}
 
+  _dibujarAvisoPrivacidad(pdf) {
+    const margen = GRID_CONFIG.MARGEN_PAGINA;
+    const anchoContenido = pdf.internal.pageSize.getWidth() - (margen * 2);
+    const altoPagina = pdf.internal.pageSize.getHeight();
+    const alturaAviso = 28; // Aumentado para mejor espaciado
+
+    pdf.setFillColor(248, 248, 248);
+    pdf.rect(margen, altoPagina - alturaAviso - 10, anchoContenido, alturaAviso, 'F');
+    
+    pdf.setFont('helvetica', 'bold');
+    pdf.setFontSize(this.fonts.mini);
+    pdf.setTextColor(80, 80, 80);
+    pdf.text("AVISO DE PRIVACIDAD", margen + 5, altoPagina - alturaAviso - 5);
+    
+    pdf.setFont('helvetica', 'normal');
+    pdf.setFontSize(this.fonts.mini - 0.5);
+    pdf.setTextColor(100, 100, 100);
+    
+    const aviso = "La información contenida en este documento es responsabilidad exclusiva de quien utiliza el Sistema Centinela. Este reporte tiene carácter informativo y no constituye un documento legal oficial.";
+    const lineasAviso = this.dividirTextoEnLineas(pdf, aviso, anchoContenido - 15);
+    
+    let yAviso = altoPagina - alturaAviso + 2;
+    for (let i = 0; i < Math.min(lineasAviso.length, 2); i++) {
+        pdf.text(lineasAviso[i], margen + 5, yAviso + (i * 4.5));
+    }
+}
     _capitalize(str) {
         if (!str) return '';
         return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
