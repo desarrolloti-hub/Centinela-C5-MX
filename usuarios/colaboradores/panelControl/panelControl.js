@@ -95,9 +95,9 @@ const ACCESO_RAPIDO_CONFIG = [
     },
     {
         id: 'loginMonitoreo',
-        titulo: 'Tablero de control',
-        descripcion: 'Cuentas de monitoreo',
-        icono: 'fa-solid fa-dashboard',
+        titulo: 'Gestión de Paneles',
+        descripcion: 'Manejo de Paneles',
+        icono: 'fas fa-server',
         color: 'orange',
         url: '/usuarios/colaboradores/loginMonitoreo/loginMonitoreo.html',
         permiso: 'loginMonitoreo',
@@ -105,12 +105,12 @@ const ACCESO_RAPIDO_CONFIG = [
     },
     // NUEVO ELEMENTO AGREGADO
     {
-        id: 'monitoreoMapa',
+        id: 'monitoreo',
         titulo: 'Monitoreo',
-        descripcion: 'Mapa de alertas en tiempo real',
-        icono: 'fa-map-marker-alt',
-        color: 'cyan',
-        url: '/usuarios/colaboradores/mapaAlertas/mapaAlertas.html',
+        descripcion: 'Monitoreo de Paneles',
+        icono: 'fa-solid fa-dashboard',
+        color: 'orange',
+        url: '/usuarios/colaboradores/monitoreo/monitoreo.html',
         permiso: 'monitoreo',
         brillo: false
     }
@@ -156,7 +156,7 @@ const COLUMNAS_CONFIG = [
     },
     // FILA 1 - MÓDULOS PRINCIPALES
     {
-        titulo: 'PANEL DE ÁREAS',
+        titulo: 'ÁREAS',
         icono: 'fa-layer-group',
         color: '#b16bff',
         permisos: ['areas'],
@@ -166,7 +166,7 @@ const COLUMNAS_CONFIG = [
         ]
     },
     {
-        titulo: 'PANEL DE SUCURSALES',
+        titulo: 'SUCURSALES',
         icono: 'fa-building',
         color: '#00cfff',
         permisos: ['sucursales'],
@@ -176,7 +176,7 @@ const COLUMNAS_CONFIG = [
         ]
     },
     {
-        titulo: 'PANEL DE REGIONES',
+        titulo: 'REGIONES',
         icono: 'fa-map',
         color: '#2f8cff',
         permisos: ['regiones'],
@@ -187,7 +187,7 @@ const COLUMNAS_CONFIG = [
     },
     // FILA 2 - MÓDULOS DE GESTIÓN
     {
-        titulo: 'PANEL DE CATEGORÍAS',
+        titulo: 'CATEGORÍAS',
         icono: 'fa-tags',
         color: '#188d27',
         permisos: ['categorias'],
@@ -207,7 +207,7 @@ const COLUMNAS_CONFIG = [
         ]
     },
     {
-        titulo: 'PANEL DE ESTADÍSTICAS',
+        titulo: 'ESTADÍSTICAS',
         icono: 'fa-solid fa-chart-pie',
         color: '#ffcc00',
         permisos: ['estadisticas'],
@@ -218,7 +218,7 @@ const COLUMNAS_CONFIG = [
     },
     // FILA 3 - MÓDULOS DE TAREAS Y MONITOREO
     {
-        titulo: 'PANEL DE TAREAS',
+        titulo: 'TAREAS',
         icono: 'fa-tasks',
         color: '#00cfff',
         permisos: ['tareas'],
@@ -227,18 +227,18 @@ const COLUMNAS_CONFIG = [
         ]
     },
     {
-        titulo: 'PANEL DE MONITOREO',
+        titulo: 'MONITOREO',
         icono: 'fa-map-marker-alt',
         color: '#ff4d00',
         permisos: ['monitoreo'],
         tarjetas: [
             { modulo: 'mapaAlertas', titulo: 'Mapa de Alertas', descripcion: 'Visualización en tiempo real', icono: 'fa-map', color: 'danger', url: '/usuarios/colaboradores/mapaAlertas/mapaAlertas.html' },
-            { modulo: 'tableroControl', titulo: 'Tablero de Control', descripcion: 'Cuentas de monitoreo', icono: 'fa-dashboard', color: 'danger', url: '/usuarios/colaboradores/loginMonitoreo/loginMonitoreo.html' }
+            
         ]
     },
     // FILA 4 - MÓDULOS DE ADMINISTRACIÓN
     {
-        titulo: 'PANEL DE PERMISOS',
+        titulo: 'PERMISOS',
         icono: 'fa-lock',
         color: '#ff4d00',
         permisos: ['permisos'],
