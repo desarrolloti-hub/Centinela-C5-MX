@@ -31,7 +31,7 @@ async function initLoginMonitoreo() {
             text: 'No se encontró la organización del usuario. Por favor inicia sesión nuevamente.',
             confirmButtonText: 'VOLVER'
         }).then(() => {
-            window.location.href = '/usuarios/administrador/dashboard/dashboard.html';
+            window.location.href = '../panelControl/panelControl.html';
         });
         return;
     }
@@ -59,9 +59,9 @@ async function initLoginMonitoreo() {
                 cancelButtonText: 'VOLVER'
             }).then((result) => {
                 if (result.isConfirmed) {
-                    window.location.href = '/usuarios/administrador/registroPM/registroPM.html';
+                    window.location.href = '../panelControl/panelControl.html';
                 } else {
-                    window.location.href = '/usuarios/administrador/dashboard/dashboard.html';
+                    window.location.href = '../panelControl/panelControl.html';
                 }
             });
             return;
@@ -110,7 +110,7 @@ async function initLoginMonitoreo() {
             text: error.message,
             confirmButtonText: 'VOLVER'
         }).then(() => {
-            window.location.href = '/usuarios/administrador/dashboard/dashboard.html';
+            window.location.href = '../panelControl/panelControl.html';
         });
     }
 }
