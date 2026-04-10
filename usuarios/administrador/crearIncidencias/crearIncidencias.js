@@ -1359,6 +1359,9 @@ async _guardarIncidencia(datos) {
             }
 
             // SUBIR PDF SOLO SI SE GENERÓ CORRECTAMENTE
+        
+                        // SUBIR PDF Y OBTENER URL
+            let pdfUrl = null;
             if (pdfBlob && pdfBlob.size > 0) {
                 Swal.update({
                     title: 'Subiendo PDF...',
@@ -1369,42 +1372,95 @@ async _guardarIncidencia(datos) {
                 const rutaPDF = `incidencias_${this.usuarioActual.organizacionCamelCase}/${nuevaIncidencia.id}/pdf/incidencia_${nuevaIncidencia.id}.pdf`;
                 
                 const resultadoPDF = await this.incidenciaManager.subirArchivo(pdfFile, rutaPDF);
+                pdfUrl = resultadoPDF.url; // ← GUARDAMOS LA URL
                 
                 await this.incidenciaManager.actualizarPDF(
                     nuevaIncidencia.id,
-                    resultadoPDF.url,
+                    pdfUrl,
                     this.usuarioActual.organizacionCamelCase,
                     this.usuarioActual.id,
                     this.usuarioActual.nombreCompleto
                 );
             }
             
-            // Subir PDF
-            Swal.update({
-                title: 'Subiendo PDF...',
-                text: 'Guardando el documento PDF...'
-            });
-            
-            const pdfFile = new File([pdfBlob], `incidencia_${nuevaIncidencia.id}.pdf`, { type: 'application/pdf' });
-            const rutaPDF = `incidencias_${this.usuarioActual.organizacionCamelCase}/${nuevaIncidencia.id}/pdf/incidencia_${nuevaIncidencia.id}.pdf`;
-            
-            const resultadoPDF = await this.incidenciaManager.subirArchivo(pdfFile, rutaPDF);
-            
-            await this.incidenciaManager.actualizarPDF(
-            nuevaIncidencia.id,
-            resultadoPDF.url,
-            this.usuarioActual.organizacionCamelCase,
-            this.usuarioActual.id,
-            this.usuarioActual.nombreCompleto
-        );
-            
-            
             Swal.close();
             
+            // ===== COMPARTIR PDF DIRECTAMENTE =====
+            if (pdfUrl) {
+                const accionCompartir = await this._mostrarDialogoCompartir(pdfUrl, datos);
+                
+                // Título para el mensaje
+                const tituloIncidencia = `INCIDENCIA: ${datos.sucursalNombre} - ${datos.categoriaNombre}`;
+                const mensajeTexto = ` *${tituloIncidencia}*\n\n` +
+                    ` *(PDF):* ${pdfUrl}`;
+                
+                if (accionCompartir === 'whatsapp') {
+                    // Compartir PDF por WhatsApp - enviar enlace directo al PDF
+                    const urlWhatsapp = `https://wa.me/?text=${encodeURIComponent(mensajeTexto)}`;
+                    window.open(urlWhatsapp, '_blank');
+                    
+                    await Swal.fire({
+                        icon: 'success',
+                        title: '📱 WhatsApp abierto',
+                        text: 'Se abrirá WhatsApp con el enlace del PDF. Pega y envía el mensaje.',
+                        timer: 3000,
+                        showConfirmButton: false
+                    });
+                } 
+                else if (accionCompartir === 'email') {
+                    // Compartir PDF por Correo - incluir enlace directo
+                    const asunto = encodeURIComponent(`Incidencia: ${datos.sucursalNombre} - ${datos.categoriaNombre}`);
+                    const cuerpo = encodeURIComponent(`${mensajeTexto}\n\n--\nEste informe ha sido generado automáticamente por el sistema Centinela.`);
+                    window.location.href = `mailto:?subject=${asunto}&body=${cuerpo}`;
+                    
+                    await Swal.fire({
+                        icon: 'success',
+                        title: '📧 Cliente de correo abierto',
+                        text: 'Se abrió tu cliente de correo con el enlace del PDF.',
+                        timer: 3000,
+                        showConfirmButton: false
+                    });
+                }
+                else if (accionCompartir === 'link') {
+                    // Copiar enlace del PDF al portapapeles
+                    try {
+                        await navigator.clipboard.writeText(pdfUrl);
+                        await Swal.fire({
+                            icon: 'success',
+                            title: '✅ Enlace del PDF copiado',
+                            text: 'El enlace directo al PDF ha sido copiado al portapapeles',
+                            timer: 2500,
+                            showConfirmButton: false
+                        });
+                    } catch (err) {
+                        // Fallback manual
+                        await Swal.fire({
+                            icon: 'info',
+                            title: 'Enlace del PDF',
+                            html: `<input type="text" value="${pdfUrl}" style="width:100%; padding:8px; margin-top:10px; border-radius:5px;" readonly onclick="this.select()">`,
+                            confirmButtonText: 'Cerrar'
+                        });
+                    }
+                }
+                // Si es 'cancel', no hacer nada
+            } else {
+                console.warn('No se pudo generar el PDF, no se puede compartir');
+                await Swal.fire({
+                    icon: 'warning',
+                    title: 'PDF no disponible',
+                    text: 'No se pudo generar el PDF para compartir, pero la incidencia se guardó correctamente.',
+                    timer: 3000,
+                    showConfirmButton: false
+                });
+            }
+            // ===== FIN DE COMPARTIR PDF =====
+            // Si es 'cancel', no hacer nada y continuar con la canalización
+            // ===== FIN DE LA NUEVA SECCIÓN =====
+
             // Canalización a sucursal
             let sucursalCanalizada = null;
             let areasCanalizadas = [];
-            
+
             const quiereCanalizarSucursal = await Swal.fire({
                 icon: 'question',
                 title: '¿Canalizar a la sucursal?',
@@ -1414,7 +1470,7 @@ async _guardarIncidencia(datos) {
                 cancelButtonText: 'NO, CONTINUAR',
                 confirmButtonColor: '#28a745'
             });
-            
+
             if (quiereCanalizarSucursal.isConfirmed) {
                 sucursalCanalizada = await this._canalizarSucursal(nuevaIncidencia.id, datos.detalles.substring(0, 50));
             }
@@ -1428,6 +1484,9 @@ async _guardarIncidencia(datos) {
                 cancelButtonText: 'NO, FINALIZAR',
                 confirmButtonColor: '#28a745'
             });
+
+
+
             
             if (quiereCanalizarArea.isConfirmed) {
                 areasCanalizadas = await this._canalizarAreas(nuevaIncidencia.id, datos.detalles.substring(0, 50));
@@ -1474,6 +1533,55 @@ async _guardarIncidencia(datos) {
             }
         }
     }
+async _mostrarDialogoCompartir(pdfUrl, datos) {
+    return new Promise((resolve) => {
+        Swal.fire({
+            title: '📤 Compartir incidencia',
+            html: `
+                <div style="text-align: center;">
+                    <i class="fas fa-file-pdf" style="font-size: 48px; color: #e74c3c; margin-bottom: 15px; display: inline-block;"></i>
+                    <p style="margin-bottom: 20px;">El PDF se ha generado correctamente</p>
+                    <p style="font-size: 13px; color: #aaa; margin-bottom: 20px;">¿Cómo deseas compartirlo?</p>
+                    <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 15px;">
+                        <button id="shareWhatsAppBtn" style="background: #25D366; border: none; border-radius: 8px; padding: 12px; color: white; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px;">
+                            <i class="fab fa-whatsapp"></i> Enviar PDF por WhatsApp
+                        </button>
+                        <button id="shareEmailBtn" style="background: #0077B5; border: none; border-radius: 8px; padding: 12px; color: white; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px;">
+                            <i class="fas fa-envelope"></i> Enviar PDF por Correo
+                        </button>
+                        <button id="shareLinkBtn" style="background: #6c757d; border: none; border-radius: 8px; padding: 12px; color: white; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px;">
+                            <i class="fas fa-link"></i> Copiar enlace del PDF
+                        </button>
+                        <button id="shareCancelBtn" style="background: transparent; border: 1px solid #6c757d; border-radius: 8px; padding: 12px; color: #aaa; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; margin-top: 5px;">
+                            <i class="fas fa-times"></i> No compartir ahora
+                        </button>
+                    </div>
+                </div>
+            `,
+            icon: 'info',
+            showConfirmButton: false,
+            showCancelButton: false,
+            didOpen: () => {
+                document.getElementById('shareWhatsAppBtn').onclick = () => {
+                    Swal.close();
+                    resolve('whatsapp');
+                };
+                document.getElementById('shareEmailBtn').onclick = () => {
+                    Swal.close();
+                    resolve('email');
+                };
+                document.getElementById('shareLinkBtn').onclick = () => {
+                    Swal.close();
+                    resolve('link');
+                };
+                document.getElementById('shareCancelBtn').onclick = () => {
+                    Swal.close();
+                    resolve('cancel');
+                };
+            }
+        });
+    });
+}
 
    
 

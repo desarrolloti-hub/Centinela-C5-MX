@@ -1189,3 +1189,77 @@ button:contains("IPH Múltiple"),
         font-size: 8px !important;
     }
 }
+/* =============================================
+   BOTONES DE COMPARTIR - ESTILO UNIFICADO
+   ============================================= */
+.btn-compartir {
+    transition: all 0.3s ease !important;
+    position: relative;
+    overflow: hidden;
+}
+
+.btn-compartir:hover {
+    transform: translateY(-2px) !important;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3) !important;
+}
+
+.btn-compartir#shareWhatsAppBtn:hover {
+    border-color: #25D366 !important;
+    box-shadow: 0 0 15px rgba(37, 211, 102, 0.3) !important;
+}
+
+.btn-compartir#shareWhatsAppBtn:hover i {
+    color: #25D366 !important;
+    text-shadow: 0 0 5px #25D366;
+}
+
+.btn-compartir#shareEmailBtn:hover {
+    border-color: #0077B5 !important;
+    box-shadow: 0 0 15px rgba(0, 119, 181, 0.3) !important;
+}
+
+.btn-compartir#shareEmailBtn:hover i {
+    color: #0077B5 !important;
+    text-shadow: 0 0 5px #0077B5;
+}
+
+.btn-compartir#shareLinkBtn:hover {
+    border-color: var(--color-accent-primary) !important;
+    box-shadow: 0 0 15px rgba(0, 207, 255, 0.3) !important;
+}
+
+.btn-compartir#shareLinkBtn:hover i {
+    color: var(--color-accent-primary) !important;
+    text-shadow: 0 0 5px var(--color-accent-primary);
+}
+
+.btn-compartir#shareCancelBtn:hover {
+    border-color: var(--color-danger) !important;
+    color: var(--color-danger) !important;
+}
+
+.btn-compartir#shareCancelBtn:hover i {
+    color: var(--color-danger) !important;
+}
+
+.btn-compartir::after {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: linear-gradient(to bottom right,
+            rgba(255, 255, 255, 0) 0%,
+            rgba(255, 255, 255, 0.05) 50%,
+            rgba(255, 255, 255, 0) 100%);
+    transform: rotate(30deg);
+    transition: all 0.5s ease;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.btn-compartir:hover::after {
+    opacity: 1;
+    transform: rotate(30deg) translate(10%, 10%);
+}
