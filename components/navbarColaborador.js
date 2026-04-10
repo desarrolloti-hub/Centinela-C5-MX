@@ -1803,7 +1803,7 @@ class NavbarComplete {
                         
                         <a href="../loginMonitoreo/loginMonitoreo.html" class="monitoreo-dropdown-option" id="loginMonitoreoBtn">
                             <i class="fas fa-server"></i>
-                            <span>Tablero de Control</span>
+                            <span>Gestión de Paneles</span>
                         </a>
                     </div>
                 </div>

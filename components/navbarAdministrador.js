@@ -1816,7 +1816,7 @@ class NavbarComplete {
                         
                         <a href="/usuarios/administrador/loginMonitoreo/loginMonitoreo.html" class="administracion-dropdown-option">
                             <i class="fas fa-server"></i>
-                            <span>Tablero de Control</span>
+                            <span>Gestión de Paneles</span>
                         </a>
                     </div>
                 </div>
