@@ -60,6 +60,7 @@ const KPI_CONFIG = {
 };
 
 // Configuración de ACCESO RÁPIDO
+// Configuración de ACCESO RÁPIDO
 const ACCESO_RAPIDO_CONFIG = [
     {
         id: 'nuevaIncidencia',
@@ -100,6 +101,17 @@ const ACCESO_RAPIDO_CONFIG = [
         color: 'orange',
         url: '/usuarios/colaboradores/loginMonitoreo/loginMonitoreo.html',
         permiso: 'loginMonitoreo',
+        brillo: false
+    },
+    // NUEVO ELEMENTO AGREGADO
+    {
+        id: 'monitoreoMapa',
+        titulo: 'Monitoreo',
+        descripcion: 'Mapa de alertas en tiempo real',
+        icono: 'fa-map-marker-alt',
+        color: 'cyan',
+        url: '/usuarios/colaboradores/mapaAlertas/mapaAlertas.html',
+        permiso: 'monitoreo',
         brillo: false
     }
 ];
