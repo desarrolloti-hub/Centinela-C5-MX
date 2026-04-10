@@ -379,6 +379,170 @@ window.verPDF = async function (registroId, event) {
         });
     }
 };
+// =============================================
+// COMPARTIR REGISTRO (IGUAL QUE INCIDENCIAS.JS)
+// =============================================
+window.compartirRegistro = async function (registroId, event) {
+    event?.stopPropagation();
+    
+    try {
+        const registro = registrosActuales.find(r => r.id === registroId);
+        
+        if (!registro) {
+            throw new Error('Registro no encontrado');
+        }
+        
+        if (!registro.pdfUrl || registro.pdfUrl.trim() === '') {
+            Swal.fire({
+                icon: 'warning',
+                title: 'PDF no disponible',
+                text: 'Este registro aún no tiene un PDF asociado para compartir.',
+                confirmButtonText: 'Entendido'
+            });
+            return;
+        }
+        
+        const uiData = registro.toUI ? registro.toUI() : registro;
+        const tituloRegistro = `MERCANCÍA: ${uiData.nombreEmpresaCC} - ${uiData.tipoEventoTexto || uiData.tipoEvento}`;
+        const perdidoFormateado = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(uiData.montoPerdido);
+        const recuperadoFormateado = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(uiData.montoRecuperado);
+        const fechaEvento = uiData.fecha || registro.getFechaFormateada?.() || 'Fecha no disponible';
+        const pdfUrl = registro.pdfUrl;
+        
+        const mensajeWhatsApp = `📦 *${tituloRegistro}*\n\n` +
+            `🏢 *Empresa/CC:* ${uiData.nombreEmpresaCC}\n` +
+            `💰 *Monto Perdido:* ${perdidoFormateado}\n` +
+            `✅ *Monto Recuperado:* ${recuperadoFormateado}\n` +
+            `📅 *Fecha:* ${fechaEvento}\n` +
+            `📄 *Informe PDF:* ${pdfUrl}`;
+        
+        await Swal.fire({
+            title: '📤 Compartir registro',
+            html: `
+                <div style="text-align: center;">
+                    <i class="fas fa-file-pdf" style="font-size: 48px; color: #e74c3c; margin-bottom: 15px; display: inline-block;"></i>
+                    <p style="margin-bottom: 20px;">Comparte el informe PDF de este registro</p>
+                    <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 15px;">
+                        <button id="shareWhatsAppBtn" class="btn-compartir" style="background: linear-gradient(145deg, #0f0f0f, #1a1a1a); border: 1px solid #25D366; border-radius: 8px; padding: 12px; color: white; font-weight: 600; font-family: 'Orbitron', sans-serif; text-transform: uppercase; letter-spacing: 0.5px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; transition: all 0.3s ease;">
+                            <i class="fab fa-whatsapp" style="color: #25D366; font-size: 18px;"></i> WhatsApp
+                        </button>
+                        <button id="shareEmailBtn" class="btn-compartir" style="background: linear-gradient(145deg, #0f0f0f, #1a1a1a); border: 1px solid #0077B5; border-radius: 8px; padding: 12px; color: white; font-weight: 600; font-family: 'Orbitron', sans-serif; text-transform: uppercase; letter-spacing: 0.5px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; transition: all 0.3s ease;">
+                            <i class="fas fa-envelope" style="color: #0077B5; font-size: 18px;"></i> Correo Electrónico
+                        </button>
+                        <button id="shareLinkBtn" class="btn-compartir" style="background: linear-gradient(145deg, #0f0f0f, #1a1a1a); border: 1px solid var(--color-accent-primary); border-radius: 8px; padding: 12px; color: white; font-weight: 600; font-family: 'Orbitron', sans-serif; text-transform: uppercase; letter-spacing: 0.5px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; transition: all 0.3s ease;">
+                            <i class="fas fa-link" style="color: var(--color-accent-primary); font-size: 18px;"></i> Copiar Enlace
+                        </button>
+                        <button id="shareCancelBtn" class="btn-compartir" style="background: linear-gradient(145deg, #0f0f0f, #1a1a1a); border: 1px solid var(--color-border-light); border-radius: 8px; padding: 12px; color: #aaa; font-weight: 600; font-family: 'Orbitron', sans-serif; text-transform: uppercase; letter-spacing: 0.5px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; margin-top: 5px; transition: all 0.3s ease;">
+                            <i class="fas fa-times" style="color: #aaa; font-size: 18px;"></i> Cerrar
+                        </button>
+                    </div>
+                </div>
+            `,
+            icon: 'info',
+            showConfirmButton: false,
+            showCancelButton: false,
+            didOpen: () => {
+                // WhatsApp
+                document.getElementById('shareWhatsAppBtn').onclick = () => {
+                    Swal.close();
+                    const urlWhatsapp = `https://wa.me/?text=${encodeURIComponent(mensajeWhatsApp)}`;
+                    window.open(urlWhatsapp, '_blank');
+                    Swal.fire({
+                        icon: 'success',
+                        title: '💚 WhatsApp abierto',
+                        text: 'Se abrirá WhatsApp con el enlace del PDF.',
+                        timer: 2500,
+                        showConfirmButton: false
+                    });
+                };
+                
+                // Email con selector de servicio (IGUAL QUE INCIDENCIAS)
+                document.getElementById('shareEmailBtn').onclick = async () => {
+                    Swal.close();
+                    
+                    const { value: servicio } = await Swal.fire({
+                        title: '📧 Enviar por correo',
+                        text: 'Selecciona tu servicio de correo',
+                        icon: 'question',
+                        input: 'select',
+                        inputOptions: {
+                            'gmail': 'Gmail',
+                            'outlook': 'Outlook / Hotmail'
+                        },
+                        inputPlaceholder: 'Selecciona un servicio',
+                        showCancelButton: true,
+                        confirmButtonText: 'Abrir Correo',
+                        cancelButtonText: 'Cancelar'
+                    });
+                    
+                    if (!servicio) return;
+                    
+                    const cuerpoTexto = 
+                        `${tituloRegistro}\n\n` +
+                        `Empresa/CC: ${uiData.nombreEmpresaCC}\n` +
+                        `Tipo: ${uiData.tipoEventoTexto || uiData.tipoEvento}\n` +
+                        `Monto Perdido: ${perdidoFormateado}\n` +
+                        `Monto Recuperado: ${recuperadoFormateado}\n` +
+                        `Fecha: ${fechaEvento}\n\n` +
+                        `📄 PDF del registro:\n${pdfUrl}\n\n` +
+                        `--\nEste informe ha sido generado automáticamente por el sistema Centinela.`;
+                    
+                    const asunto = encodeURIComponent(tituloRegistro);
+                    const cuerpoCodificado = encodeURIComponent(cuerpoTexto);
+                    
+                    if (servicio === 'gmail') {
+                        window.open(`https://mail.google.com/mail/?view=cm&fs=1&su=${asunto}&body=${cuerpoCodificado}`, '_blank');
+                    } else {
+                        window.open(`https://outlook.live.com/mail/0/deeplink/compose?subject=${asunto}&body=${cuerpoCodificado}`, '_blank');
+                    }
+                    
+                    Swal.fire({
+                        icon: 'success',
+                        title: '📧 Correo abierto',
+                        text: 'Se abrió tu correo con el enlace del PDF.',
+                        timer: 2500,
+                        showConfirmButton: false
+                    });
+                };
+                
+                // Copiar enlace
+                document.getElementById('shareLinkBtn').onclick = async () => {
+                    Swal.close();
+                    try {
+                        await navigator.clipboard.writeText(pdfUrl);
+                        Swal.fire({
+                            icon: 'success',
+                            title: '🔗 Enlace copiado',
+                            text: 'El enlace del PDF ha sido copiado al portapapeles',
+                            timer: 2000,
+                            showConfirmButton: false
+                        });
+                    } catch (err) {
+                        Swal.fire({
+                            icon: 'info',
+                            title: 'Enlace del PDF',
+                            html: `<input type="text" value="${pdfUrl}" style="width:100%; padding:8px; margin-top:10px; border-radius:5px;" readonly onclick="this.select()">`,
+                            confirmButtonText: 'Cerrar'
+                        });
+                    }
+                };
+                
+                // Cancelar
+                document.getElementById('shareCancelBtn').onclick = () => {
+                    Swal.close();
+                };
+            }
+        });
+        
+    } catch (error) {
+        console.error('Error al compartir:', error);
+        Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: 'No se pudo compartir el registro: ' + error.message
+        });
+    }
+};
 
 window.verDetallesRegistro = function (registroId, event) {
     event?.stopPropagation();
@@ -664,38 +828,37 @@ function crearFilaRegistro(registro, tbody) {
         <td data-label="Fecha">
             ${fechaFormateada}
         </td>
-        <td data-label="Acciones">
-            <div class="btn-group" style="display: flex; gap: 6px; flex-wrap: wrap;">
-                <button type="button" class="btn" data-action="ver" data-id="${registro.id}" title="Ver detalles">
-                    <i class="fas fa-eye"></i>
-                </button>
-                <button type="button" class="btn" data-action="pdf" data-id="${registro.id}" title="${pdfTitle}">
-                    ${pdfIcono}
-                </button>
-            </div>
-        </td>
+       <td data-label="Acciones">
+    <div class="btn-group" style="display: flex; gap: 6px; flex-wrap: wrap;">
+        <button type="button" class="btn" data-action="ver" data-id="${registro.id}" title="Ver detalles">
+            <i class="fas fa-eye"></i>
+        </button>
+        <button type="button" class="btn" data-action="pdf" data-id="${registro.id}" title="${pdfTitle}">
+            ${pdfIcono}
+        </button>
+        <button type="button" class="btn" data-action="compartir" data-id="${registro.id}" title="Compartir">
+            <i class="fas fa-share-alt" style="color: #00cfff;"></i>
+        </button>
+    </div>
+</td>
     `;
 
     tbody.appendChild(tr);
 
-    setTimeout(() => {
-        tr.querySelectorAll('[data-action]').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                const action = btn.dataset.action;
-                const id = btn.dataset.id;
-                if (action === 'ver') window.verDetallesRegistro(id, e);
-                else if (action === 'pdf') window.verPDF(id, e);
+        setTimeout(() => {
+            tr.querySelectorAll('[data-action]').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const action = btn.dataset.action;
+                    const id = btn.dataset.id;
+                    if (action === 'ver') window.verDetallesRegistro(id, e);
+                    else if (action === 'pdf') window.verPDF(id, e);
+                    else if (action === 'compartir') window.compartirRegistro(id, e);
+                });
             });
-        });
-
-        tr.addEventListener('click', (e) => {
-            if (!e.target.closest('[data-action]')) {
-                window.verDetallesRegistro(registro.id, e);
-            }
-        });
-    }, 50);
-}
+            // ...
+        }, 50);
+        }
 
 async function cargarEmpresas() {
     try {
