@@ -380,7 +380,7 @@ window.verPDF = async function (registroId, event) {
     }
 };
 // =============================================
-// COMPARTIR REGISTRO (WhatsApp, Email, Copiar enlace)
+// COMPARTIR REGISTRO (IGUAL QUE INCIDENCIAS.JS)
 // =============================================
 window.compartirRegistro = async function (registroId, event) {
     event?.stopPropagation();
@@ -407,15 +407,16 @@ window.compartirRegistro = async function (registroId, event) {
         const perdidoFormateado = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(uiData.montoPerdido);
         const recuperadoFormateado = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(uiData.montoRecuperado);
         const fechaEvento = uiData.fecha || registro.getFechaFormateada?.() || 'Fecha no disponible';
+        const pdfUrl = registro.pdfUrl;
         
-        const mensajeTexto = `📦 *${tituloRegistro}*\n\n` +
+        const mensajeWhatsApp = `📦 *${tituloRegistro}*\n\n` +
             `🏢 *Empresa/CC:* ${uiData.nombreEmpresaCC}\n` +
             `💰 *Monto Perdido:* ${perdidoFormateado}\n` +
             `✅ *Monto Recuperado:* ${recuperadoFormateado}\n` +
             `📅 *Fecha:* ${fechaEvento}\n` +
-            `📄 *Informe PDF:* ${registro.pdfUrl}`;
+            `📄 *Informe PDF:* ${pdfUrl}`;
         
-        const resultado = await Swal.fire({
+        await Swal.fire({
             title: '📤 Compartir registro',
             html: `
                 <div style="text-align: center;">
@@ -441,11 +442,10 @@ window.compartirRegistro = async function (registroId, event) {
             showConfirmButton: false,
             showCancelButton: false,
             didOpen: () => {
-                const pdfUrl = registro.pdfUrl;
-                
+                // WhatsApp
                 document.getElementById('shareWhatsAppBtn').onclick = () => {
                     Swal.close();
-                    const urlWhatsapp = `https://wa.me/?text=${encodeURIComponent(mensajeTexto)}`;
+                    const urlWhatsapp = `https://wa.me/?text=${encodeURIComponent(mensajeWhatsApp)}`;
                     window.open(urlWhatsapp, '_blank');
                     Swal.fire({
                         icon: 'success',
@@ -456,9 +456,27 @@ window.compartirRegistro = async function (registroId, event) {
                     });
                 };
                 
-                document.getElementById('shareEmailBtn').onclick = () => {
+                // Email con selector de servicio (IGUAL QUE INCIDENCIAS)
+                document.getElementById('shareEmailBtn').onclick = async () => {
                     Swal.close();
-                    const asunto = encodeURIComponent(tituloRegistro);
+                    
+                    const { value: servicio } = await Swal.fire({
+                        title: '📧 Enviar por correo',
+                        text: 'Selecciona tu servicio de correo',
+                        icon: 'question',
+                        input: 'select',
+                        inputOptions: {
+                            'gmail': 'Gmail',
+                            'outlook': 'Outlook / Hotmail'
+                        },
+                        inputPlaceholder: 'Selecciona un servicio',
+                        showCancelButton: true,
+                        confirmButtonText: 'Abrir Correo',
+                        cancelButtonText: 'Cancelar'
+                    });
+                    
+                    if (!servicio) return;
+                    
                     const cuerpoTexto = 
                         `${tituloRegistro}\n\n` +
                         `Empresa/CC: ${uiData.nombreEmpresaCC}\n` +
@@ -469,17 +487,25 @@ window.compartirRegistro = async function (registroId, event) {
                         `📄 PDF del registro:\n${pdfUrl}\n\n` +
                         `--\nEste informe ha sido generado automáticamente por el sistema Centinela.`;
                     
-                    window.location.href = `mailto:?subject=${asunto}&body=${encodeURIComponent(cuerpoTexto)}`;
+                    const asunto = encodeURIComponent(tituloRegistro);
+                    const cuerpoCodificado = encodeURIComponent(cuerpoTexto);
+                    
+                    if (servicio === 'gmail') {
+                        window.open(`https://mail.google.com/mail/?view=cm&fs=1&su=${asunto}&body=${cuerpoCodificado}`, '_blank');
+                    } else {
+                        window.open(`https://outlook.live.com/mail/0/deeplink/compose?subject=${asunto}&body=${cuerpoCodificado}`, '_blank');
+                    }
                     
                     Swal.fire({
                         icon: 'success',
-                        title: '📧 Cliente de correo abierto',
-                        text: 'Se abrió tu cliente de correo con el enlace del PDF.',
+                        title: '📧 Correo abierto',
+                        text: 'Se abrió tu correo con el enlace del PDF.',
                         timer: 2500,
                         showConfirmButton: false
                     });
                 };
                 
+                // Copiar enlace
                 document.getElementById('shareLinkBtn').onclick = async () => {
                     Swal.close();
                     try {
@@ -501,6 +527,7 @@ window.compartirRegistro = async function (registroId, event) {
                     }
                 };
                 
+                // Cancelar
                 document.getElementById('shareCancelBtn').onclick = () => {
                     Swal.close();
                 };
