@@ -8,6 +8,7 @@ const POWER_MANAGE_FUNCTION = 'proxyPowerManage';
 // Variables para almacenar datos temporales
 let tempEmail = null;
 let tempResetCode = null;
+let tempPassword = null; // Guardar temporalmente la contraseña
 
 // ==================== INICIALIZACIÓN ====================
 document.addEventListener('DOMContentLoaded', () => {
@@ -33,13 +34,17 @@ function obtenerElementosDOM() {
             btnSendCode: document.getElementById('btnSendCode'),
             btnVerifyCode: document.getElementById('btnVerifyCode'),
             btnSetPassword: document.getElementById('btnSetPassword'),
+            btnSetPanelCode: document.getElementById('btnSetPanelCode'),
             step1: document.getElementById('step1'),
             step2: document.getElementById('step2'),
             step3: document.getElementById('step3'),
+            step4: document.getElementById('step4'),
             inputEmail: document.getElementById('pmEmail'),
             inputCode: document.getElementById('pmCode'),
             inputPassword: document.getElementById('newPassword'),
-            inputConfirmPassword: document.getElementById('confirmPassword')
+            inputConfirmPassword: document.getElementById('confirmPassword'),
+            inputPanelCode: document.getElementById('panelCode'),
+            inputConfirmPanelCode: document.getElementById('confirmPanelCode')
         };
     } catch (error) {
         console.error('❌ Error obteniendo elementos DOM:', error);
@@ -48,7 +53,7 @@ function obtenerElementosDOM() {
 }
 
 function configurarEventos(elements) {
-    if (!elements.btnSendCode || !elements.btnVerifyCode || !elements.btnSetPassword) return;
+    if (!elements.btnSendCode || !elements.btnVerifyCode || !elements.btnSetPassword || !elements.btnSetPanelCode) return;
     
     // PASO 1: Solicitar código
     elements.btnSendCode.addEventListener('click', async () => {
@@ -82,10 +87,29 @@ function configurarEventos(elements) {
         await establecerContraseña(elements);
     });
     
+    // PASO 4: Establecer código de paneles
+    elements.btnSetPanelCode.addEventListener('click', async (e) => {
+        e.preventDefault();
+        await establecerPanelCode(elements);
+    });
+    
     // Auto mayúsculas para el código
     if (elements.inputCode) {
         elements.inputCode.addEventListener('input', function() {
             this.value = this.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+        });
+    }
+    
+    // Validar que el código de paneles solo sean números
+    if (elements.inputPanelCode) {
+        elements.inputPanelCode.addEventListener('input', function() {
+            this.value = this.value.replace(/[^0-9]/g, '').slice(0, 4);
+        });
+    }
+    
+    if (elements.inputConfirmPanelCode) {
+        elements.inputConfirmPanelCode.addEventListener('input', function() {
+            this.value = this.value.replace(/[^0-9]/g, '').slice(0, 4);
         });
     }
 }
@@ -298,7 +322,7 @@ async function verificarCodigo(elements) {
         
         // Guardar datos temporales en la cuenta
         cuenta.userToken = resData.user_token;
-        cuenta.status = 'pendiente'; // Pendiente hasta establecer contraseña
+        cuenta.status = 'pendiente'; // Pendiente hasta completar todo el registro
         
         // Guardar en Firestore
         await cuenta.guardarEnFirebase();
@@ -360,6 +384,24 @@ async function establecerContraseña(elements) {
         return;
     }
     
+    // Validación: mayúscula, minúscula y símbolo
+    const hasUpperCase = /[A-Z]/.test(password);
+    const hasLowerCase = /[a-z]/.test(password);
+    const hasSymbol = /[!@#$%^&*(),.?":{}|<>]/.test(password);
+    
+    if (!hasUpperCase || !hasLowerCase || !hasSymbol) {
+        Swal.fire({
+            icon: 'error',
+            title: 'Requisitos de contraseña',
+            html: 'La contraseña debe contener:<br>' +
+                  '✓ Al menos una <strong>mayúscula</strong><br>' +
+                  '✓ Al menos una <strong>minúscula</strong><br>' +
+                  '✓ Al menos un <strong>símbolo</strong> (ej: @, #, $, !, etc.)',
+            confirmButtonText: 'ENTENDIDO'
+        });
+        return;
+    }
+    
     if (password !== confirmPassword) {
         Swal.fire({
             icon: 'error',
@@ -407,11 +449,112 @@ async function establecerContraseña(elements) {
             throw new Error(resData.error_message || "Error al establecer la contraseña");
         }
         
-        // Actualizar la cuenta en Firestore
+        // Guardar la contraseña temporalmente
+        tempPassword = password;
+        
+        // Actualizar la cuenta en Firestore con la contraseña
         const cuenta = await CuentaPM.obtenerPorId(tempEmail);
         if (cuenta) {
+            cuenta.password = password;
+            await cuenta.actualizar({ password: password });
+        }
+
+        Swal.close();
+        
+        await Swal.fire({
+            icon: 'success',
+            title: 'Contraseña establecida',
+            html: `
+                <div style="text-align: center;">
+                    <p>¡Contraseña establecida correctamente!</p>
+                    <p style="margin-top: 10px; font-size: 0.9rem;">Ahora establece el código de paneles</p>
+                </div>
+            `,
+            confirmButtonText: 'CONTINUAR'
+        });
+        
+        elements.step3.style.display = 'none';
+        elements.step4.style.display = 'block';
+        
+        setTimeout(() => elements.inputPanelCode.focus(), 300);
+        
+    } catch (error) {
+        Swal.close();
+        console.error('❌ Error estableciendo contraseña:', error);
+        
+        Swal.fire({
+            icon: 'error',
+            title: 'Error al establecer contraseña',
+            text: error.message,
+            confirmButtonText: 'REINTENTAR'
+        });
+    }
+}
+
+// ========== PASO 4: ESTABLECER CÓDIGO DE PANELES (NUEVO) ==========
+async function establecerPanelCode(elements) {
+    const panelCode = elements.inputPanelCode.value.trim();
+    const confirmPanelCode = elements.inputConfirmPanelCode.value.trim();
+    
+    if (!panelCode || !confirmPanelCode) {
+        Swal.fire({
+            icon: 'error',
+            title: 'Código de paneles requerido',
+            text: 'Debes establecer un código de 4 dígitos para los paneles',
+            confirmButtonText: 'ENTENDIDO'
+        });
+        return;
+    }
+    
+    if (panelCode.length !== 4) {
+        Swal.fire({
+            icon: 'error',
+            title: 'Código inválido',
+            text: 'El código de paneles debe tener exactamente 4 dígitos numéricos',
+            confirmButtonText: 'ENTENDIDO'
+        });
+        return;
+    }
+    
+    if (!/^\d{4}$/.test(panelCode)) {
+        Swal.fire({
+            icon: 'error',
+            title: 'Formato inválido',
+            text: 'El código de paneles debe contener solo números (0-9)',
+            confirmButtonText: 'ENTENDIDO'
+        });
+        return;
+    }
+    
+    if (panelCode !== confirmPanelCode) {
+        Swal.fire({
+            icon: 'error',
+            title: 'Códigos no coinciden',
+            text: 'Los códigos de paneles ingresados no son iguales',
+            confirmButtonText: 'ENTENDIDO'
+        });
+        return;
+    }
+    
+    Swal.fire({
+        title: 'Completando registro...',
+        text: 'Por favor espera',
+        allowOutsideClick: false,
+        didOpen: () => Swal.showLoading()
+    });
+
+    try {
+        // Actualizar la cuenta con el código de paneles y activarla
+        const cuenta = await CuentaPM.obtenerPorId(tempEmail);
+        if (cuenta) {
+            cuenta.panelPassword = panelCode;
+            cuenta.panelTokens = []; // Inicializar array vacío de tokens de paneles
             cuenta.status = 'activa';
-            await cuenta.guardarEnFirebase();
+            await cuenta.actualizar({ 
+                panelPassword: panelCode,
+                panelTokens: [],
+                status: 'activa'
+            });
         }
 
         Swal.close();
@@ -423,10 +566,9 @@ async function establecerContraseña(elements) {
                 <div style="text-align: center;">
                     <i class="fas fa-check-circle" style="font-size: 48px; color: #28a745;"></i>
                     <p style="margin-top: 10px;">Cuenta de monitoreo creada correctamente</p>
-                    <p style="margin-top: 10px; font-size: 0.85rem;">
-                        <strong>Email:</strong> ${tempEmail}
-                    </p>
-                    <p style="font-size: 0.8rem; color: var(--color-text-secondary);">
+                    <p style="margin-top: 10px;"><strong>Email:</strong> ${tempEmail}</p>
+                    <p style="margin-top: 5px;"><strong>Código de paneles:</strong> ••••</p>
+                    <p style="font-size: 0.8rem; color: var(--color-text-secondary); margin-top: 10px;">
                         Ya puedes iniciar sesión en Power Manage con tus credenciales
                     </p>
                 </div>
@@ -438,11 +580,11 @@ async function establecerContraseña(elements) {
         
     } catch (error) {
         Swal.close();
-        console.error('❌ Error estableciendo contraseña:', error);
+        console.error('❌ Error estableciendo código de paneles:', error);
         
         Swal.fire({
             icon: 'error',
-            title: 'Error al establecer contraseña',
+            title: 'Error al completar registro',
             text: error.message,
             confirmButtonText: 'REINTENTAR'
         });
