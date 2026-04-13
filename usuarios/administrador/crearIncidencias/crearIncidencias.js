@@ -1252,7 +1252,7 @@ async _guardarIncidencia(datos) {
         );
         
         const folioReal = nuevaIncidencia.id; // ← Este es el ID real de Firestore
-        console.log('ID real de la incidencia:', folioReal);
+       
         
         // SUBIR IMÁGENES
         let imagenesSubidas = [];
@@ -1333,28 +1333,47 @@ async _guardarIncidencia(datos) {
         }
         
         // SUBIR PDF
-        Swal.update({
-            title: 'Subiendo PDF...',
-            text: 'Guardando el documento PDF...'
-        });
+// SUBIR PDF Y DESCARGAR AUTOMÁTICAMENTE
+Swal.update({
+    title: 'Subiendo PDF...',
+    text: 'Guardando el documento PDF...'
+});
+
+let pdfUrl = null;
+if (pdfBlob && pdfBlob.size > 0) {
+    const pdfFile = new File([pdfBlob], `incidencia_${nuevaIncidencia.id}.pdf`, { type: 'application/pdf' });
+    const rutaPDF = `incidencias_${this.usuarioActual.organizacionCamelCase}/${nuevaIncidencia.id}/pdf/incidencia_${nuevaIncidencia.id}.pdf`;
+    
+    const resultadoPDF = await this.incidenciaManager.subirArchivo(pdfFile, rutaPDF);
+    pdfUrl = resultadoPDF.url;
+    
+    await this.incidenciaManager.actualizarPDF(
+        nuevaIncidencia.id,
+        pdfUrl,
+        this.usuarioActual.organizacionCamelCase,
+        this.usuarioActual.id,
+        this.usuarioActual.nombreCompleto
+    );
+    
+    // 🔥 DESCARGAR PDF AUTOMÁTICAMENTE 🔥
+    try {
+        // Crear enlace de descarga
+        const downloadLink = document.createElement('a');
+        const urlBlob = URL.createObjectURL(pdfBlob);
+        downloadLink.href = urlBlob;
+        downloadLink.download = `incidencia_${folioReal}.pdf`;
+        document.body.appendChild(downloadLink);
+        downloadLink.click();
+        document.body.removeChild(downloadLink);
+        URL.revokeObjectURL(urlBlob);
         
-        let pdfUrl = null;
-        if (pdfBlob && pdfBlob.size > 0) {
-            const pdfFile = new File([pdfBlob], `incidencia_${nuevaIncidencia.id}.pdf`, { type: 'application/pdf' });
-            const rutaPDF = `incidencias_${this.usuarioActual.organizacionCamelCase}/${nuevaIncidencia.id}/pdf/incidencia_${nuevaIncidencia.id}.pdf`;
-            
-            const resultadoPDF = await this.incidenciaManager.subirArchivo(pdfFile, rutaPDF);
-            pdfUrl = resultadoPDF.url;
-            
-            await this.incidenciaManager.actualizarPDF(
-                nuevaIncidencia.id,
-                pdfUrl,
-                this.usuarioActual.organizacionCamelCase,
-                this.usuarioActual.id,
-                this.usuarioActual.nombreCompleto
-            );
-        }
-        
+       
+    } catch (downloadError) {
+        console.warn('Error al descargar automáticamente:', downloadError);
+    }
+}
+
+Swal.close();
         Swal.close();
         
         // ===== COMPARTIR PDF =====
