@@ -1,21 +1,25 @@
 // ========== panelControl.js - PANEL DE CONTROL COLABORADOR ==========
-// CON ACCESO RÁPIDO Y MÓDULOS EN 3 COLUMNAS
-// AGREGADO: KPIs COMO BOTONES QUE REDIRIGEN A SUS MÓDULOS CORRESPONDIENTES
+// SOLO USA LAS CLASES EXISTENTES, SIN IMPORTAR FIREBASE DIRECTAMENTE
 
 let permisoManager = null;
 let usuarioActual = null;
 let permisosUsuario = null;
-let unsubscribeFunctions = [];
+let incidenciaManager = null;
+let areaManager = null;
+let categoriaManager = null;
+let sucursalManager = null;
+let regionManager = null;
+let userManager = null;
 
 // Configuración de KPIs con sus rutas de redirección
 const KPI_CONFIG = {
-    incidenciasCanalizadas: {
-        modulo: 'incidencias',
-        titulo: 'MIS INCIDENCIAS',
-        subtitulo: 'Canalizadas',
-        icono: 'fa-share-alt',
+    misIncidencias: {
+        modulo: 'misIncidencias',
+        titulo: 'INCIDENCIAS',
+        subtitulo: 'Creadas por mí',
+        icono: 'fa-file-alt',
         color: 'danger',
-        url: '/usuarios/colaboradores/incidencias/incidencias.html'  // Ruta agregada
+        url: '/usuarios/colaboradores/incidencias/incidencias.html'
     },
     areas: {
         modulo: 'areas',
@@ -23,7 +27,7 @@ const KPI_CONFIG = {
         subtitulo: 'Registradas',
         icono: 'fa-solid fa-layer-group',
         color: '#b16bff',
-        url: '/usuarios/colaboradores/areas/areas.html'  // Ruta agregada
+        url: '/usuarios/colaboradores/areas/areas.html'
     },
     categorias: {
         modulo: 'categorias',
@@ -31,7 +35,7 @@ const KPI_CONFIG = {
         subtitulo: 'Registradas',
         icono: 'fa-tags',
         color: 'purple',
-        url: '/usuarios/colaboradores/categorias/categorias.html'  // Ruta agregada
+        url: '/usuarios/colaboradores/categorias/categorias.html'
     },
     sucursales: {
         modulo: 'sucursales',
@@ -39,7 +43,7 @@ const KPI_CONFIG = {
         subtitulo: 'Activas',
         icono: 'fa-solid fa-building',
         color: 'yellow',
-        url: '/usuarios/colaboradores/sucursales/sucursales.html'  // Ruta agregada
+        url: '/usuarios/colaboradores/sucursales/sucursales.html'
     },
     regiones: {
         modulo: 'regiones',
@@ -47,19 +51,18 @@ const KPI_CONFIG = {
         subtitulo: 'Registradas',
         icono: 'fa-map-marked-alt',
         color: 'purple',
-        url: '/usuarios/colaboradores/regiones/regiones.html'  // Ruta agregada
+        url: '/usuarios/colaboradores/regiones/regiones.html'
     },
     colaboradores: {
         modulo: 'usuarios',
         titulo: 'COLABORADORES',
-        subtitulo: 'Activos',
+        subtitulo: 'Resgistrados',
         icono: 'fa-users',
         color: 'cyan',
-        url: '/usuarios/colaboradores/usuarios/usuarios.html'  // Ruta agregada
+        url: '/usuarios/colaboradores/usuarios/usuarios.html'
     }
 };
 
-// Configuración de ACCESO RÁPIDO
 // Configuración de ACCESO RÁPIDO
 const ACCESO_RAPIDO_CONFIG = [
     {
@@ -103,7 +106,6 @@ const ACCESO_RAPIDO_CONFIG = [
         permiso: 'loginMonitoreo',
         brillo: false
     },
-    // NUEVO ELEMENTO AGREGADO
     {
         id: 'monitoreo',
         titulo: 'Monitoreo',
@@ -118,7 +120,6 @@ const ACCESO_RAPIDO_CONFIG = [
 
 // Configuración de módulos agrupados por columnas
 const COLUMNAS_CONFIG = [
-    // PRIMERO: MÓDULO MERCANCÍA PERDIDA
     {
         titulo: 'SECCION DE RECUPERACIONES',
         icono: 'fa-box-open',
@@ -154,7 +155,6 @@ const COLUMNAS_CONFIG = [
             }
         ]
     },
-    // FILA 1 - MÓDULOS PRINCIPALES
     {
         titulo: 'ÁREAS',
         icono: 'fa-layer-group',
@@ -185,7 +185,6 @@ const COLUMNAS_CONFIG = [
             { modulo: 'regionesNueva', titulo: 'Nueva Región', descripcion: 'Crear nueva región', icono: 'fa-plus-circle', color: 'blue', url: '/usuarios/colaboradores/crearRegiones/crearRegiones.html' }
         ]
     },
-    // FILA 2 - MÓDULOS DE GESTIÓN
     {
         titulo: 'CATEGORÍAS',
         icono: 'fa-tags',
@@ -216,7 +215,6 @@ const COLUMNAS_CONFIG = [
             { modulo: 'reportes', titulo: 'Reportes', descripcion: 'Generar reportes personalizados', icono: 'fa-file-alt', color: 'purple', url: '/usuarios/colaboradores/reportes/reportes.html' }
         ]
     },
-    // FILA 3 - MÓDULOS DE TAREAS Y MONITOREO
     {
         titulo: 'TAREAS',
         icono: 'fa-tasks',
@@ -233,10 +231,8 @@ const COLUMNAS_CONFIG = [
         permisos: ['monitoreo'],
         tarjetas: [
             { modulo: 'mapaAlertas', titulo: 'Mapa de Alertas', descripcion: 'Visualización en tiempo real', icono: 'fa-map', color: 'danger', url: '/usuarios/colaboradores/mapaAlertas/mapaAlertas.html' },
-            
         ]
     },
-    // FILA 4 - MÓDULOS DE ADMINISTRACIÓN
     {
         titulo: 'PERMISOS',
         icono: 'fa-lock',
@@ -251,9 +247,9 @@ const COLUMNAS_CONFIG = [
 // ========== INICIALIZACIÓN ==========
 document.addEventListener('DOMContentLoaded', async function () {
     try {
-        const usuarioCargado = cargarUsuarioDesdeStorage();
-
-        if (!usuarioCargado) {
+        cargarUsuarioDesdeStorage();      
+        
+        if (!usuarioActual || !usuarioActual.id) {
             mostrarErrorSesion();
             return;
         }
@@ -264,11 +260,27 @@ document.addEventListener('DOMContentLoaded', async function () {
             if (usuarioActual.organizacionCamelCase) {
                 permisoManager.organizacionCamelCase = usuarioActual.organizacionCamelCase;
             }
-        } catch (error) { }
+        } catch (error) {
+            console.warn('Error cargando PermisoManager:', error);
+        }
+
+        // Inicializar los managers usando tus clases
+        const { IncidenciaManager } = await import('/clases/incidencia.js');
+        const { AreaManager } = await import('/clases/area.js');
+        const { CategoriaManager } = await import('/clases/categoria.js');
+        const { SucursalManager } = await import('/clases/sucursal.js');
+        const { RegionManager } = await import('/clases/region.js');
+        const { UserManager } = await import('/clases/user.js');
+        
+        incidenciaManager = new IncidenciaManager();
+        areaManager = new AreaManager();
+        categoriaManager = new CategoriaManager();
+        sucursalManager = new SucursalManager();
+        regionManager = new RegionManager();
+        userManager = new UserManager();
 
         await obtenerPermisosUsuario();
 
-        // Verificar si el usuario tiene algún permiso
         const tieneAlgunPermiso = Object.values(permisosUsuario).some(valor => valor === true);
 
         if (!tieneAlgunPermiso) {
@@ -280,10 +292,11 @@ document.addEventListener('DOMContentLoaded', async function () {
         renderizarAccesoRapido();
         renderizarColumnas();
         configurarEventosTarjetas();
-        configurarEventosKPIs();  // NUEVO: Configurar eventos click para los KPIs
-
+        configurarEventosKPIs();
         await cargarDatosKPIs();
+
     } catch (error) {
+        console.error('Error en inicialización:', error);
         mostrarError(error.message);
     }
 });
@@ -309,6 +322,7 @@ function cargarUsuarioDesdeStorage() {
         }
         return false;
     } catch (error) {
+        console.error('Error cargando usuario:', error);
         return false;
     }
 }
@@ -376,6 +390,7 @@ async function obtenerPermisosUsuario() {
             estadisticasIncidenciasRecuperacion: false
         };
     } catch (error) {
+        console.error('Error obteniendo permisos:', error);
         permisosUsuario = {
             areas: false, categorias: false, sucursales: false, regiones: false,
             incidencias: true, usuarios: false, estadisticas: false, tareas: false,
@@ -387,7 +402,6 @@ async function obtenerPermisosUsuario() {
     }
 }
 
-// ========== MOSTRAR MENSAJE DE SIN PERMISOS ==========
 function mostrarSinPermisos() {
     const container = document.querySelector('.right-layout');
     if (container) {
@@ -406,7 +420,7 @@ function renderizarKPIs() {
 
     const kpisAMostrar = [];
 
-    if (permisosUsuario.incidencias) kpisAMostrar.push('incidenciasCanalizadas');
+    if (permisosUsuario.incidencias) kpisAMostrar.push('misIncidencias');
     if (permisosUsuario.areas) kpisAMostrar.push('areas');
     if (permisosUsuario.categorias) kpisAMostrar.push('categorias');
     if (permisosUsuario.sucursales) kpisAMostrar.push('sucursales');
@@ -425,17 +439,14 @@ function renderizarKPIs() {
         const config = KPI_CONFIG[kpiKey];
         const card = document.createElement('div');
         card.className = 'kpi-card';
-
-        // Agregar clase para cursor pointer y estilo de botón
         card.style.cursor = 'pointer';
         card.style.transition = 'all 0.3s ease';
 
         if (config.color === 'danger') {
             card.classList.add('danger');
-            card.id = 'kpi-incidencias';
+            card.id = 'kpi-mis-incidencias';
         }
 
-        // Guardar la URL en un atributo data
         card.setAttribute('data-url', config.url);
         card.setAttribute('data-modulo', config.modulo);
         card.setAttribute('data-titulo', config.titulo);
@@ -450,11 +461,9 @@ function renderizarKPIs() {
     }
 }
 
-// NUEVA FUNCIÓN: Configurar eventos click para los KPIs
 function configurarEventosKPIs() {
     const kpis = document.querySelectorAll('.kpi-card');
     kpis.forEach(kpi => {
-        // Efecto hover adicional
         kpi.addEventListener('mouseenter', () => {
             kpi.style.transform = 'translateY(-4px)';
             kpi.style.boxShadow = '0 0 20px rgba(255, 77, 0, 0.4)';
@@ -465,18 +474,14 @@ function configurarEventosKPIs() {
             kpi.style.boxShadow = '';
         });
 
-        // Evento click
         kpi.addEventListener('click', (e) => {
             e.preventDefault();
             const url = kpi.dataset.url;
             const titulo = kpi.dataset.titulo;
 
             if (url) {
-                console.log(`Navegando a ${titulo}: ${url}`);
                 window.location.href = url;
             } else {
-                console.warn(`No hay URL definida para ${titulo}`);
-                // Mostrar mensaje de error amigable
                 Swal.fire({
                     icon: 'info',
                     title: 'Módulo en construcción',
@@ -507,7 +512,6 @@ function renderizarAccesoRapido() {
         card.setAttribute('data-url', item.url);
         card.setAttribute('data-titulo', item.titulo);
 
-        // Estilo especial para nueva incidencia
         if (item.animacion) {
             card.style.border = '1px solid #ff4d00';
             card.style.animation = 'parpadeo 1.5s ease-in-out infinite';
@@ -624,88 +628,84 @@ function configurarEventosTarjetas() {
     });
 }
 
+// ========== CARGA DE DATOS KPIs USANDO SOLO LAS CLASES ==========
 async function cargarDatosKPIs() {
     const organizacion = usuarioActual.organizacionCamelCase;
     if (!organizacion) return;
 
-    if (permisosUsuario.incidencias) {
-        await suscribirIncidenciasCanalizadas(organizacion);
+    // Usando el método de IncidenciaManager para contar incidencias del usuario
+    if (permisosUsuario.incidencias && incidenciaManager) {
+        await cargarMisIncidencias(organizacion, usuarioActual.id);
     }
-    if (permisosUsuario.areas) {
-        await suscribirAColeccion(`areas_${organizacion}`, 'areas');
+    
+    // Usando AreaManager para contar áreas
+    if (permisosUsuario.areas && areaManager) {
+        await cargarConteoDesdeManager(areaManager, 'getAreasByOrganizacion', organizacion, 'areas');
     }
-    if (permisosUsuario.categorias) {
-        await suscribirAColeccion(`categorias_${organizacion}`, 'categorias');
+    
+    // Usando CategoriaManager para contar categorías
+    if (permisosUsuario.categorias && categoriaManager) {
+        await cargarConteoDesdeManager(categoriaManager, 'obtenerCategoriasPorOrganizacion', organizacion, 'categorias');
     }
-    if (permisosUsuario.sucursales) {
-        await suscribirAColeccion(`sucursales_${organizacion}`, 'sucursales');
+    
+    // Usando SucursalManager para contar sucursales
+    if (permisosUsuario.sucursales && sucursalManager) {
+        await cargarConteoDesdeManager(sucursalManager, 'getSucursalesByOrganizacion', organizacion, 'sucursales');
     }
-    if (permisosUsuario.regiones) {
-        await suscribirAColeccion(`regiones_${organizacion}`, 'regiones');
+    
+    // Usando RegionManager para contar regiones
+    if (permisosUsuario.regiones && regionManager) {
+        await cargarConteoDesdeManager(regionManager, 'getRegionesByOrganizacion', organizacion, 'regiones');
     }
-    if (permisosUsuario.usuarios) {
-        await suscribirColaboradoresActivos(organizacion);
+    
+    // Usando UserManager para contar colaboradores activos
+    if (permisosUsuario.usuarios && userManager) {
+        await cargarColaboradoresActivos(organizacion);
     }
 }
 
-async function suscribirIncidenciasCanalizadas(organizacion) {
-    const { db } = await import('/config/firebase-config.js');
-    const { collection, query, where, orderBy, onSnapshot } = await import("https://www.gstatic.com/firebasejs/12.8.0/firebase-firestore.js");
-
-    const collectionName = `incidencias_${organizacion}`;
-    const incidenciasCollection = collection(db, collectionName);
-    const numberElement = document.getElementById('kpi-number-incidencias');
-    if (!numberElement) return;
-
-    let q;
-    if (usuarioActual.areaId && usuarioActual.rol !== 'administrador' && usuarioActual.rol !== 'master') {
-        q = query(incidenciasCollection, orderBy("fechaCreacion", "desc"));
-    } else {
-        q = query(incidenciasCollection, where("estado", "==", "pendiente"), orderBy("fechaCreacion", "desc"));
-    }
-
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-        let count = 0;
-        if (usuarioActual.areaId && usuarioActual.rol !== 'administrador' && usuarioActual.rol !== 'master') {
-            snapshot.forEach(doc => {
-                const data = doc.data();
-                const canalizaciones = data.canalizaciones || {};
-                const esParaMiArea = Object.values(canalizaciones).some(c => c.areaId === usuarioActual.areaId);
-                if (esParaMiArea && data.estado !== 'finalizada') count++;
-            });
-        } else {
-            count = snapshot.size;
-        }
-        numberElement.textContent = count;
-    });
-    unsubscribeFunctions.push(unsubscribe);
-}
-
-async function suscribirAColeccion(collectionName, moduloId) {
-    const { db } = await import('/config/firebase-config.js');
-    const { collection, onSnapshot } = await import("https://www.gstatic.com/firebasejs/12.8.0/firebase-firestore.js");
-
+// Función genérica para cargar conteo desde cualquier manager
+async function cargarConteoDesdeManager(manager, metodo, organizacion, moduloId) {
     const numberElement = document.getElementById(`kpi-number-${moduloId}`);
-    if (!numberElement) return;
-    const coleccion = collection(db, collectionName);
-    const unsubscribe = onSnapshot(coleccion, (snapshot) => {
-        numberElement.textContent = snapshot.size;
-    });
-    unsubscribeFunctions.push(unsubscribe);
+    if (!numberElement || !manager || !manager[metodo]) return;
+
+    try {
+        const lista = await manager[metodo](organizacion);
+        numberElement.textContent = lista.length;
+    } catch (error) {
+        console.error(`Error cargando ${moduloId}:`, error);
+        numberElement.textContent = '0';
+    }
 }
 
-async function suscribirColaboradoresActivos(organizacion) {
-    const { db } = await import('/config/firebase-config.js');
-    const { collection, query, where, onSnapshot } = await import("https://www.gstatic.com/firebasejs/12.8.0/firebase-firestore.js");
+// Función específica para incidencias del usuario
+async function cargarMisIncidencias(organizacion, usuarioId) {
+    const numberElement = document.getElementById('kpi-number-misIncidencias');
+    if (!numberElement || !incidenciaManager) return;
 
+    try {
+        const conteo = await incidenciaManager.getConteoIncidenciasPorUsuario(organizacion, usuarioId);
+        numberElement.textContent = conteo;
+    } catch (error) {
+        console.error('Error obteniendo conteo de mis incidencias:', error);
+        numberElement.textContent = '0';
+    }
+}
+
+// Función para colaboradores activos usando UserManager
+async function cargarColaboradoresActivos(organizacion) {
     const numberElement = document.getElementById('kpi-number-usuarios');
-    if (!numberElement) return;
-    const colaboradoresCollection = collection(db, `colaboradores_${organizacion}`);
-    const colaboradoresQuery = query(colaboradoresCollection, where("status", "==", true));
-    const unsubscribe = onSnapshot(colaboradoresQuery, (snapshot) => {
-        numberElement.textContent = snapshot.size;
-    });
-    unsubscribeFunctions.push(unsubscribe);
+    if (!numberElement || !userManager) return;
+    
+    try {
+        // Usar el método getColaboradoresByOrganizacion de UserManager
+        // El segundo parámetro 'false' significa solo activos
+        const colaboradores = await userManager.getColaboradoresByOrganizacion(organizacion, true);
+        numberElement.textContent = colaboradores.length;
+    } catch (error) {
+        console.error('Error cargando colaboradores activos:', error);
+        numberElement.textContent = '0';
+    }
 }
 
 // ========== UTILIDADES ==========
@@ -737,7 +737,3 @@ function mostrarError(mensaje) {
         container.innerHTML = `<div style="text-align:center;padding:60px;"><i class="fas fa-exclamation-circle" style="font-size:64px;color:#ff4d4d;"></i><h2>ERROR</h2><p>${mensaje}</p><button onclick="window.location.reload()">REINTENTAR</button></div>`;
     }
 }
-
-window.addEventListener('beforeunload', () => {
-    unsubscribeFunctions.forEach(unsubscribe => unsubscribe());
-});
