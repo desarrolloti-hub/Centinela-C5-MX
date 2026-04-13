@@ -1602,6 +1602,61 @@ async actualizarCamposIncidencia(incidenciaId, campos, organizacionCamelCase, us
         throw error;
     }
 }
+/**
+ * Obtiene el conteo de incidencias creadas por un usuario específico (sin suscripción en tiempo real)
+ * @param {string} organizacionCamelCase - Organización del usuario
+ * @param {string} usuarioId - ID del usuario
+ * @returns {Promise<number>} - Conteo de incidencias
+ */
+async getConteoIncidenciasPorUsuario(organizacionCamelCase, usuarioId) {
+    try {
+        if (!organizacionCamelCase || !usuarioId) {
+            return 0;
+        }
+
+        const collectionName = this._getCollectionName(organizacionCamelCase);
+        const incidenciasCollection = collection(db, collectionName);
+        
+        // Query para filtrar por creadoPor (usuarioId)
+        const q = query(incidenciasCollection, where("creadoPor", "==", usuarioId));
+        
+        await consumo.registrarFirestoreLectura(collectionName, 'conteo por usuario');
+        const snapshot = await getCountFromServer(q);
+        
+        return snapshot.data().count;
+    } catch (error) {
+        console.error('Error obteniendo conteo de incidencias por usuario:', error);
+        return 0;
+    }
+}
+// Agrega estos métodos dentro de la clase IncidenciaManager
+
+/**
+ * Obtiene el conteo de incidencias creadas por un usuario específico
+ * @param {string} organizacionCamelCase - Organización del usuario
+ * @param {string} usuarioId - ID del usuario
+ * @returns {Promise<number>} - Conteo de incidencias
+ */
+async getConteoIncidenciasPorUsuario(organizacionCamelCase, usuarioId) {
+    try {
+        if (!organizacionCamelCase || !usuarioId) {
+            return 0;
+        }
+
+        const collectionName = this._getCollectionName(organizacionCamelCase);
+        const incidenciasCollection = collection(db, collectionName);
+        
+        const q = query(incidenciasCollection, where("creadoPor", "==", usuarioId));
+        
+        await consumo.registrarFirestoreLectura(collectionName, 'conteo por usuario');
+        const snapshot = await getCountFromServer(q);
+        
+        return snapshot.data().count;
+    } catch (error) {
+        console.error('Error obteniendo conteo de incidencias por usuario:', error);
+        return 0;
+    }
+}
 }
 
 export { Incidencia, IncidenciaManager };
