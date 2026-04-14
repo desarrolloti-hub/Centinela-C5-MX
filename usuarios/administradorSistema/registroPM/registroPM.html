@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Vinculación monitoreo alarma - intrusión | Centinela-C5</title>
+    <title>Vinculación monitoreo alarma - intrusión | Centinela</title>
     
     <!-- Estilos -->
     <link rel="stylesheet" href="/components/personalization/personalization.css">
@@ -15,62 +15,6 @@
     <link rel="stylesheet" href="registroPM.css">
     
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-
-    <!-- SEO Básico -->
-    <meta name="description" content="Centinela es un sistema inteligente de seguridad para almacenamiento, monitoreo y predicción de incidencias. Plataforma confiable para prevención y análisis en tiempo real.">
-    <meta name="keywords" content="centinela, centinela, sistema de seguridad, seguridad inteligente, predicción de incidencias, monitoreo de seguridad, plataforma de seguridad, análisis de riesgos, prevención de incidentes">
-    <meta name="author" content="Centinela">
-    <link rel="canonical" href="https://centinela-c5.web.app/" />
-
-    <!-- Open Graph / Facebook / WhatsApp / LinkedIn -->
-    <meta property="og:type" content="website">
-    <meta property="og:url" content="https://centinela-c5.web.app">
-    <meta property="og:title" content="Centinela-C5 | Sistema Inteligente de Seguridad y Predicción">
-    <meta property="og:description" content="Centinela-C5 es una plataforma avanzada de seguridad para almacenamiento, monitoreo y predicción de incidencias en tiempo real.">
-    <meta property="og:image" content="https://centinela-c5.web.app/assets/images/logo.png">
-    <meta property="og:image:width" content="500">
-    <meta property="og:image:height" content="500">
-    <meta property="og:image:alt" content="Vista previa oficial de Centinela-C5">
-    <meta property="og:image" content="https://centinela-c5.web.app/assets/images/logo.png">
-    <meta property="og:image:width" content="500">
-    <meta property="og:image:height" content="500">
-    <meta property="og:image:alt" content="Logo oficial de Centinela">
-    <meta property="og:site_name" content="Centinela">
-
-    <!-- Twitter Card -->
-    <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:url" content="https://centinela-c5.web.app">
-    <meta name="twitter:title" content="Centinela-C5 | Seguridad Inteligente">
-    <meta name="twitter:description" content="Sistema de seguridad inteligente para monitoreo, almacenamiento y predicción de incidencias.">
-    <meta name="twitter:image" content="https://centinela-c5.web.app/assets/images/logo.png">
-    <meta name="twitter:creator" content="">
-
-    <!-- Schema.org / JSON-LD -->
-    <script type="application/ld+json">
-    {
-    "@context": "https://schema.org",
-    "@type": "LocalBusiness",
-    "name": "Centinela",
-    "operatingSystem": "Web",
-    "applicationCategory": "SecurityApplication",
-    "description": "Centinela es un sistema inteligente de seguridad para el almacenamiento, monitoreo y predicción de incidencias en tiempo real.",
-    "url": "https://centinela-c5.web.app",
-    "image": "https://centinela-c5.web.app/assets/images/logo.png",
-    "publisher": {
-        "@type": "Organization",
-        "name": "Centinela",
-        "logo": {
-        "@type": "ImageObject",
-        "url": "https://centinela-c5.web.app/assets/images/logo.png"
-        }
-    },
-    "offers": {
-        "@type": "Offer",
-        "price": "0",
-        "priceCurrency": "MXN"
-    }
-    }
-    </script>
 </head>
 <body>
     <canvas id="particle-canvas"></canvas>
@@ -168,6 +112,40 @@
                         </button>
                     </div>
                     
+                    <!-- PASO 4: Código de paneles -->
+                    <div id="step4" style="display:none;">
+                        <div class="message-container info">
+                            <i class="fas fa-shield-alt"></i>
+                            Establece el código numérico para los paneles de monitoreo
+                        </div>
+                        
+                        <div class="form-field-group">
+                            <label class="field-label" for="panelCode">
+                                <i class="fas fa-lock"></i> CÓDIGO DE PANELES (4 DÍGITOS NUMÉRICOS)
+                            </label>
+                            <div class="input-wrapper">
+                                <input class="form-input-field" type="password" id="panelCode" 
+                                    placeholder="Ej: 1234" maxlength="4" pattern="[0-9]{4}" inputmode="numeric" required>
+                            </div>
+                            <small style="color: var(--color-text-secondary); font-size: 0.7rem;">
+                                Este código de 4 dígitos será utilizado por todos los paneles asociados a esta cuenta
+                            </small>
+                        </div>
+                        
+                        <div class="form-field-group">
+                            <label class="field-label" for="confirmPanelCode">
+                                <i class="fas fa-check-double"></i> CONFIRMAR CÓDIGO DE PANELES
+                            </label>
+                            <div class="input-wrapper">
+                                <input class="form-input-field" type="password" id="confirmPanelCode" 
+                                    placeholder="Repite los 4 dígitos" maxlength="4" pattern="[0-9]{4}" inputmode="numeric" required>
+                            </div>
+                        </div>
+                        
+                        <button type="button" class="action-btn save-btn" id="btnSetPanelCode">
+                            <i class="fas fa-save"></i> FINALIZAR REGISTRO
+                        </button>
+                    </div>
                 </form>
 
                 <footer class="back-btn-container" style="margin-top: 1.5rem;">

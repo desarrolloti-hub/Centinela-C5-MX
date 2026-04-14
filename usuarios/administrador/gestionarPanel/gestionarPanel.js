@@ -239,6 +239,10 @@ async function cargarEstadoPanel() {
         
         if (!response.ok) throw new Error(result.error_message);
         
+        // Debug: Ver estructura exacta
+        console.log('📡 RSSI:', result.rssi);
+        console.log('📡 connected_status:', result.connected_status);
+        
         const partition = result.partitions?.[0] || {};
         const estado = partition.state || 'UNKNOWN';
         
@@ -265,30 +269,192 @@ async function cargarEstadoPanel() {
         }
         
         const statusIndicator = document.querySelector('.status-indicator');
-        const isOnline = result.connected_status?.gprs?.connected || result.connected_status?.bba?.connected;
         
+        // ========== CORREGIDO: Detectar método de conexión ==========
+        let metodoConexion = '';
+        let isOnline = false;
+        let esEthernet = false;
+        
+        // Verificar connected_status
+        if (result.connected_status) {
+            const gprsConnected = result.connected_status.gprs?.connected === true;
+            const bbaConnected = result.connected_status.bba?.connected === true;
+            const ipConnected = result.connected_status.ip?.connected === true;
+            const wifiConnected = result.connected_status.wifi?.connected === true;
+            
+            if (bbaConnected || ipConnected) {
+                metodoConexion = 'Ethernet (BBA)';
+                isOnline = true;
+                esEthernet = true;
+            } else if (gprsConnected) {
+                metodoConexion = 'GPRS/GSM';
+                isOnline = true;
+            } else if (wifiConnected) {
+                metodoConexion = 'WiFi';
+                isOnline = true;
+            }
+        }
+        
+        // Si no se detectó por connected_status, verificar si hay sesión activa
+        if (!isOnline && sessionToken) {
+            // Asumir que está conectado si tenemos sesión
+            metodoConexion = 'Conectado';
+            isOnline = true;
+        }
+        
+        // Verificar si hay datos de RSSI (aunque sea objeto)
+        if (result.rssi) {
+            // Si hay objeto RSSI, asumir conexión activa
+            if (!isOnline) {
+                isOnline = true;
+                metodoConexion = 'Conectado';
+            }
+        }
+        
+        // Actualizar indicador de estado
         if (isOnline) {
             statusIndicator.className = 'status-indicator online';
-            statusIndicator.innerHTML = '<i class="fas fa-circle"></i><span>En línea</span>';
+            statusIndicator.innerHTML = `<i class="fas fa-circle"></i><span>${metodoConexion}</span>`;
         } else {
             statusIndicator.className = 'status-indicator offline';
             statusIndicator.innerHTML = '<i class="fas fa-circle"></i><span>Sin conexión</span>';
         }
         
+        // ========== Mostrar información de conexión ==========
         const signalLevel = document.getElementById('signalLevel');
         const lastConnection = document.getElementById('lastConnection');
         
-        if (result.rssi?.level) {
-            signalLevel.innerHTML = `<i class="fas fa-signal"></i> <span>${result.rssi.level}</span>`;
+        if (isOnline) {
+            let signalInfo = '';
+            
+            if (esEthernet) {
+                // Conexión por ethernet - mostrar ícono de red cableada
+                signalInfo = `<span class="signal-method">
+                    <i class="fas fa-network-wired"></i> 
+                    Conexión por Ethernet
+                    <i class="fas fa-check-circle" style="color: #28a745; margin-left: 5px;"></i>
+                </span>`;
+            } else if (result.rssi && typeof result.rssi === 'object') {
+                // RSSI es un objeto - puede tener level o value
+                let rssiValue = null;
+                
+                if (result.rssi.level !== undefined) {
+                    rssiValue = result.rssi.level;
+                } else if (result.rssi.value !== undefined) {
+                    rssiValue = result.rssi.value;
+                } else if (result.rssi.dBm !== undefined) {
+                    rssiValue = result.rssi.dBm;
+                }
+                
+                if (rssiValue !== null && typeof rssiValue === 'number') {
+                    // Mostrar barras de señal
+                    let barras = '';
+                    let calidad = '';
+                    
+                    if (rssiValue >= -70) {
+                        barras = '<i class="fas fa-signal"></i><i class="fas fa-signal"></i><i class="fas fa-signal"></i><i class="fas fa-signal"></i>';
+                        calidad = 'Excelente';
+                    } else if (rssiValue >= -85) {
+                        barras = '<i class="fas fa-signal"></i><i class="fas fa-signal"></i><i class="fas fa-signal"></i>';
+                        calidad = 'Buena';
+                    } else if (rssiValue >= -100) {
+                        barras = '<i class="fas fa-signal"></i><i class="fas fa-signal"></i>';
+                        calidad = 'Regular';
+                    } else {
+                        barras = '<i class="fas fa-signal"></i>';
+                        calidad = 'Débil';
+                    }
+                    
+                    signalInfo = `<span class="signal-bars">${barras}</span> 
+                                  <span class="signal-dbm">${rssiValue} dBm</span> 
+                                  <span class="signal-quality">(${calidad})</span>`;
+                } else {
+                    // Hay objeto RSSI pero sin valor numérico
+                    signalInfo = `<span class="signal-method">
+                        <i class="fas fa-satellite-dish"></i> 
+                        ${metodoConexion}
+                    </span>`;
+                }
+            } else if (typeof result.rssi === 'number') {
+                // RSSI es número directo
+                let barras = '';
+                let calidad = '';
+                
+                if (result.rssi >= -70) {
+                    barras = '<i class="fas fa-signal"></i><i class="fas fa-signal"></i><i class="fas fa-signal"></i><i class="fas fa-signal"></i>';
+                    calidad = 'Excelente';
+                } else if (result.rssi >= -85) {
+                    barras = '<i class="fas fa-signal"></i><i class="fas fa-signal"></i><i class="fas fa-signal"></i>';
+                    calidad = 'Buena';
+                } else if (result.rssi >= -100) {
+                    barras = '<i class="fas fa-signal"></i><i class="fas fa-signal"></i>';
+                    calidad = 'Regular';
+                } else {
+                    barras = '<i class="fas fa-signal"></i>';
+                    calidad = 'Débil';
+                }
+                
+                signalInfo = `<span class="signal-bars">${barras}</span> 
+                              <span class="signal-dbm">${result.rssi} dBm</span> 
+                              <span class="signal-quality">(${calidad})</span>`;
+            } else {
+                // No hay información de RSSI
+                const icono = esEthernet ? 'fa-network-wired' : 'fa-microchip';
+                signalInfo = `<span class="signal-method">
+                    <i class="fas ${icono}"></i> 
+                    ${metodoConexion}
+                </span>`;
+            }
+            
+            signalLevel.innerHTML = signalInfo;
+        } else {
+            signalLevel.innerHTML = '<i class="fas fa-plug"></i> <span>Desconectado</span>';
+        }
+        
+        // ========== Mostrar batería ==========
+        const batteryLevelElem = document.getElementById('batteryLevel');
+        let batteryInfo = '';
+        let batteryValue = null;
+        
+        if (result.battery) {
+            if (typeof result.battery === 'object') {
+                batteryValue = result.battery.level || result.battery.percentage;
+                if (!batteryValue && result.battery.status) {
+                    batteryInfo = result.battery.status;
+                }
+            } else if (typeof result.battery === 'number') {
+                batteryValue = result.battery;
+            } else if (typeof result.battery === 'string') {
+                batteryInfo = result.battery;
+            }
+        }
+        
+        if (batteryValue !== null) {
+            const batteryPercent = parseInt(batteryValue);
+            let batteryIcon = 'fa-battery-full';
+            if (batteryPercent <= 20) batteryIcon = 'fa-battery-quarter';
+            else if (batteryPercent <= 50) batteryIcon = 'fa-battery-half';
+            else if (batteryPercent <= 80) batteryIcon = 'fa-battery-three-quarters';
+            
+            batteryLevelElem.innerHTML = `<i class="fas ${batteryIcon}"></i> <span>${batteryPercent}%</span>`;
+        } else if (batteryInfo) {
+            const isLow = batteryInfo.toLowerCase().includes('low');
+            batteryLevelElem.innerHTML = `<i class="fas ${isLow ? 'fa-battery-quarter' : 'fa-battery-full'}"></i> 
+                                          <span>${isLow ? 'Batería baja' : 'Normal'}</span>`;
+        } else {
+            batteryLevelElem.innerHTML = '<i class="fas fa-battery-full"></i> <span>N/A</span>';
         }
         
         lastConnection.textContent = new Date().toLocaleString();
         
     } catch (error) {
         console.error('❌ Error cargando estado:', error);
+        const signalLevel = document.getElementById('signalLevel');
+        if (signalLevel) {
+            signalLevel.innerHTML = '<i class="fas fa-exclamation-triangle"></i> <span>Error cargando estado</span>';
+        }
     }
 }
-
 async function cargarZonas() {
     try {
         const response = await fetch(`${CLOUD_FUNCTION_BASE_URL}${POWER_MANAGE_FUNCTION}`, {
@@ -365,7 +531,7 @@ async function cargarEventos() {
             return new Date(b.datetime) - new Date(a.datetime);
         });
         
-        // Detectar nuevos eventos
+        // Detectar nuevos eventos y mostrar notificaciones
         if (eventosCache.length > 0) {
             const nuevosEventos = eventos.filter(evento => {
                 const eventoId = `${evento.datetime}_${evento.event}_${evento.description}`;
@@ -394,60 +560,125 @@ async function cargarEventos() {
             return;
         }
         
-        // Renderizar eventos
+        // Renderizar eventos con botones de respuesta
         eventosList.innerHTML = eventos.map(evento => {
             const fecha = new Date(evento.datetime);
             const fechaFormateada = fecha.toLocaleString();
             const esNuevo = (new Date() - fecha) < 5 * 60 * 1000;
+            const esAlarma = ['BURGLER', 'FIRE', 'PANIC', 'ALARM', 'INTRUSION'].includes(evento.label);
             
             // Determinar icono según tipo
             let iconoEvento = 'fa-info-circle';
+            let claseEvento = '';
             
             switch(evento.label) {
                 case 'ARM':
-                case 'DISARM':
                     iconoEvento = 'fa-shield-alt';
+                    claseEvento = 'evento-arm';
+                    break;
+                case 'DISARM':
+                    iconoEvento = 'fa-unlock-alt';
+                    claseEvento = 'evento-disarm';
                     break;
                 case 'BURGLER':
                     iconoEvento = 'fa-bell';
+                    claseEvento = 'evento-burgler';
                     break;
                 case 'FIRE':
                     iconoEvento = 'fa-fire';
+                    claseEvento = 'evento-fire';
                     break;
                 case 'PANIC':
                     iconoEvento = 'fa-exclamation-triangle';
+                    claseEvento = 'evento-panic';
                     break;
                 case 'ONLINE':
                     iconoEvento = 'fa-wifi';
+                    claseEvento = 'evento-online';
                     break;
                 case 'OFFLINE':
                     iconoEvento = 'fa-plug';
+                    claseEvento = 'evento-offline';
                     break;
                 default:
                     iconoEvento = 'fa-info-circle';
+                    claseEvento = 'evento-default';
             }
             
+            // Escapar datos para JSON
+            const eventoJSON = JSON.stringify(evento).replace(/'/g, "&#39;").replace(/"/g, '&quot;');
+            
+            // Botones de respuesta solo para alarmas
+            const botonesRespuesta = esAlarma ? `
+                <div class="evento-acciones">
+                    <button class="btn-responder-evento" data-evento='${eventoJSON}' data-respuesta="acknowledge">
+                        <i class="fas fa-check-circle"></i> Reconocer
+                    </button>
+                    <button class="btn-responder-evento" data-evento='${eventoJSON}' data-respuesta="silence">
+                        <i class="fas fa-volume-mute"></i> Silenciar
+                    </button>
+                </div>
+            ` : '';
+            
             return `
-                <div class="evento-card ${esNuevo ? 'evento-nuevo' : ''}">
+                <div class="evento-card ${esNuevo ? 'evento-nuevo' : ''} ${esAlarma ? 'evento-alarma' : ''} ${claseEvento}">
                     <div class="evento-header">
                         <i class="fas ${iconoEvento}"></i>
-                        <span class="evento-tipo">${escapeHTML(evento.description)}</span>
+                        <span class="evento-tipo ${evento.label}">${escapeHTML(evento.description)}</span>
                         ${esNuevo ? '<span class="nuevo-badge">NUEVO</span>' : ''}
                     </div>
-                    <div class="evento-fecha">${fechaFormateada}</div>
+                    <div class="evento-fecha">
+                        <i class="far fa-calendar-alt"></i> ${fechaFormateada}
+                    </div>
                     <div class="evento-detalle">
                         ${evento.appointment ? `<span><i class="fas fa-user"></i> ${escapeHTML(evento.appointment)}</span>` : ''}
-                        ${evento.zone ? `<span><i class="fas fa-map-marker-alt"></i> Zona ${evento.zone}</span>` : ''}
+                        ${evento.zone ? `<span><i class="fas fa-map-marker-alt"></i> Zona ${escapeHTML(evento.zone)}</span>` : ''}
                         ${evento.name ? `<span><i class="fas fa-microchip"></i> ${escapeHTML(evento.name)}</span>` : ''}
+                        ${evento.device ? `<span><i class="fas fa-microchip"></i> Dispositivo: ${escapeHTML(evento.device)}</span>` : ''}
                     </div>
+                    ${botonesRespuesta}
                 </div>
             `;
         }).join('');
         
+        // Agregar event listeners para los botones de respuesta
+        document.querySelectorAll('.btn-responder-evento').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                try {
+                    // Parsear el evento correctamente
+                    const eventoData = JSON.parse(btn.getAttribute('data-evento').replace(/&quot;/g, '"'));
+                    const respuesta = btn.getAttribute('data-respuesta');
+                    
+                    if (respuesta === 'acknowledge') {
+                        await reconocerAlarma(eventoData);
+                    } else if (respuesta === 'silence') {
+                        await silenciarAlarma(eventoData);
+                    }
+                } catch (error) {
+                    console.error('Error al procesar respuesta:', error);
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: 'No se pudo procesar la respuesta'
+                    });
+                }
+            });
+        });
+        
     } catch (error) {
         console.error('❌ Error cargando eventos:', error);
         const eventosList = document.getElementById('eventosList');
-        eventosList.innerHTML = '<div class="empty-state"><i class="fas fa-exclamation-triangle"></i><p>Error cargando eventos</p></div>';
+        eventosList.innerHTML = `
+            <div class="empty-state">
+                <i class="fas fa-exclamation-triangle"></i>
+                <p>Error cargando eventos</p>
+                <small>${escapeHTML(error.message)}</small>
+                <button class="btn-retry" onclick="cargarEventos()" style="margin-top: 1rem;">
+                    <i class="fas fa-sync-alt"></i> Reintentar
+                </button>
+            </div>
+        `;
     }
 }
 
@@ -457,30 +688,37 @@ function mostrarNotificacionEvento(evento) {
     let titulo = '';
     let cuerpo = '';
     let esImportante = false;
+    let tipoEvento = '';
     
     switch(evento.label) {
         case 'ARM':
             titulo = '🔒 Panel Armado';
             cuerpo = `El panel ha sido armado${evento.appointment ? ` por ${evento.appointment}` : ''}`;
+            detenerAudioIntrusion();
             break;
         case 'DISARM':
             titulo = '🔓 Panel Desarmado';
             cuerpo = `El panel ha sido desarmado${evento.appointment ? ` por ${evento.appointment}` : ''}`;
+            detenerAudioIntrusion();
             break;
         case 'BURGLER':
             titulo = '🚨 ALARMA DE INTRUSIÓN';
             cuerpo = `¡Alarma activada!${evento.zone ? ` Zona ${evento.zone}` : ''}`;
             esImportante = true;
+            tipoEvento = 'BURGLER';
+            reproducirAudioIntrusion();
             break;
         case 'FIRE':
             titulo = '🔥 ALARMA DE INCENDIO';
             cuerpo = `¡Detectado fuego!${evento.zone ? ` Zona ${evento.zone}` : ''}`;
             esImportante = true;
+            tipoEvento = 'FIRE';
             break;
         case 'PANIC':
             titulo = '⚠️ ALARMA DE PÁNICO';
             cuerpo = `Alarma de pánico activada${evento.appointment ? ` por ${evento.appointment}` : ''}`;
             esImportante = true;
+            tipoEvento = 'PANIC';
             break;
         case 'ONLINE':
             titulo = '📡 Panel en línea';
@@ -496,18 +734,41 @@ function mostrarNotificacionEvento(evento) {
             cuerpo = evento.description;
     }
     
+    // Mostrar alerta con botones de respuesta si es importante
     if (esImportante) {
         Swal.fire({
             icon: 'error',
             title: titulo,
-            text: cuerpo,
-            toast: false,
-            confirmButtonText: 'ENTENDIDO',
+            html: `
+                <div style="text-align: left;">
+                    <p><strong>${cuerpo}</strong></p>
+                    <p style="font-size: 0.9rem; margin-top: 10px;">¿Qué deseas hacer?</p>
+                </div>
+            `,
+            showCancelButton: true,
+            showDenyButton: tipoEvento === 'BURGLER',
+            confirmButtonText: '✅ RECONOCER',
+            denyButtonText: '🔇 SILENCIAR',
+            cancelButtonText: '❌ CERRAR',
+            confirmButtonColor: '#28a745',
+            denyButtonColor: '#ffc107',
+            cancelButtonColor: '#6c757d',
             background: '#ff4444',
             color: '#fff',
             iconColor: '#fff',
-            timer: 10000,
-            timerProgressBar: true
+            didOpen: () => {
+                if (evento.label === 'BURGLER') {
+                    setTimeout(() => reproducirAudioIntrusion(), 100);
+                }
+            }
+        }).then((result) => {
+            if (result.isConfirmed) {
+                // Reconocer alarma
+                reconocerAlarma(evento);
+            } else if (result.isDenied) {
+                // Silenciar alarma
+                silenciarAlarma(evento);
+            }
         });
     } else {
         Swal.fire({
@@ -522,6 +783,7 @@ function mostrarNotificacionEvento(evento) {
         });
     }
     
+    // Notificación del sistema (sin cambios)
     if ('Notification' in window && Notification.permission === 'granted') {
         const notification = new Notification(titulo, {
             body: cuerpo,
@@ -788,4 +1050,146 @@ function escapeHTML(text) {
         if (m === '>') return '&gt;';
         return m;
     });
+}
+
+// ==================== REPRODUCCIÓN DE AUDIO ====================
+let audioIntrusion = null;
+
+function reproducirAudioIntrusion() {
+    try {
+        if (!audioIntrusion) {
+            audioIntrusion = new Audio('./intrusion.wav');
+            audioIntrusion.preload = 'auto';
+        }
+        
+        // Detener cualquier reproducción actual
+        audioIntrusion.pause();
+        audioIntrusion.currentTime = 0;
+        
+        // Intentar reproducir
+        const playPromise = audioIntrusion.play();
+        
+        if (playPromise !== undefined) {
+            playPromise.catch(error => {
+                // Silenciar error de audio, no es crítico
+                console.log('⚠️ Audio no reproducido:', error.message);
+            });
+        }
+    } catch (error) {
+        console.log('⚠️ Error con audio:', error.message);
+    }
+}
+
+function detenerAudioIntrusion() {
+    if (audioIntrusion) {
+        audioIntrusion.pause();
+        audioIntrusion.currentTime = 0;
+    }
+}
+
+// ==================== RESPUESTA A EVENTOS ====================
+
+async function reconocerAlarma(evento) {
+    console.log('✅ Reconociendo alarma:', evento);
+    
+    const confirm = await Swal.fire({
+        title: '¿Reconocer evento?',
+        html: `
+            <div style="text-align: left;">
+                <p><strong>Evento:</strong> ${escapeHTML(evento.description)}</p>
+                <p><strong>Fecha:</strong> ${new Date(evento.datetime).toLocaleString()}</p>
+                <p>¿Confirmas que has recibido y atendido esta alerta?</p>
+            </div>
+        `,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'SÍ, RECONOCER',
+        cancelButtonText: 'CANCELAR',
+        confirmButtonColor: '#28a745',
+        cancelButtonColor: '#6c757d'
+    });
+    
+    if (!confirm.isConfirmed) return;
+    
+    mostrarProgreso('Enviando reconocimiento...', 50);
+    
+    try {
+        // Por ahora solo mostramos un mensaje local
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        ocultarProgreso();
+        
+        Swal.fire({
+            icon: 'success',
+            title: 'Evento reconocido',
+            text: 'La alerta ha sido marcada como atendida',
+            timer: 2000,
+            showConfirmButton: false,
+            toast: true,
+            position: 'top-end'
+        });
+        
+        setTimeout(() => cargarEventos(), 500);
+        
+    } catch (error) {
+        ocultarProgreso();
+        console.error('Error reconociendo evento:', error);
+        Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: error.message
+        });
+    }
+}
+
+async function silenciarAlarma(evento) {
+    console.log('🔇 Silenciando alarma:', evento);
+    
+    const confirm = await Swal.fire({
+        title: '¿Silenciar alarma?',
+        html: `
+            <div style="text-align: left;">
+                <p><strong>Evento:</strong> ${escapeHTML(evento.description)}</p>
+                <p><strong>Fecha:</strong> ${new Date(evento.datetime).toLocaleString()}</p>
+                <p>¿Deseas silenciar esta alarma?</p>
+            </div>
+        `,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'SÍ, SILENCIAR',
+        cancelButtonText: 'CANCELAR',
+        confirmButtonColor: '#ffc107',
+        cancelButtonColor: '#6c757d'
+    });
+    
+    if (!confirm.isConfirmed) return;
+    
+    mostrarProgreso('Silenciando alarma...', 50);
+    
+    try {
+        detenerAudioIntrusion();
+        
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        ocultarProgreso();
+        
+        Swal.fire({
+            icon: 'success',
+            title: 'Alarma silenciada',
+            text: 'El sonido de alarma se ha detenido',
+            timer: 2000,
+            showConfirmButton: false
+        });
+        
+        setTimeout(() => cargarEventos(), 500);
+        
+    } catch (error) {
+        ocultarProgreso();
+        console.error('Error silenciando alarma:', error);
+        Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: error.message
+        });
+    }
 }

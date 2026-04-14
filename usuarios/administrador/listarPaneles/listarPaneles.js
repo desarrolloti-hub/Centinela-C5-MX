@@ -1,6 +1,6 @@
 // ==================== IMPORTS ====================
 import { CuentaPM } from '/clases/cuentaPM.js';
-import { CLOUD_FUNCTION_BASE_URL, ACTIONS } from '/config/urlCloudFunction.js';
+import { CLOUD_FUNCTION_BASE_URL } from '/config/urlCloudFunction.js';
 
 // ==================== CONSTANTES ====================
 const POWER_MANAGE_FUNCTION = 'proxyPowerManage';
@@ -10,6 +10,7 @@ let cuentaAppId = null;
 let cuentaData = null;
 let powerManageUserToken = null;
 let paneles = [];
+let panelesSeleccionados = new Set(); // Set para almacenar serials seleccionados
 
 // ==================== INICIALIZACIÓN ====================
 document.addEventListener('DOMContentLoaded', async () => {
@@ -137,7 +138,6 @@ async function cargarPanelesPowerManage() {
         
         document.getElementById('totalPaneles').textContent = paneles.length;
         
-        // Renderizar los paneles con los botones
         renderizarListaPaneles();
         
     } catch (error) {
@@ -182,55 +182,92 @@ function renderizarListaPaneles() {
         return;
     }
     
-    // Renderizar cada panel con sus botones
     panelesGrid.innerHTML = paneles.map(panel => {
-        // Determinar el nombre a mostrar
         let nombreMostrar = panel.alias;
         if (!nombreMostrar || nombreMostrar === '') {
             nombreMostrar = panel.panel_model || panel.type || `Panel ${panel.panel_serial.substring(0, 8)}`;
         }
         
+        const isSelected = panelesSeleccionados.has(panel.panel_serial);
+        
         return `
-            <div class="panel-card">
-                <div class="panel-card-header">
-                    <i class="fas fa-microchip"></i>
-                    <h4>${escapeHTML(nombreMostrar)}</h4>
-                    <span class="status-badge">Activo</span>
+            <div class="panel-card ${isSelected ? 'selected' : ''}" data-serial="${panel.panel_serial}">
+                <div class="panel-checkbox">
+                    <input type="checkbox" class="panel-select" data-serial="${panel.panel_serial}" ${isSelected ? 'checked' : ''}>
                 </div>
-                <div class="panel-details">
-                    <div class="panel-detail">
-                        <span class="label">Serial:</span>
-                        <span class="value">${escapeHTML(panel.panel_serial)}</span>
+                <div class="panel-content">
+                    <div class="panel-card-header">
+                        <i class="fas fa-microchip"></i>
+                        <h4>${escapeHTML(nombreMostrar)}</h4>
+                        <span class="status-badge">Activo</span>
                     </div>
-                    <div class="panel-detail">
-                        <span class="label">Modelo:</span>
-                        <span class="value">${escapeHTML(panel.panel_model || 'Desconocido')}</span>
+                    <div class="panel-details">
+                        <div class="panel-detail">
+                            <span class="label">Serial:</span>
+                            <span class="value">${escapeHTML(panel.panel_serial)}</span>
+                        </div>
+                        <div class="panel-detail">
+                            <span class="label">Modelo:</span>
+                            <span class="value">${escapeHTML(panel.panel_model || 'Desconocido')}</span>
+                        </div>
+                        <div class="panel-detail">
+                            <span class="label">Tipo:</span>
+                            <span class="value">${escapeHTML(panel.type || 'No especificado')}</span>
+                        </div>
+                        <div class="panel-detail">
+                            <span class="label">Rol:</span>
+                            <span class="value">${escapeHTML(panel.role || 'USER')}</span>
+                        </div>
                     </div>
-                    <div class="panel-detail">
-                        <span class="label">Tipo:</span>
-                        <span class="value">${escapeHTML(panel.type || 'No especificado')}</span>
+                    <div class="panel-actions">
+                        <button class="btn-edit-alias" data-serial="${panel.panel_serial}" data-alias="${escapeHTML(panel.alias || '')}">
+                            <i class="fas fa-edit"></i> Editar alias
+                        </button>
+                        <button class="btn-gestionar" data-serial="${panel.panel_serial}">
+                            <i class="fas fa-chart-line"></i> Gestionar
+                        </button>
+                        <button class="btn-eliminar" data-serial="${panel.panel_serial}">
+                            <i class="fas fa-trash"></i> Desvincular
+                        </button>
                     </div>
-                    <div class="panel-detail">
-                        <span class="label">Rol:</span>
-                        <span class="value">${escapeHTML(panel.role || 'USER')}</span>
-                    </div>
-                </div>
-                <div class="panel-actions">
-                    <button class="btn-edit-alias" data-serial="${panel.panel_serial}" data-alias="${escapeHTML(panel.alias || '')}">
-                        <i class="fas fa-edit"></i> Editar alias
-                    </button>
-                    <button class="btn-gestionar" data-serial="${panel.panel_serial}">
-                        <i class="fas fa-chart-line"></i> Gestionar
-                    </button>
-                    <button class="btn-eliminar" data-serial="${panel.panel_serial}">
-                        <i class="fas fa-trash"></i> Desvincular
-                    </button>
                 </div>
             </div>
         `;
     }).join('');
     
-    // Agregar eventos a los botones
+    // Eventos para checkboxes
+    document.querySelectorAll('.panel-select').forEach(checkbox => {
+        checkbox.addEventListener('change', (e) => {
+            e.stopPropagation();
+            const serial = checkbox.getAttribute('data-serial');
+            if (checkbox.checked) {
+                panelesSeleccionados.add(serial);
+                const card = document.querySelector(`.panel-card[data-serial="${serial}"]`);
+                if (card) card.classList.add('selected');
+            } else {
+                panelesSeleccionados.delete(serial);
+                const card = document.querySelector(`.panel-card[data-serial="${serial}"]`);
+                if (card) card.classList.remove('selected');
+            }
+            actualizarContadorSeleccionados();
+            mostrarOcultarBotonMonitorear();
+        });
+    });
+    
+    // Evento para seleccionar tarjeta completa
+    document.querySelectorAll('.panel-card').forEach(card => {
+        const checkbox = card.querySelector('.panel-select');
+        card.addEventListener('click', (e) => {
+            if (e.target.tagName === 'BUTTON' || e.target.closest('button')) return;
+            if (checkbox) {
+                checkbox.checked = !checkbox.checked;
+                const event = new Event('change');
+                checkbox.dispatchEvent(event);
+            }
+        });
+    });
+    
+    // Eventos para botones (se mantienen igual)
     document.querySelectorAll('.btn-edit-alias').forEach(btn => {
         btn.addEventListener('click', (e) => {
             e.stopPropagation();
@@ -244,7 +281,7 @@ function renderizarListaPaneles() {
         btn.addEventListener('click', (e) => {
             e.stopPropagation();
             const serial = btn.getAttribute('data-serial');
-            gestionarPanel(serial);
+            gestionarPanelUnico(serial); // Función original para un solo panel
         });
     });
     
@@ -255,100 +292,32 @@ function renderizarListaPaneles() {
             eliminarPanel(serial);
         });
     });
+    
+    actualizarContadorSeleccionados();
+    mostrarOcultarBotonMonitorear();
 }
 
-// Función para editar el alias del panel
-async function editarAliasPanel(serial, aliasActual) {
-    const { value: nuevoAlias } = await Swal.fire({
-        title: 'Editar alias del panel',
-        html: `
-            <div style="text-align: left;">
-                <p><strong>Panel:</strong> ${escapeHTML(serial)}</p>
-                <p>Ingresa un nombre descriptivo para identificar este panel:</p>
-            </div>
-        `,
-        input: 'text',
-        inputLabel: 'Alias',
-        inputValue: aliasActual || '',
-        inputPlaceholder: 'Ej: Casa Principal, Oficina, Sucursal Norte',
-        showCancelButton: true,
-        confirmButtonText: 'GUARDAR',
-        cancelButtonText: 'CANCELAR',
-        inputValidator: (value) => {
-            if (!value || value.trim() === '') {
-                return 'El alias no puede estar vacío';
-            }
-            if (value.length > 50) {
-                return 'El alias no puede tener más de 50 caracteres';
-            }
-            return null;
-        }
-    });
-    
-    if (!nuevoAlias) return;
-    
-    mostrarProgreso('Guardando alias...', 30);
-    
-    try {
-        const url = `${CLOUD_FUNCTION_BASE_URL}${POWER_MANAGE_FUNCTION}`;
-        
-        const response = await fetch(url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                action: 'renamePanel',
-                user_token: powerManageUserToken,
-                panel_serial: serial,
-                alias: nuevoAlias.trim()
-            })
-        });
-        
-        if (response.status === 401) throw new Error('Wrong user token');
-        
-        mostrarProgreso('Procesando...', 70);
-        
-        const result = await response.json();
-        
-        if (!response.ok) {
-            throw new Error(result.error_message || 'Error al cambiar el alias');
-        }
-        
-        ocultarProgreso();
-        
-        Swal.fire({
-            icon: 'success',
-            title: 'Alias actualizado',
-            text: `El panel ahora se llama: ${nuevoAlias}`,
-            timer: 2000,
-            showConfirmButton: false
-        });
-        
-        // Actualizar el panel en la lista local
-        const panelIndex = paneles.findIndex(p => p.panel_serial === serial);
-        if (panelIndex !== -1) {
-            paneles[panelIndex].alias = nuevoAlias;
-        }
-        
-        // Recargar la lista para mostrar el cambio
-        renderizarListaPaneles();
-        
-    } catch (error) {
-        console.error('❌ Error cambiando alias:', error);
-        ocultarProgreso();
-        
-        if (error.message === 'Wrong user token') {
-            redirectToLogin('La sesión de monitoreo ha expirado');
+function actualizarContadorSeleccionados() {
+    const count = panelesSeleccionados.size;
+    const selectedCountElement = document.getElementById('selectedCount');
+    if (selectedCountElement) {
+        selectedCountElement.textContent = count;
+    }
+}
+
+function mostrarOcultarBotonMonitorear() {
+    const btnMonitorear = document.getElementById('btnMonitorSelected');
+    if (btnMonitorear) {
+        if (panelesSeleccionados.size > 0) {
+            btnMonitorear.style.display = 'flex';
         } else {
-            Swal.fire({
-                icon: 'error',
-                title: 'Error',
-                text: error.message || 'No se pudo cambiar el alias del panel'
-            });
+            btnMonitorear.style.display = 'none';
         }
     }
 }
 
-async function gestionarPanel(serial) {
+// ==================== GESTIONAR PANEL ÚNICO (Original - se mantiene igual) ====================
+async function gestionarPanelUnico(serial) {
     const panel = paneles.find(p => p.panel_serial === serial);
     
     if (!panel) {
@@ -375,19 +344,177 @@ async function gestionarPanel(serial) {
     window.location.href = `../gestionarPanel/gestionarPanel.html?appId=${cuentaAppId}&panelSerial=${serial}`;
 }
 
-async function eliminarPanel(serial) {
-    const confirm = await Swal.fire({
-        title: '¿Desvincular panel?',
-        text: `¿Estás seguro de que deseas desvincular el panel "${serial}" de tu cuenta Power Manage?`,
-        icon: 'warning',
+// ==================== MONITOREAR MÚLTIPLES PANELES (NUEVO) ====================
+async function monitorearPanelesSeleccionados() {
+    const panelesAMonitorear = paneles.filter(p => panelesSeleccionados.has(p.panel_serial));
+    
+    if (panelesAMonitorear.length === 0) {
+        Swal.fire({
+            icon: 'warning',
+            title: 'Sin selección',
+            text: 'Selecciona al menos un panel usando los checkboxes',
+            confirmButtonText: 'ENTENDIDO'
+        });
+        return;
+    }
+    
+    // Solicitar código de usuario (el mismo para todos los paneles)
+    const { value: userCode, isConfirmed } = await Swal.fire({
+        title: 'Código de acceso',
+        html: `
+            <div style="text-align: left;">
+                <p>Se monitorearán <strong>${panelesAMonitorear.length}</strong> panel(es):</p>
+                <ul style="color: #00ffff; margin: 10px 0 10px 20px;">
+                    ${panelesAMonitorear.map(p => `<li>${p.alias || p.panel_model || p.panel_serial}</li>`).join('')}
+                </ul>
+                <p>Ingresa el código de usuario (el mismo para todos):</p>
+            </div>
+        `,
+        input: 'password',
+        inputLabel: 'Código de usuario',
+        inputPlaceholder: 'Ej: 1234',
+        inputAttributes: {
+            maxlength: '8',
+            inputmode: 'numeric',
+            pattern: '[0-9]*'
+        },
         showCancelButton: true,
-        confirmButtonText: 'SÍ, DESVINCULAR',
-        cancelButtonText: 'CANCELAR'
+        confirmButtonText: 'MONITOREAR',
+        cancelButtonText: 'CANCELAR',
+        inputValidator: (value) => {
+            if (!value) return 'El código de usuario es requerido';
+            if (!/^\d{4,8}$/.test(value)) return 'El código debe tener entre 4 y 8 dígitos';
+            return null;
+        }
     });
     
-    if (!confirm.isConfirmed) return;
+    if (!isConfirmed || !userCode) return;
     
-    mostrarProgreso('Desvinculando panel...', 30);
+    mostrarProgreso('Conectando a los paneles...', 10);
+    
+    let exitosos = 0;
+    let fallidos = 0;
+    const errores = [];
+    const panelesConSesion = [];
+    
+    for (let i = 0; i < panelesAMonitorear.length; i++) {
+        const panel = panelesAMonitorear[i];
+        const progreso = 10 + Math.floor((i / panelesAMonitorear.length) * 80);
+        mostrarProgreso(`Conectando a ${panel.alias || panel.panel_serial}...`, progreso);
+        
+        try {
+            const sessionToken = await loginToPanel(panel.panel_serial, userCode);
+            
+            if (sessionToken) {
+                const nombreMostrar = panel.alias || panel.panel_model || `Panel ${panel.panel_serial.substring(0, 8)}`;
+                
+                panelesConSesion.push({
+                    serial: panel.panel_serial,
+                    alias: panel.alias || '',
+                    modelo: panel.panel_model || 'Desconocido',
+                    tipo: panel.type || 'No especificado',
+                    nombreMostrar: nombreMostrar,
+                    session_token: sessionToken
+                });
+                exitosos++;
+            } else {
+                fallidos++;
+                errores.push(`${panel.alias || panel.panel_serial}: Sin sesión`);
+            }
+        } catch (error) {
+            fallidos++;
+            errores.push(`${panel.alias || panel.panel_serial}: ${error.message}`);
+        }
+    }
+    
+    ocultarProgreso();
+    
+    if (exitosos === 0) {
+        Swal.fire({
+            icon: 'error',
+            title: 'Error de conexión',
+            text: `No se pudo conectar a ningún panel.\n${errores.join('\n')}`,
+            confirmButtonText: 'ACEPTAR'
+        });
+        return;
+    }
+    
+    // Guardar en sessionStorage
+    sessionStorage.setItem('panelesMonitoreo', JSON.stringify(panelesConSesion));
+    console.log('💾 Guardados en sessionStorage:', panelesConSesion.length, 'paneles');
+    
+    let mensaje = `✅ ${exitosos} panel(es) conectado(s) correctamente`;
+    if (fallidos > 0) mensaje += `\n⚠️ ${fallidos} panel(es) fallaron:\n${errores.join('\n')}`;
+    
+    Swal.fire({
+        icon: 'success',
+        title: 'Paneles conectados',
+        text: mensaje,
+        confirmButtonText: 'VER MONITOREO'
+    }).then(() => {
+        window.location.href = `../monitoreoPanel/monitoreoPanel.html?appId=${cuentaAppId}`;
+    });
+}
+
+// ==================== FUNCIÓN COMÚN DE LOGIN ====================
+async function loginToPanel(panelSerial, userCode) {
+    const url = `${CLOUD_FUNCTION_BASE_URL}${POWER_MANAGE_FUNCTION}`;
+    
+    const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            action: 'loginPanel',
+            user_token: powerManageUserToken,
+            panel_data: {
+                panel_serial: panelSerial,
+                user_code: userCode,
+                app_id: cuentaAppId,
+                app_type: 'com.visonic.neogo'
+            }
+        })
+    });
+    
+    if (response.status === 401) throw new Error('Wrong user token');
+    
+    if (!response.ok) {
+        const error = await response.json();
+        if (error.error_reason_code === 'WrongCombination') throw new Error('Código incorrecto');
+        if (error.error_reason_code === 'UserIsDeactivatedOnPanel') throw new Error('Usuario desactivado');
+        throw new Error(error.error_message || 'Error de conexión');
+    }
+    
+    const data = await response.json();
+    return data.session_token;
+}
+
+// ==================== OTRAS FUNCIONES (sin cambios) ====================
+async function editarAliasPanel(serial, aliasActual) {
+    const { value: nuevoAlias } = await Swal.fire({
+        title: 'Editar alias del panel',
+        html: `
+            <div style="text-align: left;">
+                <p><strong>Panel:</strong> ${escapeHTML(serial)}</p>
+                <p>Ingresa un nombre descriptivo:</p>
+            </div>
+        `,
+        input: 'text',
+        inputLabel: 'Alias',
+        inputValue: aliasActual || '',
+        inputPlaceholder: 'Ej: Casa Principal',
+        showCancelButton: true,
+        confirmButtonText: 'GUARDAR',
+        cancelButtonText: 'CANCELAR',
+        inputValidator: (value) => {
+            if (!value || value.trim() === '') return 'El alias no puede estar vacío';
+            if (value.length > 50) return 'Máximo 50 caracteres';
+            return null;
+        }
+    });
+    
+    if (!nuevoAlias) return;
+    
+    mostrarProgreso('Guardando alias...', 30);
     
     try {
         const url = `${CLOUD_FUNCTION_BASE_URL}${POWER_MANAGE_FUNCTION}`;
@@ -396,9 +523,10 @@ async function eliminarPanel(serial) {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                action: 'desvincularPanel',
+                action: 'renamePanel',
                 user_token: powerManageUserToken,
-                panel_serial: serial
+                panel_serial: serial,
+                alias: nuevoAlias.trim()
             })
         });
         
@@ -408,23 +536,28 @@ async function eliminarPanel(serial) {
         
         if (!response.ok) {
             const error = await response.json();
-            throw new Error(error.error_message || 'Error al desvincular panel');
+            throw new Error(error.error_message || 'Error al cambiar el alias');
         }
         
         ocultarProgreso();
         
         Swal.fire({
             icon: 'success',
-            title: 'Panel desvinculado',
-            text: `El panel ${serial} ha sido desvinculado`,
+            title: 'Alias actualizado',
+            text: `El panel ahora se llama: ${nuevoAlias}`,
             timer: 2000,
             showConfirmButton: false
         });
         
-        await cargarPanelesPowerManage();
+        const panelIndex = paneles.findIndex(p => p.panel_serial === serial);
+        if (panelIndex !== -1) {
+            paneles[panelIndex].alias = nuevoAlias;
+        }
+        
+        renderizarListaPaneles();
         
     } catch (error) {
-        console.error('❌ Error eliminando panel:', error);
+        console.error('❌ Error cambiando alias:', error);
         ocultarProgreso();
         
         if (error.message === 'Wrong user token') {
@@ -432,10 +565,59 @@ async function eliminarPanel(serial) {
         } else {
             Swal.fire({
                 icon: 'error',
-                title: 'Error al desvincular',
-                text: error.message
+                title: 'Error',
+                text: error.message || 'No se pudo cambiar el alias'
             });
         }
+    }
+}
+
+async function eliminarPanel(serial) {
+    const confirm = await Swal.fire({
+        title: '¿Desvincular panel?',
+        text: `¿Eliminar "${serial}" de tu cuenta?`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'SÍ, DESVINCULAR',
+        cancelButtonText: 'CANCELAR'
+    });
+    
+    if (!confirm.isConfirmed) return;
+    
+    mostrarProgreso('Desvinculando...', 50);
+    
+    try {
+        const url = `${CLOUD_FUNCTION_BASE_URL}${POWER_MANAGE_FUNCTION}`;
+        
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                action: 'unlinkPanel',
+                user_token: powerManageUserToken,
+                panel_serial: serial
+            })
+        });
+        
+        if (response.status === 401) throw new Error('Wrong user token');
+        
+        ocultarProgreso();
+        
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error_message || 'Error');
+        }
+        
+        panelesSeleccionados.delete(serial);
+        
+        Swal.fire({ icon: 'success', title: 'Panel desvinculado', timer: 1500, showConfirmButton: false });
+        
+        await cargarPanelesPowerManage();
+        
+    } catch (error) {
+        ocultarProgreso();
+        if (error.message === 'Wrong user token') redirectToLogin();
+        else Swal.fire({ icon: 'error', title: 'Error', text: error.message });
     }
 }
 
@@ -452,6 +634,27 @@ function configurarEventos() {
         btnVincularNuevo.addEventListener('click', () => {
             window.location.href = `enlaceCuentaPaneles.html?appId=${cuentaAppId}`;
         });
+    }
+    
+    const btnSelectAll = document.getElementById('btnSelectAll');
+    if (btnSelectAll) {
+        btnSelectAll.addEventListener('click', () => {
+            paneles.forEach(panel => panelesSeleccionados.add(panel.panel_serial));
+            renderizarListaPaneles();
+        });
+    }
+    
+    const btnDeselectAll = document.getElementById('btnDeselectAll');
+    if (btnDeselectAll) {
+        btnDeselectAll.addEventListener('click', () => {
+            panelesSeleccionados.clear();
+            renderizarListaPaneles();
+        });
+    }
+    
+    const btnMonitorSelected = document.getElementById('btnMonitorSelected');
+    if (btnMonitorSelected) {
+        btnMonitorSelected.addEventListener('click', monitorearPanelesSeleccionados);
     }
 }
 
@@ -489,12 +692,11 @@ function mostrarProgreso(mensaje, porcentaje) {
 
 function ocultarProgreso() {
     const container = document.getElementById('progressContainer');
-    const bar = document.getElementById('progressBar');
-    
     if (!container) return;
     
     setTimeout(() => {
         container.style.display = 'none';
+        const bar = document.getElementById('progressBar');
         if (bar) bar.style.width = '0%';
     }, 500);
 }

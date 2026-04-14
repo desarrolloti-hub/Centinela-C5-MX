@@ -1,5 +1,6 @@
 // ========== navbarColaborador.js - VERSIÓN CON MENÚ MONITOREO Y PERMISOS ==========
 // Se agregó nuevo menú "Monitoreo" con Mapa de Alertas y Login Monitoreo
+// Se agregó nueva opción "Monitoreo" dentro del menú Monitoreo
 // Se agregó opción "Permisos" dentro de Gestionar con filtro dinámico
 // Se agregaron opciones de "Mercancía Perdida" dentro de Incidencias:
 //   - Lista de extravíos (incidenciasRecuperacion)
@@ -1795,9 +1796,14 @@ class NavbarComplete {
                             <i class="fa-solid fa-map-location-dot"></i>
                             <span>Mapa de Alertas</span>
                         </a>
-                        <a href="../loginMonitoreo/loginMonitoreo.html" class="monitoreo-dropdown-option" id="loginMonitoreoBtn">
+                        <a href="../monitoreo/monitoreo.html" class="monitoreo-dropdown-option" id="monitoreoGeneralBtn">
                             <i class="fa-solid fa-tachometer-alt"></i>
-                            <span>Tablero de Control</span>
+                            <span>Monitoreo</span>
+                        </a>
+                        
+                        <a href="../loginMonitoreo/loginMonitoreo.html" class="monitoreo-dropdown-option" id="loginMonitoreoBtn">
+                            <i class="fas fa-server"></i>
+                            <span>Gestión de Paneles</span>
                         </a>
                     </div>
                 </div>
@@ -2155,6 +2161,7 @@ class NavbarComplete {
 
         // Elementos dentro de Monitoreo
         const monitoreoItems = [
+            { id: 'monitoreoGeneralBtn', modulo: 'monitoreo', elemento: document.getElementById('monitoreoGeneralBtn') },
             { id: 'mapaAlertasBtn', modulo: 'monitoreo', elemento: document.getElementById('mapaAlertasBtn') },
             { id: 'loginMonitoreoBtn', modulo: 'loginMonitoreo', elemento: document.getElementById('loginMonitoreoBtn') }
         ];
@@ -2703,8 +2710,6 @@ class NavbarComplete {
             // Error silencioso
         }
     }
-
- 
 
     async clearIndexedDB() {
         try {
