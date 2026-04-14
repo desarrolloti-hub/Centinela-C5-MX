@@ -383,6 +383,7 @@ body {
     pointer-events: none;
 }
 
+
 /* =============================================
    GRÁFICAS - VERSIÓN SUPER RESPONSIVE
    ============================================= */
@@ -461,7 +462,7 @@ body {
 }
 
 .card-body {
-    padding: 20px !important;
+    padding: 20px;
     display: flex;
     justify-content: center;
     align-items: center;
@@ -469,13 +470,12 @@ body {
     flex: 1;
     position: relative;
     width: 100%;
-    aspect-ratio: 16 / 9;
-    max-height: 400px;
 }
 
-/* Para gráficas circulares (doughnut) */
+/* ===== ESTO SOLO PARA LAS GRÁFICAS CIRCULARES (NO SE TOCAN) ===== */
 .card:has(#graficoEstado) .card-body,
-.card:has(#graficoRiesgo) .card-body {
+.card:has(#graficoRiesgo) .card-body,
+.card:has(#graficoTipoEvento) .card-body {
     aspect-ratio: 1 / 1;
     max-height: 350px;
     min-height: auto;
@@ -2093,5 +2093,94 @@ p, h1, h2, h3, h4, h5, h6, span, div {
         padding: 12px;
         min-height: 260px;
         aspect-ratio: 16 / 9;
+    }
+}
+/* =============================================
+   FIX SOLO PARA LAS 3 GRÁFICAS DE COLABORADORES
+   (NO AFECTA LAS CIRCULARES NI LAS DEMÁS)
+   ============================================= */
+
+/* En desktop */
+@media (min-width: 1025px) {
+    .charts-grid-3col .card .card-body {
+        min-height: 350px;
+        padding: 15px;
+    }
+    
+    .charts-grid-3col canvas {
+        width: 100% !important;
+        height: auto !important;
+        max-height: 300px;
+    }
+}
+
+/* En tablet: 2 columnas */
+@media (max-width: 1024px) {
+    .charts-grid-3col {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 15px;
+    }
+    
+    .charts-grid-3col .card .card-body {
+        min-height: 300px;
+        padding: 12px;
+    }
+    
+    .charts-grid-3col canvas {
+        width: 100% !important;
+        height: auto !important;
+        max-height: 260px;
+    }
+}
+
+/* En móvil: 1 columna (vertical) */
+@media (max-width: 768px) {
+    .charts-grid-3col {
+        grid-template-columns: 1fr;
+        gap: 20px;
+    }
+    
+    .charts-grid-3col .card .card-body {
+        min-height: 320px;
+        padding: 15px;
+    }
+    
+    .charts-grid-3col canvas {
+        width: 100% !important;
+        height: auto !important;
+        max-height: 280px;
+    }
+}
+
+/* En móvil pequeño */
+@media (max-width: 550px) {
+    .charts-grid-3col .card .card-body {
+        min-height: 280px;
+        padding: 12px;
+    }
+    
+    .charts-grid-3col canvas {
+        width: 100% !important;
+        height: auto !important;
+        max-height: 240px;
+    }
+}
+
+/* Landscape en móviles */
+@media (max-height: 500px) and (orientation: landscape) {
+    .charts-grid-3col {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 10px;
+    }
+    
+    .charts-grid-3col .card .card-body {
+        min-height: 200px;
+        padding: 8px;
+    }
+    
+    .charts-grid-3col canvas {
+        width: 100% !important;
+        height: auto !important;
+        max-height: 180px;
     }
 }
