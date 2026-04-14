@@ -603,7 +603,6 @@ body {
 .modulo-columna {
     background: rgba(0, 0, 0, 0.3);
     border-radius: var(--border-radius-medium);
-    padding: 1rem;
     border: 1px solid var(--color-border-light);
     transition: var(--transition-default);
     box-shadow: 0 0 5px var(--color-accent-primary);
