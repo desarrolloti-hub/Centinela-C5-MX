@@ -1746,3 +1746,352 @@ p, h1, h2, h3, h4, h5, h6, span, div {
     max-height: none;
     min-height: auto;
 }
+/* =============================================
+   SECCIONES - TÍTULOS
+   ============================================= */
+.seccion-titulo {
+    margin: 40px 0 20px 0;
+    padding-bottom: 15px;
+    border-bottom: 2px solid var(--color-accent-primary);
+    text-align: left;
+}
+
+.seccion-titulo h2 {
+    font-family: var(--font-family-primary, 'Orbitron', sans-serif);
+    font-size: 1.5rem;
+    color: var(--color-text-primary);
+    margin-bottom: 5px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.seccion-titulo h2 i {
+    color: var(--color-accent-primary);
+    font-size: 1.3rem;
+}
+
+.seccion-titulo p {
+    color: var(--color-text-secondary);
+    font-size: 0.8rem;
+    margin: 0;
+}
+
+.seccion-recuperacion {
+    margin-top: 50px;
+}
+
+.seccion-desempeno {
+    margin-top: 30px;
+}
+
+/* =============================================
+   KPIs DE RECUPERACIÓN
+   ============================================= */
+.kpis-container {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 15px;
+    margin-bottom: 25px;
+}
+
+.kpi-card {
+    background: var(--color-bg-secondary);
+    border: 1px solid var(--color-border-light);
+    border-radius: var(--border-radius-large, 16px);
+    padding: 0.9rem;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(10px);
+    background: linear-gradient(135deg, rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.3));
+    cursor: pointer;
+}
+
+.kpi-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-normal, 0 8px 20px rgba(0, 0, 0, 0.2));
+    border-color: var(--color-accent-primary);
+}
+
+.kpi-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.4rem;
+    transition: transform 0.3s ease;
+    flex-shrink: 0;
+}
+
+.kpi-icon.perdida-icon {
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.25), rgba(239, 68, 68, 0.1));
+    color: #ef4444;
+    box-shadow: 0 0 15px rgba(239, 68, 68, 0.3);
+}
+
+.kpi-icon.recuperado-icon {
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.25), rgba(16, 185, 129, 0.1));
+    color: #10b981;
+    box-shadow: 0 0 15px rgba(16, 185, 129, 0.3);
+}
+
+.kpi-icon.neto-icon {
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.25), rgba(245, 158, 11, 0.1));
+    color: #f59e0b;
+    box-shadow: 0 0 15px rgba(245, 158, 11, 0.3);
+}
+
+.kpi-icon.porcentaje-icon {
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.25), rgba(59, 130, 246, 0.1));
+    color: #3b82f6;
+    box-shadow: 0 0 15px rgba(59, 130, 246, 0.3);
+}
+
+.kpi-icon.eventos-icon {
+    background: linear-gradient(135deg, rgba(139, 92, 246, 0.25), rgba(139, 92, 246, 0.1));
+    color: #8b5cf6;
+    box-shadow: 0 0 15px rgba(139, 92, 246, 0.3);
+}
+
+.kpi-icon.promedio-icon {
+    background: linear-gradient(135deg, rgba(236, 72, 153, 0.25), rgba(236, 72, 153, 0.1));
+    color: #ec4899;
+    box-shadow: 0 0 15px rgba(236, 72, 153, 0.3);
+}
+
+.kpi-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.kpi-info h3 {
+    font-size: 1.4rem;
+    font-weight: 800;
+    color: white;
+    margin: 0 0 4px 0;
+    font-family: var(--font-family-primary, 'Orbitron', sans-serif);
+    word-break: break-word;
+    line-height: 1.2;
+}
+
+.kpi-info p {
+    font-size: 0.7rem;
+    color: var(--color-text-secondary);
+    margin: 0;
+    font-family: var(--font-family-secondary, 'Rajdhani', sans-serif);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* =============================================
+   GRÁFICAS DE RECUPERACIÓN
+   ============================================= */
+.graficas-container {
+    width: 100%;
+}
+
+.graficas-row {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+    margin-bottom: 25px;
+}
+
+.card-grafica {
+    background: var(--color-bg-secondary);
+    border: 1px solid var(--color-border-light);
+    border-radius: var(--border-radius-large, 16px);
+    overflow: hidden;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(5px);
+    display: flex;
+    flex-direction: column;
+}
+
+.card-grafica:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-normal, 0 8px 20px rgba(0, 0, 0, 0.2));
+}
+
+.card-grafica.full-width {
+    grid-column: 1 / -1;
+}
+
+.card-grafica .card-header {
+    background: linear-gradient(135deg, rgba(20, 20, 20, 0.98), rgba(30, 30, 30, 0.95));
+    border-bottom: 1px solid var(--color-border-light);
+    padding: 10px 15px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+    flex-shrink: 0;
+}
+
+.card-grafica .card-header h5 {
+    color: var(--color-text-primary);
+    font-family: var(--font-family-primary, 'Orbitron', sans-serif);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    letter-spacing: 0.5px;
+}
+
+.card-grafica .card-header h5 i {
+    color: var(--color-accent-primary);
+    font-size: 0.8rem;
+}
+
+.card-grafica .card-body {
+    padding: 20px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 320px;
+    flex: 1;
+    position: relative;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    max-height: 400px;
+}
+
+.card-grafica:first-child .card-body {
+    aspect-ratio: 1 / 1;
+    max-height: 450px;
+    min-height: auto;
+    padding: 15px;
+}
+
+/* Tabla resumen */
+.resumen-tabla {
+    width: 100%;
+    border-collapse: collapse;
+    color: var(--color-text-secondary);
+    font-size: 0.75rem;
+    min-width: 700px;
+}
+
+.resumen-tabla th,
+.resumen-tabla td {
+    padding: 12px 12px;
+    text-align: left;
+    border-bottom: 1px solid var(--color-border-light);
+}
+
+.resumen-tabla th {
+    background: linear-gradient(135deg, rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.3));
+    color: var(--color-text-primary);
+    font-family: var(--font-family-primary, 'Orbitron', sans-serif);
+    font-weight: 600;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.resumen-tabla tr:hover {
+    background: rgba(255, 255, 255, 0.03);
+}
+
+.resumen-tabla .text-center {
+    text-align: center;
+}
+
+/* =============================================
+   RESPONSIVE PARA SECCIONES
+   ============================================= */
+@media (max-width: 1024px) {
+    .kpis-container {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 12px;
+    }
+    .graficas-row {
+        grid-template-columns: 1fr;
+        gap: 20px;
+    }
+    .kpi-info h3 {
+        font-size: 1.2rem;
+    }
+    .kpi-icon {
+        width: 44px;
+        height: 44px;
+        font-size: 1.2rem;
+    }
+    .card-grafica .card-body {
+        min-height: 300px;
+        aspect-ratio: 16 / 9;
+    }
+    .card-grafica:first-child .card-body {
+        aspect-ratio: 1 / 1;
+        max-height: 400px;
+    }
+}
+
+@media (max-width: 768px) {
+    .kpis-container {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+    }
+    .kpi-card {
+        padding: 0.7rem;
+        gap: 10px;
+    }
+    .kpi-info h3 {
+        font-size: 1rem;
+    }
+    .kpi-icon {
+        width: 38px;
+        height: 38px;
+        font-size: 1rem;
+    }
+    .kpi-info p {
+        font-size: 0.6rem;
+    }
+    .seccion-titulo h2 {
+        font-size: 1.2rem;
+    }
+    .card-grafica .card-body {
+        padding: 15px;
+        min-height: 280px;
+        aspect-ratio: 16 / 9;
+    }
+    .resumen-tabla {
+        font-size: 0.7rem;
+        min-width: 600px;
+    }
+}
+
+@media (max-width: 550px) {
+    .kpis-container {
+        grid-template-columns: 1fr;
+    }
+    .seccion-titulo h2 {
+        font-size: 1rem;
+    }
+    .kpi-card {
+        padding: 0.6rem;
+    }
+    .kpi-info h3 {
+        font-size: 0.9rem;
+    }
+    .kpi-icon {
+        width: 34px;
+        height: 34px;
+        font-size: 0.9rem;
+    }
+    .card-grafica .card-header h5 {
+        font-size: 0.65rem;
+    }
+    .card-grafica .card-body {
+        padding: 12px;
+        min-height: 260px;
+        aspect-ratio: 16 / 9;
+    }
+}

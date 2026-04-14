@@ -1,6 +1,6 @@
 // =============================================
-// estadisticas.js - VERSIÓN COMPLETA SIN MODALES INTERMEDIOS
-// CLIC DIRECTO EN GRÁFICAS → INCIDENCIAS DIRECTAMENTE
+// estadisticas.js - VERSIÓN UNIFICADA
+// INCIDENCIAS + RECUPERACIÓN + DESEMPEÑO
 // =============================================
 
 // =============================================
@@ -8,17 +8,21 @@
 // =============================================
 let estadisticasManager = null;
 let incidenciaManager = null;
+let mercanciaManager = null;
 let organizacionActual = null;
 let incidenciasCache = [];
 let incidenciasFiltradas = [];
+let registrosRecuperacionCache = [];
+let registrosRecuperacionFiltrados = [];
 let sucursalesCache = [];
 let categoriasCache = [];
+let sucursalesRecuperacionCache = [];
 let charts = {};
 let authToken = null;
 let historialManager = null;
 let accesoVistaRegistrado = false;
 
-// Almacenar datos originales para los clics
+// Datos para clics de incidencias
 let datosGraficas = {
     topActualizadores: [],
     topReportadores: [],
@@ -31,6 +35,23 @@ let datosGraficas = {
     incidenciasFiltradas: []
 };
 
+// Datos para recuperación
+let datosActualesRecuperacion = {
+    registros: [],
+    estadisticas: null
+};
+
+// Gráficas de recuperación
+let graficoTipoEvento = null;
+let graficoEvolucionMensual = null;
+let graficoTopSucursales = null;
+let graficoComparativa = null;
+
+// Almacenes para datos clickeables de recuperación
+window.registrosPorTipo = {};
+window.registrosPorMes = {};
+window.registrosPorSucursal = {};
+
 // Filtros activos
 let filtrosActivos = {
     fechaInicio: null,
@@ -38,10 +59,11 @@ let filtrosActivos = {
     categoriaId: 'todas',
     sucursalId: 'todas',
     colaboradorId: 'todos',
-    busqueda: ''
+    busqueda: '',
+    tipoEvento: 'todos'
 };
 
-// Colores para gráficas
+// Colores para gráficas de incidencias
 const COLORS = {
     critico: '#ef4444',
     alto: '#f97316',
@@ -56,63 +78,97 @@ const COLORS = {
     verde: '#10b981'
 };
 
+// Colores para recuperación
+const COLORS_REC = {
+    rojo: '#ef4444',
+    rojoClaro: 'rgba(239, 68, 68, 0.1)',
+    verde: '#10b981',
+    verdeClaro: 'rgba(16, 185, 129, 0.1)',
+    naranja: '#f59e0b',
+    azul: '#3b82f6',
+    morado: '#8b5cf6',
+    rosa: '#ec4899',
+    celeste: '#06b6d4',
+    gris: '#6b7280'
+};
+
 // =============================================
-// INICIALIZACIÓN
-//==============================================
-document.addEventListener('DOMContentLoaded', async function () {
-    try {
-        await inicializarHistorial();
-        await inicializarEstadisticasManager();
-        await obtenerTokenAuth();
-        configurarFiltros();
-        await Promise.all([
-            cargarSucursales(),
-            cargarCategorias()
-        ]);
-        establecerFechasPorDefecto();
-        await registrarAccesoVistaEstadisticas();
-    } catch (error) {
-        console.error('Error al inicializar estadísticas:', error);
-        mostrarError('Error al cargar la página: ' + error.message);
-    }
-});
-
-function establecerFechasPorDefecto() {
-    const hoy = new Date();
-    const hace30Dias = new Date();
-    hace30Dias.setDate(hoy.getDate() - 30);
-
-    const fechaInicio = document.getElementById('filtroFechaInicio');
-    const fechaFin = document.getElementById('filtroFechaFin');
-
-    if (fechaInicio) fechaInicio.value = hace30Dias.toISOString().split('T')[0];
-    if (fechaFin) fechaFin.value = hoy.toISOString().split('T')[0];
-
-    filtrosActivos.fechaInicio = hace30Dias.toISOString().split('T')[0];
-    filtrosActivos.fechaFin = hoy.toISOString().split('T')[0];
+// FUNCIONES AUXILIARES
+// =============================================
+function setElementText(id, text) {
+    const el = document.getElementById(id);
+    if (el) el.textContent = text;
 }
 
-async function inicializarHistorial() {
-    try {
-        const { HistorialUsuarioManager } = await import('/clases/historialUsuario.js');
-        historialManager = new HistorialUsuarioManager();
-    } catch (error) {
-        console.error('Error inicializando historialManager:', error);
+function escapeHTML(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+function mostrarError(mensaje) {
+    console.error(mensaje);
+    Swal.fire({
+        icon: 'error',
+        title: 'Error',
+        text: mensaje,
+        background: 'var(--color-bg-primary)',
+        color: 'white'
+    });
+}
+
+function mostrarErrorInicializacion() {
+    const container = document.querySelector('.admin-container');
+    if (container) {
+        container.innerHTML = `
+            <div style="text-align:center; padding:60px 20px;">
+                <i class="fas fa-exclamation-triangle" style="font-size:48px; color:#ef4444; margin-bottom:16px;"></i>
+                <h5 style="color:white;">Error de inicialización</h5>
+                <p style="color:var(--color-text-dim);">No se pudo cargar el módulo de estadísticas.</p>
+                <button class="btn-buscar" onclick="location.reload()" style="margin-top:16px; padding:10px 20px;">
+                    <i class="fas fa-sync-alt"></i> Reintentar
+                </button>
+            </div>
+        `;
     }
 }
 
+function mostrarLoading() {
+    const loadingIds = ['totalPerdidas', 'totalRecuperado', 'totalNeto', 'porcentajeRecuperacion', 'totalEventosRecuperacion', 'promedioPerdida'];
+    loadingIds.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = '...';
+    });
+}
+
+function obtenerNombreSucursal(sucursalId) {
+    if (!sucursalId) return 'No especificada';
+    const sucursal = sucursalesCache.find(s => s.id === sucursalId);
+    return sucursal ? sucursal.nombre : 'No disponible';
+}
+
+function obtenerNombreCategoria(categoriaId) {
+    if (!categoriaId) return 'No especificada';
+    const categoria = categoriasCache.find(c => c.id === categoriaId);
+    return categoria ? categoria.nombre : 'No disponible';
+}
+
+// =============================================
+// OBTENER USUARIO ACTUAL
+// =============================================
 function obtenerUsuarioActual() {
     try {
         const adminInfo = localStorage.getItem('adminInfo');
         if (adminInfo) {
-            const data = JSON.parse(adminInfo);
+            const adminData = JSON.parse(adminInfo);
             return {
-                id: data.id || data.uid,
-                uid: data.uid || data.id,
-                nombreCompleto: data.nombreCompleto || 'Administrador',
-                organizacion: data.organizacion,
-                organizacionCamelCase: data.organizacionCamelCase,
-                correoElectronico: data.correoElectronico || ''
+                id: adminData.id || adminData.uid,
+                uid: adminData.uid || adminData.id,
+                nombreCompleto: adminData.nombreCompleto || 'Administrador',
+                organizacion: adminData.organizacion,
+                organizacionCamelCase: adminData.organizacionCamelCase,
+                correoElectronico: adminData.correoElectronico || ''
             };
         }
 
@@ -122,7 +178,7 @@ function obtenerUsuarioActual() {
                 id: userData.uid || userData.id,
                 uid: userData.uid || userData.id,
                 nombreCompleto: userData.nombreCompleto || userData.nombre || 'Usuario',
-                organizacion: userData.organizacion,
+                organizacion: userData.organizacion || userData.empresa,
                 organizacionCamelCase: userData.organizacionCamelCase,
                 correoElectronico: userData.correo || userData.email || ''
             };
@@ -130,11 +186,51 @@ function obtenerUsuarioActual() {
 
         return null;
     } catch (error) {
-        console.error('Error obteniendo usuario actual:', error);
         return null;
     }
 }
 
+// =============================================
+// OBTENER DATOS DE ORGANIZACIÓN
+// =============================================
+async function obtenerDatosOrganizacion() {
+    try {
+        const usuario = obtenerUsuarioActual();
+        if (usuario) {
+            organizacionActual = {
+                nombre: usuario.organizacion || 'Mi Empresa',
+                camelCase: usuario.organizacionCamelCase || ''
+            };
+            return;
+        }
+
+        const userData = JSON.parse(localStorage.getItem('userData') || '{}');
+        const adminInfo = JSON.parse(localStorage.getItem('adminInfo') || '{}');
+
+        organizacionActual = {
+            nombre: userData.organizacion || adminInfo.organizacion || 'Mi Empresa',
+            camelCase: userData.organizacionCamelCase || adminInfo.organizacionCamelCase || ''
+        };
+    } catch (error) {
+        organizacionActual = { nombre: 'Mi Empresa', camelCase: '' };
+    }
+}
+
+// =============================================
+// INICIALIZACIÓN DE HISTORIAL
+// =============================================
+async function inicializarHistorial() {
+    try {
+        const { HistorialUsuarioManager } = await import('/clases/historialUsuario.js');
+        historialManager = new HistorialUsuarioManager();
+    } catch (error) {
+        console.error('Error inicializando historialManager:', error);
+    }
+}
+
+// =============================================
+// REGISTROS DE ACTIVIDAD
+// =============================================
 async function registrarAccesoVistaEstadisticas() {
     if (!historialManager) return;
     if (accesoVistaRegistrado) return;
@@ -147,7 +243,7 @@ async function registrarAccesoVistaEstadisticas() {
             usuario: usuario,
             tipo: 'leer',
             modulo: 'estadisticas',
-            descripcion: 'Accedió al módulo de estadísticas',
+            descripcion: 'Accedió al módulo de estadísticas unificado',
             detalles: {
                 organizacion: organizacionActual?.nombre,
                 filtrosPredeterminados: {
@@ -163,7 +259,7 @@ async function registrarAccesoVistaEstadisticas() {
     }
 }
 
-async function registrarAplicacionFiltros(filtrosAplicados, totalIncidencias) {
+async function registrarAplicacionFiltros(filtrosAplicados, totalIncidencias, totalRecuperaciones) {
     if (!historialManager) return;
 
     try {
@@ -194,14 +290,19 @@ async function registrarAplicacionFiltros(filtrosAplicados, totalIncidencias) {
             filtrosDetalles.busqueda = filtrosAplicados.busqueda;
         }
 
+        if (filtrosAplicados.tipoEvento !== 'todos') {
+            filtrosDetalles.tipoEvento = filtrosAplicados.tipoEvento;
+        }
+
         await historialManager.registrarActividad({
             usuario: usuario,
             tipo: 'leer',
             modulo: 'estadisticas',
-            descripcion: `Aplicó filtros en estadísticas - ${totalIncidencias} incidencias encontradas`,
+            descripcion: `Aplicó filtros en estadísticas - ${totalIncidencias} incidencias, ${totalRecuperaciones} registros de recuperación`,
             detalles: {
                 filtros: filtrosDetalles,
                 totalIncidencias: totalIncidencias,
+                totalRecuperaciones: totalRecuperaciones,
                 fechaAplicacion: new Date().toISOString()
             }
         });
@@ -210,7 +311,7 @@ async function registrarAplicacionFiltros(filtrosAplicados, totalIncidencias) {
     }
 }
 
-async function registrarGeneracionPDFReporte(totalIncidencias, filtrosAplicados) {
+async function registrarGeneracionPDFReporte(totalIncidencias, totalRecuperaciones, filtrosAplicados) {
     if (!historialManager) return;
 
     try {
@@ -221,9 +322,10 @@ async function registrarGeneracionPDFReporte(totalIncidencias, filtrosAplicados)
             usuario: usuario,
             tipo: 'leer',
             modulo: 'estadisticas',
-            descripcion: `Generó reporte PDF de estadísticas - ${totalIncidencias} incidencias`,
+            descripcion: `Generó reporte PDF de estadísticas - ${totalIncidencias} incidencias, ${totalRecuperaciones} recuperaciones`,
             detalles: {
                 totalIncidencias: totalIncidencias,
+                totalRecuperaciones: totalRecuperaciones,
                 filtrosAplicados: {
                     fechaInicio: filtrosAplicados.fechaInicio,
                     fechaFin: filtrosAplicados.fechaFin,
@@ -231,7 +333,8 @@ async function registrarGeneracionPDFReporte(totalIncidencias, filtrosAplicados)
                         categoriasCache.find(c => c.id === filtrosAplicados.categoriaId)?.nombre : 'todas',
                     sucursal: filtrosAplicados.sucursalId !== 'todas' ?
                         sucursalesCache.find(s => s.id === filtrosAplicados.sucursalId)?.nombre : 'todas',
-                    colaborador: filtrosAplicados.colaboradorId !== 'todos' ? filtrosAplicados.colaboradorId : 'todos'
+                    colaborador: filtrosAplicados.colaboradorId !== 'todos' ? filtrosAplicados.colaboradorId : 'todos',
+                    tipoEvento: filtrosAplicados.tipoEvento !== 'todos' ? filtrosAplicados.tipoEvento : 'todos'
                 },
                 fechaGeneracion: new Date().toISOString()
             }
@@ -325,12 +428,12 @@ function mostrarMensajeSinResultados() {
 
     const tablaColab = document.getElementById('tablaColaboradoresBody');
     if (tablaColab) {
-        tablaColab.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:40px;"><i class="fas fa-search" style="font-size: 32px; opacity: 0.3; margin-bottom: 10px;"></i><br>No hay incidencias que coincidan con los filtros</td</tr>';
+        tablaColab.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:40px;"><i class="fas fa-search" style="font-size: 32px; opacity: 0.3; margin-bottom: 10px;"></i><br>No hay incidencias que coincidan con los filtros</td></tr>';
     }
 
     const tablaCat = document.getElementById('tablaCategoriasBody');
     if (tablaCat) {
-        tablaCat.innerHTML = '<tr><td colspan="2" style="text-align:center; padding:40px;"><i class="fas fa-search" style="font-size: 32px; opacity: 0.3; margin-bottom: 10px;"></i><br>No hay incidencias que coincidan con los filtros</td</tr>';
+        tablaCat.innerHTML = '<tr><td colspan="2" style="text-align:center; padding:40px;"><i class="fas fa-search" style="font-size: 32px; opacity: 0.3; margin-bottom: 10px;"></i><br>No hay incidencias que coincidan con los filtros</td></tr>';
     }
 
     setElementText('metricCriticas', '0');
@@ -341,6 +444,15 @@ function mostrarMensajeSinResultados() {
     setElementText('metricAltasPorcentaje', '0% del total');
     setElementText('metricPendientesPorcentaje', '0% pendientes');
     setElementText('metricFinalizadasPorcentaje', '0% resueltas');
+    
+    // Limpiar KPIs de recuperación
+    const formatter = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' });
+    setElementText('totalPerdidas', formatter.format(0));
+    setElementText('totalRecuperado', formatter.format(0));
+    setElementText('totalNeto', formatter.format(0));
+    setElementText('porcentajeRecuperacion', '0%');
+    setElementText('totalEventosRecuperacion', '0');
+    setElementText('promedioPerdida', formatter.format(0));
 }
 
 // =============================================
@@ -352,9 +464,11 @@ async function inicializarEstadisticasManager() {
 
         const { IncidenciaManager } = await import('/clases/incidencia.js');
         const { EstadisticasManager } = await import('/clases/estadistica.js');
+        const { MercanciaPerdidaManager } = await import('/clases/incidenciaRecuperacion.js');
 
         incidenciaManager = new IncidenciaManager();
         estadisticasManager = new EstadisticasManager();
+        mercanciaManager = new MercanciaPerdidaManager();
 
         return true;
     } catch (error) {
@@ -364,31 +478,8 @@ async function inicializarEstadisticasManager() {
     }
 }
 
-async function obtenerDatosOrganizacion() {
-    try {
-        if (window.userManager && window.userManager.currentUser) {
-            const user = window.userManager.currentUser;
-            organizacionActual = {
-                nombre: user.organizacion || 'Mi Empresa',
-                camelCase: user.organizacionCamelCase || ''
-            };
-            return;
-        }
-
-        const userData = JSON.parse(localStorage.getItem('userData') || '{}');
-        const adminInfo = JSON.parse(localStorage.getItem('adminInfo') || '{}');
-
-        organizacionActual = {
-            nombre: userData.organizacion || adminInfo.organizacion || 'Mi Empresa',
-            camelCase: userData.organizacionCamelCase || adminInfo.organizacionCamelCase || ''
-        };
-    } catch (error) {
-        organizacionActual = { nombre: 'Mi Empresa', camelCase: '' };
-    }
-}
-
 // =============================================
-// CARGA DE DATOS AUXILIARES
+// CARGA DE DATOS AUXILIARES (Incidencias)
 // =============================================
 async function cargarSucursales() {
     try {
@@ -438,11 +529,30 @@ async function cargarCategorias() {
 }
 
 // =============================================
+// CARGA DE DATOS AUXILIARES (Recuperación)
+// =============================================
+async function cargarSucursalesRecuperacion() {
+    try {
+        if (!organizacionActual?.camelCase) return;
+
+        const { SucursalManager } = await import('/clases/sucursal.js');
+        const sucursalManager = new SucursalManager();
+
+        const sucursales = await sucursalManager.getSucursalesByOrganizacion(organizacionActual.camelCase);
+        sucursalesRecuperacionCache = sucursales.map(s => s.nombre);
+        sucursalesRecuperacionCache = [...new Set(sucursalesRecuperacionCache)];
+    } catch (error) {
+        sucursalesRecuperacionCache = [];
+    }
+}
+
+// =============================================
 // CONFIGURAR FILTROS
 // =============================================
 function configurarFiltros() {
     document.getElementById('btnAplicarFiltros')?.addEventListener('click', aplicarFiltros);
     document.getElementById('btnLimpiarFiltros')?.addEventListener('click', limpiarFiltros);
+    document.getElementById('btnLimpiarFiltrosSec')?.addEventListener('click', limpiarFiltros);
 
     let timeout;
     document.getElementById('buscarIncidencias')?.addEventListener('input', (e) => {
@@ -456,8 +566,23 @@ function configurarFiltros() {
     document.getElementById('btnGenerarPDF')?.addEventListener('click', generarReportePDF);
 }
 
+function establecerFechasPorDefecto() {
+    const hoy = new Date();
+    const hace30Dias = new Date();
+    hace30Dias.setDate(hoy.getDate() - 30);
+
+    const fechaInicio = document.getElementById('filtroFechaInicio');
+    const fechaFin = document.getElementById('filtroFechaFin');
+
+    if (fechaInicio) fechaInicio.value = hace30Dias.toISOString().split('T')[0];
+    if (fechaFin) fechaFin.value = hoy.toISOString().split('T')[0];
+
+    filtrosActivos.fechaInicio = hace30Dias.toISOString().split('T')[0];
+    filtrosActivos.fechaFin = hoy.toISOString().split('T')[0];
+}
+
 // =============================================
-// APLICAR FILTROS (FUNCIÓN PRINCIPAL)
+// APLICAR FILTROS (FUNCIÓN PRINCIPAL UNIFICADA)
 // =============================================
 async function aplicarFiltros() {
     const nuevosFiltros = {
@@ -466,15 +591,21 @@ async function aplicarFiltros() {
         categoriaId: document.getElementById('filtroCategoria')?.value || 'todas',
         sucursalId: document.getElementById('filtroSucursal')?.value || 'todas',
         colaboradorId: document.getElementById('filtroColaborador')?.value || 'todos',
-        busqueda: document.getElementById('buscarIncidencias')?.value || ''
+        busqueda: document.getElementById('buscarIncidencias')?.value || '',
+        tipoEvento: document.getElementById('filtroTipoEvento')?.value || 'todos'
     };
 
     filtrosActivos = nuevosFiltros;
 
+    // Cargar ambos módulos
     await cargarIncidencias();
+    await cargarRegistrosRecuperacionConFiltros();
 
-    if (incidenciasFiltradas && incidenciasFiltradas.length > 0) {
-        await registrarAplicacionFiltros(filtrosActivos, incidenciasFiltradas.length);
+    const totalIncidencias = incidenciasFiltradas?.length || 0;
+    const totalRecuperaciones = registrosRecuperacionFiltrados?.length || 0;
+
+    if (totalIncidencias > 0 || totalRecuperaciones > 0) {
+        await registrarAplicacionFiltros(filtrosActivos, totalIncidencias, totalRecuperaciones);
     }
 }
 
@@ -488,6 +619,7 @@ async function limpiarFiltros() {
     const filtroCategoria = document.getElementById('filtroCategoria');
     const filtroSucursal = document.getElementById('filtroSucursal');
     const filtroColaborador = document.getElementById('filtroColaborador');
+    const filtroTipoEvento = document.getElementById('filtroTipoEvento');
     const buscar = document.getElementById('buscarIncidencias');
 
     if (fechaInicio) fechaInicio.value = hace30Dias.toISOString().split('T')[0];
@@ -495,6 +627,7 @@ async function limpiarFiltros() {
     if (filtroCategoria) filtroCategoria.value = 'todas';
     if (filtroSucursal) filtroSucursal.value = 'todas';
     if (filtroColaborador) filtroColaborador.value = 'todos';
+    if (filtroTipoEvento) filtroTipoEvento.value = 'todos';
     if (buscar) buscar.value = '';
 
     filtrosActivos = {
@@ -503,13 +636,18 @@ async function limpiarFiltros() {
         categoriaId: 'todas',
         sucursalId: 'todas',
         colaboradorId: 'todos',
-        busqueda: ''
+        busqueda: '',
+        tipoEvento: 'todos'
     };
 
     await registrarLimpiezaFiltros();
     await cargarIncidencias();
+    await cargarRegistrosRecuperacionConFiltros();
 }
 
+// =============================================
+// FILTRAR INCIDENCIAS
+// =============================================
 function filtrarIncidencias(incidencias) {
     return incidencias.filter(inc => {
         if (filtrosActivos.fechaInicio) {
@@ -533,20 +671,16 @@ function filtrarIncidencias(incidencias) {
         }
 
         if (filtrosActivos.colaboradorId !== 'todos') {
-            const coincideColaborador =
-                inc.creadoPorNombre === filtrosActivos.colaboradorId ||
+            const coincideColaborador = inc.creadoPorNombre === filtrosActivos.colaboradorId ||
                 inc.actualizadoPorNombre === filtrosActivos.colaboradorId;
-
             if (!coincideColaborador) return false;
         }
 
         if (filtrosActivos.busqueda) {
             const busqueda = filtrosActivos.busqueda.toLowerCase();
-            const coincide =
-                inc.id?.toLowerCase().includes(busqueda) ||
+            const coincide = inc.id?.toLowerCase().includes(busqueda) ||
                 inc.detalles?.toLowerCase().includes(busqueda) ||
                 (inc.creadoPorNombre && inc.creadoPorNombre.toLowerCase().includes(busqueda));
-
             if (!coincide) return false;
         }
 
@@ -579,7 +713,6 @@ async function cargarIncidencias() {
 
         const datos = procesarDatosGraficas(incidenciasFiltradas);
 
-        // Guardar datos para los clics
         datosGraficas = {
             topActualizadores: datos.topActualizadores,
             topReportadores: datos.topReportadores,
@@ -595,13 +728,13 @@ async function cargarIncidencias() {
         actualizarMetricasPrincipales(datos.metricas);
         renderizarTodasLasGraficas(datos);
 
-        // Configurar KPI cards como clickeables
         setTimeout(() => {
             configurarKpiCardsClickeables();
         }, 100);
 
         if (datos.colaboradores && datos.colaboradores.length > 0) {
             renderizarTablaColaboradores(datos.colaboradores);
+            cargarFiltroColaboradores(datos.colaboradores);
         } else {
             renderizarTablaColaboradores([]);
         }
@@ -610,10 +743,6 @@ async function cargarIncidencias() {
             renderizarTablaCategorias(datos.categoriasData);
         } else {
             renderizarTablaCategorias([]);
-        }
-
-        if (datos.colaboradores && datos.colaboradores.length > 0) {
-            cargarFiltroColaboradores(datos.colaboradores);
         }
 
         const fechaEl = document.getElementById('fechaActualizacion');
@@ -627,806 +756,11 @@ async function cargarIncidencias() {
     }
 }
 
-// =============================================
-// CONFIGURAR CLICS EN KPI CARDS
-// =============================================
-function configurarKpiCardsClickeables() {
-    // Card de Incidencias Críticas
-    const criticasCard = document.querySelector('.metric-card.criticas');
-    if (criticasCard) {
-        criticasCard.style.cursor = 'pointer';
-        criticasCard.addEventListener('click', () => {
-            const incidenciasCriticas = datosGraficas.incidenciasFiltradas?.filter(i => i.nivelRiesgo === 'critico') || [];
-            if (incidenciasCriticas.length === 0) {
-                Swal.fire({
-                    icon: 'info',
-                    title: 'Sin registros',
-                    text: 'No hay incidencias críticas para mostrar',
-                    background: 'var(--color-bg-primary)',
-                    color: 'white'
-                });
-                return;
-            }
-            mostrarRegistrosEnSweet(incidenciasCriticas, 'Incidencias Críticas', '<i class="fas fa-exclamation-triangle"></i>');
-        });
-    }
 
-    // Card de Incidencias Altas
-    const altasCard = document.querySelector('.metric-card.altas');
-    if (altasCard) {
-        altasCard.style.cursor = 'pointer';
-        altasCard.addEventListener('click', () => {
-            const incidenciasAltas = datosGraficas.incidenciasFiltradas?.filter(i => i.nivelRiesgo === 'alto') || [];
-            if (incidenciasAltas.length === 0) {
-                Swal.fire({
-                    icon: 'info',
-                    title: 'Sin registros',
-                    text: 'No hay incidencias altas para mostrar',
-                    background: 'var(--color-bg-primary)',
-                    color: 'white'
-                });
-                return;
-            }
-            mostrarRegistrosEnSweet(incidenciasAltas, 'Incidencias Altas', '<i class="fas fa-exclamation-circle"></i>');
-        });
-    }
 
-    // Card de Incidencias Pendientes
-    const pendientesCard = document.querySelector('.metric-card.pendientes');
-    if (pendientesCard) {
-        pendientesCard.style.cursor = 'pointer';
-        pendientesCard.addEventListener('click', () => {
-            const incidenciasPendientes = datosGraficas.incidenciasFiltradas?.filter(i => i.estado === 'pendiente') || [];
-            if (incidenciasPendientes.length === 0) {
-                Swal.fire({
-                    icon: 'info',
-                    title: 'Sin registros',
-                    text: 'No hay incidencias pendientes para mostrar',
-                    background: 'var(--color-bg-primary)',
-                    color: 'white'
-                });
-                return;
-            }
-            mostrarRegistrosEnSweet(incidenciasPendientes, 'Incidencias Pendientes', '<i class="fas fa-clock"></i>');
-        });
-    }
-
-    // Card de Total Incidencias
-    const totalCard = document.querySelector('.metric-card.total');
-    if (totalCard) {
-        totalCard.style.cursor = 'pointer';
-        totalCard.addEventListener('click', () => {
-            const incidencias = datosGraficas.incidenciasFiltradas || [];
-            if (incidencias.length === 0) {
-                Swal.fire({
-                    icon: 'info',
-                    title: 'Sin registros',
-                    text: 'No hay incidencias para mostrar',
-                    background: 'var(--color-bg-primary)',
-                    color: 'white'
-                });
-                return;
-            }
-            mostrarRegistrosEnSweet(incidencias, 'Todas las Incidencias', '<i class="fas fa-chart-bar"></i>');
-        });
-    }
-}
 
 // =============================================
-// FUNCIONES PARA ALERTAS DE GRÁFICAS - CLIC DIRECTO SIN MODAL INTERMEDIO
-// =============================================
-
-function mostrarAlertActualizadores() {
-    const data = datosGraficas.topActualizadores;
-    if (!data || data.length === 0) {
-        Swal.fire({
-            icon: 'info',
-            title: 'Sin datos',
-            text: 'No hay información de actualizaciones para mostrar',
-            background: 'var(--color-bg-primary)',
-            color: 'white'
-        });
-        return;
-    }
-
-    // Tomar el primer colaborador y mostrar sus incidencias DIRECTAMENTE
-    const colaborador = data[0];
-    const incidencias = datosGraficas.incidenciasFiltradas?.filter(i => i.actualizadoPorNombre === colaborador.nombre) || [];
-    
-    if (incidencias.length === 0) {
-        Swal.fire({
-            icon: 'info',
-            title: 'Sin registros',
-            text: `No hay incidencias actualizadas por ${colaborador.nombre}`,
-            background: 'var(--color-bg-primary)',
-            color: 'white'
-        });
-        return;
-    }
-    
-    mostrarRegistrosEnSweet(incidencias, `Incidencias actualizadas por ${colaborador.nombre}`, `<i class="fas fa-edit"></i>`);
-}
-
-function mostrarAlertReportadores() {
-    const data = datosGraficas.topReportadores;
-    if (!data || data.length === 0) {
-        Swal.fire({
-            icon: 'info',
-            title: 'Sin datos',
-            text: 'No hay información de reportes para mostrar',
-            background: 'var(--color-bg-primary)',
-            color: 'white'
-        });
-        return;
-    }
-
-    // Tomar el primer colaborador y mostrar sus incidencias DIRECTAMENTE
-    const colaborador = data[0];
-    const incidencias = datosGraficas.incidenciasFiltradas?.filter(i => i.creadoPorNombre === colaborador.nombre) || [];
-    
-    if (incidencias.length === 0) {
-        Swal.fire({
-            icon: 'info',
-            title: 'Sin registros',
-            text: `No hay incidencias reportadas por ${colaborador.nombre}`,
-            background: 'var(--color-bg-primary)',
-            color: 'white'
-        });
-        return;
-    }
-    
-    mostrarRegistrosEnSweet(incidencias, `Incidencias reportadas por ${colaborador.nombre}`, `<i class="fas fa-flag"></i>`);
-}
-
-function mostrarAlertSeguimientos() {
-    const data = datosGraficas.topSeguimientos;
-    if (!data || data.length === 0) {
-        Swal.fire({
-            icon: 'info',
-            title: 'Sin datos',
-            text: 'No hay información de seguimientos para mostrar',
-            background: 'var(--color-bg-primary)',
-            color: 'white'
-        });
-        return;
-    }
-
-    // Tomar el primer colaborador y mostrar sus incidencias DIRECTAMENTE
-    const colaborador = data[0];
-    const incidencias = datosGraficas.incidenciasFiltradas?.filter(i => {
-        if (i.seguimiento) {
-            return Object.values(i.seguimiento).some(seg => seg.usuarioNombre === colaborador.nombre);
-        }
-        return false;
-    }) || [];
-    
-    if (incidencias.length === 0) {
-        Swal.fire({
-            icon: 'info',
-            title: 'Sin registros',
-            text: `No hay incidencias con seguimiento de ${colaborador.nombre}`,
-            background: 'var(--color-bg-primary)',
-            color: 'white'
-        });
-        return;
-    }
-    
-    mostrarRegistrosEnSweet(incidencias, `Incidencias con seguimiento de ${colaborador.nombre}`, `<i class="fas fa-history"></i>`);
-}
-
-function mostrarAlertEstado() {
-    const data = datosGraficas.estadoData;
-    const total = (data.pendientes || 0) + (data.finalizadas || 0);
-    
-    if (total === 0) {
-        Swal.fire({
-            icon: 'info',
-            title: 'Sin datos',
-            text: 'No hay incidencias para mostrar',
-            background: 'var(--color-bg-primary)',
-            color: 'white'
-        });
-        return;
-    }
-
-    // Mostrar directamente las incidencias pendientes (o se puede cambiar a finalizadas)
-    const incidencias = datosGraficas.incidenciasFiltradas?.filter(i => i.estado === 'pendiente') || [];
-    if (incidencias.length > 0) {
-        mostrarRegistrosEnSweet(incidencias, 'Incidencias Pendientes', '<i class="fas fa-clock"></i>');
-    } else {
-        const incidenciasFinalizadas = datosGraficas.incidenciasFiltradas?.filter(i => i.estado === 'finalizada') || [];
-        mostrarRegistrosEnSweet(incidenciasFinalizadas, 'Incidencias Finalizadas', '<i class="fas fa-check-circle"></i>');
-    }
-}
-
-function mostrarAlertRiesgo() {
-    const data = datosGraficas.riesgoData;
-    const total = (data.critico || 0) + (data.alto || 0) + (data.medio || 0) + (data.bajo || 0);
-    
-    if (total === 0) {
-        Swal.fire({
-            icon: 'info',
-            title: 'Sin datos',
-            text: 'No hay incidencias para mostrar',
-            background: 'var(--color-bg-primary)',
-            color: 'white'
-        });
-        return;
-    }
-
-    // Mostrar directamente las incidencias críticas
-    const incidencias = datosGraficas.incidenciasFiltradas?.filter(i => i.nivelRiesgo === 'critico') || [];
-    if (incidencias.length > 0) {
-        mostrarRegistrosEnSweet(incidencias, 'Incidencias Críticas', '<i class="fas fa-exclamation-triangle"></i>');
-    } else {
-        const incidenciasAltas = datosGraficas.incidenciasFiltradas?.filter(i => i.nivelRiesgo === 'alto') || [];
-        mostrarRegistrosEnSweet(incidenciasAltas, 'Incidencias Altas', '<i class="fas fa-exclamation-circle"></i>');
-    }
-}
-
-function mostrarAlertCategorias() {
-    const data = datosGraficas.categoriasData;
-    if (!data || data.length === 0) {
-        Swal.fire({
-            icon: 'info',
-            title: 'Sin datos',
-            text: 'No hay información de categorías para mostrar',
-            background: 'var(--color-bg-primary)',
-            color: 'white'
-        });
-        return;
-    }
-
-    // Tomar la primera categoría y mostrar sus incidencias DIRECTAMENTE
-    const categoriaNombre = data[0].nombre;
-    const categoria = categoriasCache.find(c => c.nombre === categoriaNombre);
-    
-    if (!categoria) {
-        Swal.fire({
-            icon: 'error',
-            title: 'Error',
-            text: 'No se encontró la categoría',
-            background: 'var(--color-bg-primary)',
-            color: 'white'
-        });
-        return;
-    }
-
-    const incidencias = datosGraficas.incidenciasFiltradas?.filter(i => i.categoriaId === categoria.id) || [];
-    
-    if (incidencias.length === 0) {
-        Swal.fire({
-            icon: 'info',
-            title: 'Sin registros',
-            text: `No hay incidencias en la categoría ${categoriaNombre}`,
-            background: 'var(--color-bg-primary)',
-            color: 'white'
-        });
-        return;
-    }
-    
-    mostrarRegistrosEnSweet(incidencias, `Incidencias: ${categoriaNombre} (Top 1)`, '<i class="fas fa-tag"></i>');
-}
-
-function mostrarAlertSucursales() {
-    const data = datosGraficas.sucursalesData;
-    if (!data || data.length === 0) {
-        Swal.fire({
-            icon: 'info',
-            title: 'Sin datos',
-            text: 'No hay información de sucursales para mostrar',
-            background: 'var(--color-bg-primary)',
-            color: 'white'
-        });
-        return;
-    }
-
-    // Tomar la primera sucursal y mostrar sus incidencias DIRECTAMENTE
-    const sucursalNombre = data[0].nombre;
-    const sucursal = sucursalesCache.find(s => s.nombre === sucursalNombre);
-    
-    if (!sucursal) {
-        Swal.fire({
-            icon: 'error',
-            title: 'Error',
-            text: 'No se encontró la sucursal',
-            background: 'var(--color-bg-primary)',
-            color: 'white'
-        });
-        return;
-    }
-
-    const incidencias = datosGraficas.incidenciasFiltradas?.filter(i => i.sucursalId === sucursal.id) || [];
-    
-    if (incidencias.length === 0) {
-        Swal.fire({
-            icon: 'info',
-            title: 'Sin registros',
-            text: `No hay incidencias en la sucursal ${sucursalNombre}`,
-            background: 'var(--color-bg-primary)',
-            color: 'white'
-        });
-        return;
-    }
-    
-    mostrarRegistrosEnSweet(incidencias, `Incidencias: ${sucursalNombre} (Top 1)`, '<i class="fas fa-store"></i>');
-}
-
-function mostrarAlertTiempoResolucion() {
-    const data = datosGraficas.tiemposPromedio;
-    if (!data || data.length === 0) {
-        Swal.fire({
-            icon: 'info',
-            title: 'Sin datos',
-            text: 'No hay información de tiempos de resolución para mostrar. Asegúrate de tener incidencias finalizadas.',
-            background: 'var(--color-bg-primary)',
-            color: 'white'
-        });
-        return;
-    }
-
-    // Tomar el primer colaborador y mostrar sus incidencias DIRECTAMENTE
-    const colaborador = data[0];
-    const incidencias = datosGraficas.incidenciasFiltradas?.filter(i => i.actualizadoPorNombre === colaborador.nombre) || [];
-    
-    if (incidencias.length === 0) {
-        Swal.fire({
-            icon: 'info',
-            title: 'Sin registros',
-            text: `No hay incidencias actualizadas por ${colaborador.nombre}`,
-            background: 'var(--color-bg-primary)',
-            color: 'white'
-        });
-        return;
-    }
-    
-    mostrarRegistrosEnSweet(incidencias, `Incidencias resueltas por ${colaborador.nombre} (Promedio: ${colaborador.promedio} horas)`, `<i class="fas fa-clock"></i>`);
-}
-
-// =============================================
-// FUNCIÓN PARA MOSTRAR REGISTROS EN SWEETALERT - VERSIÓN MEJORADA PARA INCIDENCIAS
-// =============================================
-function mostrarRegistrosEnSweet(incidencias, titulo, icono = '<i class="fas fa-chart-simple"></i>') {
-    if (!incidencias || incidencias.length === 0) {
-        Swal.fire({
-            icon: 'info',
-            title: 'Sin registros',
-            text: 'No hay incidencias para mostrar',
-            background: 'var(--color-bg-primary)',
-            color: 'white',
-            customClass: {
-                popup: 'swal2-popup-custom'
-            }
-        });
-        return;
-    }
-
-    const formatter = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' });
-    
-    // Calcular estadísticas resumen
-    const totalCriticas = incidencias.filter(i => i.nivelRiesgo === 'critico').length;
-    const totalAltas = incidencias.filter(i => i.nivelRiesgo === 'alto').length;
-    const totalPendientes = incidencias.filter(i => i.estado === 'pendiente').length;
-    const totalFinalizadas = incidencias.filter(i => i.estado === 'finalizada').length;
-
-    // Limitar a los primeros 15 registros
-    const incidenciasMostrar = incidencias.slice(0, 15);
-    const hayMas = incidencias.length > 15;
-
-    let registrosHtml = `
-        <div class="swal-resumen-stats">
-            <div class="swal-stats-grid">
-                <div class="swal-stat-item" style="border-left-color: #8b5cf6;">
-                    <span class="swal-stat-label">Total incidencias</span>
-                    <span class="swal-stat-value">${incidencias.length}</span>
-                </div>
-                <div class="swal-stat-item" style="border-left-color: #ef4444;">
-                    <span class="swal-stat-label">Críticas + Altas</span>
-                    <span class="swal-stat-value" style="color: #ef4444;">${totalCriticas + totalAltas}</span>
-                </div>
-                <div class="swal-stat-item" style="border-left-color: #f59e0b;">
-                    <span class="swal-stat-label">Pendientes</span>
-                    <span class="swal-stat-value" style="color: #f59e0b;">${totalPendientes}</span>
-                </div>
-                <div class="swal-stat-item" style="border-left-color: #10b981;">
-                    <span class="swal-stat-label">Finalizadas</span>
-                    <span class="swal-stat-value" style="color: #10b981;">${totalFinalizadas}</span>
-                </div>
-            </div>
-        </div>
-        <div class="swal-registros-list">
-    `;
-
-    incidenciasMostrar.forEach(inc => {
-        const fecha = inc.fechaInicio instanceof Date ? inc.fechaInicio.toLocaleDateString('es-MX') :
-            (inc.fechaInicio ? new Date(inc.fechaInicio).toLocaleDateString('es-MX') : 'N/A');
-
-        let estadoColor = '#6c757d';
-        let estadoIcon = 'fa-circle';
-        if (inc.estado === 'finalizada') {
-            estadoColor = '#10b981';
-            estadoIcon = 'fa-check-circle';
-        } else if (inc.estado === 'pendiente') {
-            estadoColor = '#f59e0b';
-            estadoIcon = 'fa-clock';
-        }
-
-        let riesgoColor = '#6c757d';
-        let riesgoIcon = 'fa-chart-line';
-        let riesgoTexto = inc.nivelRiesgo ? inc.nivelRiesgo.charAt(0).toUpperCase() + inc.nivelRiesgo.slice(1) : 'N/A';
-        if (inc.nivelRiesgo === 'critico') {
-            riesgoColor = '#ef4444';
-            riesgoIcon = 'fa-exclamation-triangle';
-        } else if (inc.nivelRiesgo === 'alto') {
-            riesgoColor = '#f97316';
-            riesgoIcon = 'fa-exclamation-circle';
-        } else if (inc.nivelRiesgo === 'medio') {
-            riesgoColor = '#eab308';
-            riesgoIcon = 'fa-chart-simple';
-        } else if (inc.nivelRiesgo === 'bajo') {
-            riesgoColor = '#10b981';
-            riesgoIcon = 'fa-check';
-        }
-
-        const detalles = inc.detalles ? (inc.detalles.length > 80 ? inc.detalles.substring(0, 80) + '...' : inc.detalles) : 'Sin detalles';
-
-        // Verificar si tiene PDF asociado
-        const tienePDF = inc.pdfUrl && inc.pdfUrl.trim() !== '';
-        const pdfEstado = inc.estadoGeneracion || 'pendiente';
-        let pdfIcono = '';
-        let pdfTexto = '';
-        let pdfColor = '';
-        
-        if (tienePDF) {
-            pdfIcono = '<i class="fas fa-file-pdf" style="color: #c0392b;"></i>';
-            pdfTexto = 'Ver PDF';
-            pdfColor = '#c0392b';
-        } else if (pdfEstado === 'generando') {
-            pdfIcono = '<i class="fas fa-spinner fa-spin"></i>';
-            pdfTexto = 'Generando PDF...';
-            pdfColor = '#f59e0b';
-        } else {
-            pdfIcono = '<i class="fas fa-file-pdf" style="color: #6c757d;"></i>';
-            pdfTexto = 'PDF no disponible';
-            pdfColor = '#6c757d';
-        }
-
-        registrosHtml += `
-            <div class="swal-registro-card" data-incidencia-id="${inc.id}">
-                <div class="swal-card-header">
-                    <span class="swal-id"><i class="fas fa-hashtag"></i> ${escapeHTML(inc.id.substring(0, 12))}...</span>
-                    <span class="swal-fecha"><i class="fas fa-calendar-alt"></i> ${fecha}</span>
-                </div>
-                <div class="swal-card-body">
-                    <div class="swal-info-principal">
-                        <div class="swal-sucursal">
-                            <i class="fas fa-store"></i> ${escapeHTML(obtenerNombreSucursal(inc.sucursalId) || 'Sin asignar')}
-                        </div>
-                        <div class="swal-tipo-evento">
-                            <i class="fas ${riesgoIcon}" style="color: ${riesgoColor};"></i> ${riesgoTexto}
-                            <span class="swal-estado-badge" style="margin-left: 8px; color: ${estadoColor};">
-                                <i class="fas ${estadoIcon}"></i> ${inc.estado ? inc.estado.charAt(0).toUpperCase() + inc.estado.slice(1) : 'N/A'}
-                            </span>
-                        </div>
-                    </div>
-                    <div class="swal-montos">
-                        <span class="swal-monto-perdido"><i class="fas fa-user"></i> ${escapeHTML(inc.creadoPorNombre || 'N/A')}</span>
-                        ${inc.actualizadoPorNombre ? `<span class="swal-monto-recuperado"><i class="fas fa-edit"></i> ${escapeHTML(inc.actualizadoPorNombre)}</span>` : ''}
-                    </div>
-                </div>
-                <div class="swal-card-footer">
-                    <div class="swal-narracion">
-                        <i class="fas fa-file-alt"></i>
-                        <span>${escapeHTML(detalles)}</span>
-                    </div>
-                </div>
-                <div class="swal-card-actions" style="display: flex; justify-content: flex-end; gap: 8px; padding: 8px 14px 12px 14px; border-top: 1px solid rgba(255,255,255,0.05);">
-                    <button class="swal-pdf-btn" data-incidencia-id="${inc.id}" data-pdf-url="${inc.pdfUrl || ''}" data-pdf-estado="${pdfEstado}" style="background: rgba(0,0,0,0.5); border: none; border-radius: 8px; padding: 6px 12px; color: white; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; font-size: 0.7rem; transition: all 0.2s ease;">
-                        ${pdfIcono}
-                        <span style="color: ${pdfColor};">${pdfTexto}</span>
-                    </button>
-                </div>
-            </div>
-        `;
-    });
-
-    if (hayMas) {
-        registrosHtml += `
-            <div class="swal-mas-registros">
-                <i class="fas fa-ellipsis-h"></i> y ${incidencias.length - 15} incidencias más. Haz clic en un registro para ver detalles completos.
-            </div>
-        `;
-    }
-
-    registrosHtml += `</div>`;
-
-    Swal.fire({
-        title: `${icono} ${titulo}`,
-        html: registrosHtml,
-        width: '880px',
-        background: 'transparent',
-        showConfirmButton: true,
-        confirmButtonText: '<i class="fas fa-check"></i> Cerrar',
-        confirmButtonColor: '#28a745',
-        customClass: {
-            popup: 'swal2-popup-custom',
-            title: 'swal2-title-custom',
-            confirmButton: 'swal2-confirm'
-        },
-        backdrop: `
-            rgba(0,0,0,0.8)
-            left top
-            no-repeat
-        `,
-        didOpen: () => {
-            // Agregar event listeners a los botones de PDF
-            document.querySelectorAll('.swal-pdf-btn').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    const incidenciaId = btn.dataset.incidenciaId;
-                    const pdfUrl = btn.dataset.pdfUrl;
-                    const pdfEstado = btn.dataset.pdfEstado;
-                    
-                    abrirPDFDesdeSweet(incidenciaId, pdfUrl, pdfEstado);
-                });
-            });
-            
-            // Agregar click en las tarjetas para ver detalles
-            document.querySelectorAll('.swal-registro-card').forEach(card => {
-                const incidenciaId = card.dataset.incidenciaId;
-                card.addEventListener('click', (e) => {
-                    if (!e.target.closest('.swal-pdf-btn')) {
-                        window.verDetalleIncidenciaDesdeSweet(incidenciaId);
-                    }
-                });
-            });
-        }
-    });
-}
-
-// =============================================
-// FUNCIÓN PARA ABRIR PDF DESDE SWEETALERT
-// =============================================
-function abrirPDFDesdeSweet(incidenciaId, pdfUrl, pdfEstado) {
-    const incidencia = datosGraficas.incidenciasFiltradas?.find(i => i.id === incidenciaId);
-    
-    if (!incidencia) {
-        Swal.fire({
-            icon: 'error',
-            title: 'Error',
-            text: 'No se encontró la incidencia',
-            background: 'var(--color-bg-primary)',
-            color: 'white'
-        });
-        return;
-    }
-    
-    const urlActual = incidencia.pdfUrl || pdfUrl;
-    const estadoActual = incidencia.estadoGeneracion || pdfEstado;
-    
-    if (urlActual && urlActual.trim() !== '') {
-        window.open(urlActual, '_blank');
-        
-        Swal.fire({
-            icon: 'success',
-            title: 'Abriendo PDF',
-            text: 'El PDF se abrirá en el visor del navegador',
-            timer: 1500,
-            showConfirmButton: false,
-            toast: true,
-            position: 'top-end',
-            background: 'var(--color-bg-primary)',
-            color: 'white'
-        });
-    } else if (estadoActual === 'generando') {
-        Swal.fire({
-            icon: 'info',
-            title: 'Generando PDF',
-            text: 'El PDF se está generando en segundo plano. Recibirás una notificación cuando esté listo.',
-            confirmButtonText: 'Entendido',
-            background: 'var(--color-bg-primary)',
-            color: 'white'
-        });
-    } else {
-        Swal.fire({
-            icon: 'info',
-            title: 'PDF no disponible',
-            text: 'Este registro aún no tiene un PDF generado.',
-            confirmButtonText: 'Entendido',
-            background: 'var(--color-bg-primary)',
-            color: 'white'
-        });
-    }
-}
-
-// =============================================
-// FUNCIÓN GLOBAL PARA VER DETALLE DE INCIDENCIA - VERSIÓN MEJORADA
-// =============================================
-window.verDetalleIncidenciaDesdeSweet = function (incidenciaId) {
-    Swal.close();
-
-    const incidencia = datosGraficas.incidenciasFiltradas?.find(i => i.id === incidenciaId);
-
-    if (!incidencia) {
-        Swal.fire({
-            icon: 'error',
-            title: 'Incidencia no encontrada',
-            text: 'No se pudo encontrar la incidencia seleccionada',
-            background: 'var(--color-bg-primary)',
-            color: 'white',
-            customClass: {
-                popup: 'swal2-popup-custom'
-            }
-        });
-        return;
-    }
-
-    const formatter = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' });
-    const fecha = incidencia.fechaInicio instanceof Date ? incidencia.fechaInicio.toLocaleDateString('es-MX') :
-        (incidencia.fechaInicio ? new Date(incidencia.fechaInicio).toLocaleDateString('es-MX') : 'N/A');
-
-    let estadoColor = '#6c757d';
-    let estadoIcon = 'fa-circle';
-    if (incidencia.estado === 'finalizada') {
-        estadoColor = '#10b981';
-        estadoIcon = 'fa-check-circle';
-    } else if (incidencia.estado === 'pendiente') {
-        estadoColor = '#f59e0b';
-        estadoIcon = 'fa-clock';
-    }
-
-    let riesgoColor = '#6c757d';
-    let riesgoIcon = 'fa-chart-line';
-    let riesgoTexto = incidencia.nivelRiesgo ? incidencia.nivelRiesgo.charAt(0).toUpperCase() + incidencia.nivelRiesgo.slice(1) : 'N/A';
-    if (incidencia.nivelRiesgo === 'critico') {
-        riesgoColor = '#ef4444';
-        riesgoIcon = 'fa-exclamation-triangle';
-    } else if (incidencia.nivelRiesgo === 'alto') {
-        riesgoColor = '#f97316';
-        riesgoIcon = 'fa-exclamation-circle';
-    } else if (incidencia.nivelRiesgo === 'medio') {
-        riesgoColor = '#eab308';
-        riesgoIcon = 'fa-chart-simple';
-    } else if (incidencia.nivelRiesgo === 'bajo') {
-        riesgoColor = '#10b981';
-        riesgoIcon = 'fa-check';
-    }
-
-    // Verificar estado del PDF
-    const tienePDF = incidencia.pdfUrl && incidencia.pdfUrl.trim() !== '';
-    const pdfEstado = incidencia.estadoGeneracion || 'pendiente';
-    let pdfIcono = '';
-    let pdfTexto = '';
-    let pdfColor = '';
-    
-    if (tienePDF) {
-        pdfIcono = '<i class="fas fa-file-pdf" style="color: #c0392b;"></i>';
-        pdfTexto = 'Ver PDF';
-        pdfColor = '#c0392b';
-    } else if (pdfEstado === 'generando') {
-        pdfIcono = '<i class="fas fa-spinner fa-spin"></i>';
-        pdfTexto = 'Generando PDF...';
-        pdfColor = '#f59e0b';
-    } else {
-        pdfIcono = '<i class="fas fa-file-pdf" style="color: #6c757d;"></i>';
-        pdfTexto = 'PDF no disponible';
-        pdfColor = '#6c757d';
-    }
-
-    // Construir HTML de seguimientos si existen
-    let seguimientosHtml = '';
-    if (incidencia.seguimiento && Object.keys(incidencia.seguimiento).length > 0) {
-        const seguimientosList = Object.values(incidencia.seguimiento);
-        seguimientosHtml = `
-            <div style="background: rgba(0,0,0,0.3); border-radius: 16px; padding: 16px;">
-                <div style="font-size: 0.7rem; text-transform: uppercase; color: #9ca3af; margin-bottom: 12px;"><i class="fas fa-history"></i> Seguimientos (${seguimientosList.length})</div>
-                <div style="display: flex; flex-direction: column; gap: 8px; max-height: 200px; overflow-y: auto;">
-                    ${seguimientosList.map(seg => `
-                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px; background: rgba(0,0,0,0.2); border-radius: 10px;">
-                            <div style="display: flex; flex-direction: column;">
-                                <span style="color: #3b82f6; font-weight: 600;">${escapeHTML(seg.usuarioNombre || 'Usuario')}</span>
-                                <span style="font-size: 0.65rem; color: #9ca3af;">${seg.fecha ? new Date(seg.fecha).toLocaleString('es-MX') : 'Fecha no disponible'}</span>
-                            </div>
-                            <span style="font-size: 0.7rem; color: #d1d5db;">${escapeHTML(seg.comentario ? (seg.comentario.substring(0, 50) + (seg.comentario.length > 50 ? '...' : '')) : 'Sin comentario')}</span>
-                        </div>
-                    `).join('')}
-                </div>
-            </div>
-        `;
-    }
-
-    const detallesHtml = `
-        <div style="display: flex; flex-direction: column; gap: 16px;">
-            <div class="swal-resumen-stats" style="margin-bottom: 0;">
-                <div class="swal-stats-grid">
-                    <div class="swal-stat-item" style="border-left-color: #8b5cf6;">
-                        <span class="swal-stat-label">ID Incidencia</span>
-                        <span class="swal-stat-value" style="font-size: 0.8rem; word-break: break-all;">${escapeHTML(incidencia.id)}</span>
-                    </div>
-                    <div class="swal-stat-item" style="border-left-color: #3b82f6;">
-                        <span class="swal-stat-label">Fecha</span>
-                        <span class="swal-stat-value" style="font-size: 0.9rem;">${fecha}</span>
-                    </div>
-                    <div class="swal-stat-item" style="border-left-color: ${estadoColor};">
-                        <span class="swal-stat-label">Estado</span>
-                        <span class="swal-stat-value" style="color: ${estadoColor};"><i class="fas ${estadoIcon}"></i> ${incidencia.estado ? incidencia.estado.charAt(0).toUpperCase() + incidencia.estado.slice(1) : 'N/A'}</span>
-                    </div>
-                </div>
-            </div>
-            
-            <div style="background: rgba(0,0,0,0.4); border-radius: 16px; padding: 16px; border: 1px solid rgba(255,255,255,0.08);">
-                <div style="display: flex; flex-wrap: wrap; gap: 20px; justify-content: space-between;">
-                    <div>
-                        <div style="font-size: 0.7rem; text-transform: uppercase; color: #9ca3af; letter-spacing: 1px;">Sucursal</div>
-                        <div style="font-size: 1rem; font-weight: 600; margin-top: 4px;"><i class="fas fa-store" style="color: var(--color-accent-primary);"></i> ${escapeHTML(obtenerNombreSucursal(incidencia.sucursalId) || 'N/A')}</div>
-                    </div>
-                    <div>
-                        <div style="font-size: 0.7rem; text-transform: uppercase; color: #9ca3af; letter-spacing: 1px;">Categoría</div>
-                        <div style="font-size: 1rem; font-weight: 600; margin-top: 4px;"><i class="fas fa-tag"></i> ${escapeHTML(obtenerNombreCategoria(incidencia.categoriaId) || 'N/A')}</div>
-                    </div>
-                    <div>
-                        <div style="font-size: 0.7rem; text-transform: uppercase; color: #9ca3af; letter-spacing: 1px;">Nivel de riesgo</div>
-                        <div style="font-size: 1rem; font-weight: 600; margin-top: 4px; color: ${riesgoColor};"><i class="fas ${riesgoIcon}"></i> ${riesgoTexto}</div>
-                    </div>
-                </div>
-            </div>
-            
-            <div style="display: flex; flex-wrap: wrap; gap: 16px;">
-                <div style="flex: 1; background: rgba(59, 130, 246, 0.1); border-radius: 16px; padding: 16px; border-left: 3px solid #3b82f6;">
-                    <div style="font-size: 0.7rem; text-transform: uppercase; color: #9ca3af;">Creado por</div>
-                    <div style="font-size: 1rem; font-weight: 600; margin-top: 4px;"><i class="fas fa-user-plus"></i> ${escapeHTML(incidencia.creadoPorNombre || 'N/A')}</div>
-                </div>
-                <div style="flex: 1; background: rgba(245, 158, 11, 0.1); border-radius: 16px; padding: 16px; border-left: 3px solid #f59e0b;">
-                    <div style="font-size: 0.7rem; text-transform: uppercase; color: #9ca3af;">Actualizado por</div>
-                    <div style="font-size: 1rem; font-weight: 600; margin-top: 4px;"><i class="fas fa-user-edit"></i> ${escapeHTML(incidencia.actualizadoPorNombre || 'N/A')}</div>
-                </div>
-            </div>
-            
-            ${incidencia.detalles ? `
-            <div style="background: rgba(0,0,0,0.3); border-radius: 16px; padding: 16px;">
-                <div style="font-size: 0.7rem; text-transform: uppercase; color: #9ca3af; margin-bottom: 8px;"><i class="fas fa-file-alt"></i> Detalles</div>
-                <div style="font-size: 0.85rem; line-height: 1.5; color: #d1d5db;">${escapeHTML(incidencia.detalles)}</div>
-            </div>
-            ` : ''}
-            
-            ${seguimientosHtml}
-            
-            <!-- Botón de PDF -->
-            <div style="display: flex; justify-content: center; gap: 12px; margin-top: 8px;">
-                <button id="btnPdfDesdeSweetDetalle" style="background: linear-gradient(145deg, #0f0f0f, #1a1a1a); border: 1px solid ${tienePDF ? '#c0392b' : '#6c757d'}; border-radius: 12px; padding: 10px 24px; color: white; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; font-size: 0.8rem; font-family: var(--font-family-primary, 'Orbitron', sans-serif); transition: all 0.2s ease;">
-                    ${pdfIcono}
-                    <span style="color: ${pdfColor};">${pdfTexto}</span>
-                </button>
-            </div>
-        </div>
-    `;
-
-    Swal.fire({
-        title: `<i class="fas fa-info-circle" style="color: var(--color-accent-primary);"></i> Detalles de la incidencia`,
-        html: detallesHtml,
-        width: '750px',
-        background: 'transparent',
-        showConfirmButton: true,
-        confirmButtonText: '<i class="fas fa-check"></i> Cerrar',
-        customClass: {
-            popup: 'swal2-popup-custom',
-            title: 'swal2-title-custom',
-            confirmButton: 'swal2-confirm'
-        },
-        didOpen: () => {
-            const btnPdf = document.getElementById('btnPdfDesdeSweetDetalle');
-            if (btnPdf) {
-                btnPdf.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    abrirPDFDesdeSweet(incidencia.id, incidencia.pdfUrl, incidencia.estadoGeneracion);
-                });
-            }
-        }
-    });
-};
-
-// =============================================
-// PROCESAR DATOS PARA LAS 8 GRÁFICAS
+// PROCESAR DATOS PARA LAS GRÁFICAS DE INCIDENCIAS
 // =============================================
 function procesarDatosGraficas(incidencias) {
     const metricas = {
@@ -1520,7 +854,6 @@ function procesarDatosGraficas(incidencias) {
         .sort((a, b) => b.cantidad - a.cantidad)
         .slice(0, 5);
 
-    // Cálculo del tiempo promedio de resolución
     const tiemposResolucion = new Map();
     const incidenciasFinalizadas = incidencias.filter(i =>
         i.estado === 'finalizada' && i.fechaFinalizacion && i.fechaInicio
@@ -1535,10 +868,7 @@ function procesarDatosGraficas(incidencias) {
 
             if (tiempoHoras > 0 && tiempoHoras < 720) {
                 if (!tiemposResolucion.has(inc.actualizadoPorNombre)) {
-                    tiemposResolucion.set(inc.actualizadoPorNombre, {
-                        total: 0,
-                        count: 0
-                    });
+                    tiemposResolucion.set(inc.actualizadoPorNombre, { total: 0, count: 0 });
                 }
                 const data = tiemposResolucion.get(inc.actualizadoPorNombre);
                 data.total += tiempoHoras;
@@ -1556,7 +886,6 @@ function procesarDatosGraficas(incidencias) {
         .sort((a, b) => a.promedio - b.promedio)
         .slice(0, 8);
 
-    // Datos de colaboradores para la tabla
     const colaboradoresMap = new Map();
 
     incidencias.forEach(inc => {
@@ -1658,10 +987,9 @@ function actualizarMetricasPrincipales(metricas) {
 }
 
 // =============================================
-// RENDERIZAR TODAS LAS GRÁFICAS CON EVENTOS DE CLIC
+// RENDERIZAR TODAS LAS GRÁFICAS DE INCIDENCIAS
 // =============================================
 function renderizarTodasLasGraficas(datos) {
-    // Destruir gráficas existentes
     Object.keys(charts).forEach(key => {
         if (charts[key] && typeof charts[key].destroy === 'function') {
             charts[key].destroy();
@@ -1678,7 +1006,6 @@ function renderizarTodasLasGraficas(datos) {
     crearGraficoSucursales(datos.sucursalesData);
     crearGraficoTiempoResolucion(datos.tiemposPromedio);
 
-    // Agregar eventos de clic a los canvas
     agregarEventosClickCanvas();
 }
 
@@ -1707,7 +1034,6 @@ function agregarEventosClickCanvas() {
 function crearGraficoActualizadores(actualizadores) {
     const canvas = document.getElementById('graficoActualizadores');
     if (!canvas) return;
-
     const ctx = canvas.getContext('2d');
 
     if (!actualizadores || actualizadores.length === 0) {
@@ -1729,24 +1055,10 @@ function crearGraficoActualizadores(actualizadores) {
         options: {
             responsive: true,
             maintainAspectRatio: true,
-            plugins: {
-                legend: { labels: { color: 'white' } },
-                tooltip: {
-                    callbacks: {
-                        label: (ctx) => `${ctx.raw} incidencias actualizadas`
-                    }
-                }
-            },
+            plugins: { legend: { labels: { color: 'white' } } },
             scales: {
-                y: {
-                    beginAtZero: true,
-                    grid: { color: 'rgba(255,255,255,0.1)' },
-                    ticks: { color: 'white', stepSize: 1 }
-                },
-                x: {
-                    grid: { display: false },
-                    ticks: { color: 'white', maxRotation: 45 }
-                }
+                y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.1)' }, ticks: { color: 'white', stepSize: 1 } },
+                x: { grid: { display: false }, ticks: { color: 'white', maxRotation: 45 } }
             }
         }
     });
@@ -1755,7 +1067,6 @@ function crearGraficoActualizadores(actualizadores) {
 function crearGraficoReportadores(reportadores) {
     const canvas = document.getElementById('graficoReportadores');
     if (!canvas) return;
-
     const ctx = canvas.getContext('2d');
 
     if (!reportadores || reportadores.length === 0) {
@@ -1777,19 +1088,10 @@ function crearGraficoReportadores(reportadores) {
         options: {
             responsive: true,
             maintainAspectRatio: true,
-            plugins: {
-                legend: { labels: { color: 'white' } }
-            },
+            plugins: { legend: { labels: { color: 'white' } } },
             scales: {
-                y: {
-                    beginAtZero: true,
-                    grid: { color: 'rgba(255,255,255,0.1)' },
-                    ticks: { color: 'white', stepSize: 1 }
-                },
-                x: {
-                    grid: { display: false },
-                    ticks: { color: 'white', maxRotation: 45 }
-                }
+                y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.1)' }, ticks: { color: 'white', stepSize: 1 } },
+                x: { grid: { display: false }, ticks: { color: 'white', maxRotation: 45 } }
             }
         }
     });
@@ -1798,7 +1100,6 @@ function crearGraficoReportadores(reportadores) {
 function crearGraficoSeguimientos(seguimientos) {
     const canvas = document.getElementById('graficoSeguimientos');
     if (!canvas) return;
-
     const ctx = canvas.getContext('2d');
 
     if (!seguimientos || seguimientos.length === 0) {
@@ -1820,19 +1121,10 @@ function crearGraficoSeguimientos(seguimientos) {
         options: {
             responsive: true,
             maintainAspectRatio: true,
-            plugins: {
-                legend: { labels: { color: 'white' } }
-            },
+            plugins: { legend: { labels: { color: 'white' } } },
             scales: {
-                y: {
-                    beginAtZero: true,
-                    grid: { color: 'rgba(255,255,255,0.1)' },
-                    ticks: { color: 'white', stepSize: 1 }
-                },
-                x: {
-                    grid: { display: false },
-                    ticks: { color: 'white', maxRotation: 45 }
-                }
+                y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.1)' }, ticks: { color: 'white', stepSize: 1 } },
+                x: { grid: { display: false }, ticks: { color: 'white', maxRotation: 45 } }
             }
         }
     });
@@ -1841,7 +1133,6 @@ function crearGraficoSeguimientos(seguimientos) {
 function crearGraficoEstado(estado) {
     const canvas = document.getElementById('graficoEstado');
     if (!canvas) return;
-
     const ctx = canvas.getContext('2d');
 
     if ((!estado.pendientes || estado.pendientes === 0) && (!estado.finalizadas || estado.finalizadas === 0)) {
@@ -1864,10 +1155,7 @@ function crearGraficoEstado(estado) {
             responsive: true,
             maintainAspectRatio: true,
             plugins: {
-                legend: {
-                    labels: { color: 'white' },
-                    position: 'bottom'
-                },
+                legend: { labels: { color: 'white' }, position: 'bottom' },
                 tooltip: {
                     callbacks: {
                         label: (ctx) => {
@@ -1885,13 +1173,10 @@ function crearGraficoEstado(estado) {
 function crearGraficoRiesgo(riesgo) {
     const canvas = document.getElementById('graficoRiesgo');
     if (!canvas) return;
-
     const ctx = canvas.getContext('2d');
 
-    if ((!riesgo.critico || riesgo.critico === 0) &&
-        (!riesgo.alto || riesgo.alto === 0) &&
-        (!riesgo.medio || riesgo.medio === 0) &&
-        (!riesgo.bajo || riesgo.bajo === 0)) {
+    if ((!riesgo.critico || riesgo.critico === 0) && (!riesgo.alto || riesgo.alto === 0) &&
+        (!riesgo.medio || riesgo.medio === 0) && (!riesgo.bajo || riesgo.bajo === 0)) {
         mostrarMensajeSinDatosEnCanvas(ctx, canvas, 'Sin datos de riesgo');
         return;
     }
@@ -1911,10 +1196,7 @@ function crearGraficoRiesgo(riesgo) {
             responsive: true,
             maintainAspectRatio: true,
             plugins: {
-                legend: {
-                    labels: { color: 'white' },
-                    position: 'bottom'
-                },
+                legend: { labels: { color: 'white' }, position: 'bottom' },
                 tooltip: {
                     callbacks: {
                         label: (ctx) => {
@@ -1932,7 +1214,6 @@ function crearGraficoRiesgo(riesgo) {
 function crearGraficoCategorias(categorias) {
     const canvas = document.getElementById('graficoCategorias');
     if (!canvas) return;
-
     const ctx = canvas.getContext('2d');
 
     if (!categorias || categorias.length === 0) {
@@ -1954,19 +1235,10 @@ function crearGraficoCategorias(categorias) {
         options: {
             responsive: true,
             maintainAspectRatio: true,
-            plugins: {
-                legend: { labels: { color: 'white' } }
-            },
+            plugins: { legend: { labels: { color: 'white' } } },
             scales: {
-                y: {
-                    beginAtZero: true,
-                    grid: { color: 'rgba(255,255,255,0.1)' },
-                    ticks: { color: 'white', stepSize: 1 }
-                },
-                x: {
-                    grid: { display: false },
-                    ticks: { color: 'white', maxRotation: 45 }
-                }
+                y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.1)' }, ticks: { color: 'white', stepSize: 1 } },
+                x: { grid: { display: false }, ticks: { color: 'white', maxRotation: 45 } }
             }
         }
     });
@@ -1975,7 +1247,6 @@ function crearGraficoCategorias(categorias) {
 function crearGraficoSucursales(sucursales) {
     const canvas = document.getElementById('graficoSucursales');
     if (!canvas) return;
-
     const ctx = canvas.getContext('2d');
 
     if (!sucursales || sucursales.length === 0) {
@@ -1997,19 +1268,10 @@ function crearGraficoSucursales(sucursales) {
         options: {
             responsive: true,
             maintainAspectRatio: true,
-            plugins: {
-                legend: { labels: { color: 'white' } }
-            },
+            plugins: { legend: { labels: { color: 'white' } } },
             scales: {
-                y: {
-                    beginAtZero: true,
-                    grid: { color: 'rgba(255,255,255,0.1)' },
-                    ticks: { color: 'white', stepSize: 1 }
-                },
-                x: {
-                    grid: { display: false },
-                    ticks: { color: 'white', maxRotation: 45 }
-                }
+                y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.1)' }, ticks: { color: 'white', stepSize: 1 } },
+                x: { grid: { display: false }, ticks: { color: 'white', maxRotation: 45 } }
             }
         }
     });
@@ -2018,7 +1280,6 @@ function crearGraficoSucursales(sucursales) {
 function crearGraficoTiempoResolucion(tiempos) {
     const canvas = document.getElementById('graficoTiempo');
     if (!canvas) return;
-
     const ctx = canvas.getContext('2d');
 
     if (!tiempos || tiempos.length === 0) {
@@ -2028,7 +1289,6 @@ function crearGraficoTiempoResolucion(tiempos) {
 
     const nombres = tiempos.map(t => t.nombre.length > 15 ? t.nombre.substring(0, 12) + '...' : t.nombre);
     const promedios = tiempos.map(t => t.promedio);
-
     const colores = tiempos.map(t => {
         if (t.promedio <= 24) return COLORS.bajo;
         if (t.promedio <= 72) return COLORS.alto;
@@ -2059,9 +1319,7 @@ function crearGraficoTiempoResolucion(tiempos) {
                             const dias = Math.floor(horas / 24);
                             const horasResto = horas % 24;
                             let texto = `${horas} horas`;
-                            if (dias > 0) {
-                                texto = `${dias} día${dias > 1 ? 's' : ''} y ${horasResto} horas`;
-                            }
+                            if (dias > 0) texto = `${dias} día${dias > 1 ? 's' : ''} y ${horasResto} horas`;
                             return `${ctx.dataset.label}: ${texto}`;
                         }
                     }
@@ -2071,20 +1329,9 @@ function crearGraficoTiempoResolucion(tiempos) {
                 x: {
                     beginAtZero: true,
                     grid: { color: 'rgba(255,255,255,0.1)' },
-                    ticks: {
-                        color: 'white', stepSize: 24, callback: (value) => {
-                            if (value >= 24) {
-                                const dias = value / 24;
-                                return `${dias}d`;
-                            }
-                            return `${value}h`;
-                        }
-                    }
+                    ticks: { color: 'white', stepSize: 24, callback: (value) => value >= 24 ? `${value / 24}d` : `${value}h` }
                 },
-                y: {
-                    grid: { display: false },
-                    ticks: { color: 'white', font: { size: 10 } }
-                }
+                y: { grid: { display: false }, ticks: { color: 'white', font: { size: 10 } } }
             }
         }
     });
@@ -2099,7 +1346,7 @@ function mostrarMensajeSinDatosEnCanvas(ctx, canvas, mensaje) {
 }
 
 // =============================================
-// TABLA DE COLABORADORES
+// TABLAS DE DESEMPEÑO
 // =============================================
 function renderizarTablaColaboradores(colaboradores) {
     const tbody = document.getElementById('tablaColaboradoresBody');
@@ -2136,15 +1383,12 @@ function renderizarTablaColaboradores(colaboradores) {
                         </div>
                         <span style="color: white; min-width: 40px;">${eficiencia}%</span>
                     </div>
-                    </td>
+                </td>
             </tr>
         `;
     }).join('');
 }
 
-// =============================================
-// TABLA DE CATEGORÍAS
-// =============================================
 function renderizarTablaCategorias(categorias) {
     const tbody = document.getElementById('tablaCategoriasBody');
     if (!tbody) return;
@@ -2162,9 +1406,6 @@ function renderizarTablaCategorias(categorias) {
     `).join('');
 }
 
-// =============================================
-// FILTRO DE COLABORADORES
-// =============================================
 function cargarFiltroColaboradores(colaboradores) {
     const selectColab = document.getElementById('filtroColaborador');
     if (!selectColab) return;
@@ -2175,132 +1416,1068 @@ function cargarFiltroColaboradores(colaboradores) {
     }
 
     const opciones = ['<option value="todos">Todos los colaboradores</option>'];
-
     colaboradores.slice(0, 20).forEach(col => {
         opciones.push(`<option value="${escapeHTML(col.nombre)}">${escapeHTML(col.nombre)}</option>`);
     });
-
     selectColab.innerHTML = opciones.join('');
 }
 
 // =============================================
-// FUNCIONES AUXILIARES
+// FUNCIONES PARA ALERTAS DE GRÁFICAS - INCIDENCIAS
 // =============================================
-function obtenerNombreSucursal(sucursalId) {
-    if (!sucursalId) return 'No especificada';
-    const sucursal = sucursalesCache.find(s => s.id === sucursalId);
-    return sucursal ? sucursal.nombre : 'No disponible';
+function mostrarAlertActualizadores() {
+    const data = datosGraficas.topActualizadores;
+    if (!data || data.length === 0) {
+        Swal.fire({ icon: 'info', title: 'Sin datos', text: 'No hay información de actualizaciones para mostrar', background: 'var(--color-bg-primary)', color: 'white' });
+        return;
+    }
+    const colaborador = data[0];
+    const incidencias = datosGraficas.incidenciasFiltradas?.filter(i => i.actualizadoPorNombre === colaborador.nombre) || [];
+    if (incidencias.length === 0) {
+        Swal.fire({ icon: 'info', title: 'Sin registros', text: `No hay incidencias actualizadas por ${colaborador.nombre}`, background: 'var(--color-bg-primary)', color: 'white' });
+        return;
+    }
+    mostrarRegistrosEnSweet(incidencias, `Incidencias actualizadas por ${colaborador.nombre}`, `<i class="fas fa-edit"></i>`);
 }
 
-function obtenerNombreCategoria(categoriaId) {
-    if (!categoriaId) return 'No especificada';
-    const categoria = categoriasCache.find(c => c.id === categoriaId);
-    return categoria ? categoria.nombre : 'No disponible';
+function mostrarAlertReportadores() {
+    const data = datosGraficas.topReportadores;
+    if (!data || data.length === 0) {
+        Swal.fire({ icon: 'info', title: 'Sin datos', text: 'No hay información de reportes para mostrar', background: 'var(--color-bg-primary)', color: 'white' });
+        return;
+    }
+    const colaborador = data[0];
+    const incidencias = datosGraficas.incidenciasFiltradas?.filter(i => i.creadoPorNombre === colaborador.nombre) || [];
+    if (incidencias.length === 0) {
+        Swal.fire({ icon: 'info', title: 'Sin registros', text: `No hay incidencias reportadas por ${colaborador.nombre}`, background: 'var(--color-bg-primary)', color: 'white' });
+        return;
+    }
+    mostrarRegistrosEnSweet(incidencias, `Incidencias reportadas por ${colaborador.nombre}`, `<i class="fas fa-flag"></i>`);
+}
+
+function mostrarAlertSeguimientos() {
+    const data = datosGraficas.topSeguimientos;
+    if (!data || data.length === 0) {
+        Swal.fire({ icon: 'info', title: 'Sin datos', text: 'No hay información de seguimientos para mostrar', background: 'var(--color-bg-primary)', color: 'white' });
+        return;
+    }
+    const colaborador = data[0];
+    const incidencias = datosGraficas.incidenciasFiltradas?.filter(i => {
+        if (i.seguimiento) return Object.values(i.seguimiento).some(seg => seg.usuarioNombre === colaborador.nombre);
+        return false;
+    }) || [];
+    if (incidencias.length === 0) {
+        Swal.fire({ icon: 'info', title: 'Sin registros', text: `No hay incidencias con seguimiento de ${colaborador.nombre}`, background: 'var(--color-bg-primary)', color: 'white' });
+        return;
+    }
+    mostrarRegistrosEnSweet(incidencias, `Incidencias con seguimiento de ${colaborador.nombre}`, `<i class="fas fa-history"></i>`);
+}
+
+function mostrarAlertEstado() {
+    const data = datosGraficas.estadoData;
+    const total = (data.pendientes || 0) + (data.finalizadas || 0);
+    if (total === 0) {
+        Swal.fire({ icon: 'info', title: 'Sin datos', text: 'No hay incidencias para mostrar', background: 'var(--color-bg-primary)', color: 'white' });
+        return;
+    }
+    const incidencias = datosGraficas.incidenciasFiltradas?.filter(i => i.estado === 'pendiente') || [];
+    if (incidencias.length > 0) {
+        mostrarRegistrosEnSweet(incidencias, 'Incidencias Pendientes', '<i class="fas fa-clock"></i>');
+    } else {
+        const incidenciasFinalizadas = datosGraficas.incidenciasFiltradas?.filter(i => i.estado === 'finalizada') || [];
+        mostrarRegistrosEnSweet(incidenciasFinalizadas, 'Incidencias Finalizadas', '<i class="fas fa-check-circle"></i>');
+    }
+}
+
+function mostrarAlertRiesgo() {
+    const data = datosGraficas.riesgoData;
+    const total = (data.critico || 0) + (data.alto || 0) + (data.medio || 0) + (data.bajo || 0);
+    if (total === 0) {
+        Swal.fire({ icon: 'info', title: 'Sin datos', text: 'No hay incidencias para mostrar', background: 'var(--color-bg-primary)', color: 'white' });
+        return;
+    }
+    const incidencias = datosGraficas.incidenciasFiltradas?.filter(i => i.nivelRiesgo === 'critico') || [];
+    if (incidencias.length > 0) {
+        mostrarRegistrosEnSweet(incidencias, 'Incidencias Críticas', '<i class="fas fa-exclamation-triangle"></i>');
+    } else {
+        const incidenciasAltas = datosGraficas.incidenciasFiltradas?.filter(i => i.nivelRiesgo === 'alto') || [];
+        mostrarRegistrosEnSweet(incidenciasAltas, 'Incidencias Altas', '<i class="fas fa-exclamation-circle"></i>');
+    }
+}
+
+function mostrarAlertCategorias() {
+    const data = datosGraficas.categoriasData;
+    if (!data || data.length === 0) {
+        Swal.fire({ icon: 'info', title: 'Sin datos', text: 'No hay información de categorías para mostrar', background: 'var(--color-bg-primary)', color: 'white' });
+        return;
+    }
+    const categoriaNombre = data[0].nombre;
+    const categoria = categoriasCache.find(c => c.nombre === categoriaNombre);
+    if (!categoria) {
+        Swal.fire({ icon: 'error', title: 'Error', text: 'No se encontró la categoría', background: 'var(--color-bg-primary)', color: 'white' });
+        return;
+    }
+    const incidencias = datosGraficas.incidenciasFiltradas?.filter(i => i.categoriaId === categoria.id) || [];
+    if (incidencias.length === 0) {
+        Swal.fire({ icon: 'info', title: 'Sin registros', text: `No hay incidencias en la categoría ${categoriaNombre}`, background: 'var(--color-bg-primary)', color: 'white' });
+        return;
+    }
+    mostrarRegistrosEnSweet(incidencias, `Incidencias: ${categoriaNombre} (Top 1)`, '<i class="fas fa-tag"></i>');
+}
+
+function mostrarAlertSucursales() {
+    const data = datosGraficas.sucursalesData;
+    if (!data || data.length === 0) {
+        Swal.fire({ icon: 'info', title: 'Sin datos', text: 'No hay información de sucursales para mostrar', background: 'var(--color-bg-primary)', color: 'white' });
+        return;
+    }
+    const sucursalNombre = data[0].nombre;
+    const sucursal = sucursalesCache.find(s => s.nombre === sucursalNombre);
+    if (!sucursal) {
+        Swal.fire({ icon: 'error', title: 'Error', text: 'No se encontró la sucursal', background: 'var(--color-bg-primary)', color: 'white' });
+        return;
+    }
+    const incidencias = datosGraficas.incidenciasFiltradas?.filter(i => i.sucursalId === sucursal.id) || [];
+    if (incidencias.length === 0) {
+        Swal.fire({ icon: 'info', title: 'Sin registros', text: `No hay incidencias en la sucursal ${sucursalNombre}`, background: 'var(--color-bg-primary)', color: 'white' });
+        return;
+    }
+    mostrarRegistrosEnSweet(incidencias, `Incidencias: ${sucursalNombre} (Top 1)`, '<i class="fas fa-store"></i>');
+}
+
+function mostrarAlertTiempoResolucion() {
+    const data = datosGraficas.tiemposPromedio;
+    if (!data || data.length === 0) {
+        Swal.fire({ icon: 'info', title: 'Sin datos', text: 'No hay información de tiempos de resolución para mostrar.', background: 'var(--color-bg-primary)', color: 'white' });
+        return;
+    }
+    const colaborador = data[0];
+    const incidencias = datosGraficas.incidenciasFiltradas?.filter(i => i.actualizadoPorNombre === colaborador.nombre) || [];
+    if (incidencias.length === 0) {
+        Swal.fire({ icon: 'info', title: 'Sin registros', text: `No hay incidencias actualizadas por ${colaborador.nombre}`, background: 'var(--color-bg-primary)', color: 'white' });
+        return;
+    }
+    mostrarRegistrosEnSweet(incidencias, `Incidencias resueltas por ${colaborador.nombre} (Promedio: ${colaborador.promedio} horas)`, `<i class="fas fa-clock"></i>`);
 }
 
 // =============================================
-// GENERAR REPORTE PDF
+// CONFIGURAR CLICS EN KPI CARDS DE INCIDENCIAS
+// =============================================
+function configurarKpiCardsClickeables() {
+    const criticasCard = document.querySelector('.metric-card.criticas');
+    if (criticasCard) {
+        criticasCard.style.cursor = 'pointer';
+        criticasCard.addEventListener('click', () => {
+            const incidenciasCriticas = datosGraficas.incidenciasFiltradas?.filter(i => i.nivelRiesgo === 'critico') || [];
+            if (incidenciasCriticas.length === 0) {
+                Swal.fire({ icon: 'info', title: 'Sin registros', text: 'No hay incidencias críticas para mostrar', background: 'var(--color-bg-primary)', color: 'white' });
+                return;
+            }
+            mostrarRegistrosEnSweet(incidenciasCriticas, 'Incidencias Críticas', '<i class="fas fa-exclamation-triangle"></i>');
+        });
+    }
+
+    const altasCard = document.querySelector('.metric-card.altas');
+    if (altasCard) {
+        altasCard.style.cursor = 'pointer';
+        altasCard.addEventListener('click', () => {
+            const incidenciasAltas = datosGraficas.incidenciasFiltradas?.filter(i => i.nivelRiesgo === 'alto') || [];
+            if (incidenciasAltas.length === 0) {
+                Swal.fire({ icon: 'info', title: 'Sin registros', text: 'No hay incidencias altas para mostrar', background: 'var(--color-bg-primary)', color: 'white' });
+                return;
+            }
+            mostrarRegistrosEnSweet(incidenciasAltas, 'Incidencias Altas', '<i class="fas fa-exclamation-circle"></i>');
+        });
+    }
+
+    const pendientesCard = document.querySelector('.metric-card.pendientes');
+    if (pendientesCard) {
+        pendientesCard.style.cursor = 'pointer';
+        pendientesCard.addEventListener('click', () => {
+            const incidenciasPendientes = datosGraficas.incidenciasFiltradas?.filter(i => i.estado === 'pendiente') || [];
+            if (incidenciasPendientes.length === 0) {
+                Swal.fire({ icon: 'info', title: 'Sin registros', text: 'No hay incidencias pendientes para mostrar', background: 'var(--color-bg-primary)', color: 'white' });
+                return;
+            }
+            mostrarRegistrosEnSweet(incidenciasPendientes, 'Incidencias Pendientes', '<i class="fas fa-clock"></i>');
+        });
+    }
+
+    const totalCard = document.querySelector('.metric-card.total');
+    if (totalCard) {
+        totalCard.style.cursor = 'pointer';
+        totalCard.addEventListener('click', () => {
+            const incidencias = datosGraficas.incidenciasFiltradas || [];
+            if (incidencias.length === 0) {
+                Swal.fire({ icon: 'info', title: 'Sin registros', text: 'No hay incidencias para mostrar', background: 'var(--color-bg-primary)', color: 'white' });
+                return;
+            }
+            mostrarRegistrosEnSweet(incidencias, 'Todas las Incidencias', '<i class="fas fa-chart-bar"></i>');
+        });
+    }
+}
+
+// =============================================
+// FUNCIÓN PARA MOSTRAR REGISTROS EN SWEETALERT
+// =============================================
+function mostrarRegistrosEnSweet(incidencias, titulo, icono = '<i class="fas fa-chart-simple"></i>') {
+    if (!incidencias || incidencias.length === 0) {
+        Swal.fire({ icon: 'info', title: 'Sin registros', text: 'No hay incidencias para mostrar', background: 'var(--color-bg-primary)', color: 'white', customClass: { popup: 'swal2-popup-custom' } });
+        return;
+    }
+
+    const totalCriticas = incidencias.filter(i => i.nivelRiesgo === 'critico').length;
+    const totalAltas = incidencias.filter(i => i.nivelRiesgo === 'alto').length;
+    const totalPendientes = incidencias.filter(i => i.estado === 'pendiente').length;
+    const totalFinalizadas = incidencias.filter(i => i.estado === 'finalizada').length;
+
+    const incidenciasMostrar = incidencias.slice(0, 15);
+    const hayMas = incidencias.length > 15;
+
+    let registrosHtml = `
+        <div class="swal-resumen-stats">
+            <div class="swal-stats-grid">
+                <div class="swal-stat-item" style="border-left-color: #8b5cf6;"><span class="swal-stat-label">Total incidencias</span><span class="swal-stat-value">${incidencias.length}</span></div>
+                <div class="swal-stat-item" style="border-left-color: #ef4444;"><span class="swal-stat-label">Críticas + Altas</span><span class="swal-stat-value" style="color: #ef4444;">${totalCriticas + totalAltas}</span></div>
+                <div class="swal-stat-item" style="border-left-color: #f59e0b;"><span class="swal-stat-label">Pendientes</span><span class="swal-stat-value" style="color: #f59e0b;">${totalPendientes}</span></div>
+                <div class="swal-stat-item" style="border-left-color: #10b981;"><span class="swal-stat-label">Finalizadas</span><span class="swal-stat-value" style="color: #10b981;">${totalFinalizadas}</span></div>
+            </div>
+        </div>
+        <div class="swal-registros-list">
+    `;
+
+    incidenciasMostrar.forEach(inc => {
+        const fecha = inc.fechaInicio instanceof Date ? inc.fechaInicio.toLocaleDateString('es-MX') : (inc.fechaInicio ? new Date(inc.fechaInicio).toLocaleDateString('es-MX') : 'N/A');
+
+        let estadoColor = '#6c757d';
+        let estadoIcon = 'fa-circle';
+        if (inc.estado === 'finalizada') { estadoColor = '#10b981'; estadoIcon = 'fa-check-circle'; }
+        else if (inc.estado === 'pendiente') { estadoColor = '#f59e0b'; estadoIcon = 'fa-clock'; }
+
+        let riesgoColor = '#6c757d';
+        let riesgoIcon = 'fa-chart-line';
+        let riesgoTexto = inc.nivelRiesgo ? inc.nivelRiesgo.charAt(0).toUpperCase() + inc.nivelRiesgo.slice(1) : 'N/A';
+        if (inc.nivelRiesgo === 'critico') { riesgoColor = '#ef4444'; riesgoIcon = 'fa-exclamation-triangle'; }
+        else if (inc.nivelRiesgo === 'alto') { riesgoColor = '#f97316'; riesgoIcon = 'fa-exclamation-circle'; }
+        else if (inc.nivelRiesgo === 'medio') { riesgoColor = '#eab308'; riesgoIcon = 'fa-chart-simple'; }
+        else if (inc.nivelRiesgo === 'bajo') { riesgoColor = '#10b981'; riesgoIcon = 'fa-check'; }
+
+        const detalles = inc.detalles ? (inc.detalles.length > 80 ? inc.detalles.substring(0, 80) + '...' : inc.detalles) : 'Sin detalles';
+
+        const tienePDF = inc.pdfUrl && inc.pdfUrl.trim() !== '';
+        const pdfEstado = inc.estadoGeneracion || 'pendiente';
+        let pdfIcono = tienePDF ? '<i class="fas fa-file-pdf" style="color: #c0392b;"></i>' : (pdfEstado === 'generando' ? '<i class="fas fa-spinner fa-spin"></i>' : '<i class="fas fa-file-pdf" style="color: #6c757d;"></i>');
+        let pdfTexto = tienePDF ? 'Ver PDF' : (pdfEstado === 'generando' ? 'Generando PDF...' : 'PDF no disponible');
+        let pdfColor = tienePDF ? '#c0392b' : (pdfEstado === 'generando' ? '#f59e0b' : '#6c757d');
+
+        registrosHtml += `
+            <div class="swal-registro-card" data-incidencia-id="${inc.id}">
+                <div class="swal-card-header"><span class="swal-id"><i class="fas fa-hashtag"></i> ${escapeHTML(inc.id.substring(0, 12))}...</span><span class="swal-fecha"><i class="fas fa-calendar-alt"></i> ${fecha}</span></div>
+                <div class="swal-card-body">
+                    <div class="swal-info-principal">
+                        <div class="swal-sucursal"><i class="fas fa-store"></i> ${escapeHTML(obtenerNombreSucursal(inc.sucursalId) || 'Sin asignar')}</div>
+                        <div class="swal-tipo-evento"><i class="fas ${riesgoIcon}" style="color: ${riesgoColor};"></i> ${riesgoTexto}<span class="swal-estado-badge" style="margin-left: 8px; color: ${estadoColor};"><i class="fas ${estadoIcon}"></i> ${inc.estado ? inc.estado.charAt(0).toUpperCase() + inc.estado.slice(1) : 'N/A'}</span></div>
+                    </div>
+                    <div class="swal-montos"><span class="swal-monto-perdido"><i class="fas fa-user"></i> ${escapeHTML(inc.creadoPorNombre || 'N/A')}</span>${inc.actualizadoPorNombre ? `<span class="swal-monto-recuperado"><i class="fas fa-edit"></i> ${escapeHTML(inc.actualizadoPorNombre)}</span>` : ''}</div>
+                </div>
+                <div class="swal-card-footer"><div class="swal-narracion"><i class="fas fa-file-alt"></i><span>${escapeHTML(detalles)}</span></div></div>
+                <div class="swal-card-actions" style="display: flex; justify-content: flex-end; gap: 8px; padding: 8px 14px 12px 14px; border-top: 1px solid rgba(255,255,255,0.05);">
+                    <button class="swal-pdf-btn" data-incidencia-id="${inc.id}" data-pdf-url="${inc.pdfUrl || ''}" data-pdf-estado="${pdfEstado}" style="background: rgba(0,0,0,0.5); border: none; border-radius: 8px; padding: 6px 12px; color: white; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; font-size: 0.7rem;">${pdfIcono}<span style="color: ${pdfColor};">${pdfTexto}</span></button>
+                </div>
+            </div>
+        `;
+    });
+
+    if (hayMas) registrosHtml += `<div class="swal-mas-registros"><i class="fas fa-ellipsis-h"></i> y ${incidencias.length - 15} incidencias más.</div>`;
+    registrosHtml += `</div>`;
+
+    Swal.fire({
+        title: `${icono} ${titulo}`, html: registrosHtml, width: '880px', background: 'transparent',
+        showConfirmButton: true, confirmButtonText: '<i class="fas fa-check"></i> Cerrar', confirmButtonColor: '#28a745',
+        customClass: { popup: 'swal2-popup-custom', title: 'swal2-title-custom', confirmButton: 'swal2-confirm' },
+        backdrop: `rgba(0,0,0,0.8) left top no-repeat`,
+        didOpen: () => {
+            document.querySelectorAll('.swal-pdf-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const incidenciaId = btn.dataset.incidenciaId;
+                    const pdfUrl = btn.dataset.pdfUrl;
+                    const pdfEstado = btn.dataset.pdfEstado;
+                    abrirPDFDesdeSweet(incidenciaId, pdfUrl, pdfEstado);
+                });
+            });
+            document.querySelectorAll('.swal-registro-card').forEach(card => {
+                const incidenciaId = card.dataset.incidenciaId;
+                card.addEventListener('click', (e) => {
+                    if (!e.target.closest('.swal-pdf-btn')) window.verDetalleIncidenciaDesdeSweet(incidenciaId);
+                });
+            });
+        }
+    });
+}
+
+function abrirPDFDesdeSweet(incidenciaId, pdfUrl, pdfEstado) {
+    const incidencia = datosGraficas.incidenciasFiltradas?.find(i => i.id === incidenciaId);
+    if (!incidencia) {
+        Swal.fire({ icon: 'error', title: 'Error', text: 'No se encontró la incidencia', background: 'var(--color-bg-primary)', color: 'white' });
+        return;
+    }
+    const urlActual = incidencia.pdfUrl || pdfUrl;
+    const estadoActual = incidencia.estadoGeneracion || pdfEstado;
+    if (urlActual && urlActual.trim() !== '') {
+        window.open(urlActual, '_blank');
+        Swal.fire({ icon: 'success', title: 'Abriendo PDF', text: 'El PDF se abrirá en el visor del navegador', timer: 1500, showConfirmButton: false, toast: true, position: 'top-end', background: 'var(--color-bg-primary)', color: 'white' });
+    } else if (estadoActual === 'generando') {
+        Swal.fire({ icon: 'info', title: 'Generando PDF', text: 'El PDF se está generando en segundo plano.', confirmButtonText: 'Entendido', background: 'var(--color-bg-primary)', color: 'white' });
+    } else {
+        Swal.fire({ icon: 'info', title: 'PDF no disponible', text: 'Este registro aún no tiene un PDF generado.', confirmButtonText: 'Entendido', background: 'var(--color-bg-primary)', color: 'white' });
+    }
+}
+
+window.verDetalleIncidenciaDesdeSweet = function(incidenciaId) {
+    Swal.close();
+    const incidencia = datosGraficas.incidenciasFiltradas?.find(i => i.id === incidenciaId);
+    if (!incidencia) {
+        Swal.fire({ icon: 'error', title: 'Incidencia no encontrada', text: 'No se pudo encontrar la incidencia seleccionada', background: 'var(--color-bg-primary)', color: 'white', customClass: { popup: 'swal2-popup-custom' } });
+        return;
+    }
+
+    const formatter = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' });
+    const fecha = incidencia.fechaInicio instanceof Date ? incidencia.fechaInicio.toLocaleDateString('es-MX') : (incidencia.fechaInicio ? new Date(incidencia.fechaInicio).toLocaleDateString('es-MX') : 'N/A');
+
+    let estadoColor = '#6c757d', estadoIcon = 'fa-circle';
+    if (incidencia.estado === 'finalizada') { estadoColor = '#10b981'; estadoIcon = 'fa-check-circle'; }
+    else if (incidencia.estado === 'pendiente') { estadoColor = '#f59e0b'; estadoIcon = 'fa-clock'; }
+
+    let riesgoColor = '#6c757d', riesgoIcon = 'fa-chart-line', riesgoTexto = incidencia.nivelRiesgo ? incidencia.nivelRiesgo.charAt(0).toUpperCase() + incidencia.nivelRiesgo.slice(1) : 'N/A';
+    if (incidencia.nivelRiesgo === 'critico') { riesgoColor = '#ef4444'; riesgoIcon = 'fa-exclamation-triangle'; }
+    else if (incidencia.nivelRiesgo === 'alto') { riesgoColor = '#f97316'; riesgoIcon = 'fa-exclamation-circle'; }
+    else if (incidencia.nivelRiesgo === 'medio') { riesgoColor = '#eab308'; riesgoIcon = 'fa-chart-simple'; }
+    else if (incidencia.nivelRiesgo === 'bajo') { riesgoColor = '#10b981'; riesgoIcon = 'fa-check'; }
+
+    const tienePDF = incidencia.pdfUrl && incidencia.pdfUrl.trim() !== '';
+    const pdfEstado = incidencia.estadoGeneracion || 'pendiente';
+    let pdfIcono = tienePDF ? '<i class="fas fa-file-pdf" style="color: #c0392b;"></i>' : (pdfEstado === 'generando' ? '<i class="fas fa-spinner fa-spin"></i>' : '<i class="fas fa-file-pdf" style="color: #6c757d;"></i>');
+    let pdfTexto = tienePDF ? 'Ver PDF' : (pdfEstado === 'generando' ? 'Generando PDF...' : 'PDF no disponible');
+    let pdfColor = tienePDF ? '#c0392b' : (pdfEstado === 'generando' ? '#f59e0b' : '#6c757d');
+
+    let seguimientosHtml = '';
+    if (incidencia.seguimiento && Object.keys(incidencia.seguimiento).length > 0) {
+        const seguimientosList = Object.values(incidencia.seguimiento);
+        seguimientosHtml = `<div style="background: rgba(0,0,0,0.3); border-radius: 16px; padding: 16px;"><div style="font-size: 0.7rem; text-transform: uppercase; color: #9ca3af; margin-bottom: 12px;"><i class="fas fa-history"></i> Seguimientos (${seguimientosList.length})</div><div style="display: flex; flex-direction: column; gap: 8px; max-height: 200px; overflow-y: auto;">${seguimientosList.map(seg => `<div style="display: flex; justify-content: space-between; align-items: center; padding: 8px; background: rgba(0,0,0,0.2); border-radius: 10px;"><div style="display: flex; flex-direction: column;"><span style="color: #3b82f6; font-weight: 600;">${escapeHTML(seg.usuarioNombre || 'Usuario')}</span><span style="font-size: 0.65rem; color: #9ca3af;">${seg.fecha ? new Date(seg.fecha).toLocaleString('es-MX') : 'Fecha no disponible'}</span></div><span style="font-size: 0.7rem; color: #d1d5db;">${escapeHTML(seg.comentario ? (seg.comentario.substring(0, 50) + (seg.comentario.length > 50 ? '...' : '')) : 'Sin comentario')}</span></div>`).join('')}</div></div>`;
+    }
+
+    const detallesHtml = `
+        <div style="display: flex; flex-direction: column; gap: 16px;">
+            <div class="swal-resumen-stats" style="margin-bottom: 0;"><div class="swal-stats-grid"><div class="swal-stat-item" style="border-left-color: #8b5cf6;"><span class="swal-stat-label">ID Incidencia</span><span class="swal-stat-value" style="font-size: 0.8rem;">${escapeHTML(incidencia.id)}</span></div><div class="swal-stat-item" style="border-left-color: #3b82f6;"><span class="swal-stat-label">Fecha</span><span class="swal-stat-value" style="font-size: 0.9rem;">${fecha}</span></div><div class="swal-stat-item" style="border-left-color: ${estadoColor};"><span class="swal-stat-label">Estado</span><span class="swal-stat-value" style="color: ${estadoColor};"><i class="fas ${estadoIcon}"></i> ${incidencia.estado ? incidencia.estado.charAt(0).toUpperCase() + incidencia.estado.slice(1) : 'N/A'}</span></div></div></div>
+            <div style="background: rgba(0,0,0,0.4); border-radius: 16px; padding: 16px; border: 1px solid rgba(255,255,255,0.08);"><div style="display: flex; flex-wrap: wrap; gap: 20px; justify-content: space-between;"><div><div style="font-size: 0.7rem; text-transform: uppercase; color: #9ca3af;">Sucursal</div><div style="font-size: 1rem; font-weight: 600; margin-top: 4px;"><i class="fas fa-store" style="color: var(--color-accent-primary);"></i> ${escapeHTML(obtenerNombreSucursal(incidencia.sucursalId) || 'N/A')}</div></div><div><div style="font-size: 0.7rem; text-transform: uppercase; color: #9ca3af;">Categoría</div><div style="font-size: 1rem; font-weight: 600; margin-top: 4px;"><i class="fas fa-tag"></i> ${escapeHTML(obtenerNombreCategoria(incidencia.categoriaId) || 'N/A')}</div></div><div><div style="font-size: 0.7rem; text-transform: uppercase; color: #9ca3af;">Nivel de riesgo</div><div style="font-size: 1rem; font-weight: 600; margin-top: 4px; color: ${riesgoColor};"><i class="fas ${riesgoIcon}"></i> ${riesgoTexto}</div></div></div></div>
+            <div style="display: flex; flex-wrap: wrap; gap: 16px;"><div style="flex: 1; background: rgba(59, 130, 246, 0.1); border-radius: 16px; padding: 16px; border-left: 3px solid #3b82f6;"><div style="font-size: 0.7rem; text-transform: uppercase; color: #9ca3af;">Creado por</div><div style="font-size: 1rem; font-weight: 600; margin-top: 4px;"><i class="fas fa-user-plus"></i> ${escapeHTML(incidencia.creadoPorNombre || 'N/A')}</div></div><div style="flex: 1; background: rgba(245, 158, 11, 0.1); border-radius: 16px; padding: 16px; border-left: 3px solid #f59e0b;"><div style="font-size: 0.7rem; text-transform: uppercase; color: #9ca3af;">Actualizado por</div><div style="font-size: 1rem; font-weight: 600; margin-top: 4px;"><i class="fas fa-user-edit"></i> ${escapeHTML(incidencia.actualizadoPorNombre || 'N/A')}</div></div></div>
+            ${incidencia.detalles ? `<div style="background: rgba(0,0,0,0.3); border-radius: 16px; padding: 16px;"><div style="font-size: 0.7rem; text-transform: uppercase; color: #9ca3af; margin-bottom: 8px;"><i class="fas fa-file-alt"></i> Detalles</div><div style="font-size: 0.85rem; line-height: 1.5; color: #d1d5db;">${escapeHTML(incidencia.detalles)}</div></div>` : ''}
+            ${seguimientosHtml}
+            <div style="display: flex; justify-content: center; gap: 12px; margin-top: 8px;"><button id="btnPdfDesdeSweetDetalle" style="background: linear-gradient(145deg, #0f0f0f, #1a1a1a); border: 1px solid ${tienePDF ? '#c0392b' : '#6c757d'}; border-radius: 12px; padding: 10px 24px; color: white; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; font-size: 0.8rem;">${pdfIcono}<span style="color: ${pdfColor};">${pdfTexto}</span></button></div>
+        </div>
+    `;
+
+    Swal.fire({
+        title: `<i class="fas fa-info-circle" style="color: var(--color-accent-primary);"></i> Detalles de la incidencia`,
+        html: detallesHtml, width: '750px', background: 'transparent',
+        showConfirmButton: true, confirmButtonText: '<i class="fas fa-check"></i> Cerrar',
+        customClass: { popup: 'swal2-popup-custom', title: 'swal2-title-custom', confirmButton: 'swal2-confirm' },
+        didOpen: () => {
+            const btnPdf = document.getElementById('btnPdfDesdeSweetDetalle');
+            if (btnPdf) btnPdf.addEventListener('click', (e) => { e.stopPropagation(); abrirPDFDesdeSweet(incidencia.id, incidencia.pdfUrl, incidencia.estadoGeneracion); });
+        }
+    });
+};
+
+// =============================================
+// FUNCIONES DE RECUPERACIÓN (Módulo completo)
+// =============================================
+
+function calcularEstadisticasRecuperacion(registros) {
+    if (!registros || registros.length === 0) {
+        return { totalPerdido: 0, totalRecuperado: 0, totalNeto: 0, porcentajeRecuperacion: 0, totalEventos: 0, promedioPerdida: 0 };
+    }
+    let totalPerdido = 0, totalRecuperado = 0;
+    registros.forEach(r => { totalPerdido += r.montoPerdido || 0; totalRecuperado += r.montoRecuperado || 0; });
+    const totalNeto = totalPerdido - totalRecuperado;
+    const porcentajeRecuperacion = totalPerdido > 0 ? (totalRecuperado / totalPerdido) * 100 : 0;
+    const promedioPerdida = registros.length > 0 ? totalPerdido / registros.length : 0;
+    return { totalPerdido, totalRecuperado, totalNeto, porcentajeRecuperacion, totalEventos: registros.length, promedioPerdida };
+}
+
+function mostrarKPIsRecuperacion(estadisticas) {
+    const formatter = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    setElementText('totalPerdidas', formatter.format(estadisticas.totalPerdido));
+    setElementText('totalRecuperado', formatter.format(estadisticas.totalRecuperado));
+    setElementText('totalNeto', formatter.format(estadisticas.totalNeto));
+    setElementText('porcentajeRecuperacion', `${estadisticas.porcentajeRecuperacion.toFixed(2)}%`);
+    setElementText('totalEventosRecuperacion', estadisticas.totalEventos);
+    setElementText('promedioPerdida', formatter.format(estadisticas.promedioPerdida));
+    setTimeout(() => configurarKpiCardsRecuperacionClickeables(), 100);
+}
+
+function configurarKpiCardsRecuperacionClickeables() {
+    const totalPerdidoCard = document.querySelector('#kpisRecuperacionContainer .kpi-card:first-child');
+    if (totalPerdidoCard) {
+        totalPerdidoCard.style.cursor = 'pointer';
+        totalPerdidoCard.addEventListener('click', () => {
+            const registrosConPerdida = datosActualesRecuperacion.registros.filter(r => (r.montoPerdido || 0) > 0);
+            if (registrosConPerdida.length === 0) {
+                Swal.fire({ icon: 'info', title: 'Sin registros', text: 'No hay registros con pérdidas', background: 'var(--color-bg-primary)', color: 'white' });
+                return;
+            }
+            mostrarRegistrosRecuperacionEnSweet(registrosConPerdida, 'Registros con pérdidas', '<i class="fas fa-box-open"></i> Total perdido');
+        });
+    }
+    const totalRecuperadoCard = document.querySelector('#kpisRecuperacionContainer .kpi-card:nth-child(2)');
+    if (totalRecuperadoCard) {
+        totalRecuperadoCard.style.cursor = 'pointer';
+        totalRecuperadoCard.addEventListener('click', () => {
+            const registrosConRecuperacion = datosActualesRecuperacion.registros.filter(r => (r.montoRecuperado || 0) > 0);
+            if (registrosConRecuperacion.length === 0) {
+                Swal.fire({ icon: 'info', title: 'Sin registros', text: 'No hay registros con recuperaciones', background: 'var(--color-bg-primary)', color: 'white' });
+                return;
+            }
+            mostrarRegistrosRecuperacionEnSweet(registrosConRecuperacion, 'Registros con recuperaciones', '<i class="fas fa-undo-alt"></i> Total recuperado');
+        });
+    }
+    const totalNetoCard = document.querySelector('#kpisRecuperacionContainer .kpi-card:nth-child(3)');
+    if (totalNetoCard) {
+        totalNetoCard.style.cursor = 'pointer';
+        totalNetoCard.addEventListener('click', () => {
+            const registrosConPerdidaNeta = datosActualesRecuperacion.registros.filter(r => (r.montoPerdido - (r.montoRecuperado || 0)) > 0);
+            if (registrosConPerdidaNeta.length === 0) {
+                Swal.fire({ icon: 'info', title: 'Sin registros', text: 'No hay registros con pérdida neta', background: 'var(--color-bg-primary)', color: 'white' });
+                return;
+            }
+            mostrarRegistrosRecuperacionEnSweet(registrosConPerdidaNeta, 'Registros con pérdida neta', '<i class="fas fa-chart-line"></i> Pérdida neta');
+        });
+    }
+    const porcentajeCard = document.querySelector('#kpisRecuperacionContainer .kpi-card:nth-child(4)');
+    if (porcentajeCard) {
+        porcentajeCard.style.cursor = 'pointer';
+        porcentajeCard.addEventListener('click', () => {
+            const tasaRecuperacion = datosActualesRecuperacion.estadisticas?.porcentajeRecuperacion || 0;
+            const totalPerdido = datosActualesRecuperacion.estadisticas?.totalPerdido || 0;
+            const totalRecuperado = datosActualesRecuperacion.estadisticas?.totalRecuperado || 0;
+            const formatter = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' });
+            Swal.fire({
+                title: '<i class="fas fa-percent"></i> Detalle de tasa de recuperación',
+                html: `<div style="text-align: left;"><div style="background: rgba(0,0,0,0.4); border-radius: 16px; padding: 16px; margin-bottom: 16px;"><div style="display: flex; justify-content: space-between; margin-bottom: 12px;"><span style="color: #9ca3af;">Total perdido:</span><span style="color: #ef4444; font-weight: 700;">${formatter.format(totalPerdido)}</span></div><div style="display: flex; justify-content: space-between; margin-bottom: 12px;"><span style="color: #9ca3af;">Total recuperado:</span><span style="color: #10b981; font-weight: 700;">${formatter.format(totalRecuperado)}</span></div><div class="progress-bar-container" style="background: rgba(255,255,255,0.1); border-radius: 10px; height: 12px; margin: 16px 0 8px 0;"><div class="progress-bar-fill" style="width: ${tasaRecuperacion}%; background: linear-gradient(90deg, #10b981, #34d399); border-radius: 10px; height: 100%;"></div></div><div style="text-align: center; margin-top: 12px;"><span style="font-size: 1.5rem; font-weight: 700; color: #3b82f6;">${tasaRecuperacion.toFixed(2)}%</span><span style="color: #9ca3af; margin-left: 8px;">de recuperación</span></div></div><div style="background: rgba(0,0,0,0.3); border-radius: 16px; padding: 12px;"><div style="font-size: 0.7rem; color: #9ca3af; text-align: center;"><i class="fas fa-chart-line"></i> Por cada $100 perdidos, se han recuperado $${tasaRecuperacion.toFixed(2)}</div></div></div>`,
+                icon: 'info', confirmButtonText: '<i class="fas fa-check"></i> Entendido', background: 'var(--color-bg-primary)', color: 'white', customClass: { popup: 'swal2-popup-custom' }
+            });
+        });
+    }
+    const totalEventosCard = document.querySelector('#kpisRecuperacionContainer .kpi-card:nth-child(5)');
+    if (totalEventosCard) {
+        totalEventosCard.style.cursor = 'pointer';
+        totalEventosCard.addEventListener('click', () => {
+            const registros = datosActualesRecuperacion.registros;
+            if (registros.length === 0) {
+                Swal.fire({ icon: 'info', title: 'Sin registros', text: 'No hay eventos registrados', background: 'var(--color-bg-primary)', color: 'white' });
+                return;
+            }
+            mostrarRegistrosRecuperacionEnSweet(registros, 'Todos los eventos', '<i class="fas fa-calendar-week"></i> Total eventos');
+        });
+    }
+    const promedioCard = document.querySelector('#kpisRecuperacionContainer .kpi-card:nth-child(6)');
+    if (promedioCard) {
+        promedioCard.style.cursor = 'pointer';
+        promedioCard.addEventListener('click', () => {
+            const promedio = datosActualesRecuperacion.estadisticas?.promedioPerdida || 0;
+            const totalEventos = datosActualesRecuperacion.estadisticas?.totalEventos || 0;
+            const totalPerdido = datosActualesRecuperacion.estadisticas?.totalPerdido || 0;
+            const registrosSobrePromedio = datosActualesRecuperacion.registros.filter(r => (r.montoPerdido || 0) > promedio);
+            const registrosBajoPromedio = datosActualesRecuperacion.registros.filter(r => (r.montoPerdido || 0) <= promedio && (r.montoPerdido || 0) > 0);
+            const formatter = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' });
+            Swal.fire({
+                title: '<i class="fas fa-chart-line"></i> Detalle del promedio por evento',
+                html: `<div style="text-align: left;"><div style="background: rgba(0,0,0,0.4); border-radius: 16px; padding: 16px; margin-bottom: 16px;"><div style="display: flex; justify-content: space-between; margin-bottom: 12px;"><span style="color: #9ca3af;">Total eventos:</span><span style="color: #3b82f6; font-weight: 700;">${totalEventos}</span></div><div style="display: flex; justify-content: space-between; margin-bottom: 12px;"><span style="color: #9ca3af;">Total perdido:</span><span style="color: #ef4444; font-weight: 700;">${formatter.format(totalPerdido)}</span></div><div style="display: flex; justify-content: space-between; margin-bottom: 12px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.1);"><span style="color: #9ca3af;">Promedio por evento:</span><span style="color: #f59e0b; font-weight: 700; font-size: 1.1rem;">${formatter.format(promedio)}</span></div></div><div style="display: flex; gap: 12px; margin-bottom: 16px;"><div style="flex: 1; background: rgba(239, 68, 68, 0.1); border-radius: 12px; padding: 12px; text-align: center; cursor: pointer;" onclick="window.verRegistrosSobrePromedioRecuperacion()"><div style="font-size: 1.2rem; font-weight: 700; color: #ef4444;">${registrosSobrePromedio.length}</div><div style="font-size: 0.65rem; color: #9ca3af;">Eventos sobre el promedio</div><div style="font-size: 0.7rem; color: #ef4444; margin-top: 4px;"><i class="fas fa-arrow-up"></i> Click para ver</div></div><div style="flex: 1; background: rgba(16, 185, 129, 0.1); border-radius: 12px; padding: 12px; text-align: center; cursor: pointer;" onclick="window.verRegistrosBajoPromedioRecuperacion()"><div style="font-size: 1.2rem; font-weight: 700; color: #10b981;">${registrosBajoPromedio.length}</div><div style="font-size: 0.65rem; color: #9ca3af;">Eventos bajo el promedio</div><div style="font-size: 0.7rem; color: #10b981; margin-top: 4px;"><i class="fas fa-arrow-down"></i> Click para ver</div></div></div><div style="background: rgba(0,0,0,0.3); border-radius: 16px; padding: 12px;"><div style="font-size: 0.7rem; color: #9ca3af; text-align: center;"><i class="fas fa-calculator"></i> El promedio se calcula dividiendo el total perdido entre el número total de eventos</div></div></div>`,
+                confirmButtonText: '<i class="fas fa-check"></i> Cerrar', background: 'var(--color-bg-primary)', color: 'white', customClass: { popup: 'swal2-popup-custom' }
+            });
+        });
+    }
+}
+
+window.verRegistrosSobrePromedioRecuperacion = function() {
+    const promedio = datosActualesRecuperacion.estadisticas?.promedioPerdida || 0;
+    const registrosSobrePromedio = datosActualesRecuperacion.registros.filter(r => (r.montoPerdido || 0) > promedio);
+    if (registrosSobrePromedio.length > 0) {
+        Swal.close();
+        setTimeout(() => mostrarRegistrosRecuperacionEnSweet(registrosSobrePromedio, 'Eventos sobre el promedio', '<i class="fas fa-arrow-up"></i> Sobre el promedio'), 100);
+    }
+};
+
+window.verRegistrosBajoPromedioRecuperacion = function() {
+    const promedio = datosActualesRecuperacion.estadisticas?.promedioPerdida || 0;
+    const registrosBajoPromedio = datosActualesRecuperacion.registros.filter(r => (r.montoPerdido || 0) <= promedio && (r.montoPerdido || 0) > 0);
+    if (registrosBajoPromedio.length > 0) {
+        Swal.close();
+        setTimeout(() => mostrarRegistrosRecuperacionEnSweet(registrosBajoPromedio, 'Eventos bajo el promedio', '<i class="fas fa-arrow-down"></i> Bajo el promedio'), 100);
+    }
+};
+
+function actualizarGraficasRecuperacion(registros, estadisticas) {
+    if (!registros || registros.length === 0) {
+        actualizarGraficaVaciaRecuperacion();
+        return;
+    }
+    actualizarGraficoTipoEvento(registros);
+    actualizarGraficoEvolucionMensual(registros);
+    actualizarGraficoTopSucursales(registros);
+    actualizarGraficoComparativaRecuperacion(estadisticas);
+}
+
+function actualizarGraficoTipoEvento(registros) {
+    const tipos = { 'robo': 0, 'extravio': 0, 'accidente': 0, 'otro': 0 };
+    window.registrosPorTipo = { 'robo': [], 'extravio': [], 'accidente': [], 'otro': [] };
+    const nombresTipos = { 'robo': 'Robo', 'extravio': 'Extravío', 'accidente': 'Accidente', 'otro': 'Otro' };
+    const colores = { 'robo': COLORS_REC.rojo, 'extravio': COLORS_REC.naranja, 'accidente': COLORS_REC.azul, 'otro': COLORS_REC.morado };
+
+    registros.forEach(r => {
+        const tipo = r.tipoEvento || 'otro';
+        tipos[tipo] = (tipos[tipo] || 0) + (r.montoPerdido || 0);
+        window.registrosPorTipo[tipo].push(r);
+    });
+
+    const ctx = document.getElementById('graficoTipoEvento').getContext('2d');
+    const labels = Object.keys(tipos).map(k => nombresTipos[k] || k);
+    const data = Object.values(tipos);
+    const backgroundColors = Object.keys(tipos).map(k => colores[k] || COLORS_REC.gris);
+
+    if (graficoTipoEvento) {
+        graficoTipoEvento.data.labels = labels;
+        graficoTipoEvento.data.datasets[0].data = data;
+        graficoTipoEvento.data.datasets[0].backgroundColor = backgroundColors;
+        graficoTipoEvento.update();
+    } else {
+        graficoTipoEvento = new Chart(ctx, {
+            type: 'doughnut',
+            data: { labels: labels, datasets: [{ data: data, backgroundColor: backgroundColors, borderWidth: 0, hoverOffset: 15, cutout: '65%' }] },
+            options: {
+                responsive: true, maintainAspectRatio: true,
+                onClick: (event, activeElements) => {
+                    if (activeElements.length > 0) {
+                        const index = activeElements[0].index;
+                        const tipoKey = Object.keys(tipos)[index];
+                        const tipoNombre = nombresTipos[tipoKey];
+                        const registrosTipo = window.registrosPorTipo[tipoKey] || [];
+                        if (registrosTipo.length === 0) {
+                            Swal.fire({ icon: 'info', title: 'Sin registros', text: `No hay registros de tipo ${tipoNombre}`, background: 'var(--color-bg-primary)', color: 'white' });
+                            return;
+                        }
+                        mostrarRegistrosRecuperacionEnSweet(registrosTipo, `Registros de tipo: ${tipoNombre}`, `<i class="fas fa-tag"></i> ${tipoNombre}`);
+                    }
+                },
+                plugins: {
+                    legend: { labels: { color: 'white', font: { size: 11 } }, position: 'bottom' },
+                    tooltip: { callbacks: { label: (ctx) => { const total = ctx.dataset.data.reduce((a, b) => a + b, 0); const pct = total > 0 ? ((ctx.raw / total) * 100).toFixed(1) : 0; const formatter = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }); return `${ctx.label}: ${formatter.format(ctx.raw)} (${pct}%)`; } }, backgroundColor: 'rgba(0,0,0,0.8)', titleColor: '#fff', bodyColor: '#ddd' }
+                }
+            }
+        });
+    }
+}
+
+function actualizarGraficoEvolucionMensual(registros) {
+    const meses = {};
+    const mesesNombres = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+    window.registrosPorMes = {};
+
+    registros.forEach(r => {
+        if (r.fecha) {
+            const fecha = new Date(r.fecha);
+            const mesKey = `${fecha.getFullYear()}-${fecha.getMonth() + 1}`;
+            const mesNombre = `${mesesNombres[fecha.getMonth()]} ${fecha.getFullYear()}`;
+            if (!meses[mesKey]) {
+                meses[mesKey] = { nombre: mesNombre, perdido: 0, recuperado: 0 };
+                window.registrosPorMes[mesKey] = [];
+            }
+            meses[mesKey].perdido += r.montoPerdido || 0;
+            meses[mesKey].recuperado += r.montoRecuperado || 0;
+            window.registrosPorMes[mesKey].push(r);
+        }
+    });
+
+    const mesesOrdenados = Object.keys(meses).sort();
+    const labels = mesesOrdenados.map(m => meses[m].nombre);
+    const perdidosData = mesesOrdenados.map(m => meses[m].perdido);
+    const recuperadosData = mesesOrdenados.map(m => meses[m].recuperado);
+    const ctx = document.getElementById('graficoEvolucionMensual').getContext('2d');
+
+    if (graficoEvolucionMensual) {
+        graficoEvolucionMensual.data.labels = labels;
+        graficoEvolucionMensual.data.datasets[0].data = perdidosData;
+        graficoEvolucionMensual.data.datasets[1].data = recuperadosData;
+        graficoEvolucionMensual.update();
+    } else {
+        graficoEvolucionMensual = new Chart(ctx, {
+            type: 'line',
+            data: { labels: labels, datasets: [{ label: 'Pérdidas', data: perdidosData, borderColor: COLORS_REC.rojo, backgroundColor: COLORS_REC.rojoClaro, tension: 0.4, fill: true, pointBackgroundColor: COLORS_REC.rojo, pointBorderColor: '#fff', pointRadius: 5, pointHoverRadius: 8, borderWidth: 2 }, { label: 'Recuperaciones', data: recuperadosData, borderColor: COLORS_REC.verde, backgroundColor: COLORS_REC.verdeClaro, tension: 0.4, fill: true, pointBackgroundColor: COLORS_REC.verde, pointBorderColor: '#fff', pointRadius: 5, pointHoverRadius: 8, borderWidth: 2 }] },
+            options: {
+                responsive: true, maintainAspectRatio: true,
+                onClick: (event, activeElements) => {
+                    if (activeElements.length > 0) {
+                        const index = activeElements[0].index;
+                        const mesKey = mesesOrdenados[index];
+                        const registrosMes = window.registrosPorMes[mesKey] || [];
+                        const mesNombre = meses[mesKey]?.nombre || 'Mes desconocido';
+                        if (registrosMes.length === 0) {
+                            Swal.fire({ icon: 'info', title: 'Sin registros', text: `No hay registros para ${mesNombre}`, background: 'var(--color-bg-primary)', color: 'white' });
+                            return;
+                        }
+                        mostrarRegistrosRecuperacionEnSweet(registrosMes, `Registros de ${mesNombre}`, `<i class="fas fa-calendar-alt"></i> ${mesNombre}`);
+                    }
+                },
+                plugins: { legend: { labels: { color: 'white', font: { size: 11 } } }, tooltip: { callbacks: { label: (ctx) => { const formatter = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }); return `${ctx.dataset.label}: ${formatter.format(ctx.raw)}`; } } } },
+                scales: { y: { ticks: { callback: (value) => { const formatter = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', notation: 'compact' }); return formatter.format(value); }, color: '#aaa' }, grid: { color: 'rgba(255,255,255,0.05)' } }, x: { ticks: { color: '#aaa', maxRotation: 45, minRotation: 45, autoSkip: true }, grid: { display: false } } }
+            }
+        });
+    }
+}
+
+function actualizarGraficoTopSucursales(registros) {
+    const sucursalesMap = {};
+    window.registrosPorSucursal = {};
+    registros.forEach(r => {
+        const sucursal = r.nombreEmpresaCC || 'Sin asignar';
+        if (!sucursalesMap[sucursal]) {
+            sucursalesMap[sucursal] = { perdido: 0, recuperado: 0, eventos: 0 };
+            window.registrosPorSucursal[sucursal] = [];
+        }
+        sucursalesMap[sucursal].perdido += r.montoPerdido || 0;
+        sucursalesMap[sucursal].recuperado += r.montoRecuperado || 0;
+        sucursalesMap[sucursal].eventos += 1;
+        window.registrosPorSucursal[sucursal].push(r);
+    });
+
+    const sucursalesArray = Object.entries(sucursalesMap).map(([nombre, datos]) => ({ nombre, ...datos })).sort((a, b) => b.perdido - a.perdido).slice(0, 8);
+    const labels = sucursalesArray.map(s => s.nombre.length > 25 ? s.nombre.substring(0, 22) + '...' : s.nombre);
+    const perdidosData = sucursalesArray.map(s => s.perdido);
+    const nombresCompletos = sucursalesArray.map(s => s.nombre);
+    const ctx = document.getElementById('graficoTopSucursales').getContext('2d');
+
+    if (graficoTopSucursales) {
+        graficoTopSucursales.data.labels = labels;
+        graficoTopSucursales.data.datasets[0].data = perdidosData;
+        graficoTopSucursales.update();
+    } else {
+        graficoTopSucursales = new Chart(ctx, {
+            type: 'bar',
+            data: { labels: labels, datasets: [{ label: 'Monto perdido', data: perdidosData, backgroundColor: '#FF6600', borderColor: '#FF6600', borderRadius: 8, barPercentage: 0.7, categoryPercentage: 0.8 }] },
+            options: {
+                indexAxis: 'y', responsive: true, maintainAspectRatio: true,
+                onClick: (event, activeElements) => {
+                    if (activeElements.length > 0) {
+                        const index = activeElements[0].index;
+                        const sucursalNombre = nombresCompletos[index];
+                        const registrosSucursal = window.registrosPorSucursal[sucursalNombre] || [];
+                        if (registrosSucursal.length === 0) {
+                            Swal.fire({ icon: 'info', title: 'Sin registros', text: `No hay registros para ${sucursalNombre}`, background: 'var(--color-bg-primary)', color: 'white' });
+                            return;
+                        }
+                        mostrarRegistrosRecuperacionEnSweet(registrosSucursal, `Registros de ${sucursalNombre}`, `<i class="fas fa-building"></i> ${sucursalNombre}`);
+                    }
+                },
+                plugins: { legend: { labels: { color: 'white', font: { size: 10 } } }, tooltip: { callbacks: { label: (ctx) => { const formatter = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }); return `${ctx.dataset.label}: ${formatter.format(ctx.raw)}`; } } } },
+                scales: { x: { ticks: { callback: (value) => { const formatter = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', notation: 'compact' }); return formatter.format(value); }, color: '#aaa' }, grid: { color: 'rgba(255,255,255,0.05)' } }, y: { ticks: { color: '#aaa', font: { size: 10 } }, grid: { display: false } } }
+            }
+        });
+    }
+}
+
+function actualizarGraficoComparativaRecuperacion(estadisticas) {
+    const ctx = document.getElementById('graficoComparativa').getContext('2d');
+    if (graficoComparativa) {
+        graficoComparativa.data.datasets[0].data = [estadisticas.totalPerdido, estadisticas.totalRecuperado];
+        graficoComparativa.update();
+    } else {
+        graficoComparativa = new Chart(ctx, {
+            type: 'bar',
+            data: { labels: ['Pérdidas', 'Recuperaciones'], datasets: [{ label: 'Monto total', data: [estadisticas.totalPerdido, estadisticas.totalRecuperado], backgroundColor: [COLORS_REC.rojo, COLORS_REC.verde], borderRadius: 12, barPercentage: 0.6 }] },
+            options: {
+                responsive: true, maintainAspectRatio: true,
+                onClick: (event, activeElements) => {
+                    if (activeElements.length > 0) {
+                        const index = activeElements[0].index;
+                        const tipo = index === 0 ? 'Pérdidas' : 'Recuperaciones';
+                        const registros = datosActualesRecuperacion.registros || [];
+                        if (registros.length === 0) {
+                            Swal.fire({ icon: 'info', title: 'Sin registros', text: `No hay registros para mostrar`, background: 'var(--color-bg-primary)', color: 'white' });
+                            return;
+                        }
+                        if (tipo === 'Pérdidas') {
+                            mostrarRegistrosRecuperacionEnSweet(registros, 'Todos los registros de pérdidas', `<i class="fas fa-chart-line"></i> Todos los registros`);
+                        } else {
+                            const registrosConRecuperacion = registros.filter(r => (r.montoRecuperado || 0) > 0);
+                            if (registrosConRecuperacion.length === 0) {
+                                Swal.fire({ icon: 'info', title: 'Sin recuperaciones', text: 'No hay registros con recuperaciones registradas', background: 'var(--color-bg-primary)', color: 'white' });
+                                return;
+                            }
+                            mostrarRegistrosRecuperacionEnSweet(registrosConRecuperacion, 'Registros con recuperaciones', `<i class="fas fa-undo-alt"></i> Recuperaciones registradas`);
+                        }
+                    }
+                },
+                plugins: { legend: { labels: { color: 'white', font: { size: 11 } } }, tooltip: { callbacks: { label: (ctx) => { const formatter = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }); return `${ctx.dataset.label}: ${formatter.format(ctx.raw)}`; } } } },
+                scales: { y: { ticks: { callback: (value) => { const formatter = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', notation: 'compact' }); return formatter.format(value); }, color: '#aaa' }, grid: { color: 'rgba(255,255,255,0.05)' } }, x: { ticks: { color: '#aaa', font: { size: 12, weight: 'bold' } }, grid: { display: false } } }
+            }
+        });
+    }
+}
+
+function actualizarTablaResumenRecuperacion(registros) {
+    const tbody = document.getElementById('tablaResumenBody');
+    if (!tbody) return;
+    const sucursalesMap = {};
+    registros.forEach(r => {
+        const sucursal = r.nombreEmpresaCC || 'Sin asignar';
+        if (!sucursalesMap[sucursal]) sucursalesMap[sucursal] = { eventos: 0, perdido: 0, recuperado: 0 };
+        sucursalesMap[sucursal].eventos++;
+        sucursalesMap[sucursal].perdido += r.montoPerdido || 0;
+        sucursalesMap[sucursal].recuperado += r.montoRecuperado || 0;
+    });
+    const sucursalesArray = Object.entries(sucursalesMap).map(([nombre, datos]) => ({ nombre, ...datos, neto: datos.perdido - datos.recuperado, porcentaje: datos.perdido > 0 ? (datos.recuperado / datos.perdido) * 100 : 0 })).sort((a, b) => b.perdido - a.perdido);
+    const formatter = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' });
+    if (sucursalesArray.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" class="text-center"><i class="fas fa-inbox"></i> No hay datos para mostrar con los filtros seleccionados</td></tr>`;
+        return;
+    }
+    tbody.innerHTML = sucursalesArray.map(s => `<tr><td title="${escapeHTML(s.nombre)}">${escapeHTML(s.nombre.length > 35 ? s.nombre.substring(0, 32) + '...' : s.nombre)}</td><td>${s.eventos}</td><td style="color: ${COLORS_REC.rojo}; font-weight: 600;">${formatter.format(s.perdido)}</td><td style="color: ${COLORS_REC.verde}; font-weight: 600;">${formatter.format(s.recuperado)}</td><td style="color: ${s.neto > 0 ? COLORS_REC.rojo : COLORS_REC.verde};">${formatter.format(s.neto)}</td><td><span style="background: rgba(59,130,246,0.2); padding: 4px 8px; border-radius: 20px;">${s.porcentaje.toFixed(2)}%</span></td></tr>`).join('');
+}
+
+function actualizarGraficaVaciaRecuperacion() {
+    const canvasIds = ['graficoTipoEvento', 'graficoEvolucionMensual', 'graficoTopSucursales', 'graficoComparativa'];
+    canvasIds.forEach(id => {
+        const canvas = document.getElementById(id);
+        if (canvas) {
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+            ctx.font = '12px "Rajdhani", sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('Sin datos para mostrar', canvas.width / 2, canvas.height / 2);
+        }
+    });
+}
+
+function mostrarRegistrosRecuperacionEnSweet(registros, titulo, icono = '<i class="fas fa-chart-simple"></i>') {
+    if (!registros || registros.length === 0) {
+        Swal.fire({ icon: 'info', title: 'Sin registros', text: 'No hay registros para mostrar', background: 'var(--color-bg-primary)', color: 'white', customClass: { popup: 'swal2-popup-custom' } });
+        return;
+    }
+
+    const formatter = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' });
+    const totalPerdido = registros.reduce((acc, r) => acc + (r.montoPerdido || 0), 0);
+    const totalRecuperado = registros.reduce((acc, r) => acc + (r.montoRecuperado || 0), 0);
+    const tasaRecuperacion = totalPerdido > 0 ? ((totalRecuperado / totalPerdido) * 100).toFixed(2) : 0;
+    const registrosMostrar = registros.slice(0, 15);
+    const hayMas = registros.length > 15;
+
+    let registrosHtml = `
+        <div class="swal-resumen-stats">
+            <div class="swal-stats-grid">
+                <div class="swal-stat-item" style="border-left-color: #8b5cf6;"><span class="swal-stat-label">Total registros</span><span class="swal-stat-value">${registros.length}</span></div>
+                <div class="swal-stat-item" style="border-left-color: #ef4444;"><span class="swal-stat-label">Total perdido</span><span class="swal-stat-value" style="color: #ef4444;">${formatter.format(totalPerdido)}</span></div>
+                <div class="swal-stat-item" style="border-left-color: #10b981;"><span class="swal-stat-label">Total recuperado</span><span class="swal-stat-value" style="color: #10b981;">${formatter.format(totalRecuperado)}</span></div>
+                <div class="swal-stat-item" style="border-left-color: #3b82f6;"><span class="swal-stat-label">Tasa recuperación</span><span class="swal-stat-value" style="color: #3b82f6;">${tasaRecuperacion}%</span></div>
+            </div>
+        </div>
+        <div class="swal-registros-list">
+    `;
+
+    registrosMostrar.forEach(registro => {
+        const fecha = registro.getFechaFormateada ? registro.getFechaFormateada() : (registro.fecha ? new Date(registro.fecha).toLocaleDateString('es-MX') : 'N/A');
+        const tipoTexto = registro.getTipoEventoTexto ? registro.getTipoEventoTexto() : (registro.tipoEvento || 'N/A');
+        const estadoTexto = registro.getEstadoTexto ? registro.getEstadoTexto() : (registro.estado || 'activo');
+        const tienePDF = registro.pdfGenerado === true || (registro.pdfUrl && registro.pdfUrl.trim() !== '');
+        const pdfIcono = tienePDF ? '<i class="fas fa-file-pdf" style="color: #c0392b;"></i>' : '<i class="fas fa-file-pdf" style="color: #6c757d;"></i>';
+        const pdfTitle = tienePDF ? 'Ver PDF' : (registro.estadoGeneracion === 'generando' ? 'Generando PDF...' : 'PDF pendiente');
+
+        let estadoColor = '#6c757d', estadoIcon = 'fa-circle';
+        if (estadoTexto === 'Recuperado') { estadoColor = '#10b981'; estadoIcon = 'fa-check-circle'; }
+        else if (estadoTexto === 'Activo') { estadoColor = '#f59e0b'; estadoIcon = 'fa-exclamation-circle'; }
+        else if (estadoTexto === 'Cerrado') { estadoColor = '#6c757d'; estadoIcon = 'fa-ban'; }
+
+        let tipoIcon = 'fa-tag', tipoDisplay = tipoTexto;
+        if (tipoTexto === 'robo' || tipoTexto === 'Robo') { tipoIcon = 'fa-mask'; tipoDisplay = 'Robo'; }
+        else if (tipoTexto === 'extravio' || tipoTexto === 'Extravío') { tipoIcon = 'fa-map-marker-alt'; tipoDisplay = 'Extravío'; }
+        else if (tipoTexto === 'accidente' || tipoTexto === 'Accidente') { tipoIcon = 'fa-car-crash'; tipoDisplay = 'Accidente'; }
+
+        registrosHtml += `
+            <div class="swal-registro-card" data-registro-id="${registro.id}">
+                <div class="swal-card-header"><span class="swal-id"><i class="fas fa-hashtag"></i> ${escapeHTML(registro.id.substring(0, 12))}...</span><span class="swal-fecha"><i class="fas fa-calendar-alt"></i> ${fecha}</span></div>
+                <div class="swal-card-body"><div class="swal-info-principal"><div class="swal-sucursal"><i class="fas fa-store"></i> ${escapeHTML(registro.nombreEmpresaCC || 'Sin asignar')}</div><div class="swal-tipo-evento"><i class="fas ${tipoIcon}"></i> ${tipoDisplay}<span class="swal-estado-badge" style="margin-left: 8px; color: ${estadoColor};"><i class="fas ${estadoIcon}"></i> ${estadoTexto}</span></div></div><div class="swal-montos"><span class="swal-monto-perdido"><i class="fas fa-arrow-down"></i> ${formatter.format(registro.montoPerdido || 0)}</span><span class="swal-monto-recuperado"><i class="fas fa-arrow-up"></i> ${formatter.format(registro.montoRecuperado || 0)}</span></div></div>
+                ${registro.narracionEventos ? `<div class="swal-card-footer"><div class="swal-narracion"><i class="fas fa-file-alt"></i><span>${escapeHTML(registro.narracionEventos.substring(0, 100))}${registro.narracionEventos.length > 100 ? '...' : ''}</span></div></div>` : ''}
+                <div class="swal-card-actions" style="display: flex; justify-content: flex-end; gap: 8px; padding: 8px 14px 12px 14px; border-top: 1px solid rgba(255,255,255,0.05);">
+                    <button class="swal-pdf-btn-rec" data-registro-id="${registro.id}" data-pdf-url="${registro.pdfUrl || ''}" data-pdf-estado="${registro.estadoGeneracion || 'pendiente'}" style="background: rgba(0,0,0,0.5); border: none; border-radius: 8px; padding: 6px 12px; color: white; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; font-size: 0.7rem;">${pdfIcono}<span>${pdfTitle}</span></button>
+                </div>
+            </div>
+        `;
+    });
+
+    if (hayMas) registrosHtml += `<div class="swal-mas-registros"><i class="fas fa-ellipsis-h"></i> y ${registros.length - 15} registros más.</div>`;
+    registrosHtml += `</div>`;
+
+    Swal.fire({
+        title: `${icono} ${titulo}`, html: registrosHtml, width: '880px', background: 'transparent',
+        showConfirmButton: true, confirmButtonText: '<i class="fas fa-check"></i> Cerrar', confirmButtonColor: '#28a745',
+        customClass: { popup: 'swal2-popup-custom', title: 'swal2-title-custom', confirmButton: 'swal2-confirm' },
+        backdrop: `rgba(0,0,0,0.8) left top no-repeat`,
+        didOpen: () => {
+            document.querySelectorAll('.swal-pdf-btn-rec').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const registroId = btn.dataset.registroId;
+                    const pdfUrl = btn.dataset.pdfUrl;
+                    const pdfEstado = btn.dataset.pdfEstado;
+                    abrirPDFRecuperacionDesdeSweet(registroId, pdfUrl, pdfEstado);
+                });
+            });
+            document.querySelectorAll('.swal-registro-card').forEach(card => {
+                const registroId = card.dataset.registroId;
+                card.addEventListener('click', (e) => {
+                    if (!e.target.closest('.swal-pdf-btn-rec')) window.verDetalleRegistroRecuperacionDesdeSweet(registroId);
+                });
+            });
+        }
+    });
+}
+
+function abrirPDFRecuperacionDesdeSweet(registroId, pdfUrl, pdfEstado) {
+    const registro = datosActualesRecuperacion.registros.find(r => r.id === registroId);
+    if (!registro) {
+        Swal.fire({ icon: 'error', title: 'Error', text: 'No se encontró el registro', background: 'var(--color-bg-primary)', color: 'white' });
+        return;
+    }
+    const urlActual = registro.pdfUrl || pdfUrl;
+    const estadoActual = registro.estadoGeneracion || pdfEstado;
+    if (urlActual && urlActual.trim() !== '') {
+        window.open(urlActual, '_blank');
+        Swal.fire({ icon: 'success', title: 'Abriendo PDF', text: 'El PDF se abrirá en el visor del navegador', timer: 1500, showConfirmButton: false, toast: true, position: 'top-end', background: 'var(--color-bg-primary)', color: 'white' });
+    } else if (estadoActual === 'generando') {
+        Swal.fire({ icon: 'info', title: 'Generando PDF', text: 'El PDF se está generando en segundo plano.', confirmButtonText: 'Entendido', background: 'var(--color-bg-primary)', color: 'white' });
+    } else {
+        Swal.fire({ icon: 'info', title: 'PDF pendiente', text: 'La generación del PDF comenzará en breve.', confirmButtonText: 'Entendido', background: 'var(--color-bg-primary)', color: 'white' });
+    }
+}
+
+window.verDetalleRegistroRecuperacionDesdeSweet = function(registroId) {
+    Swal.close();
+    const registro = datosActualesRecuperacion.registros.find(r => r.id === registroId);
+    if (!registro) {
+        Swal.fire({ icon: 'error', title: 'Registro no encontrado', text: 'No se pudo encontrar el registro seleccionado', background: 'var(--color-bg-primary)', color: 'white' });
+        return;
+    }
+
+    const formatter = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' });
+    const fecha = registro.getFechaFormateada ? registro.getFechaFormateada() : (registro.fecha ? new Date(registro.fecha).toLocaleDateString('es-MX') : 'N/A');
+    const tipoTexto = registro.getTipoEventoTexto ? registro.getTipoEventoTexto() : (registro.tipoEvento || 'N/A');
+    const estadoTexto = registro.getEstadoTexto ? registro.getEstadoTexto() : (registro.estado || 'activo');
+
+    const tienePDF = registro.pdfGenerado === true || (registro.pdfUrl && registro.pdfUrl.trim() !== '');
+    const pdfEstado = registro.estadoGeneracion || 'pendiente';
+    let pdfIcono = tienePDF ? '<i class="fas fa-file-pdf" style="color: #c0392b;"></i>' : (pdfEstado === 'generando' ? '<i class="fas fa-spinner fa-spin"></i>' : '<i class="fas fa-file-pdf" style="color: #6c757d;"></i>');
+    let pdfTexto = tienePDF ? 'Ver PDF' : (pdfEstado === 'generando' ? 'Generando PDF...' : 'PDF pendiente');
+    let pdfColor = tienePDF ? '#c0392b' : (pdfEstado === 'generando' ? '#f59e0b' : '#6c757d');
+
+    let estadoColor = '#6c757d', estadoIcon = 'fa-circle';
+    if (estadoTexto === 'Recuperado') { estadoColor = '#10b981'; estadoIcon = 'fa-check-circle'; }
+    else if (estadoTexto === 'Activo') { estadoColor = '#f59e0b'; estadoIcon = 'fa-exclamation-circle'; }
+
+    let tipoIcon = 'fa-tag';
+    if (tipoTexto === 'robo' || tipoTexto === 'Robo') tipoIcon = 'fa-mask';
+    else if (tipoTexto === 'extravio' || tipoTexto === 'Extravío') tipoIcon = 'fa-map-marker-alt';
+    else if (tipoTexto === 'accidente' || tipoTexto === 'Accidente') tipoIcon = 'fa-car-crash';
+
+    let evidenciasHtml = '';
+    if (registro.evidencias && registro.evidencias.length > 0) {
+        const evidenciasMostrar = registro.evidencias.slice(0, 6);
+        evidenciasHtml = `<div style="background: rgba(0,0,0,0.3); border-radius: 16px; padding: 16px; margin-top: 8px;"><div style="font-size: 0.7rem; text-transform: uppercase; color: #9ca3af; margin-bottom: 12px;"><i class="fas fa-images"></i> Evidencias (${registro.evidencias.length})</div><div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 10px;">${evidenciasMostrar.map(ev => `<div style="cursor: pointer; border-radius: 8px; overflow: hidden; aspect-ratio: 1/1; background: rgba(0,0,0,0.5);" onclick="window.verImagenGrandeSweet('${ev.url}')"><img src="${ev.url}" style="width: 100%; height: 100%; object-fit: cover;" alt="Evidencia">${ev.comentario ? `<div style="font-size: 0.6rem; padding: 4px; text-align: center; background: rgba(0,0,0,0.7);">${escapeHTML(ev.comentario.substring(0, 20))}${ev.comentario.length > 20 ? '...' : ''}</div>` : ''}</div>`).join('')}</div>${registro.evidencias.length > 6 ? `<div style="text-align: center; margin-top: 8px; font-size: 0.65rem; color: #9ca3af;">+ ${registro.evidencias.length - 6} evidencias más</div>` : ''}</div>`;
+    }
+
+    let recuperacionesHtml = '';
+    if (registro.historialRecuperaciones && registro.historialRecuperaciones.length > 0) {
+        recuperacionesHtml = `<div style="background: rgba(0,0,0,0.3); border-radius: 16px; padding: 16px;"><div style="font-size: 0.7rem; text-transform: uppercase; color: #9ca3af; margin-bottom: 12px;"><i class="fas fa-history"></i> Historial de recuperaciones</div><div style="display: flex; flex-direction: column; gap: 8px;">${registro.historialRecuperaciones.map(rec => `<div style="display: flex; justify-content: space-between; align-items: center; padding: 8px; background: rgba(0,0,0,0.2); border-radius: 10px;"><span style="color: #10b981; font-weight: 600;">${formatter.format(rec.monto)}</span><span style="font-size: 0.7rem; color: #9ca3af;">${new Date(rec.fecha).toLocaleDateString('es-MX')}</span>${rec.comentario ? `<span style="font-size: 0.65rem; color: #d1d5db;">${escapeHTML(rec.comentario.substring(0, 30))}${rec.comentario.length > 30 ? '...' : ''}</span>` : ''}</div>`).join('')}</div></div>`;
+    }
+
+    const detallesHtml = `
+        <div style="display: flex; flex-direction: column; gap: 16px;">
+            <div class="swal-resumen-stats" style="margin-bottom: 0;"><div class="swal-stats-grid"><div class="swal-stat-item" style="border-left-color: #8b5cf6;"><span class="swal-stat-label">ID Registro</span><span class="swal-stat-value" style="font-size: 0.8rem;">${escapeHTML(registro.id)}</span></div><div class="swal-stat-item" style="border-left-color: #3b82f6;"><span class="swal-stat-label">Fecha</span><span class="swal-stat-value" style="font-size: 0.9rem;">${fecha}</span></div><div class="swal-stat-item" style="border-left-color: ${estadoColor};"><span class="swal-stat-label">Estado</span><span class="swal-stat-value" style="color: ${estadoColor};"><i class="fas ${estadoIcon}"></i> ${estadoTexto}</span></div></div></div>
+            <div style="background: rgba(0,0,0,0.4); border-radius: 16px; padding: 16px; border: 1px solid rgba(255,255,255,0.08);"><div style="display: flex; flex-wrap: wrap; gap: 20px; justify-content: space-between;"><div><div style="font-size: 0.7rem; text-transform: uppercase; color: #9ca3af;">Sucursal</div><div style="font-size: 1rem; font-weight: 600; margin-top: 4px;"><i class="fas fa-store" style="color: var(--color-accent-primary);"></i> ${escapeHTML(registro.nombreEmpresaCC || 'N/A')}</div></div><div><div style="font-size: 0.7rem; text-transform: uppercase; color: #9ca3af;">Tipo de evento</div><div style="font-size: 1rem; font-weight: 600; margin-top: 4px;"><i class="fas ${tipoIcon}"></i> ${tipoTexto}</div></div>${registro.hora ? `<div><div style="font-size: 0.7rem; text-transform: uppercase; color: #9ca3af;">Hora</div><div style="font-size: 1rem; font-weight: 600; margin-top: 4px;"><i class="fas fa-clock"></i> ${escapeHTML(registro.hora)}</div></div>` : ''}</div></div>
+            <div style="display: flex; flex-wrap: wrap; gap: 16px;"><div style="flex: 1; background: rgba(239, 68, 68, 0.1); border-radius: 16px; padding: 16px; border-left: 3px solid #ef4444;"><div style="font-size: 0.7rem; text-transform: uppercase; color: #9ca3af;">Monto perdido</div><div style="font-size: 1.5rem; font-weight: 700; color: #ef4444;">${formatter.format(registro.montoPerdido || 0)}</div></div><div style="flex: 1; background: rgba(16, 185, 129, 0.1); border-radius: 16px; padding: 16px; border-left: 3px solid #10b981;"><div style="font-size: 0.7rem; text-transform: uppercase; color: #9ca3af;">Monto recuperado</div><div style="font-size: 1.5rem; font-weight: 700; color: #10b981;">${formatter.format(registro.montoRecuperado || 0)}</div></div></div>
+            ${recuperacionesHtml}
+            ${registro.narracionEventos ? `<div style="background: rgba(0,0,0,0.3); border-radius: 16px; padding: 16px;"><div style="font-size: 0.7rem; text-transform: uppercase; color: #9ca3af; margin-bottom: 8px;"><i class="fas fa-file-alt"></i> Narración del evento</div><div style="font-size: 0.85rem; line-height: 1.5; color: #d1d5db;">${escapeHTML(registro.narracionEventos)}</div></div>` : ''}
+            ${registro.detallesPerdida ? `<div style="background: rgba(0,0,0,0.3); border-radius: 16px; padding: 16px;"><div style="font-size: 0.7rem; text-transform: uppercase; color: #9ca3af; margin-bottom: 8px;"><i class="fas fa-info-circle"></i> Detalles de la pérdida</div><div style="font-size: 0.85rem; line-height: 1.5; color: #d1d5db;">${escapeHTML(registro.detallesPerdida)}</div></div>` : ''}
+            ${evidenciasHtml}
+            <div style="display: flex; justify-content: center; gap: 12px; margin-top: 8px;"><button id="btnPdfDesdeSweetDetalleRec" style="background: linear-gradient(145deg, #0f0f0f, #1a1a1a); border: 1px solid ${tienePDF ? '#c0392b' : '#6c757d'}; border-radius: 12px; padding: 10px 24px; color: white; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; font-size: 0.8rem;">${pdfIcono}<span style="color: ${pdfColor};">${pdfTexto}</span></button></div>
+        </div>
+    `;
+
+    Swal.fire({
+        title: `<i class="fas fa-info-circle" style="color: var(--color-accent-primary);"></i> Detalles del registro`,
+        html: detallesHtml, width: '750px', background: 'transparent',
+        showConfirmButton: true, confirmButtonText: '<i class="fas fa-check"></i> Cerrar',
+        customClass: { popup: 'swal2-popup-custom', title: 'swal2-title-custom', confirmButton: 'swal2-confirm' },
+        didOpen: () => {
+            const btnPdf = document.getElementById('btnPdfDesdeSweetDetalleRec');
+            if (btnPdf) btnPdf.addEventListener('click', (e) => { e.stopPropagation(); abrirPDFRecuperacionDesdeSweet(registro.id, registro.pdfUrl, registro.estadoGeneracion); });
+        }
+    });
+};
+
+window.verImagenGrandeSweet = function(url) {
+    Swal.fire({ title: 'Evidencia', imageUrl: url, imageAlt: 'Evidencia ampliada', background: 'rgba(0,0,0,0.95)', backdrop: 'rgba(0,0,0,0.9)', showConfirmButton: true, confirmButtonText: '<i class="fas fa-times"></i> Cerrar', confirmButtonColor: '#dc3545', customClass: { popup: 'swal2-popup-custom' } });
+};
+
+// =============================================
+// CARGAR REGISTROS DE RECUPERACIÓN
+// =============================================
+async function cargarRegistrosRecuperacionConFiltros() {
+    if (!organizacionActual?.camelCase || !mercanciaManager) {
+        console.log('No se pudo inicializar el módulo de recuperación');
+        return;
+    }
+
+    try {
+        const sucursal = document.getElementById('filtroSucursal')?.value || 'todas';
+        const fechaInicio = document.getElementById('filtroFechaInicio')?.value;
+        const fechaFin = document.getElementById('filtroFechaFin')?.value;
+        const tipoEvento = document.getElementById('filtroTipoEvento')?.value || 'todos';
+
+        if (registrosRecuperacionCache.length === 0) {
+            registrosRecuperacionCache = await mercanciaManager.getRegistrosByOrganizacion(organizacionActual.camelCase);
+        }
+
+        let registrosFiltrados = registrosRecuperacionCache;
+
+        if (sucursal !== 'todas') {
+            registrosFiltrados = registrosFiltrados.filter(r => r.nombreEmpresaCC === sucursal);
+        }
+
+        if (fechaInicio) {
+            const fechaInicioObj = new Date(fechaInicio);
+            fechaInicioObj.setHours(0, 0, 0, 0);
+            registrosFiltrados = registrosFiltrados.filter(r => {
+                const fechaRegistro = r.fecha ? new Date(r.fecha) : null;
+                return fechaRegistro && fechaRegistro >= fechaInicioObj;
+            });
+        }
+
+        if (fechaFin) {
+            const fechaFinObj = new Date(fechaFin);
+            fechaFinObj.setHours(23, 59, 59, 999);
+            registrosFiltrados = registrosFiltrados.filter(r => {
+                const fechaRegistro = r.fecha ? new Date(r.fecha) : null;
+                return fechaRegistro && fechaRegistro <= fechaFinObj;
+            });
+        }
+
+        if (tipoEvento !== 'todos') {
+            registrosFiltrados = registrosFiltrados.filter(r => r.tipoEvento === tipoEvento);
+        }
+
+        registrosRecuperacionFiltrados = registrosFiltrados;
+        datosActualesRecuperacion.registros = registrosFiltrados;
+        const estadisticas = calcularEstadisticasRecuperacion(registrosFiltrados);
+        datosActualesRecuperacion.estadisticas = estadisticas;
+
+        mostrarKPIsRecuperacion(estadisticas);
+        actualizarGraficasRecuperacion(registrosFiltrados, estadisticas);
+        actualizarTablaResumenRecuperacion(registrosFiltrados);
+
+    } catch (error) {
+        console.error('Error al cargar registros de recuperación:', error);
+    }
+}
+
+// =============================================
+// GENERAR REPORTE PDF UNIFICADO
 // =============================================
 async function generarReportePDF() {
     try {
-        if (!incidenciasFiltradas || incidenciasFiltradas.length === 0) {
-            Swal.fire({
-                icon: 'warning',
-                title: 'Sin datos',
-                text: 'No hay incidencias para generar el reporte estadístico.'
-            });
+        if ((!incidenciasFiltradas || incidenciasFiltradas.length === 0) && (!registrosRecuperacionFiltrados || registrosRecuperacionFiltrados.length === 0)) {
+            Swal.fire({ icon: 'warning', title: 'Sin datos', text: 'No hay datos para generar el reporte estadístico.', background: 'var(--color-bg-primary)', color: 'white' });
             return;
         }
 
-        Swal.fire({
-            title: 'Preparando datos...',
-            text: 'Generando reporte estadístico',
-            allowOutsideClick: false,
-            didOpen: () => {
-                Swal.showLoading();
-            }
-        });
+        Swal.fire({ title: 'Preparando datos...', text: 'Generando reporte estadístico', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); } });
 
-        const datos = procesarDatosGraficas(incidenciasFiltradas);
-
-        datos.metricas = {
-            total: incidenciasFiltradas.length,
-            pendientes: incidenciasFiltradas.filter(i => i.estado === 'pendiente').length,
-            finalizadas: incidenciasFiltradas.filter(i => i.estado === 'finalizada').length,
-            criticas: incidenciasFiltradas.filter(i => i.nivelRiesgo === 'critico').length,
-            altas: incidenciasFiltradas.filter(i => i.nivelRiesgo === 'alto').length,
-            medias: incidenciasFiltradas.filter(i => i.nivelRiesgo === 'medio').length,
-            bajas: incidenciasFiltradas.filter(i => i.nivelRiesgo === 'bajo').length
+        const datosIncidencias = incidenciasFiltradas?.length > 0 ? procesarDatosGraficas(incidenciasFiltradas) : null;
+        const datosRecuperacion = {
+            estadisticas: datosActualesRecuperacion.estadisticas,
+            registros: datosActualesRecuperacion.registros,
+            sucursalesResumen: []
         };
 
+        const tbody = document.getElementById('tablaResumenBody');
+        if (tbody && datosActualesRecuperacion.registros.length > 0) {
+            const filas = tbody.querySelectorAll('tr');
+            filas.forEach(fila => {
+                const celdas = fila.querySelectorAll('td');
+                if (celdas.length >= 6 && !celdas[0].textContent.includes('No hay datos')) {
+                    datosRecuperacion.sucursalesResumen.push({
+                        nombre: celdas[0].textContent.trim(),
+                        eventos: parseInt(celdas[1].textContent) || 0,
+                        perdido: parseFloat(celdas[2].textContent.replace(/[^0-9.-]/g, '')) || 0,
+                        recuperado: parseFloat(celdas[3].textContent.replace(/[^0-9.-]/g, '')) || 0,
+                        neto: parseFloat(celdas[4].textContent.replace(/[^0-9.-]/g, '')) || 0,
+                        porcentaje: parseFloat(celdas[5].textContent) || 0
+                    });
+                }
+            });
+        }
+
         Swal.close();
+        await registrarGeneracionPDFReporte(incidenciasFiltradas?.length || 0, registrosRecuperacionFiltrados?.length || 0, filtrosActivos);
 
-        await registrarGeneracionPDFReporte(incidenciasFiltradas.length, filtrosActivos);
+        const { generadorPDFEstadisticasUnificado } = await import('/components/pdf-estadisticas-unificado.js');
 
-        const { generadorPDFEstadisticas } = await import('/components/pdf-estadisticas-generator.js');
+        generadorPDFEstadisticasUnificado.configurar({ organizacionActual, sucursalesCache, categoriasCache, usuariosCache: [], authToken });
 
-        generadorPDFEstadisticas.configurar({
-            organizacionActual,
-            sucursalesCache,
-            categoriasCache,
-            usuariosCache: [],
-            authToken
-        });
-
-        await generadorPDFEstadisticas.generarReporte(datos, {
-            mostrarAlerta: true,
-            fechaInicio: filtrosActivos.fechaInicio,
-            fechaFin: filtrosActivos.fechaFin,
-            filtrosAplicados: filtrosActivos
+        await generadorPDFEstadisticasUnificado.generarReporte({ datosIncidencias, datosRecuperacion }, {
+            mostrarAlerta: true, fechaInicio: filtrosActivos.fechaInicio, fechaFin: filtrosActivos.fechaFin, filtrosAplicados: filtrosActivos
         });
 
     } catch (error) {
         console.error('Error generando PDF:', error);
-        Swal.fire({
-            icon: 'error',
-            title: 'Error',
-            text: 'No se pudo generar el reporte PDF: ' + error.message
-        });
+        Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo generar el reporte PDF: ' + error.message, background: 'var(--color-bg-primary)', color: 'white' });
     }
 }
 
 // =============================================
-// UTILIDADES
+// INICIALIZACIÓN UNIFICADA
 // =============================================
-function setElementText(id, text) {
-    const el = document.getElementById(id);
-    if (el) el.textContent = text;
-}
+async function inicializarDashboardUnificado() {
+    try {
+        await obtenerDatosOrganizacion();
+        await inicializarHistorial();
+        await inicializarEstadisticasManager();
+        await obtenerTokenAuth();
 
-function escapeHTML(text) {
-    if (!text) return '';
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
+        configurarFiltros();
 
-function mostrarError(mensaje) {
-    console.error(mensaje);
-    Swal.fire({
-        icon: 'error',
-        title: 'Error',
-        text: mensaje
-    });
-}
+        await Promise.all([cargarSucursales(), cargarCategorias(), cargarSucursalesRecuperacion()]);
 
-function mostrarErrorInicializacion() {
-    const container = document.querySelector('.admin-container');
-    if (container) {
-        container.innerHTML = `
-            <div style="text-align:center; padding:60px 20px;">
-                <i class="fas fa-exclamation-triangle" style="font-size:48px; color:#ef4444; margin-bottom:16px;"></i>
-                <h5 style="color:white;">Error de inicialización</h5>
-                <p style="color:var(--color-text-dim);">No se pudo cargar el módulo de estadísticas.</p>
-                <button class="btn-buscar" onclick="location.reload()" style="margin-top:16px; padding:10px 20px;">
-                    <i class="fas fa-sync-alt"></i> Reintentar
-                </button>
-            </div>
-        `;
+        establecerFechasPorDefecto();
+        await registrarAccesoVistaEstadisticas();
+
+        await cargarIncidencias();
+        await cargarRegistrosRecuperacionConFiltros();
+
+    } catch (error) {
+        console.error('Error al inicializar estadísticas unificadas:', error);
+        mostrarError('Error al cargar la página: ' + error.message);
+        mostrarErrorInicializacion();
     }
-} 
-1
+}
+
+document.addEventListener('DOMContentLoaded', inicializarDashboardUnificado);
+
+
+
+
+
+
+
+
+
