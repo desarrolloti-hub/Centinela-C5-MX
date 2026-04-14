@@ -461,7 +461,7 @@ body {
 }
 
 .card-body {
-    padding: 20px;
+    padding: 20px !important;
     display: flex;
     justify-content: center;
     align-items: center;
@@ -533,11 +533,11 @@ canvas {
 }
 
 .table th {
-    background: linear-gradient(135deg, rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.3));
+    background: var(--color-bg-secondary);
     color: var(--color-text-primary);
     font-family: var(--font-family-primary, 'Orbitron', sans-serif);
     font-weight: 600;
-    font-size: 0.7rem;
+    font-size: 0.6rem;
     text-transform: uppercase;
     letter-spacing: 0.5px;
 }
@@ -1450,4 +1450,299 @@ p, h1, h2, h3, h4, h5, h6, span, div {
     .btn-pdf {
         min-height: 44px;
     }
+}
+/* =============================================
+   TABLAS - VERSIÓN VERTICAL (UNA DEBAJO DE OTRA)
+   ============================================= */
+
+/* Cambiar de grid de 2 columnas a 1 columna (vertical) */
+.tables-grid-2col {
+    display: flex;
+    flex-direction: column;
+    gap: 25px;
+    margin-bottom: 25px;
+}
+
+/* Cada card ocupará todo el ancho disponible - MÁS DINÁMICO */
+.tables-grid-2col .card {
+    width: 100%;
+    margin: 0;
+    /* Eliminar altura fija y dejar que el contenido determine la altura */
+    min-height: auto;
+    height: auto;
+}
+
+/* Hacer que el card body de las tablas sea más compacto */
+.tables-grid-2col .card .card-body {
+    padding: 0;  /* Eliminar padding del card-body */
+    min-height: auto;
+    aspect-ratio: auto;  /* Eliminar aspect-ratio fijo */
+    max-height: none;
+    display: block;
+}
+
+/* Contenedor de la tabla con scroll vertical y horizontal - MÁS COMPACTO */
+.tables-grid-2col .card .table-responsive {
+    overflow-y: auto;
+    overflow-x: auto;
+    max-height: 350px;  /* Reducido de 400px a 350px */
+    min-height: 200px;  /* Altura mínima cuando hay pocos datos */
+    scrollbar-width: thin;
+    position: relative;
+}
+
+/* Cuando la tabla tiene pocas filas, que no sea tan alta */
+.tables-grid-2col .card .table-responsive:has(table tbody tr:only-child) {
+    max-height: none;
+    min-height: auto;
+}
+
+/* ESTILOS PERSONALIZADOS PARA LA BARRA DE SCROLL */
+.tables-grid-2col .card .table-responsive::-webkit-scrollbar {
+    width: 8px;
+    height: 10px;
+}
+
+.tables-grid-2col .card .table-responsive::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 10px;
+}
+
+.tables-grid-2col .card .table-responsive::-webkit-scrollbar-thumb {
+    background: var(--color-accent-primary);
+    border-radius: 10px;
+    transition: all 0.2s ease;
+}
+
+.tables-grid-2col .card .table-responsive::-webkit-scrollbar-thumb:hover {
+    background: var(--color-text-primary);
+    cursor: pointer;
+}
+
+/* Scrollbar para Firefox */
+.tables-grid-2col .card .table-responsive {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-accent-primary) rgba(255, 255, 255, 0.05);
+}
+
+/* Para que el header de la tabla se mantenga fijo al hacer scroll */
+.tables-grid-2col .card .table {
+    position: relative;
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    min-width: 700px;
+    margin-bottom: 0;
+}
+
+/* Hacer las celdas más compactas */
+.tables-grid-2col .card .table th,
+.tables-grid-2col .card .table td {
+    padding: 8px 12px;  /* Reducido de 12px a 8px */
+}
+
+/* Fijar el encabezado de la tabla */
+.tables-grid-2col .card .table thead th {
+    position: sticky;
+    top: 0;
+    background: var(--color-bg-tertiary);
+    backdrop-filter: blur(8px);
+    z-index: 10;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+/* Fijar la primera columna (Colaborador / Categoría) */
+.tables-grid-2col .card .table th:first-child,
+.tables-grid-2col .card .table td:first-child {
+    position: sticky;
+    left: 0;
+    background: inherit;
+    z-index: 5;
+}
+
+/* Para la primera columna del header */
+.tables-grid-2col .card .table thead th:first-child {
+    z-index: 15;
+}
+
+/* Fondo para las celdas fijas al hacer scroll horizontal */
+.tables-grid-2col .card .table td:first-child {
+    background: var(--color-bg-secondary);
+    box-shadow: 2px 0 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Efecto hover manteniendo el fondo de la celda fija */
+.tables-grid-2col .card .table tr:hover td:first-child {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+/* =============================================
+   TABLA DE CATEGORÍAS - VERSIÓN MÁS COMPACTA
+   ============================================= */
+
+/* La segunda card (tabla de categorías) aún más compacta */
+.tables-grid-2col .card:last-child .table-responsive {
+    max-height: 300px;  /* Más pequeño que la tabla de colaboradores */
+    min-height: 150px;
+}
+
+.tables-grid-2col .card:last-child .table {
+    min-width: 350px;
+}
+
+/* Hacer las celdas aún más compactas */
+.tables-grid-2col .card:last-child .table th,
+.tables-grid-2col .card:last-child .table td {
+    padding: 6px 12px;
+}
+
+/* Limitar ancho de la columna de categoría */
+.tables-grid-2col .card:last-child .table td:first-child,
+.tables-grid-2col .card:last-child .table th:first-child {
+    max-width: 280px;
+    white-space: normal;
+    word-break: break-word;
+    min-width: 160px;
+}
+
+/* Columna de cantidad más compacta y centrada */
+.tables-grid-2col .card:last-child .table td:last-child,
+.tables-grid-2col .card:last-child .table th:last-child {
+    width: 300px;
+    text-align: center;
+}
+
+/* Badge centrado */
+.tables-grid-2col .card:last-child .table td:last-child .badge-value {
+    display: inline-block;
+    min-width: 50px;
+    text-align: center;
+}
+
+/* =============================================
+   RESPONSIVE - AJUSTES PARA TABLAS
+   ============================================= */
+
+@media (max-width: 768px) {
+    .tables-grid-2col {
+        gap: 20px;
+    }
+    
+    .tables-grid-2col .card .table-responsive {
+        max-height: 300px;
+        min-height: 180px;
+    }
+    
+    .tables-grid-2col .card .table {
+        min-width: 600px;
+    }
+    
+    .tables-grid-2col .card .table th,
+    .tables-grid-2col .card .table td {
+        padding: 6px 10px;
+    }
+    
+    /* Tabla de categorías en tablet */
+    .tables-grid-2col .card:last-child .table-responsive {
+        max-height: 250px;
+    }
+    
+    .tables-grid-2col .card:last-child .table {
+        min-width: 320px;
+    }
+    
+    .tables-grid-2col .card:last-child .table td:first-child {
+        max-width: 200px;
+        font-size: 0.75rem;
+        min-width: 140px;
+    }
+}
+
+@media (max-width: 550px) {
+    .tables-grid-2col {
+        gap: 15px;
+    }
+    
+    .tables-grid-2col .card .table-responsive {
+        max-height: 280px;
+        min-height: 150px;
+    }
+    
+    .tables-grid-2col .card .table {
+        min-width: 500px;
+        font-size: 0.7rem;
+    }
+    
+    .tables-grid-2col .card .table th,
+    .tables-grid-2col .card .table td {
+        padding: 5px 8px;
+    }
+    
+    /* Tabla de categorías en móvil */
+    .tables-grid-2col .card:last-child .table-responsive {
+        max-height: 220px;
+    }
+    
+    .tables-grid-2col .card:last-child .table {
+        min-width: 280px;
+    }
+    
+    .tables-grid-2col .card:last-child .table td:first-child {
+        max-width: 160px;
+        font-size: 0.7rem;
+        min-width: 110px;
+    }
+    
+    .tables-grid-2col .card:last-child .table td:last-child {
+        width: 80px;
+    }
+}
+
+@media (max-width: 380px) {
+    .tables-grid-2col .card .table {
+        min-width: 450px;
+        font-size: 0.65rem;
+    }
+    
+    .tables-grid-2col .card .table th,
+    .tables-grid-2col .card .table td {
+        padding: 4px 6px;
+    }
+    
+    /* Tabla de categorías en móvil pequeño */
+    .tables-grid-2col .card:last-child .table {
+        min-width: 260px;
+    }
+    
+    .tables-grid-2col .card:last-child .table td:first-child {
+        max-width: 140px;
+        font-size: 0.65rem;
+        min-width: 90px;
+    }
+    
+    .tables-grid-2col .card:last-child .table td:last-child {
+        width: 70px;
+    }
+}
+
+/* =============================================
+   OPTIMIZACIÓN PARA CUANDO HAY POCAS FILAS
+   ============================================= */
+
+/* Si la tabla de colaboradores tiene menos de 5 filas, reducir altura máxima */
+.tables-grid-2col .card .table-responsive:has(table tbody tr:only-child),
+.tables-grid-2col .card .table-responsive:has(table tbody tr:nth-child(2):last-child),
+.tables-grid-2col .card .table-responsive:has(table tbody tr:nth-child(3):last-child),
+.tables-grid-2col .card .table-responsive:has(table tbody tr:nth-child(4):last-child),
+.tables-grid-2col .card .table-responsive:has(table tbody tr:nth-child(5):last-child) {
+    max-height: none;
+    min-height: auto;
+}
+
+/* Ajuste específico para tabla de categorías con pocas filas */
+.tables-grid-2col .card:last-child .table-responsive:has(table tbody tr:only-child),
+.tables-grid-2col .card:last-child .table-responsive:has(table tbody tr:nth-child(2):last-child),
+.tables-grid-2col .card:last-child .table-responsive:has(table tbody tr:nth-child(3):last-child) {
+    max-height: none;
+    min-height: auto;
 }
