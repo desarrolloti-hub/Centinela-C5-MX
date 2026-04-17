@@ -1,0 +1,151 @@
+/* =============================================
+   mapa-calor-estadistico.css - Estilos específicos
+   (Complementa los estilos inline del HTML)
+   ============================================= */
+
+/* Variables adicionales */
+:root {
+    --color-muy-alto: #ef4444;
+    --color-alto: #f97316;
+    --color-normal: #eab308;
+    --color-bajo: #10b981;
+}
+
+/* Animaciones */
+@keyframes pulse-red {
+    0%, 100% { filter: drop-shadow(0 0 5px #ef4444); }
+    50% { filter: drop-shadow(0 0 20px #ef4444); }
+}
+
+@keyframes pulse-orange {
+    0%, 100% { filter: drop-shadow(0 0 5px #f97316); }
+    50% { filter: drop-shadow(0 0 15px #f97316); }
+}
+
+@keyframes pulse-yellow {
+    0%, 100% { filter: drop-shadow(0 0 5px #eab308); }
+    50% { filter: drop-shadow(0 0 12px #eab308); }
+}
+
+/* Animaciones para marcadores en el mapa */
+.marcador-muy-alto {
+    animation: pulse-red 1.5s infinite;
+}
+
+.marcador-alto {
+    animation: pulse-orange 2s infinite;
+}
+
+.marcador-normal {
+    animation: pulse-yellow 2.5s infinite;
+}
+
+/* Mejoras para el tooltip del mapa */
+.custom-tooltip {
+    font-family: 'Orbitron', monospace !important;
+    font-size: 10px !important;
+    background: rgba(0, 0, 0, 0.95) !important;
+    color: #ffffff !important;
+    border: 1px solid #00cfff !important;
+    border-radius: 8px !important;
+    padding: 6px 12px !important;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* Popup del mapa */
+.leaflet-popup-content-wrapper {
+    background: rgba(0, 0, 0, 0.95) !important;
+    color: #ffffff !important;
+    border: 1px solid #00cfff !important;
+    border-radius: 12px !important;
+}
+
+.leaflet-popup-tip {
+    background: rgba(0, 0, 0, 0.95) !important;
+}
+
+/* Scrollbar personalizada */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--color-bg-tertiary, rgba(255, 255, 255, 0.05));
+    border-radius: 8px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--color-accent-primary, #00cfff);
+    border-radius: 8px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--color-text-primary, #ffffff);
+}
+
+/* Responsive adicional */
+@media (max-width: 768px) {
+    .stats-grid {
+        gap: 10px;
+    }
+    
+    .stat-card {
+        padding: 8px;
+    }
+    
+    .stat-card .stat-value {
+        font-size: 1rem;
+    }
+    
+    .stat-card .stat-icon {
+        font-size: 1rem;
+    }
+    
+    .stat-card .stat-label {
+        font-size: 0.55rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .color-legend {
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+    
+    .legend-color-item {
+        font-size: 0.6rem;
+    }
+    
+    .legend-color-box {
+        width: 16px;
+        height: 16px;
+    }
+}
+
+/* Estilo para la tabla al hacer hover */
+.data-table tbody tr:hover {
+    background: rgba(0, 207, 255, 0.1);
+    cursor: pointer;
+}
+
+/* Botón analizar hover */
+.btn-analizar:active {
+    transform: translateY(0px);
+}
+
+/* Loading overlay mejorado */
+.loading-overlay {
+    backdrop-filter: blur(8px);
+    background: rgba(0, 0, 0, 0.8);
+    border-radius: 16px;
+}
+
+.loading-spinner i {
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
