@@ -84,7 +84,7 @@ function renderizarTabla(niveles) {
     document.querySelectorAll('.btn-editar').forEach(btn => {
         btn.addEventListener('click', (e) => {
             e.stopPropagation();
-            window.location.href = `/usuarios/administrador/riesgoNivel/CrearRiesgoNivel.html?id=${btn.dataset.id}`;
+            window.location.href = `/usuarios/administrador/CreaRiesgoNivel/CreaRiesgoNivel.html?id=${btn.dataset.id}`;
         });
     });
     document.querySelectorAll('.btn-eliminar').forEach(btn => {
