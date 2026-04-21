@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión de Niveles de Riesgo | Centinela C5</title>
+    <link rel="stylesheet" href="/components/personalization/personalization.css">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="icon" href="/assets/images/logo.png" type="image/png">
+    <link rel="manifest" href="/manifest.json">
+    <link rel="stylesheet" href="riesgoNivel.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <meta name="description" content="Administración de niveles de riesgo para incidencias en Centinela C5">
+</head>
+<body>
+    <canvas id="particle-canvas"></canvas>
+    <div class="admin-container">
+        <div class="page-header">
+            <h1><i class="fas fa-chart-line"></i> Niveles de Riesgo</h1>
+            <div class="header-description">Define los niveles de riesgo que se asignarán a las incidencias. Cada nivel tiene un nombre y un color representativo.</div>
+        </div>
+
+        <!-- Filtros -->
+        <div class="filtros-container">
+            <div class="filtros-header">
+                <h5><i class="fas fa-filter"></i> Filtrar por:</h5>
+            </div>
+            <div class="filtros-body">
+                <div class="filtro-grupo">
+                    <label for="filtroNombre">Nombre</label>
+                    <input type="text" id="filtroNombre" class="filtro-input" placeholder="Buscar nivel...">
+                </div>
+                <div class="filtro-grupo filtro-acciones">
+                    <button class="btn-filtrar" id="btnFiltrar"><i class="fas fa-search"></i> Filtrar</button>
+                    <button class="btn-limpiar" id="btnLimpiarFiltros"><i class="fas fa-times"></i> Limpiar</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tabla -->
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-list"></i> Lista de Niveles de Riesgo</h5>
+                <button class="btn-nuevo" id="btnNuevoNivel"><i class="fas fa-plus"></i> Nuevo Nivel</button>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table" id="tablaNiveles">
+                        <thead>
+                            <tr><th>ID</th><th>Nombre</th><th>Color</th><th>Fecha Creación</th><th style="width:120px;">Acciones</th></tr>
+                        </thead>
+                        <tbody id="tablaNivelesBody"><tr><td colspan="5" style="text-align:center;">Cargando...</td></tr></tbody>
+                    </table>
+                </div>
+                <div class="pagination-container"><div class="pagination-info" id="paginationInfo"></div><ul class="pagination" id="pagination"></ul></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL PARA CREAR/EDITAR -->
+    <div id="modalNivel" class="modal">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 id="modalTitle"><i class="fas fa-chart-line"></i> Nuevo Nivel de Riesgo</h5>
+                    <button type="button" class="btn-close" id="closeModalBtn">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <form id="formNivel">
+                        <input type="hidden" id="nivelId">
+                        <div class="form-group">
+                            <label for="nombreNivel">Nombre del nivel *</label>
+                            <input type="text" id="nombreNivel" class="form-control" placeholder="Ej: Crítico, Alto, Medio, Bajo" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="colorNivel">Color *</label>
+                            <div class="color-preview-wrapper">
+                                <input type="color" id="colorNivel" class="form-control-color" value="#dc3545">
+                                <div class="color-preview" id="colorPreview" style="background-color: #dc3545;"></div>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn-cancelar" id="cancelarModalBtn">Cancelar</button>
+                            <button type="submit" class="btn-guardar"><i class="fas fa-save"></i> Guardar</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="/components/autenticador.js"></script>
+    <script type="module" src="/components/cargadorTemas.js"></script>
+    <script type="module" src="/components/particulas.js"></script>
+    <script type="module" src="/components/navbarAdministrador.js"></script>
+    <script src="/components/footerAdministrador.js"></script>
+    <script type="module" src="riesgoNivel.js"></script>
+    <script src="/components/protector-admin.js"></script>
+</body>
+</html>
