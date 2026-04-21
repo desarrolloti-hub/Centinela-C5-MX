@@ -2,6 +2,7 @@
 // ✅ Tiempo Real: fecha automática de la PC, campo deshabilitado
 // ✅ Histórico: campo habilitado para selección manual
 // ✅ Sin errores de recursión ni bucles
+// commit de prueba Dan
 
 const LIMITES = {
     DETALLES_INCIDENCIA: 1000
@@ -116,9 +117,9 @@ class CrearIncidenciaController {
     _manejarFechaPorTipoEvento() {
         const tipoEvento = document.getElementById('tipoEvento')?.value;
         const fechaInput = document.getElementById('fechaHoraIncidencia');
-        
+
         if (!fechaInput) return;
-        
+
         // Obtener fecha actual formateada
         const ahora = new Date();
         const year = ahora.getFullYear();
@@ -127,7 +128,7 @@ class CrearIncidenciaController {
         const hours = String(ahora.getHours()).padStart(2, '0');
         const minutes = String(ahora.getMinutes()).padStart(2, '0');
         const fechaFormateada = `${year}-${month}-${day}T${hours}:${minutes}`;
-        
+
         if (tipoEvento === 'tiempo_real') {
             // TIEMPO REAL: Asignar fecha actual y DESHABILITAR
             fechaInput.value = fechaFormateada;
@@ -135,20 +136,20 @@ class CrearIncidenciaController {
             fechaInput.style.backgroundColor = '#2a2a2a';
             fechaInput.style.cursor = 'not-allowed';
             fechaInput.style.opacity = '0.7';
-            
+
             if (this.flatpickrInstance) {
                 this.flatpickrInstance.setDate(ahora, true);
                 this.flatpickrInstance.input.disabled = true;
             }
             console.log('Tiempo Real - Fecha asignada:', fechaFormateada);
-            
+
         } else if (tipoEvento === 'historico') {
             // HISTÓRICO: HABILITAR campo
             fechaInput.disabled = false;
             fechaInput.style.backgroundColor = '';
             fechaInput.style.cursor = 'pointer';
             fechaInput.style.opacity = '1';
-            
+
             if (this.flatpickrInstance) {
                 this.flatpickrInstance.input.disabled = false;
             }
@@ -159,46 +160,46 @@ class CrearIncidenciaController {
     _configurarDragAndDropYPaste() {
         const dropZone = document.getElementById('dropZone');
         const inputImagenes = document.getElementById('inputImagenes');
-        
+
         if (!dropZone) {
             this._crearDropZone();
             return;
         }
-        
+
         ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
             dropZone.addEventListener(eventName, (e) => {
                 e.preventDefault();
                 e.stopPropagation();
             });
         });
-        
+
         ['dragenter', 'dragover'].forEach(eventName => {
             dropZone.addEventListener(eventName, () => {
                 dropZone.classList.add('drag-over');
             });
         });
-        
+
         ['dragleave', 'drop'].forEach(eventName => {
             dropZone.addEventListener(eventName, () => {
                 dropZone.classList.remove('drag-over');
             });
         });
-        
+
         dropZone.addEventListener('drop', (e) => {
             const files = Array.from(e.dataTransfer.files);
             const imageFiles = files.filter(file => file.type.startsWith('image/'));
-            
+
             if (imageFiles.length > 0) {
                 this._procesarImagenes(imageFiles);
             }
         });
-        
+
         dropZone.addEventListener('click', () => {
             if (inputImagenes) {
                 inputImagenes.click();
             }
         });
-        
+
         document.addEventListener('paste', (e) => {
             this._manejarPegarImagen(e);
         });
@@ -207,7 +208,7 @@ class CrearIncidenciaController {
     _crearDropZone() {
         const imagenesContainer = document.querySelector('.imagenes-section');
         if (!imagenesContainer) return;
-        
+
         const dropZoneHTML = `
             <div id="dropZone" class="drop-zone">
                 <i class="fas fa-cloud-upload-alt"></i>
@@ -218,27 +219,27 @@ class CrearIncidenciaController {
                 </p>
             </div>
         `;
-        
+
         const previewContainer = document.getElementById('imagenesPreview');
         if (previewContainer && previewContainer.parentNode) {
             previewContainer.insertAdjacentHTML('beforebegin', dropZoneHTML);
         } else {
             imagenesContainer.insertAdjacentHTML('beforeend', dropZoneHTML);
         }
-        
+
         this._configurarDragAndDropYPaste();
     }
 
     _manejarPegarImagen(event) {
         const items = event.clipboardData?.items;
-        
+
         if (!items) return;
-        
+
         const imageFiles = [];
-        
+
         for (let i = 0; i < items.length; i++) {
             const item = items[i];
-            
+
             if (item.type.startsWith('image/')) {
                 const file = item.getAsFile();
                 if (file) {
@@ -246,13 +247,13 @@ class CrearIncidenciaController {
                     const random = Math.random().toString(36).substring(2, 8);
                     const extension = file.type.split('/')[1] || 'png';
                     const fileName = `pasted_${timestamp}_${random}.${extension}`;
-                    
+
                     const renamedFile = new File([file], fileName, { type: file.type });
                     imageFiles.push(renamedFile);
                 }
             }
         }
-        
+
         if (imageFiles.length > 0) {
             event.preventDefault();
             this._procesarImagenes(imageFiles);
@@ -382,108 +383,108 @@ class CrearIncidenciaController {
     }
 
     _inicializarDateTimePicker() {
-    const fechaInput = document.getElementById('fechaHoraIncidencia');
-    const tipoEventoSelect = document.getElementById('tipoEvento');
-    
-    if (!fechaInput) return;
-    
-    // Función para obtener fecha actual
-    const getFechaActual = () => {
-        const ahora = new Date();
-        const year = ahora.getFullYear();
-        const month = String(ahora.getMonth() + 1).padStart(2, '0');
-        const day = String(ahora.getDate()).padStart(2, '0');
-        const hours = String(ahora.getHours()).padStart(2, '0');
-        const minutes = String(ahora.getMinutes()).padStart(2, '0');
-        return `${year}-${month}-${day}T${hours}:${minutes}`;
-    };
-    
-    // Configurar flatpickr si existe
-    if (typeof flatpickr !== 'undefined') {
-        try {
-            this.flatpickrInstance = flatpickr(fechaInput, {
-                enableTime: true,
-                dateFormat: "Y-m-d H:i",
-                time_24hr: true,
-                locale: "es",
-                defaultDate: new Date(),
-                minuteIncrement: 1,
-                maxDate: new Date(),
-                disableMobile: true
-            });
-        } catch(e) {
-            console.error('Flatpickr error:', e);
+        const fechaInput = document.getElementById('fechaHoraIncidencia');
+        const tipoEventoSelect = document.getElementById('tipoEvento');
+
+        if (!fechaInput) return;
+
+        // Función para obtener fecha actual
+        const getFechaActual = () => {
+            const ahora = new Date();
+            const year = ahora.getFullYear();
+            const month = String(ahora.getMonth() + 1).padStart(2, '0');
+            const day = String(ahora.getDate()).padStart(2, '0');
+            const hours = String(ahora.getHours()).padStart(2, '0');
+            const minutes = String(ahora.getMinutes()).padStart(2, '0');
+            return `${year}-${month}-${day}T${hours}:${minutes}`;
+        };
+
+        // Configurar flatpickr si existe
+        if (typeof flatpickr !== 'undefined') {
+            try {
+                this.flatpickrInstance = flatpickr(fechaInput, {
+                    enableTime: true,
+                    dateFormat: "Y-m-d H:i",
+                    time_24hr: true,
+                    locale: "es",
+                    defaultDate: new Date(),
+                    minuteIncrement: 1,
+                    maxDate: new Date(),
+                    disableMobile: true
+                });
+            } catch (e) {
+                console.error('Flatpickr error:', e);
+                fechaInput.type = 'datetime-local';
+            }
+        } else {
             fechaInput.type = 'datetime-local';
         }
-    } else {
-        fechaInput.type = 'datetime-local';
-    }
-    
-    // Asignar fecha actual siempre al cargar
-    fechaInput.value = getFechaActual();
-    
-    // Evento change del select
-    if (tipoEventoSelect) {
-        tipoEventoSelect.addEventListener('change', (e) => {
-            const tipo = e.target.value;
-            console.log('Tipo seleccionado:', tipo);
-            
-            if (tipo === 'tiempo_real') {
-                // ASIGNAR FECHA ACTUAL
-                const fechaActual = getFechaActual();
-                fechaInput.value = fechaActual;
-                if (this.flatpickrInstance) {
-                    this.flatpickrInstance.setDate(new Date(), true);
-                    this.flatpickrInstance.input.disabled = true;
-                }
-                fechaInput.disabled = true;
-                fechaInput.style.backgroundColor = '#2a2a2a';
-                fechaInput.style.cursor = 'not-allowed';
-                fechaInput.style.opacity = '0.7';
-                
-                // FORZAR AVANCE AL SIGUIENTE PASO
-                setTimeout(() => {
-                    const changeEvent = new Event('change', { bubbles: true });
-                    tipoEventoSelect.dispatchEvent(changeEvent);
-                }, 50);
-                
-            } else if (tipo === 'historico') {
-                if (this.flatpickrInstance) {
-                    this.flatpickrInstance.input.disabled = false;
-                }
-                fechaInput.disabled = false;
-                fechaInput.style.backgroundColor = '';
-                fechaInput.style.cursor = 'pointer';
-                fechaInput.style.opacity = '1';
-            }
-        });
-    }
-    
-    // Forzar ejecución inicial según el valor actual del select
-    const tipoInicial = tipoEventoSelect?.value;
-    if (tipoInicial === 'tiempo_real') {
+
+        // Asignar fecha actual siempre al cargar
         fechaInput.value = getFechaActual();
-        fechaInput.disabled = true;
-        fechaInput.style.backgroundColor = '#2a2a2a';
-        fechaInput.style.cursor = 'not-allowed';
-        fechaInput.style.opacity = '0.7';
-        if (this.flatpickrInstance) {
-            this.flatpickrInstance.setDate(new Date(), true);
-            this.flatpickrInstance.input.disabled = true;
+
+        // Evento change del select
+        if (tipoEventoSelect) {
+            tipoEventoSelect.addEventListener('change', (e) => {
+                const tipo = e.target.value;
+                console.log('Tipo seleccionado:', tipo);
+
+                if (tipo === 'tiempo_real') {
+                    // ASIGNAR FECHA ACTUAL
+                    const fechaActual = getFechaActual();
+                    fechaInput.value = fechaActual;
+                    if (this.flatpickrInstance) {
+                        this.flatpickrInstance.setDate(new Date(), true);
+                        this.flatpickrInstance.input.disabled = true;
+                    }
+                    fechaInput.disabled = true;
+                    fechaInput.style.backgroundColor = '#2a2a2a';
+                    fechaInput.style.cursor = 'not-allowed';
+                    fechaInput.style.opacity = '0.7';
+
+                    // FORZAR AVANCE AL SIGUIENTE PASO
+                    setTimeout(() => {
+                        const changeEvent = new Event('change', { bubbles: true });
+                        tipoEventoSelect.dispatchEvent(changeEvent);
+                    }, 50);
+
+                } else if (tipo === 'historico') {
+                    if (this.flatpickrInstance) {
+                        this.flatpickrInstance.input.disabled = false;
+                    }
+                    fechaInput.disabled = false;
+                    fechaInput.style.backgroundColor = '';
+                    fechaInput.style.cursor = 'pointer';
+                    fechaInput.style.opacity = '1';
+                }
+            });
+        }
+
+        // Forzar ejecución inicial según el valor actual del select
+        const tipoInicial = tipoEventoSelect?.value;
+        if (tipoInicial === 'tiempo_real') {
+            fechaInput.value = getFechaActual();
+            fechaInput.disabled = true;
+            fechaInput.style.backgroundColor = '#2a2a2a';
+            fechaInput.style.cursor = 'not-allowed';
+            fechaInput.style.opacity = '0.7';
+            if (this.flatpickrInstance) {
+                this.flatpickrInstance.setDate(new Date(), true);
+                this.flatpickrInstance.input.disabled = true;
+            }
         }
     }
-}
-    
+
     _inicializarDateTimePickerNativo() {
         const fechaInput = document.getElementById('fechaHoraIncidencia');
         const tipoEventoSelect = document.getElementById('tipoEvento');
-        
+
         if (fechaInput) {
             fechaInput.type = 'datetime-local';
-            
+
             // Aplicar configuración inicial
             this._manejarFechaPorTipoEvento();
-            
+
             // Evento change del select
             if (tipoEventoSelect) {
                 tipoEventoSelect.addEventListener('change', () => {
@@ -554,11 +555,11 @@ class CrearIncidenciaController {
         try {
             const { SucursalManager } = await import('/clases/sucursal.js');
             const sucursalManager = new SucursalManager();
-            
+
             this.sucursalesParaNotificar = await sucursalManager.getSucursalesByOrganizacion(
                 this.usuarioActual.organizacionCamelCase
             );
-        
+
         } catch (error) {
             console.error('Error cargando sucursales:', error);
             this.sucursalesParaNotificar = [];
@@ -1228,8 +1229,8 @@ class CrearIncidenciaController {
 
         const sucursalNombre = sucursalInput.value;
         const categoriaNombre = categoriaInput.value;
-        
-        const subcategoriaNombre = subcategoriaId ? 
+
+        const subcategoriaNombre = subcategoriaId ?
             subcategoriaSelect.options[subcategoriaSelect.selectedIndex]?.text : '';
 
         const datos = {
@@ -1294,7 +1295,7 @@ class CrearIncidenciaController {
             });
 
             const fechaObj = new Date(datos.fechaHora);
-            
+
             const incidenciaData = {
                 sucursalId: datos.sucursalId,
                 categoriaId: datos.categoriaId,
@@ -1306,28 +1307,28 @@ class CrearIncidenciaController {
                 reportadoPorId: this.usuarioActual.id,
                 reportadoPorCodigo: this.usuarioActual.codigoColaborador || '',
             };
-            
+
             const nuevaIncidencia = await this.incidenciaManager.crearIncidencia(
                 incidenciaData,
                 this.usuarioActual,
                 [],
                 []
             );
-            
+
             const folioReal = nuevaIncidencia.id;
-            
+
             let imagenesSubidas = [];
-            
+
             if (datos.imagenes && datos.imagenes.length > 0) {
                 Swal.update({
                     title: 'Subiendo imágenes...',
                     text: `Subiendo ${datos.imagenes.length} imagen(es)...`
                 });
-                
+
                 const uploadPromises = datos.imagenes.map(async (img, index) => {
                     const rutaStorage = `incidencias_${this.usuarioActual.organizacionCamelCase}/${nuevaIncidencia.id}/imagenes/${img.generatedName}`;
                     const resultado = await this.incidenciaManager.subirArchivo(img.file, rutaStorage);
-                    
+
                     return {
                         url: resultado.url,
                         path: resultado.path,
@@ -1339,9 +1340,9 @@ class CrearIncidenciaController {
                         tamaño: img.file.size
                     };
                 });
-                
+
                 imagenesSubidas = await Promise.all(uploadPromises);
-                
+
                 await this.incidenciaManager.actualizarImagenes(
                     nuevaIncidencia.id,
                     imagenesSubidas,
@@ -1349,17 +1350,17 @@ class CrearIncidenciaController {
                     this.usuarioActual.id,
                     this.usuarioActual.nombreCompleto
                 );
-                
+
                 nuevaIncidencia.imagenes = imagenesSubidas;
             } else {
                 nuevaIncidencia.imagenes = [];
             }
-            
+
             Swal.update({
                 title: 'Generando PDF...',
                 text: 'Creando el documento de la incidencia...'
             });
-            
+
             const incidenciaParaPDF = {
                 ...nuevaIncidencia,
                 id: folioReal,
@@ -1374,7 +1375,7 @@ class CrearIncidenciaController {
                 reportadoPorCodigo: this.usuarioActual.codigoColaborador || '',
                 getSeguimientosArray: () => []
             };
-            
+
             let pdfBlob = null;
             try {
                 pdfBlob = await this.pdfGenerator.generarIPH(incidenciaParaPDF, {
@@ -1386,24 +1387,24 @@ class CrearIncidenciaController {
                 console.error('Error generando PDF:', pdfError);
                 throw new Error('No se pudo generar el PDF');
             }
-            
+
             if (!pdfBlob || pdfBlob.size === 0) {
                 throw new Error('El PDF generado está vacío');
             }
-            
+
             Swal.update({
                 title: 'Subiendo PDF...',
                 text: 'Guardando el documento PDF...'
             });
-            
+
             let pdfUrl = null;
             if (pdfBlob && pdfBlob.size > 0) {
                 const pdfFile = new File([pdfBlob], `incidencia_${nuevaIncidencia.id}.pdf`, { type: 'application/pdf' });
                 const rutaPDF = `incidencias_${this.usuarioActual.organizacionCamelCase}/${nuevaIncidencia.id}/pdf/incidencia_${nuevaIncidencia.id}.pdf`;
-                
+
                 const resultadoPDF = await this.incidenciaManager.subirArchivo(pdfFile, rutaPDF);
                 pdfUrl = resultadoPDF.url;
-                
+
                 await this.incidenciaManager.actualizarPDF(
                     nuevaIncidencia.id,
                     pdfUrl,
@@ -1411,7 +1412,7 @@ class CrearIncidenciaController {
                     this.usuarioActual.id,
                     this.usuarioActual.nombreCompleto
                 );
-                
+
                 try {
                     const downloadLink = document.createElement('a');
                     const urlBlob = URL.createObjectURL(pdfBlob);
@@ -1425,21 +1426,21 @@ class CrearIncidenciaController {
                     console.warn('Error al descargar automáticamente:', downloadError);
                 }
             }
-            
+
             Swal.close();
-            
+
             if (pdfUrl) {
                 const accionCompartir = await this._mostrarDialogoCompartir(pdfUrl, datos);
-                
+
                 const tituloIncidencia = `INCIDENCIA: ${datos.sucursalNombre} - ${datos.categoriaNombre}`;
                 const mensajeTexto = ` *${tituloIncidencia}*\n\n` +
                     ` *Folio:* ${folioReal}\n` +
                     ` *PDF:* ${pdfUrl}`;
-                
+
                 if (accionCompartir === 'whatsapp') {
                     const urlWhatsapp = `https://wa.me/?text=${encodeURIComponent(mensajeTexto)}`;
                     window.open(urlWhatsapp, '_blank');
-                    
+
                     await Swal.fire({
                         icon: 'success',
                         title: 'WhatsApp abierto',
@@ -1476,7 +1477,7 @@ class CrearIncidenciaController {
                     showConfirmButton: false
                 });
             }
-            
+
             let sucursalCanalizada = null;
             let areasCanalizadas = [];
 
@@ -1493,7 +1494,7 @@ class CrearIncidenciaController {
             if (quiereCanalizarSucursal.isConfirmed) {
                 sucursalCanalizada = await this._canalizarSucursal(nuevaIncidencia.id, datos.detalles.substring(0, 50));
             }
-            
+
             const quiereCanalizarArea = await Swal.fire({
                 icon: 'question',
                 title: '¿Canalizar a área(s)?',
@@ -1507,10 +1508,10 @@ class CrearIncidenciaController {
             if (quiereCanalizarArea.isConfirmed) {
                 areasCanalizadas = await this._canalizarAreas(nuevaIncidencia.id, datos.detalles.substring(0, 50));
             }
-            
+
             const tieneSucursal = sucursalCanalizada !== null;
             const totalAreas = areasCanalizadas.length;
-            
+
             let mensajeCanalizacion = '';
             if (tieneSucursal && totalAreas > 0) {
                 mensajeCanalizacion = `Canalizada a sucursal ${sucursalCanalizada.nombre} y ${totalAreas} área(s).`;
@@ -1521,7 +1522,7 @@ class CrearIncidenciaController {
             } else {
                 mensajeCanalizacion = 'No se canalizó a ninguna sucursal o área.';
             }
-            
+
             await Swal.fire({
                 icon: 'success',
                 title: '¡Incidencia creada!',
@@ -1536,9 +1537,9 @@ class CrearIncidenciaController {
                 confirmButtonText: 'Ver incidencias',
                 confirmButtonColor: '#28a745'
             });
-            
+
             this._volverALista();
-            
+
         } catch (error) {
             console.error('Error guardando incidencia:', error);
             Swal.close();
@@ -1581,7 +1582,7 @@ class CrearIncidenciaController {
                 showCancelButton: false,
                 didOpen: () => {
                     const tituloIncidencia = `INCIDENCIA: ${datos.sucursalNombre} - ${datos.categoriaNombre}`;
-                    
+
                     document.getElementById('shareWhatsAppBtn').onclick = () => {
                         Swal.close();
                         const mensajeWhatsApp = `${tituloIncidencia}\n\nSucursal: ${datos.sucursalNombre}\nRiesgo: ${this._getRiesgoTexto(datos.nivelRiesgo)}\n\nPDF de la incidencia:\n${pdfUrl}\n\n--\nPDF enviado por el sistema Centinela.`;
@@ -1596,10 +1597,10 @@ class CrearIncidenciaController {
                         });
                         resolve('whatsapp');
                     };
-                    
+
                     document.getElementById('shareEmailBtn').onclick = async () => {
                         Swal.close();
-                        
+
                         const { value: servicio } = await Swal.fire({
                             title: 'Enviar por correo',
                             text: 'Selecciona tu servicio de correo',
@@ -1615,21 +1616,21 @@ class CrearIncidenciaController {
                             cancelButtonText: 'Cancelar',
                             confirmButtonColor: '#ff9122'
                         });
-                        
+
                         if (!servicio) {
                             resolve('cancel');
                             return;
                         }
-                        
+
                         const sucursalNombre = datos.sucursalNombre;
                         const categoriaNombre = datos.categoriaNombre;
                         const riesgoTexto = this._getRiesgoTexto(datos.nivelRiesgo);
                         const estadoTexto = datos.estado === 'pendiente' ? 'Pendiente' : 'Finalizada';
                         const fechaInicio = new Date(datos.fechaHora).toLocaleDateString('es-MX');
-                        
+
                         const tituloIncidencia = `INCIDENCIA: ${sucursalNombre} - ${categoriaNombre}`;
-                        
-                        const cuerpoTexto = 
+
+                        const cuerpoTexto =
                             `${tituloIncidencia}\n\n` +
                             `Sucursal: ${sucursalNombre}\n` +
                             `Categoria: ${categoriaNombre}\n` +
@@ -1638,16 +1639,16 @@ class CrearIncidenciaController {
                             `Estado: ${estadoTexto}\n\n` +
                             `PDF de la incidencia:\n${pdfUrl}\n\n` +
                             `--\nPDF enviado por el sistema Centinela.`;
-                        
+
                         const asunto = encodeURIComponent(tituloIncidencia);
                         const cuerpoCodificado = encodeURIComponent(cuerpoTexto);
-                        
+
                         if (servicio === 'gmail') {
                             window.open(`https://mail.google.com/mail/?view=cm&fs=1&su=${asunto}&body=${cuerpoCodificado}`, '_blank');
                         } else if (servicio === 'outlook') {
                             window.open(`https://outlook.live.com/mail/0/deeplink/compose?subject=${asunto}&body=${cuerpoCodificado}`, '_blank');
                         }
-                        
+
                         Swal.fire({
                             icon: 'success',
                             title: 'Correo abierto',
@@ -1657,7 +1658,7 @@ class CrearIncidenciaController {
                         });
                         resolve('email');
                     };
-                    
+
                     document.getElementById('shareLinkBtn').onclick = async () => {
                         Swal.close();
                         try {
@@ -1680,7 +1681,7 @@ class CrearIncidenciaController {
                         }
                         resolve('link');
                     };
-                    
+
                     document.getElementById('shareCancelBtn').onclick = () => {
                         Swal.close();
                         resolve('cancel');
@@ -1694,12 +1695,12 @@ class CrearIncidenciaController {
         const sucursalInput = document.getElementById('sucursalIncidencia');
         const sucursalId = sucursalInput?.dataset.selectedId;
         const sucursalNombre = sucursalInput?.value;
-        
+
         if (!sucursalId || !sucursalNombre) {
             console.warn('No hay sucursal seleccionada para canalizar');
             return null;
         }
-        
+
         Swal.fire({
             title: 'Canalizando...',
             html: '<i class="fas fa-spinner fa-spin"></i>',
@@ -1707,7 +1708,7 @@ class CrearIncidenciaController {
             showConfirmButton: false,
             didOpen: () => Swal.showLoading()
         });
-        
+
         try {
             const resultado = await this.incidenciaManager.agregarCanalizacionSucursal(
                 incidenciaId,
@@ -1718,9 +1719,9 @@ class CrearIncidenciaController {
                 'Canalización desde creación',
                 this.usuarioActual.organizacionCamelCase
             );
-            
+
             Swal.close();
-            
+
             if (resultado && resultado.success) {
                 await Swal.fire({
                     icon: 'success',
@@ -1729,12 +1730,12 @@ class CrearIncidenciaController {
                     timer: 2000,
                     showConfirmButton: false
                 });
-                
+
                 await this._enviarNotificacionesSucursal([{
                     id: sucursalId,
                     nombre: sucursalNombre
                 }], incidenciaId, incidenciaTitulo);
-                
+
                 return {
                     id: sucursalId,
                     nombre: sucursalNombre
@@ -1742,7 +1743,7 @@ class CrearIncidenciaController {
             } else {
                 throw new Error(resultado?.message || 'Error al guardar canalización');
             }
-            
+
         } catch (error) {
             Swal.close();
             console.error('Error guardando canalización a sucursal:', error);
@@ -1804,11 +1805,11 @@ class CrearIncidenciaController {
                 let mensaje = `Notificaciones enviadas:`;
                 mensaje += `<br>${resultado.totalColaboradores} colaboradores en ${resultado.sucursales} sucursales`;
                 mensaje += `<br>${resultado.totalAdministradores} administradores`;
-                
+
                 if (resultado.push && resultado.push.enviados > 0) {
                     mensaje += `<br> Push: ${resultado.push.enviados}/${resultado.push.total} enviados`;
                 }
-                
+
                 await Swal.fire({
                     icon: 'success',
                     title: 'Notificaciones enviadas',
@@ -1842,7 +1843,7 @@ class CrearIncidenciaController {
                     areaOptions[area.id] = area.nombreArea;
                 }
             });
-            
+
             if (Object.keys(areaOptions).length === 0) {
                 await Swal.fire({
                     icon: 'info',
@@ -2088,10 +2089,10 @@ function inicializarFormularioSecuencial() {
 
     function verificarBotonesFinales() {
         const tipoEventoValido = document.getElementById('tipoEvento')?.value !== '';
-        const sucursalValida = document.getElementById('sucursalIncidencia')?.dataset.selectedId && 
-                               document.getElementById('sucursalIncidencia')?.value.trim() !== '';
-        const categoriaValida = document.getElementById('categoriaIncidencia')?.dataset.selectedId && 
-                                document.getElementById('categoriaIncidencia')?.value.trim() !== '';
+        const sucursalValida = document.getElementById('sucursalIncidencia')?.dataset.selectedId &&
+            document.getElementById('sucursalIncidencia')?.value.trim() !== '';
+        const categoriaValida = document.getElementById('categoriaIncidencia')?.dataset.selectedId &&
+            document.getElementById('categoriaIncidencia')?.value.trim() !== '';
         const riesgoValido = document.getElementById('nivelRiesgo')?.value !== '';
         const estadoValido = document.getElementById('estadoIncidencia')?.value !== '';
         const fechaValida = (() => {
@@ -2105,8 +2106,8 @@ function inicializarFormularioSecuencial() {
             return texto.length >= 10 && texto.length <= 1000;
         })();
 
-        const todoCompleto = tipoEventoValido && sucursalValida && categoriaValida && riesgoValido && 
-                             estadoValido && fechaValida && descripcionValida;
+        const todoCompleto = tipoEventoValido && sucursalValida && categoriaValida && riesgoValido &&
+            estadoValido && fechaValida && descripcionValida;
 
         if (todoCompleto && seccionImagenes && botonesContainer) {
             seccionImagenes.classList.add('visible');
@@ -2231,65 +2232,65 @@ setTimeout(() => {
 
 document.addEventListener('DOMContentLoaded', () => {
     window.crearIncidenciaDebug = { controller: new CrearIncidenciaController() };
-// ==================== FECHA AUTOMÁTICA FORZADA ====================
-(function forzarFechaAutomatica() {
-    // Esperar a que el DOM esté listo
-    setTimeout(() => {
-        const fechaInput = document.getElementById('fechaHoraIncidencia');
-        const tipoEventoSelect = document.getElementById('tipoEvento');
-        
-        if (!fechaInput) {
-            console.error('No se encontró el campo fecha');
-            return;
-        }
-        
-        // Función para obtener fecha actual formateada
-        function obtenerFechaActual() {
-            const ahora = new Date();
-            const year = ahora.getFullYear();
-            const month = String(ahora.getMonth() + 1).padStart(2, '0');
-            const day = String(ahora.getDate()).padStart(2, '0');
-            const hours = String(ahora.getHours()).padStart(2, '0');
-            const minutes = String(ahora.getMinutes()).padStart(2, '0');
-            return `${year}-${month}-${day}T${hours}:${minutes}`;
-        }
-        
-        // ASIGNAR FECHA ACTUAL AL CARGAR LA PÁGINA
-        const fechaActual = obtenerFechaActual();
-        fechaInput.value = fechaActual;
-        console.log('✅ Fecha asignada automáticamente:', fechaActual);
-        
-        // Si existe flatpickr, actualizarlo también
-        if (window.flatpickr && fechaInput._flatpickr) {
-            fechaInput._flatpickr.setDate(new Date(), true);
-        }
-        
-        // Escuchar cambios en el select de tipo evento
-        if (tipoEventoSelect) {
-            tipoEventoSelect.addEventListener('change', function() {
-                if (this.value === 'tiempo_real') {
-                    // Re-asignar fecha actual si es tiempo real
-                    const nuevaFecha = obtenerFechaActual();
-                    fechaInput.value = nuevaFecha;
-                    console.log('✅ Tiempo Real - Fecha re-asignada:', nuevaFecha);
-                    if (fechaInput._flatpickr) {
-                        fechaInput._flatpickr.setDate(new Date(), true);
+    // ==================== FECHA AUTOMÁTICA FORZADA ====================
+    (function forzarFechaAutomatica() {
+        // Esperar a que el DOM esté listo
+        setTimeout(() => {
+            const fechaInput = document.getElementById('fechaHoraIncidencia');
+            const tipoEventoSelect = document.getElementById('tipoEvento');
+
+            if (!fechaInput) {
+                console.error('No se encontró el campo fecha');
+                return;
+            }
+
+            // Función para obtener fecha actual formateada
+            function obtenerFechaActual() {
+                const ahora = new Date();
+                const year = ahora.getFullYear();
+                const month = String(ahora.getMonth() + 1).padStart(2, '0');
+                const day = String(ahora.getDate()).padStart(2, '0');
+                const hours = String(ahora.getHours()).padStart(2, '0');
+                const minutes = String(ahora.getMinutes()).padStart(2, '0');
+                return `${year}-${month}-${day}T${hours}:${minutes}`;
+            }
+
+            // ASIGNAR FECHA ACTUAL AL CARGAR LA PÁGINA
+            const fechaActual = obtenerFechaActual();
+            fechaInput.value = fechaActual;
+            console.log('✅ Fecha asignada automáticamente:', fechaActual);
+
+            // Si existe flatpickr, actualizarlo también
+            if (window.flatpickr && fechaInput._flatpickr) {
+                fechaInput._flatpickr.setDate(new Date(), true);
+            }
+
+            // Escuchar cambios en el select de tipo evento
+            if (tipoEventoSelect) {
+                tipoEventoSelect.addEventListener('change', function () {
+                    if (this.value === 'tiempo_real') {
+                        // Re-asignar fecha actual si es tiempo real
+                        const nuevaFecha = obtenerFechaActual();
+                        fechaInput.value = nuevaFecha;
+                        console.log('✅ Tiempo Real - Fecha re-asignada:', nuevaFecha);
+                        if (fechaInput._flatpickr) {
+                            fechaInput._flatpickr.setDate(new Date(), true);
+                        }
+                        fechaInput.disabled = true;
+                        fechaInput.style.backgroundColor = '#2a2a2a';
+                        fechaInput.style.cursor = 'not-allowed';
+                        fechaInput.style.opacity = '0.7';
+                    } else if (this.value === 'historico') {
+                        fechaInput.disabled = false;
+                        fechaInput.style.backgroundColor = '';
+                        fechaInput.style.cursor = 'pointer';
+                        fechaInput.style.opacity = '1';
                     }
-                    fechaInput.disabled = true;
-                    fechaInput.style.backgroundColor = '#2a2a2a';
-                    fechaInput.style.cursor = 'not-allowed';
-                    fechaInput.style.opacity = '0.7';
-                } else if (this.value === 'historico') {
-                    fechaInput.disabled = false;
-                    fechaInput.style.backgroundColor = '';
-                    fechaInput.style.cursor = 'pointer';
-                    fechaInput.style.opacity = '1';
-                }
-            });
-            
-            // Disparar el evento inicial para configurar el estado
-            tipoEventoSelect.dispatchEvent(new Event('change'));
-        }
-    }, 500); // Esperar medio segundo para que el DOM esté listo
-})();
+                });
+
+                // Disparar el evento inicial para configurar el estado
+                tipoEventoSelect.dispatchEvent(new Event('change'));
+            }
+        }, 500); // Esperar medio segundo para que el DOM esté listo
+    })();
 });
