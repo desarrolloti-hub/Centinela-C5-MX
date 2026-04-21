@@ -1,8 +1,7 @@
-// crearIncidencias.js - VERSIÓN DEFINITIVA FUNCIONANDO
-// ✅ Tiempo Real: fecha automática de la PC, campo deshabilitado
-// ✅ Histórico: campo habilitado para selección manual
-// ✅ Sin errores de recursión ni bucles
-// commit de prueba Dan
+// crearIncidencias.js - VERSIÓN DEFINITIVA CON CALENDARIO
+// ✅ Tipo de evento como botones
+// ✅ Tiempo Real: calendario con fecha actual pre-seleccionada (bloqueada, no se puede cambiar)
+// ✅ Histórico: calendario con fecha actual preseleccionada pero EDITABLE (sin fechas futuras)
 
 const LIMITES = {
     DETALLES_INCIDENCIA: 1000
@@ -113,48 +112,244 @@ class CrearIncidenciaController {
         }
     }
 
-    // ==================== MÉTODO CORREGIDO: MANEJO DE FECHA POR TIPO DE EVENTO ====================
-    _manejarFechaPorTipoEvento() {
-        const tipoEvento = document.getElementById('tipoEvento')?.value;
-        const fechaInput = document.getElementById('fechaHoraIncidencia');
-
-        if (!fechaInput) return;
-
-        // Obtener fecha actual formateada
+    // ==================== MÉTODO PARA OBTENER LA FECHA ACTUAL FORMATEADA ====================
+    _obtenerFechaActualFormateada() {
         const ahora = new Date();
         const year = ahora.getFullYear();
         const month = String(ahora.getMonth() + 1).padStart(2, '0');
         const day = String(ahora.getDate()).padStart(2, '0');
         const hours = String(ahora.getHours()).padStart(2, '0');
         const minutes = String(ahora.getMinutes()).padStart(2, '0');
-        const fechaFormateada = `${year}-${month}-${day}T${hours}:${minutes}`;
+        return `${year}-${month}-${day}T${hours}:${minutes}`;
+    }
 
-        if (tipoEvento === 'tiempo_real') {
-            // TIEMPO REAL: Asignar fecha actual y DESHABILITAR
-            fechaInput.value = fechaFormateada;
-            fechaInput.disabled = true;
-            fechaInput.style.backgroundColor = '#2a2a2a';
-            fechaInput.style.cursor = 'not-allowed';
-            fechaInput.style.opacity = '0.7';
+    // ==================== Obtener fecha legible para mostrar ====================
+    _obtenerFechaActualLegible() {
+        const ahora = new Date();
+        return ahora.toLocaleString('es-MX', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+    }
 
-            if (this.flatpickrInstance) {
-                this.flatpickrInstance.setDate(ahora, true);
-                this.flatpickrInstance.input.disabled = true;
+    // ==================== MÉTODO: Obtener tipo de evento seleccionado ====================
+    _obtenerTipoEventoSeleccionado() {
+        const btnActivo = document.querySelector('.tipo-evento-btn.active');
+        return btnActivo ? btnActivo.dataset.tipo : null;
+    }
+
+    // ==================== Configurar botones de tipo evento ====================
+    _configurarBotonesTipoEvento() {
+        const botones = document.querySelectorAll('.tipo-evento-btn');
+
+        let tipoSeleccionado = null;
+
+        const desactivarTodos = () => {
+            botones.forEach(btn => {
+                btn.classList.remove('active');
+            });
+        };
+
+        // Función para configurar el campo en modo Tiempo Real
+        const configurarModoTiempoReal = () => {
+            const fechaInput = document.getElementById('fechaHoraIncidencia');
+            if (!fechaInput) {
+                console.error('No se encontró el campo fechaHoraIncidencia');
+                return;
             }
-            console.log('Tiempo Real - Fecha asignada:', fechaFormateada);
 
-        } else if (tipoEvento === 'historico') {
-            // HISTÓRICO: HABILITAR campo
+            const fechaActualISO = this._obtenerFechaActualFormateada();
+            const fechaActualLegible = this._obtenerFechaActualLegible();
+
+            // Guardar el valor ISO en un atributo data
+            fechaInput.setAttribute('data-raw-value', fechaActualISO);
+            fechaInput.setAttribute('data-tipo-evento', 'tiempo_real');
+
+            // Mostrar valor legible en el campo
+            fechaInput.value = fechaActualLegible;
+
+            // Asegurar que sea tipo text para flatpickr
+            fechaInput.type = 'text';
+
+            // Deshabilitar la edición manual pero mantener flatpickr
+            fechaInput.readOnly = true;
+            fechaInput.disabled = false; // No deshabilitar completamente para que flatpickr funcione
+
+            // Estilo consistente
+            fechaInput.style.backgroundColor = 'rgba(0, 0, 0, 0.3)';
+            fechaInput.style.cursor = 'pointer';
+            fechaInput.style.opacity = '0.9';
+            fechaInput.style.borderColor = 'var(--color-accent-primary)';
+
+            // Reconfigurar flatpickr para que solo permita fecha actual
+            if (this.flatpickrInstance) {
+                this.flatpickrInstance.destroy();
+            }
+
+            if (typeof flatpickr !== 'undefined') {
+                this.flatpickrInstance = flatpickr(fechaInput, {
+                    enableTime: true,
+                    dateFormat: "Y-m-d H:i",
+                    time_24hr: true,
+                    locale: "es",
+                    defaultDate: new Date(),
+                    minuteIncrement: 1,
+                    maxDate: new Date(), // No permite fechas futuras
+                    minDate: new Date(),  // No permite fechas pasadas - SOLO LA ACTUAL
+                    disableMobile: true,
+                    onChange: (selectedDates, dateStr, instance) => {
+                        // Forzar que siempre sea la fecha actual
+                        const ahora = new Date();
+                        const ahoraStr = `${ahora.getFullYear()}-${String(ahora.getMonth() + 1).padStart(2, '0')}-${String(ahora.getDate()).padStart(2, '0')} ${String(ahora.getHours()).padStart(2, '0')}:${String(ahora.getMinutes()).padStart(2, '0')}`;
+                        if (dateStr !== ahoraStr) {
+                            instance.setDate(ahora, true);
+                        }
+                        // Actualizar el valor raw
+                        const fechaISO = this._obtenerFechaActualFormateada();
+                        fechaInput.setAttribute('data-raw-value', fechaISO);
+                        fechaInput.value = this._obtenerFechaActualLegible();
+                    }
+                });
+            }
+
+            console.log('Tiempo Real - Calendario configurado con fecha actual bloqueada');
+        };
+
+        // Función para configurar el campo en modo Histórico (con fecha actual preseleccionada pero EDITABLE)
+        const configurarModoHistorico = () => {
+            const fechaInput = document.getElementById('fechaHoraIncidencia');
+            if (!fechaInput) return;
+
+            // Habilitar el campo para edición
             fechaInput.disabled = false;
+            fechaInput.readOnly = false;
+
+            // Remover atributo de tipo evento
+            fechaInput.removeAttribute('data-tipo-evento');
+            fechaInput.removeAttribute('data-raw-value');
+
+            // Restaurar estilos
             fechaInput.style.backgroundColor = '';
             fechaInput.style.cursor = 'pointer';
             fechaInput.style.opacity = '1';
+            fechaInput.style.borderColor = '';
 
+            // Obtener la fecha actual para preseleccionar
+            const fechaActual = this._obtenerFechaActualLegible();
+            const fechaActualISO = this._obtenerFechaActualFormateada();
+
+            // Asignar la fecha actual al campo
+            fechaInput.value = fechaActual;
+            // Guardar también en un atributo para referencia
+            fechaInput.setAttribute('data-historico-default', fechaActualISO);
+
+            // Re-inicializar flatpickr para histórico con fecha actual preseleccionada
             if (this.flatpickrInstance) {
-                this.flatpickrInstance.input.disabled = false;
+                this.flatpickrInstance.destroy();
             }
-            console.log('Histórico - Campo habilitado');
-        }
+
+            if (typeof flatpickr !== 'undefined') {
+                this.flatpickrInstance = flatpickr(fechaInput, {
+                    enableTime: true,
+                    dateFormat: "Y-m-d H:i",
+                    time_24hr: true,
+                    locale: "es",
+                    defaultDate: new Date(), // ← FECHA ACTUAL PRESELECCIONADA
+                    minuteIncrement: 1,
+                    maxDate: new Date(), // No permite fechas futuras
+                    disableMobile: true,
+                    onChange: (selectedDates, dateStr) => {
+                        if (selectedDates[0] && selectedDates[0] > new Date()) {
+                            this.flatpickrInstance.setDate(new Date(), true);
+                            this._mostrarNotificacion('No puedes seleccionar una fecha futura', 'warning', 2000);
+                        }
+                        // Actualizar el valor del campo con la fecha seleccionada
+                        if (selectedDates[0]) {
+                            const year = selectedDates[0].getFullYear();
+                            const month = String(selectedDates[0].getMonth() + 1).padStart(2, '0');
+                            const day = String(selectedDates[0].getDate()).padStart(2, '0');
+                            const hours = String(selectedDates[0].getHours()).padStart(2, '0');
+                            const minutes = String(selectedDates[0].getMinutes()).padStart(2, '0');
+                            fechaInput.value = `${year}-${month}-${day} ${hours}:${minutes}`;
+                        }
+                    }
+                });
+            }
+
+            console.log('Histórico - Calendario configurado con fecha actual preseleccionada y editable');
+        };
+
+        const aplicarTipoEvento = (tipo) => {
+            if (tipo === 'tiempo_real') {
+                configurarModoTiempoReal();
+            } else if (tipo === 'historico') {
+                configurarModoHistorico();
+            }
+
+            tipoSeleccionado = tipo;
+
+            // Disparar evento para validación secuencial
+            const changeEvent = new Event('change', { bubbles: true });
+            const fechaInput = document.getElementById('fechaHoraIncidencia');
+            if (fechaInput) {
+                fechaInput.dispatchEvent(changeEvent);
+            }
+        };
+
+        botones.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const tipo = btn.dataset.tipo;
+
+                if (tipoSeleccionado === tipo) {
+                    // Si ya está seleccionado, lo deseleccionamos
+                    desactivarTodos();
+                    tipoSeleccionado = null;
+
+                    // Resetear el campo de fecha al estado inicial
+                    const fechaInput = document.getElementById('fechaHoraIncidencia');
+                    if (fechaInput) {
+                        fechaInput.value = '';
+                        fechaInput.disabled = false;
+                        fechaInput.readOnly = false;
+                        fechaInput.style.backgroundColor = '';
+                        fechaInput.style.cursor = 'pointer';
+                        fechaInput.style.opacity = '1';
+                        fechaInput.style.borderColor = '';
+                        fechaInput.removeAttribute('data-raw-value');
+                        fechaInput.removeAttribute('data-tipo-evento');
+                        fechaInput.removeAttribute('data-historico-default');
+                    }
+
+                    // Re-inicializar flatpickr sin restricciones
+                    if (this.flatpickrInstance) {
+                        this.flatpickrInstance.destroy();
+                    }
+                    if (typeof flatpickr !== 'undefined') {
+                        this.flatpickrInstance = flatpickr(fechaInput, {
+                            enableTime: true,
+                            dateFormat: "Y-m-d H:i",
+                            time_24hr: true,
+                            locale: "es",
+                            minuteIncrement: 1,
+                            maxDate: new Date(),
+                            disableMobile: true
+                        });
+                    }
+                } else {
+                    // Seleccionar el nuevo tipo
+                    desactivarTodos();
+                    btn.classList.add('active');
+                    aplicarTipoEvento(tipo);
+                }
+
+                // Disparar evento para validación secuencial del paso 0
+                const tipoEventoEvent = new Event('tipoEventoChanged', { bubbles: true });
+                document.dispatchEvent(tipoEventoEvent);
+            });
+        });
     }
 
     _configurarDragAndDropYPaste() {
@@ -384,22 +579,10 @@ class CrearIncidenciaController {
 
     _inicializarDateTimePicker() {
         const fechaInput = document.getElementById('fechaHoraIncidencia');
-        const tipoEventoSelect = document.getElementById('tipoEvento');
 
         if (!fechaInput) return;
 
-        // Función para obtener fecha actual
-        const getFechaActual = () => {
-            const ahora = new Date();
-            const year = ahora.getFullYear();
-            const month = String(ahora.getMonth() + 1).padStart(2, '0');
-            const day = String(ahora.getDate()).padStart(2, '0');
-            const hours = String(ahora.getHours()).padStart(2, '0');
-            const minutes = String(ahora.getMinutes()).padStart(2, '0');
-            return `${year}-${month}-${day}T${hours}:${minutes}`;
-        };
-
-        // Configurar flatpickr si existe
+        // Configurar flatpickr inicialmente (modo neutral)
         if (typeof flatpickr !== 'undefined') {
             try {
                 this.flatpickrInstance = flatpickr(fechaInput, {
@@ -407,7 +590,6 @@ class CrearIncidenciaController {
                     dateFormat: "Y-m-d H:i",
                     time_24hr: true,
                     locale: "es",
-                    defaultDate: new Date(),
                     minuteIncrement: 1,
                     maxDate: new Date(),
                     disableMobile: true
@@ -420,78 +602,8 @@ class CrearIncidenciaController {
             fechaInput.type = 'datetime-local';
         }
 
-        // Asignar fecha actual siempre al cargar
-        fechaInput.value = getFechaActual();
-
-        // Evento change del select
-        if (tipoEventoSelect) {
-            tipoEventoSelect.addEventListener('change', (e) => {
-                const tipo = e.target.value;
-                console.log('Tipo seleccionado:', tipo);
-
-                if (tipo === 'tiempo_real') {
-                    // ASIGNAR FECHA ACTUAL
-                    const fechaActual = getFechaActual();
-                    fechaInput.value = fechaActual;
-                    if (this.flatpickrInstance) {
-                        this.flatpickrInstance.setDate(new Date(), true);
-                        this.flatpickrInstance.input.disabled = true;
-                    }
-                    fechaInput.disabled = true;
-                    fechaInput.style.backgroundColor = '#2a2a2a';
-                    fechaInput.style.cursor = 'not-allowed';
-                    fechaInput.style.opacity = '0.7';
-
-                    // FORZAR AVANCE AL SIGUIENTE PASO
-                    setTimeout(() => {
-                        const changeEvent = new Event('change', { bubbles: true });
-                        tipoEventoSelect.dispatchEvent(changeEvent);
-                    }, 50);
-
-                } else if (tipo === 'historico') {
-                    if (this.flatpickrInstance) {
-                        this.flatpickrInstance.input.disabled = false;
-                    }
-                    fechaInput.disabled = false;
-                    fechaInput.style.backgroundColor = '';
-                    fechaInput.style.cursor = 'pointer';
-                    fechaInput.style.opacity = '1';
-                }
-            });
-        }
-
-        // Forzar ejecución inicial según el valor actual del select
-        const tipoInicial = tipoEventoSelect?.value;
-        if (tipoInicial === 'tiempo_real') {
-            fechaInput.value = getFechaActual();
-            fechaInput.disabled = true;
-            fechaInput.style.backgroundColor = '#2a2a2a';
-            fechaInput.style.cursor = 'not-allowed';
-            fechaInput.style.opacity = '0.7';
-            if (this.flatpickrInstance) {
-                this.flatpickrInstance.setDate(new Date(), true);
-                this.flatpickrInstance.input.disabled = true;
-            }
-        }
-    }
-
-    _inicializarDateTimePickerNativo() {
-        const fechaInput = document.getElementById('fechaHoraIncidencia');
-        const tipoEventoSelect = document.getElementById('tipoEvento');
-
-        if (fechaInput) {
-            fechaInput.type = 'datetime-local';
-
-            // Aplicar configuración inicial
-            this._manejarFechaPorTipoEvento();
-
-            // Evento change del select
-            if (tipoEventoSelect) {
-                tipoEventoSelect.addEventListener('change', () => {
-                    this._manejarFechaPorTipoEvento();
-                });
-            }
-        }
+        // Configurar los botones de tipo evento
+        this._configurarBotonesTipoEvento();
     }
 
     async _cargarDatosRelacionados() {
@@ -1000,9 +1112,9 @@ class CrearIncidenciaController {
                 return false;
             }
 
-            const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+            const validTypes = ['image/jpeg', 'image/png', 'image/jpg', 'image/webp'];
             if (!validTypes.includes(file.type)) {
-                console.warn(`Formato no válido: ${file.name}. Usa JPG, PNG, GIF o WEBP`);
+                console.warn(`Formato no válido: ${file.name}. Usa JPG, JPEG, PNG o WEBP`);
                 return false;
             }
 
@@ -1168,22 +1280,35 @@ class CrearIncidenciaController {
             return;
         }
 
-        const tipoEvento = document.getElementById('tipoEvento')?.value;
+        const tipoEvento = this._obtenerTipoEventoSeleccionado();
+
+        if (!tipoEvento) {
+            this._mostrarError('Debes seleccionar un tipo de evento (Tiempo Real o Histórico)');
+            return;
+        }
+
         let fechaInput = document.getElementById('fechaHoraIncidencia');
         let fechaHora = fechaInput.value;
+        let rawFechaHora = fechaInput.getAttribute('data-raw-value');
 
         if (tipoEvento === 'tiempo_real') {
-            if (!fechaHora || fechaHora === '') {
-                const ahora = new Date();
-                const year = ahora.getFullYear();
-                const month = String(ahora.getMonth() + 1).padStart(2, '0');
-                const day = String(ahora.getDate()).padStart(2, '0');
-                const hours = String(ahora.getHours()).padStart(2, '0');
-                const minutes = String(ahora.getMinutes()).padStart(2, '0');
-                fechaHora = `${year}-${month}-${day}T${hours}:${minutes}`;
-                if (fechaInput) {
-                    fechaInput.value = fechaHora;
-                }
+            // Para tiempo real, usar el valor raw guardado o generar uno nuevo
+            if (rawFechaHora && rawFechaHora !== '') {
+                fechaHora = rawFechaHora;
+            } else {
+                // Si por alguna razón no hay raw, generar fecha actual
+                fechaHora = this._obtenerFechaActualFormateada();
+                // También actualizar el campo
+                const fechaActualLegible = this._obtenerFechaActualLegible();
+                fechaInput.value = fechaActualLegible;
+                fechaInput.setAttribute('data-raw-value', fechaHora);
+            }
+        } else {
+            // Para histórico, necesitamos convertir el string de fecha a formato ISO
+            // El flatpickr devuelve formato "YYYY-MM-DD HH:MM"
+            if (fechaHora && fechaHora.includes(' ')) {
+                // Convertir "2024-01-15 14:30" a "2024-01-15T14:30"
+                fechaHora = fechaHora.replace(' ', 'T');
             }
         }
 
@@ -1196,7 +1321,13 @@ class CrearIncidenciaController {
         const fechaSeleccionada = new Date(fechaHora);
         const ahora = new Date();
 
-        if (fechaSeleccionada > ahora) {
+        if (isNaN(fechaSeleccionada.getTime())) {
+            this._mostrarError('La fecha seleccionada no es válida');
+            fechaInput.focus();
+            return;
+        }
+
+        if (tipoEvento !== 'tiempo_real' && fechaSeleccionada > ahora) {
             this._mostrarError('No puede seleccionar una fecha futura');
             fechaInput.focus();
             return;
@@ -1242,7 +1373,7 @@ class CrearIncidenciaController {
             subcategoriaNombre: subcategoriaNombre || '',
             nivelRiesgo,
             estado,
-            fechaHora,
+            fechaHora: fechaHora,
             detalles,
             imagenes: this.imagenesSeleccionadas,
             tipoEvento
@@ -1252,7 +1383,7 @@ class CrearIncidenciaController {
             title: 'Confirmar creación de incidencia',
             html: `
                 <div style="text-align: left;">
-                    <p><strong>Tipo Evento:</strong> ${tipoEvento === 'tiempo_real' ? '⏱️ Tiempo Real' : '📅 Histórico'}</p>
+                    <p><strong>Tipo Evento:</strong> ${tipoEvento === 'tiempo_real' ? 'Tiempo Real' : 'Histórico'}</p>
                     <p><strong>Sucursal:</strong> ${this._escapeHTML(sucursalNombre)}</p>
                     <p><strong>Categoría:</strong> ${this._escapeHTML(categoriaNombre)}</p>
                     ${subcategoriaId ? `<p><strong>Subcategoría:</strong> ${this._escapeHTML(subcategoriaNombre)}</p>` : ''}
@@ -1294,7 +1425,17 @@ class CrearIncidenciaController {
                 didOpen: () => Swal.showLoading()
             });
 
-            const fechaObj = new Date(datos.fechaHora);
+            let fechaObj;
+            if (datos.tipoEvento === 'tiempo_real') {
+                fechaObj = new Date();
+            } else {
+                fechaObj = new Date(datos.fechaHora);
+            }
+
+            if (isNaN(fechaObj.getTime())) {
+                fechaObj = new Date();
+                console.warn('Fecha inválida, usando fecha actual');
+            }
 
             const incidenciaData = {
                 sucursalId: datos.sucursalId,
@@ -1325,7 +1466,7 @@ class CrearIncidenciaController {
                     text: `Subiendo ${datos.imagenes.length} imagen(es)...`
                 });
 
-                const uploadPromises = datos.imagenes.map(async (img, index) => {
+                const uploadPromises = datos.imagenes.map(async (img) => {
                     const rutaStorage = `incidencias_${this.usuarioActual.organizacionCamelCase}/${nuevaIncidencia.id}/imagenes/${img.generatedName}`;
                     const resultado = await this.incidenciaManager.subirArchivo(img.file, rutaStorage);
 
@@ -2088,7 +2229,7 @@ function inicializarFormularioSecuencial() {
     }
 
     function verificarBotonesFinales() {
-        const tipoEventoValido = document.getElementById('tipoEvento')?.value !== '';
+        const tipoEventoValido = document.querySelector('.tipo-evento-btn.active') !== null;
         const sucursalValida = document.getElementById('sucursalIncidencia')?.dataset.selectedId &&
             document.getElementById('sucursalIncidencia')?.value.trim() !== '';
         const categoriaValida = document.getElementById('categoriaIncidencia')?.dataset.selectedId &&
@@ -2098,8 +2239,7 @@ function inicializarFormularioSecuencial() {
         const fechaValida = (() => {
             const fechaValor = document.getElementById('fechaHoraIncidencia')?.value;
             if (!fechaValor) return false;
-            const fecha = new Date(fechaValor);
-            return !isNaN(fecha.getTime()) && fecha <= new Date();
+            return true;
         })();
         const descripcionValida = (() => {
             const texto = document.getElementById('detallesIncidencia')?.value.trim() || '';
@@ -2125,7 +2265,7 @@ function inicializarFormularioSecuencial() {
 
         switch (stepIndex) {
             case 0:
-                esValido = document.getElementById('tipoEvento')?.value !== '';
+                esValido = document.querySelector('.tipo-evento-btn.active') !== null;
                 break;
             case 1:
                 const sucursalInput = document.getElementById('sucursalIncidencia');
@@ -2146,12 +2286,7 @@ function inicializarFormularioSecuencial() {
                 break;
             case 6:
                 const fechaValor = document.getElementById('fechaHoraIncidencia')?.value;
-                if (!fechaValor) {
-                    esValido = false;
-                } else {
-                    const fecha = new Date(fechaValor);
-                    esValido = !isNaN(fecha.getTime()) && fecha <= new Date();
-                }
+                esValido = fechaValor !== null && fechaValor !== '';
                 break;
             case 7:
                 const texto = document.getElementById('detallesIncidencia')?.value.trim() || '';
@@ -2177,10 +2312,7 @@ function inicializarFormularioSecuencial() {
     }
 
     function configurarEventosSecuenciales() {
-        const tipoEventoSelect = document.getElementById('tipoEvento');
-        if (tipoEventoSelect) {
-            tipoEventoSelect.addEventListener('change', () => validarYMostrarSiguiente(0));
-        }
+        document.addEventListener('tipoEventoChanged', () => validarYMostrarSiguiente(0));
 
         const sucursalInput = document.getElementById('sucursalIncidencia');
         if (sucursalInput) {
@@ -2232,65 +2364,4 @@ setTimeout(() => {
 
 document.addEventListener('DOMContentLoaded', () => {
     window.crearIncidenciaDebug = { controller: new CrearIncidenciaController() };
-    // ==================== FECHA AUTOMÁTICA FORZADA ====================
-    (function forzarFechaAutomatica() {
-        // Esperar a que el DOM esté listo
-        setTimeout(() => {
-            const fechaInput = document.getElementById('fechaHoraIncidencia');
-            const tipoEventoSelect = document.getElementById('tipoEvento');
-
-            if (!fechaInput) {
-                console.error('No se encontró el campo fecha');
-                return;
-            }
-
-            // Función para obtener fecha actual formateada
-            function obtenerFechaActual() {
-                const ahora = new Date();
-                const year = ahora.getFullYear();
-                const month = String(ahora.getMonth() + 1).padStart(2, '0');
-                const day = String(ahora.getDate()).padStart(2, '0');
-                const hours = String(ahora.getHours()).padStart(2, '0');
-                const minutes = String(ahora.getMinutes()).padStart(2, '0');
-                return `${year}-${month}-${day}T${hours}:${minutes}`;
-            }
-
-            // ASIGNAR FECHA ACTUAL AL CARGAR LA PÁGINA
-            const fechaActual = obtenerFechaActual();
-            fechaInput.value = fechaActual;
-            console.log('✅ Fecha asignada automáticamente:', fechaActual);
-
-            // Si existe flatpickr, actualizarlo también
-            if (window.flatpickr && fechaInput._flatpickr) {
-                fechaInput._flatpickr.setDate(new Date(), true);
-            }
-
-            // Escuchar cambios en el select de tipo evento
-            if (tipoEventoSelect) {
-                tipoEventoSelect.addEventListener('change', function () {
-                    if (this.value === 'tiempo_real') {
-                        // Re-asignar fecha actual si es tiempo real
-                        const nuevaFecha = obtenerFechaActual();
-                        fechaInput.value = nuevaFecha;
-                        console.log('✅ Tiempo Real - Fecha re-asignada:', nuevaFecha);
-                        if (fechaInput._flatpickr) {
-                            fechaInput._flatpickr.setDate(new Date(), true);
-                        }
-                        fechaInput.disabled = true;
-                        fechaInput.style.backgroundColor = '#2a2a2a';
-                        fechaInput.style.cursor = 'not-allowed';
-                        fechaInput.style.opacity = '0.7';
-                    } else if (this.value === 'historico') {
-                        fechaInput.disabled = false;
-                        fechaInput.style.backgroundColor = '';
-                        fechaInput.style.cursor = 'pointer';
-                        fechaInput.style.opacity = '1';
-                    }
-                });
-
-                // Disparar el evento inicial para configurar el estado
-                tipoEventoSelect.dispatchEvent(new Event('change'));
-            }
-        }, 500); // Esperar medio segundo para que el DOM esté listo
-    })();
 });

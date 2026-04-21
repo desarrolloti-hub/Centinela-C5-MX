@@ -69,6 +69,7 @@ body {
         text-shadow: 0 0 5px var(--color-accent-primary), 0 0 15px var(--color-accent-primary);
         opacity: 0.9;
     }
+
     100% {
         text-shadow: 0 0 15px var(--color-accent-primary), 0 0 30px var(--color-accent-primary), 0 0 45px var(--color-accent-primary);
         opacity: 1;
@@ -131,7 +132,8 @@ body {
     border-radius: var(--border-radius-large) !important;
     box-shadow: var(--shadow-normal) !important;
     margin-bottom: 20px !important;
-    overflow: visible !important; /* ← CAMBIADO */
+    overflow: visible !important;
+    /* ← CAMBIADO */
 }
 
 .card-header {
@@ -165,7 +167,8 @@ body {
 
 .card-body {
     padding: 30px !important;
-    overflow: visible !important; /* ← CAMBIADO */
+    overflow: visible !important;
+    /* ← CAMBIADO */
 }
 
 /* =============================================
@@ -203,13 +206,15 @@ body {
     display: grid;
     grid-template-columns: 1fr;
     gap: 20px;
-    overflow: visible !important; /* ← CAMBIADO */
+    overflow: visible !important;
+    /* ← CAMBIADO */
 }
 
 .full-width {
     grid-column: 1 / -1;
     width: 100%;
-    overflow: visible !important; /* ← CAMBIADO */
+    overflow: visible !important;
+    /* ← CAMBIADO */
     position: relative;
 }
 
@@ -1004,7 +1009,9 @@ body {
 }
 
 @keyframes spin {
-    to { transform: rotate(360deg); }
+    to {
+        transform: rotate(360deg);
+    }
 }
 
 .loading-text {
@@ -1022,6 +1029,7 @@ body {
         opacity: 0;
         transform: translateY(20px);
     }
+
     to {
         opacity: 1;
         transform: translateY(0);
@@ -1033,6 +1041,7 @@ body {
         opacity: 0;
         transform: translateX(-10px);
     }
+
     to {
         opacity: 1;
         transform: translateX(0);
@@ -1043,62 +1052,227 @@ body {
    RESPONSIVE
    ============================================= */
 @media (max-width: 1023px) {
-    body { padding-top: 70px; }
-    .custom-container { padding: 20px !important; }
-    .header-section { flex-direction: column !important; align-items: flex-start !important; gap: 20px !important; padding: 20px !important; }
-    .btn-volver { width: 100% !important; max-width: 300px !important; }
-    .card-body { padding: 20px !important; }
-    .btn { width: 100% !important; margin-bottom: 10px !important; }
-    .action-buttons-container { flex-direction: column !important; gap: 10px !important; }
-    .card-header { flex-direction: column !important; gap: 15px !important; align-items: flex-start !important; }
+    body {
+        padding-top: 70px;
+    }
+
+    .custom-container {
+        padding: 20px !important;
+    }
+
+    .header-section {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 20px !important;
+        padding: 20px !important;
+    }
+
+    .btn-volver {
+        width: 100% !important;
+        max-width: 300px !important;
+    }
+
+    .card-body {
+        padding: 20px !important;
+    }
+
+    .btn {
+        width: 100% !important;
+        margin-bottom: 10px !important;
+    }
+
+    .action-buttons-container {
+        flex-direction: column !important;
+        gap: 10px !important;
+    }
+
+    .card-header {
+        flex-direction: column !important;
+        gap: 15px !important;
+        align-items: flex-start !important;
+    }
 }
 
 @media (max-width: 768px) {
-    body { padding: 10px !important; padding-top: 70px !important; }
-    .custom-container { padding: 15px !important; border-radius: var(--border-radius-medium) !important; }
-    .main-title { font-size: 20px !important; justify-content: center !important; text-align: center !important; }
-    .header-section { padding: 15px !important; margin-top: 0; }
-    .card-header { padding: 15px 20px !important; }
-    .card-body { padding: 15px !important; }
-    .section-title { font-size: 13px !important; }
-    .form-control { padding: 10px 12px !important; font-size: 14px !important; }
-    .input-group-icon { padding: 10px 12px !important; }
-    .images-grid { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px; }
-    .canvas-container { height: 400px; }
-    .areas-grid { grid-template-columns: 1fr; }
-    .btn-agregar-area { padding: 10px 15px; font-size: 13px; }
-    .area-item { padding: 10px; }
-    .area-nombre { font-size: 12px; }
-    .no-areas-message { padding: 20px; }
-    .no-areas-message i { font-size: 36px; }
-    .no-areas-message p { font-size: 12px; }
+    body {
+        padding: 10px !important;
+        padding-top: 70px !important;
+    }
+
+    .custom-container {
+        padding: 15px !important;
+        border-radius: var(--border-radius-medium) !important;
+    }
+
+    .main-title {
+        font-size: 20px !important;
+        justify-content: center !important;
+        text-align: center !important;
+    }
+
+    .header-section {
+        padding: 15px !important;
+        margin-top: 0;
+    }
+
+    .card-header {
+        padding: 15px 20px !important;
+    }
+
+    .card-body {
+        padding: 15px !important;
+    }
+
+    .section-title {
+        font-size: 13px !important;
+    }
+
+    .form-control {
+        padding: 10px 12px !important;
+        font-size: 14px !important;
+    }
+
+    .input-group-icon {
+        padding: 10px 12px !important;
+    }
+
+    .images-grid {
+        grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+        gap: 10px;
+    }
+
+    .canvas-container {
+        height: 400px;
+    }
+
+    .areas-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .btn-agregar-area {
+        padding: 10px 15px;
+        font-size: 13px;
+    }
+
+    .area-item {
+        padding: 10px;
+    }
+
+    .area-nombre {
+        font-size: 12px;
+    }
+
+    .no-areas-message {
+        padding: 20px;
+    }
+
+    .no-areas-message i {
+        font-size: 36px;
+    }
+
+    .no-areas-message p {
+        font-size: 12px;
+    }
 }
 
 @media (max-width: 480px) {
-    body { padding: 8px !important; padding-top: 65px !important; }
-    .custom-container { padding: 10px !important; }
-    .header-section { padding: 12px !important; }
-    .btn-volver { padding: 10px 15px !important; font-size: 13px !important; min-width: auto !important; }
-    .card-header { padding: 12px 15px !important; }
-    .card-header h5 { font-size: 14px !important; }
-    .btn { padding: 10px 15px !important; font-size: 13px !important; min-width: auto !important; }
-    .images-grid { grid-template-columns: 1fr; }
-    .btn-upload { padding: 12px 20px; font-size: 14px; width: 100%; justify-content: center; }
-    .btn-agregar-area { padding: 8px 12px; font-size: 12px; }
-    .btn-agregar-area i { font-size: 14px; }
-    .area-item { padding: 8px; }
-    .area-header i { font-size: 12px; }
-    .area-nombre { font-size: 11px; }
-    .area-remove { width: 20px; height: 20px; }
-    .area-motivo { font-size: 10px; padding-left: 18px; }
+    body {
+        padding: 8px !important;
+        padding-top: 65px !important;
+    }
+
+    .custom-container {
+        padding: 10px !important;
+    }
+
+    .header-section {
+        padding: 12px !important;
+    }
+
+    .btn-volver {
+        padding: 10px 15px !important;
+        font-size: 13px !important;
+        min-width: auto !important;
+    }
+
+    .card-header {
+        padding: 12px 15px !important;
+    }
+
+    .card-header h5 {
+        font-size: 14px !important;
+    }
+
+    .btn {
+        padding: 10px 15px !important;
+        font-size: 13px !important;
+        min-width: auto !important;
+    }
+
+    .images-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .btn-upload {
+        padding: 12px 20px;
+        font-size: 14px;
+        width: 100%;
+        justify-content: center;
+    }
+
+    .btn-agregar-area {
+        padding: 8px 12px;
+        font-size: 12px;
+    }
+
+    .btn-agregar-area i {
+        font-size: 14px;
+    }
+
+    .area-item {
+        padding: 8px;
+    }
+
+    .area-header i {
+        font-size: 12px;
+    }
+
+    .area-nombre {
+        font-size: 11px;
+    }
+
+    .area-remove {
+        width: 20px;
+        height: 20px;
+    }
+
+    .area-motivo {
+        font-size: 10px;
+        padding-left: 18px;
+    }
 }
 
 @media (max-width: 360px) {
-    body { padding-top: 60px !important; }
-    .main-title { font-size: 18px !important; }
-    .main-title i { font-size: 20px !important; }
-    .header-description-text { font-size: 0.9rem !important; }
-    .preview-btn { width: 35px; height: 35px; }
+    body {
+        padding-top: 60px !important;
+    }
+
+    .main-title {
+        font-size: 18px !important;
+    }
+
+    .main-title i {
+        font-size: 20px !important;
+    }
+
+    .header-description-text {
+        font-size: 0.9rem !important;
+    }
+
+    .preview-btn {
+        width: 35px;
+        height: 35px;
+    }
 }
 
 /* =============================================
@@ -1317,9 +1491,19 @@ body {
 }
 
 @keyframes shakeWarning {
-    0%, 100% { transform: translateX(0); }
-    25% { transform: translateX(-4px); }
-    75% { transform: translateX(4px); }
+
+    0%,
+    100% {
+        transform: translateX(0);
+    }
+
+    25% {
+        transform: translateX(-4px);
+    }
+
+    75% {
+        transform: translateX(4px);
+    }
 }
 
 /* Asegurar que el formulario no corte el contenido */
@@ -1369,6 +1553,7 @@ select:not(.field-disabled):focus {
     border-color: var(--color-accent-primary);
     box-shadow: 0 0 0 2px rgba(0, 207, 255, 0.2);
 }
+
 /* =============================================
    VALIDACIÓN DE IMÁGENES OBLIGATORIAS
    ============================================= */
@@ -1389,11 +1574,13 @@ select:not(.field-disabled):focus {
         box-shadow: none;
         border-left-color: transparent;
     }
+
     50% {
         background-color: rgba(255, 193, 7, 0.15);
         box-shadow: 0 0 0 3px rgba(255, 193, 7, 0.2);
         border-left-color: var(--color-warning);
     }
+
     100% {
         background-color: rgba(255, 193, 7, 0);
         box-shadow: none;
@@ -1407,14 +1594,25 @@ select:not(.field-disabled):focus {
 }
 
 @keyframes shakeDropzone {
-    0%, 100% { 
-        transform: translateX(0); 
+
+    0%,
+    100% {
+        transform: translateX(0);
     }
-    10%, 30%, 50%, 70%, 90% { 
-        transform: translateX(-4px); 
+
+    10%,
+    30%,
+    50%,
+    70%,
+    90% {
+        transform: translateX(-4px);
     }
-    20%, 40%, 60%, 80% { 
-        transform: translateX(4px); 
+
+    20%,
+    40%,
+    60%,
+    80% {
+        transform: translateX(4px);
     }
 }
 
@@ -1506,10 +1704,13 @@ select:not(.field-disabled):focus {
 }
 
 @keyframes iconPulse {
-    0%, 100% {
+
+    0%,
+    100% {
         transform: scale(1);
         opacity: 0.8;
     }
+
     50% {
         transform: scale(1.15);
         opacity: 1;
@@ -1547,6 +1748,7 @@ select:not(.field-disabled):focus {
         opacity: 0;
         transform: translateY(10px);
     }
+
     to {
         opacity: 1;
         transform: translateY(0);
@@ -1608,9 +1810,12 @@ select:not(.field-disabled):focus {
 }
 
 @keyframes pulseWarning {
-    0%, 100% {
+
+    0%,
+    100% {
         opacity: 0.6;
     }
+
     50% {
         opacity: 1;
         text-shadow: 0 0 4px var(--color-warning);
@@ -1633,16 +1838,16 @@ select:not(.field-disabled):focus {
         font-size: 9px;
         padding: 3px 10px;
     }
-    
+
     .drop-zone .required-badge i {
         font-size: 9px;
     }
-    
+
     .image-warning-message {
         font-size: 11px;
         padding: 8px 12px;
     }
-    
+
     .highlight-section {
         padding: 10px;
     }
@@ -1656,11 +1861,12 @@ select:not(.field-disabled):focus {
         justify-content: center;
         width: auto;
     }
-    
+
     .drop-zone {
         padding: 1.5rem;
     }
 }
+
 /* =============================================
    BOTONES DE COMPARTIR - ESTILO UNIFICADO (igual que incidencias)
    ============================================= */
@@ -1734,4 +1940,102 @@ select:not(.field-disabled):focus {
 .btn-compartir:hover::after {
     opacity: 1;
     transform: rotate(30deg) translate(10%, 10%);
+}
+
+/* =============================================
+   BOTONES DE TIPO DE EVENTO
+   ============================================= */
+.tipo-evento-buttons {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 15px;
+    flex-wrap: wrap;
+}
+
+.tipo-evento-btn {
+    flex: 1;
+    min-width: 200px;
+    background: var(--color-bg-tertiary);
+    border: 2px solid var(--color-border-light);
+    border-radius: var(--border-radius-medium);
+    padding: 15px 20px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    font-family: var(--font-family-primary);
+    color: var(--color-text-secondary);
+}
+
+.tipo-evento-btn i {
+    font-size: 28px;
+    color: var(--color-accent-primary);
+    opacity: 0.7;
+    transition: all 0.3s ease;
+}
+
+.tipo-evento-btn span {
+    font-size: 16px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.tipo-evento-btn small {
+    font-size: 11px;
+    font-family: var(--font-family-secondary);
+    opacity: 0.7;
+}
+
+.tipo-evento-btn:hover {
+    border-color: var(--color-accent-primary);
+    background: rgba(0, 207, 255, 0.05);
+    transform: translateY(-2px);
+}
+
+.tipo-evento-btn:hover i {
+    opacity: 1;
+    transform: scale(1.1);
+}
+
+.tipo-evento-btn.active {
+    border-color: var(--color-accent-primary);
+    background: linear-gradient(145deg, rgba(0, 207, 255, 0.15), rgba(0, 207, 255, 0.05));
+    box-shadow: 0 0 15px rgba(0, 207, 255, 0.3);
+}
+
+.tipo-evento-btn.active i {
+    opacity: 1;
+    color: var(--color-accent-primary);
+    text-shadow: 0 0 8px var(--color-accent-primary);
+}
+
+.tipo-evento-btn.active span {
+    color: var(--color-text-primary);
+    text-shadow: 0 0 4px var(--color-accent-primary);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .tipo-evento-buttons {
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .tipo-evento-btn {
+        flex-direction: row;
+        justify-content: flex-start;
+        gap: 15px;
+        padding: 12px 15px;
+    }
+
+    .tipo-evento-btn i {
+        font-size: 24px;
+    }
+
+    .tipo-evento-btn small {
+        display: none;
+    }
 }
