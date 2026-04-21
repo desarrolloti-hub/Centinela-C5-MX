@@ -1,6 +1,4 @@
-// riesgoNivel.js - CLASE COMPLETA CON PAGINACIÓN PARA NIVELES DE RIESGO
-// Basado en incidencia.js
-
+// riesgoNivel.js - CLASE COMPLETA CON VALIDACIÓN DE NOMBRE ÚNICO
 import {
     collection,
     doc,
@@ -23,7 +21,7 @@ import consumo from '/clases/consumoFirebase.js';
 
 class RiesgoNivel {
     constructor(id, data) {
-        this.id = id || '';
+        this.id = id;
         this.nombre = data.nombre || '';
         this.color = data.color || '#ffffff';
         this.organizacionCamelCase = data.organizacionCamelCase || '';
@@ -66,10 +64,6 @@ class RiesgoNivel {
         return this._formatearFecha(this.fechaCreacion);
     }
 
-    getFechaActualizacionFormateada() {
-        return this._formatearFecha(this.fechaActualizacion);
-    }
-
     toJSON() {
         return {
             id: this.id,
@@ -91,11 +85,7 @@ class RiesgoNivel {
             nombre: this.nombre,
             color: this.color,
             colorCSS: this.color,
-            organizacionCamelCase: this.organizacionCamelCase,
-            fechaCreacion: this.getFechaCreacionFormateada(),
-            fechaActualizacion: this.getFechaActualizacionFormateada(),
-            creadoPorNombre: this.creadoPorNombre,
-            actualizadoPorNombre: this.actualizadoPorNombre
+            fechaCreacion: this.getFechaCreacionFormateada()
         };
     }
 }
@@ -123,7 +113,6 @@ class RiesgoNivelManager {
     }
 
     _generarIdDesdeNombre(nombre) {
-        if (!nombre) return `nivel_${Date.now()}`;
         return nombre
             .toLowerCase()
             .normalize("NFD")
@@ -132,19 +121,57 @@ class RiesgoNivelManager {
             .replace(/^-|-$/g, '');
     }
 
+    _normalizarNombre(nombre) {
+        return nombre
+            .toLowerCase()
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .trim();
+    }
+
+    /**
+     * Verifica si ya existe un nivel con el mismo nombre (ignorando mayúsculas, minúsculas y acentos)
+     * @param {string} organizacionCamelCase 
+     * @param {string} nombre 
+     * @param {string} excludeId - ID a excluir (para edición)
+     * @returns {Promise<boolean>}
+     */
+    async existeNombre(organizacionCamelCase, nombre, excludeId = null) {
+        try {
+            const collectionName = this._getCollectionName(organizacionCamelCase);
+            const colRef = collection(db, collectionName);
+            const nombreNormalizado = this._normalizarNombre(nombre);
+            
+            // Traer todos los documentos (podría optimizarse con un índice, pero para pocos niveles es suficiente)
+            const q = query(colRef);
+            const snapshot = await getDocs(q);
+            let existe = false;
+            snapshot.forEach(doc => {
+                if (excludeId && doc.id === excludeId) return;
+                const data = doc.data();
+                const nombreDoc = this._normalizarNombre(data.nombre || '');
+                if (nombreDoc === nombreNormalizado) {
+                    existe = true;
+                }
+            });
+            return existe;
+        } catch (error) {
+            console.error('Error verificando existencia de nombre:', error);
+            return false;
+        }
+    }
+
     async contarTotalNiveles(organizacionCamelCase, filtros = {}) {
         try {
             const collectionName = this._getCollectionName(organizacionCamelCase);
-            const collectionRef = collection(db, collectionName);
-            
+            const colRef = collection(db, collectionName);
             let constraints = [];
             if (filtros.nombre && filtros.nombre !== '') {
                 constraints.push(where("nombre", ">=", filtros.nombre));
                 constraints.push(where("nombre", "<=", filtros.nombre + '\uf8ff'));
             }
-            
-            const q = query(collectionRef, ...constraints);
-            await consumo.registrarFirestoreLectura(collectionName, 'conteo niveles');
+            const q = query(colRef, ...constraints);
+            await consumo.registrarFirestoreLectura(collectionName, 'conteo niveles riesgo');
             const snapshot = await getCountFromServer(q);
             return snapshot.data().count;
         } catch (error) {
@@ -156,179 +183,146 @@ class RiesgoNivelManager {
     async getNivelesPaginados(organizacionCamelCase, filtros = {}, pagina = 1, itemsPorPagina = 10, cursores = null) {
         try {
             if (!organizacionCamelCase) throw new Error('Organización no especificada');
-
             const collectionName = this._getCollectionName(organizacionCamelCase);
-            const collectionRef = collection(db, collectionName);
-            
+            const colRef = collection(db, collectionName);
             let constraints = [orderBy("nombre", "asc")];
-            
+
             if (filtros.nombre && filtros.nombre !== '') {
                 constraints.push(where("nombre", ">=", filtros.nombre));
                 constraints.push(where("nombre", "<=", filtros.nombre + '\uf8ff'));
             }
-            
+
             if (pagina > 1 && cursores?.ultimoDocumento) {
                 constraints.push(startAfter(cursores.ultimoDocumento));
             }
             constraints.push(limit(itemsPorPagina));
-            
-            const q = query(collectionRef, ...constraints);
+
+            const q = query(colRef, ...constraints);
             await consumo.registrarFirestoreLectura(collectionName, `página ${pagina}`);
             const snapshot = await getDocs(q);
-            
+
             const niveles = [];
             let ultimoDoc = null;
-            let primerDoc = null;
-            
-            if (!snapshot.empty) {
-                ultimoDoc = snapshot.docs[snapshot.docs.length - 1];
-                primerDoc = snapshot.docs[0];
-                snapshot.forEach(doc => {
-                    try {
-                        const data = doc.data();
-                        const nivel = new RiesgoNivel(doc.id, {
-                            ...data,
-                            fechaCreacion: data.fechaCreacion?.toDate?.() || data.fechaCreacion,
-                            fechaActualizacion: data.fechaActualizacion?.toDate?.() || data.fechaActualizacion
-                        });
-                        niveles.push(nivel);
-                    } catch (error) {
-                        console.error('Error procesando nivel:', error);
-                    }
-                });
-            }
-            
+            snapshot.forEach(doc => {
+                ultimoDoc = doc;
+                const data = doc.data();
+                niveles.push(new RiesgoNivel(doc.id, data));
+            });
+
             const total = await this.contarTotalNiveles(organizacionCamelCase, filtros);
-            
+
             return {
                 niveles,
                 total,
                 paginaActual: pagina,
                 totalPaginas: Math.ceil(total / itemsPorPagina),
                 ultimoDocumento: ultimoDoc,
-                primerDocumento: primerDoc,
                 tieneMas: snapshot.docs.length === itemsPorPagina
             };
         } catch (error) {
             console.error('Error obteniendo niveles paginados:', error);
-            return {
-                niveles: [],
-                total: 0,
-                paginaActual: pagina,
-                totalPaginas: 0,
-                ultimoDocumento: null,
-                primerDocumento: null,
-                tieneMas: false
-            };
+            return { niveles: [], total: 0, paginaActual: pagina, totalPaginas: 0, ultimoDocumento: null, tieneMas: false };
         }
     }
 
     async crearNivel(data, usuarioActual) {
         try {
             if (!usuarioActual || !usuarioActual.organizacionCamelCase) {
-                throw new Error('Usuario no tiene organización asignada');
+                throw new Error('Usuario sin organización');
             }
-            if (!data.nombre || data.nombre.trim() === '') {
-                throw new Error('El nombre del nivel de riesgo es obligatorio');
-            }
-            
             const organizacion = usuarioActual.organizacionCamelCase;
-            const collectionName = this._getCollectionName(organizacion);
-            const collectionRef = collection(db, collectionName);
             
-            const nivelId = this._generarIdDesdeNombre(data.nombre);
-            const nivelRef = doc(collectionRef, nivelId);
-            
-            // Verificar si ya existe
-            const existDoc = await getDoc(nivelRef);
-            if (existDoc.exists()) {
-                throw new Error(`Ya existe un nivel de riesgo con el nombre "${data.nombre}" (ID: ${nivelId})`);
+            // Validar nombre único
+            const existe = await this.existeNombre(organizacion, data.nombre);
+            if (existe) {
+                throw new Error(`Ya existe un nivel de riesgo con el nombre "${data.nombre}"`);
             }
-            
+
+            const collectionName = this._getCollectionName(organizacion);
+            const colRef = collection(db, collectionName);
+
+            const idGenerado = this._generarIdDesdeNombre(data.nombre);
+            const docRef = doc(colRef, idGenerado);
+
+            const ahora = serverTimestamp();
             const nivelData = {
-                nombre: data.nombre.trim(),
-                color: data.color || '#ffffff',
+                nombre: data.nombre,
+                color: data.color,
                 organizacionCamelCase: organizacion,
                 creadoPor: usuarioActual.id,
                 creadoPorNombre: usuarioActual.nombreCompleto || '',
                 actualizadoPor: usuarioActual.id,
                 actualizadoPorNombre: usuarioActual.nombreCompleto || '',
-                fechaCreacion: serverTimestamp(),
-                fechaActualizacion: serverTimestamp()
+                fechaCreacion: ahora,
+                fechaActualizacion: ahora
             };
-            
-            await consumo.registrarFirestoreEscritura(collectionName, nivelId);
-            await setDoc(nivelRef, nivelData);
-            
-            const nuevoNivel = new RiesgoNivel(nivelId, {
-                ...nivelData,
-                fechaCreacion: new Date(),
-                fechaActualizacion: new Date()
-            });
-            
+
+            await consumo.registrarFirestoreEscritura(collectionName, idGenerado);
+            await setDoc(docRef, nivelData);
+
+            const nuevoNivel = new RiesgoNivel(idGenerado, { ...nivelData, fechaCreacion: new Date(), fechaActualizacion: new Date() });
             this.niveles.unshift(nuevoNivel);
-            
+
             const historial = await this._getHistorialManager();
             if (historial) {
                 await historial.registrarActividad({
                     usuario: usuarioActual,
                     tipo: 'crear',
-                    modulo: 'riesgoNivel',
-                    descripcion: `Creó nivel de riesgo "${data.nombre}" (${nivelId})`,
-                    detalles: { nivelId, nombre: data.nombre, color: data.color }
+                    modulo: 'nivelesRiesgo',
+                    descripcion: `Creó nivel de riesgo "${data.nombre}" con color ${data.color}`,
+                    detalles: { nivelId: idGenerado, nombre: data.nombre, color: data.color }
                 });
             }
-            
             return nuevoNivel;
         } catch (error) {
-            console.error('Error creando nivel de riesgo:', error);
+            console.error('Error creando nivel:', error);
             throw error;
         }
     }
 
-    async actualizarNivel(nivelId, nuevosDatos, usuarioActual, organizacionCamelCase) {
+    async actualizarNivel(id, datos, usuarioActual, organizacionCamelCase) {
         try {
-            if (!organizacionCamelCase) throw new Error('Organización no especificada');
+            if (!organizacionCamelCase) throw new Error('Organización requerida');
             
+            // Validar nombre único (excluyendo el mismo id)
+            const existe = await this.existeNombre(organizacionCamelCase, datos.nombre, id);
+            if (existe) {
+                throw new Error(`Ya existe un nivel de riesgo con el nombre "${datos.nombre}"`);
+            }
+
             const collectionName = this._getCollectionName(organizacionCamelCase);
-            const nivelRef = doc(db, collectionName, nivelId);
-            
-            const nivelSnap = await getDoc(nivelRef);
-            if (!nivelSnap.exists()) throw new Error('Nivel de riesgo no encontrado');
-            
+            const docRef = doc(db, collectionName, id);
+
             const datosActualizar = {
-                ...nuevosDatos,
-                fechaActualizacion: serverTimestamp(),
+                nombre: datos.nombre,
+                color: datos.color,
                 actualizadoPor: usuarioActual.id,
-                actualizadoPorNombre: usuarioActual.nombreCompleto || ''
+                actualizadoPorNombre: usuarioActual.nombreCompleto || '',
+                fechaActualizacion: serverTimestamp()
             };
-            delete datosActualizar.id;
-            delete datosActualizar.organizacionCamelCase;
-            delete datosActualizar.fechaCreacion;
-            
-            await consumo.registrarFirestoreActualizacion(collectionName, nivelId);
-            await updateDoc(nivelRef, datosActualizar);
-            
-            // Actualizar caché
-            const index = this.niveles.findIndex(n => n.id === nivelId);
+
+            await consumo.registrarFirestoreActualizacion(collectionName, id);
+            await updateDoc(docRef, datosActualizar);
+
+            const index = this.niveles.findIndex(n => n.id === id);
             if (index !== -1) {
-                Object.assign(this.niveles[index], nuevosDatos);
+                this.niveles[index].nombre = datos.nombre;
+                this.niveles[index].color = datos.color;
                 this.niveles[index].fechaActualizacion = new Date();
                 this.niveles[index].actualizadoPor = usuarioActual.id;
                 this.niveles[index].actualizadoPorNombre = usuarioActual.nombreCompleto;
             }
-            
+
             const historial = await this._getHistorialManager();
             if (historial) {
                 await historial.registrarActividad({
                     usuario: usuarioActual,
                     tipo: 'editar',
-                    modulo: 'riesgoNivel',
-                    descripcion: `Actualizó nivel de riesgo "${nuevosDatos.nombre || nivelId}"`,
-                    detalles: { nivelId, cambios: nuevosDatos }
+                    modulo: 'nivelesRiesgo',
+                    descripcion: `Editó nivel de riesgo "${datos.nombre}"`,
+                    detalles: { nivelId: id, cambios: datos }
                 });
             }
-            
             return true;
         } catch (error) {
             console.error('Error actualizando nivel:', error);
@@ -336,34 +330,30 @@ class RiesgoNivelManager {
         }
     }
 
-    async eliminarNivel(nivelId, usuarioActual, organizacionCamelCase) {
+    async eliminarNivel(id, organizacionCamelCase, usuarioActual) {
         try {
-            if (!organizacionCamelCase) throw new Error('Organización no especificada');
-            
+            if (!organizacionCamelCase) throw new Error('Organización requerida');
             const collectionName = this._getCollectionName(organizacionCamelCase);
-            const nivelRef = doc(db, collectionName, nivelId);
-            
-            const nivelSnap = await getDoc(nivelRef);
-            if (!nivelSnap.exists()) throw new Error('Nivel de riesgo no encontrado');
-            const nombreNivel = nivelSnap.data().nombre;
-            
-            await consumo.registrarFirestoreEliminacion(collectionName, nivelId);
-            await deleteDoc(nivelRef);
-            
-            const index = this.niveles.findIndex(n => n.id === nivelId);
-            if (index !== -1) this.niveles.splice(index, 1);
-            
+            const docRef = doc(db, collectionName, id);
+
+            const docSnap = await getDoc(docRef);
+            const nombre = docSnap.exists() ? docSnap.data().nombre : id;
+
+            await consumo.registrarFirestoreEliminacion(collectionName, id);
+            await deleteDoc(docRef);
+
+            this.niveles = this.niveles.filter(n => n.id !== id);
+
             const historial = await this._getHistorialManager();
-            if (historial) {
+            if (historial && usuarioActual) {
                 await historial.registrarActividad({
                     usuario: usuarioActual,
                     tipo: 'eliminar',
-                    modulo: 'riesgoNivel',
-                    descripcion: `Eliminó nivel de riesgo "${nombreNivel}" (${nivelId})`,
-                    detalles: { nivelId, nombre: nombreNivel }
+                    modulo: 'nivelesRiesgo',
+                    descripcion: `Eliminó nivel de riesgo "${nombre}"`,
+                    detalles: { nivelId: id }
                 });
             }
-            
             return true;
         } catch (error) {
             console.error('Error eliminando nivel:', error);
@@ -371,20 +361,17 @@ class RiesgoNivelManager {
         }
     }
 
-    async obtenerNivelPorId(nivelId, organizacionCamelCase) {
+    async obtenerNivelPorId(id, organizacionCamelCase) {
         if (!organizacionCamelCase) return null;
-        
-        const cached = this.niveles.find(n => n.id === nivelId);
+        const cached = this.niveles.find(n => n.id === id);
         if (cached) return cached;
-        
         try {
             const collectionName = this._getCollectionName(organizacionCamelCase);
-            const nivelRef = doc(db, collectionName, nivelId);
-            await consumo.registrarFirestoreLectura(collectionName, nivelId);
-            const snap = await getDoc(nivelRef);
+            const docRef = doc(db, collectionName, id);
+            await consumo.registrarFirestoreLectura(collectionName, id);
+            const snap = await getDoc(docRef);
             if (snap.exists()) {
-                const data = snap.data();
-                const nivel = new RiesgoNivel(nivelId, data);
+                const nivel = new RiesgoNivel(id, snap.data());
                 this.niveles.push(nivel);
                 return nivel;
             }
@@ -398,9 +385,8 @@ class RiesgoNivelManager {
     async obtenerTodosNiveles(organizacionCamelCase) {
         try {
             const collectionName = this._getCollectionName(organizacionCamelCase);
-            const collectionRef = collection(db, collectionName);
-            const q = query(collectionRef, orderBy("nombre", "asc"));
-            await consumo.registrarFirestoreLectura(collectionName, 'todos');
+            const colRef = collection(db, collectionName);
+            const q = query(colRef, orderBy("nombre", "asc"));
             const snapshot = await getDocs(q);
             const niveles = [];
             snapshot.forEach(doc => {
