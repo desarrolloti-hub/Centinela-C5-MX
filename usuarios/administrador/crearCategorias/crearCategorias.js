@@ -1,4 +1,4 @@
-// crearCategorias.js - CON ASIGNACIÓN DE NIVELES DE RIESGO A SUBCATEGORÍAS
+// crearCategorias.js - COMPLETO CON SLIDER ARRASTRABLE Y GRADIENTE
 import { CategoriaManager } from '/clases/categoria.js';
 import { RiesgoNivelManager } from '/clases/riesgoNivel.js';
 
@@ -15,7 +15,7 @@ class CrearCategoriaController {
         this.riesgoNivelManager = null;
         this.usuarioActual = null;
         this.subcategorias = [];
-        this.nivelesRiesgo = []; // { id, nombre, color }
+        this.nivelesRiesgo = [];
         this._init();
     }
 
@@ -42,7 +42,6 @@ class CrearCategoriaController {
         }
     }
 
-    // ========== CARGA DE USUARIO Y MANAGERS ==========
     _cargarUsuario() {
         try {
             const adminInfo = localStorage.getItem('adminInfo');
@@ -112,7 +111,6 @@ class CrearCategoriaController {
         }
     }
 
-    // ========== UI Y EVENTOS ==========
     _configurarEventos() {
         document.getElementById('btnVolverLista')?.addEventListener('click', () => this._volverALista());
         document.getElementById('btnCancelar')?.addEventListener('click', () => this._cancelarCreacion());
@@ -126,14 +124,12 @@ class CrearCategoriaController {
             colorPicker.addEventListener('input', (e) => {
                 document.getElementById('colorDisplay').style.backgroundColor = e.target.value;
                 document.getElementById('colorHex').textContent = e.target.value;
-                this._renderizarSubcategorias(); // actualizar preview de colores
+                this._renderizarSubcategorias(); // actualizar todas las subcategorías que heredan
             });
         }
     }
 
-    _configurarOrganizacion() {
-        // no hay campos específicos, pero se usa this.usuarioActual
-    }
+    _configurarOrganizacion() {}
 
     _inicializarValidaciones() {
         const descripcion = document.getElementById('descripcionCategoria');
@@ -163,7 +159,6 @@ class CrearCategoriaController {
         if (header) header.innerHTML = `<strong>Organización:</strong> ${this.usuarioActual.organizacion}`;
     }
 
-    // ========== GESTIÓN DE SUBCATEGORÍAS ==========
     _inicializarGestionSubcategorias() {
         document.getElementById('btnAgregarSubcategoria')?.addEventListener('click', () => this._agregarSubcategoria());
     }
@@ -175,7 +170,8 @@ class CrearCategoriaController {
             nombre: '',
             descripcion: '',
             heredaColor: true,
-            colorPersonalizado: '#ff5733',
+            brightnessFactor: 1.0,
+            colorPersonalizado: null,
             riesgoNivelId: ''
         });
         this._renderizarSubcategorias();
@@ -213,7 +209,8 @@ class CrearCategoriaController {
     _actualizarContadorSubcampo(subcatId, campo, valor) {
         const input = document.getElementById(`subcat_${campo}_${subcatId}`);
         if (input) {
-            const counter = input.closest('.subcategoria-campo')?.querySelector('.char-counter');
+            const parent = input.closest('.subcategoria-campo') || input.closest('.subcategoria-campo-full');
+            const counter = parent?.querySelector('.char-counter');
             if (counter) {
                 const limite = campo === 'nombre' ? LIMITES.NOMBRE_SUBCATEGORIA : LIMITES.DESCRIPCION_SUBCATEGORIA;
                 counter.textContent = `${(valor || '').length}/${limite}`;
@@ -225,17 +222,99 @@ class CrearCategoriaController {
         const subcat = this.subcategorias.find(s => s.id === subcatId);
         if (subcat) {
             subcat.heredaColor = hereda;
+            if (hereda) {
+                subcat.brightnessFactor = 1.0;
+                subcat.colorPersonalizado = null;
+            } else {
+                if (!subcat.colorPersonalizado) {
+                    const catColor = document.getElementById('colorPickerNative')?.value || '#2f8cff';
+                    subcat.colorPersonalizado = catColor;
+                }
+            }
             this._renderizarSubcategorias();
+        }
+    }
+
+    // Actualiza el factor de brillo en tiempo real (usando input)
+    _actualizarBrightnessFactor(subcatId, percentValue) {
+        const subcat = this.subcategorias.find(s => s.id === subcatId);
+        if (subcat && subcat.heredaColor) {
+            const factor = 0.5 + (percentValue / 100);
+            subcat.brightnessFactor = Math.min(1.5, Math.max(0.5, factor));
+            // Actualizar solo la vista previa del color sin re-renderizar todo
+            this._actualizarVistaPreviaColorSubcategoria(subcatId);
+        }
+    }
+
+    // Método para actualizar dinámicamente el color efectivo y los elementos visuales
+    _actualizarVistaPreviaColorSubcategoria(subcatId) {
+        const subcat = this.subcategorias.find(s => s.id === subcatId);
+        if (!subcat) return;
+        const colorCategoria = document.getElementById('colorPickerNative')?.value || '#2f8cff';
+        const colorEfectivo = this._calcularColorEfectivo(subcat, colorCategoria);
+        
+        const itemDiv = document.getElementById(`subcategoria_${subcatId}`);
+        if (itemDiv) {
+            // Borde izquierdo
+            itemDiv.style.borderLeftColor = colorEfectivo;
+            // Badge de color
+            const badge = itemDiv.querySelector('.color-badge');
+            if (badge) badge.style.backgroundColor = colorEfectivo;
+            // Muestra de color efectivo
+            const muestra = itemDiv.querySelector('.color-muestra');
+            if (muestra) muestra.style.backgroundColor = colorEfectivo;
+            // Texto hexadecimal
+            const hexSpan = itemDiv.querySelector('.color-actual span:last-child');
+            if (hexSpan) hexSpan.textContent = colorEfectivo;
+            // Mini hex en el control de tonalidad
+            const hexMini = itemDiv.querySelector('.color-hex-mini');
+            if (hexMini) hexMini.textContent = colorEfectivo;
+            // Actualizar el valor porcentual del slider
+            const percentSpan = itemDiv.querySelector('.tonalidad-valor');
+            if (percentSpan) {
+                const percent = Math.round((subcat.brightnessFactor - 0.5) * 100);
+                percentSpan.textContent = `${percent}%`;
+            }
+            // Si el slider existe, no es necesario actualizar su posición porque el evento input ya lo maneja
         }
     }
 
     _actualizarColorPersonalizado(subcatId, color) {
         const subcat = this.subcategorias.find(s => s.id === subcatId);
-        if (subcat) subcat.colorPersonalizado = color;
-        this._renderizarSubcategorias();
+        if (subcat && !subcat.heredaColor) {
+            subcat.colorPersonalizado = color;
+            this._renderizarSubcategorias();
+        }
     }
 
-    // ========== RENDERIZADO PRINCIPAL ==========
+    _hexToRgb(hex) {
+        const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+        return result ? {
+            r: parseInt(result[1], 16),
+            g: parseInt(result[2], 16),
+            b: parseInt(result[3], 16)
+        } : null;
+    }
+
+    _adjustBrightness(rgb, factor) {
+        let r = Math.min(255, Math.max(0, Math.round(rgb.r * factor)));
+        let g = Math.min(255, Math.max(0, Math.round(rgb.g * factor)));
+        let b = Math.min(255, Math.max(0, Math.round(rgb.b * factor)));
+        return `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)}`;
+    }
+
+    _calcularColorEfectivo(subcat, colorCategoria) {
+        if (!subcat.heredaColor) {
+            return subcat.colorPersonalizado || colorCategoria;
+        }
+        const rgb = this._hexToRgb(colorCategoria);
+        if (!rgb) return colorCategoria;
+        let factor = subcat.brightnessFactor;
+        factor = Math.min(1.5, Math.max(0.5, factor));
+        return this._adjustBrightness(rgb, factor);
+    }
+
+    // ========== RENDERIZADO PRINCIPAL CON SLIDER MEJORADO ==========
     _renderizarSubcategorias() {
         const container = document.getElementById('subcategoriasList');
         if (!container) return;
@@ -249,29 +328,37 @@ class CrearCategoriaController {
         let html = '';
 
         this.subcategorias.forEach((subcat, idx) => {
-            const colorEfectivo = subcat.heredaColor ? colorCategoria : (subcat.colorPersonalizado || '#ff5733');
+            const colorEfectivo = this._calcularColorEfectivo(subcat, colorCategoria);
+            const sliderValue = subcat.heredaColor ? Math.round((subcat.brightnessFactor - 0.5) * 100) : 50;
+            
+            // Generar gradiente para el slider (desde oscuro hasta claro)
+            const rgbBase = this._hexToRgb(colorCategoria);
+            const darkColor = rgbBase ? this._adjustBrightness(rgbBase, 0.5) : '#2f8cff';
+            const lightColor = rgbBase ? this._adjustBrightness(rgbBase, 1.5) : '#2f8cff';
+            const sliderGradient = `linear-gradient(90deg, ${darkColor} 0%, ${colorCategoria} 50%, ${lightColor} 100%)`;
 
             // Opciones del select de niveles de riesgo
             let riesgoOptions = '<option value="">-- Seleccionar --</option>';
             this.nivelesRiesgo.forEach(nivel => {
                 const selected = (subcat.riesgoNivelId === nivel.id) ? 'selected' : '';
-                riesgoOptions += `<option value="${nivel.id}" ${selected}>${nivel.nombre} (${nivel.color})</option>`;
+                riesgoOptions += `<option value="${nivel.id}" ${selected}>${this._escapeHTML(nivel.nombre)} (${nivel.color})</option>`;
             });
-            riesgoOptions += '<option value="__otro__">➕ Crear nuevo nivel...</option>';
+            riesgoOptions += '<option value="__otro__" ' + (subcat.riesgoNivelId === '__otro__' ? 'selected' : '') + '>Crear nuevo nivel</option>';
+            const showNuevoRiesgo = (subcat.riesgoNivelId === '__otro__') ? 'block' : 'none';
 
             html += `
-                <div class="subcategoria-item" style="border-left: 4px solid ${colorEfectivo};" id="subcategoria_${subcat.id}">
+                <div class="subcategoria-item" style="border-left: 4px solid ${colorEfectivo}; transition: border-left-color 0.1s ease;" id="subcategoria_${subcat.id}">
                     <div class="subcategoria-header">
                         <div class="subcategoria-titulo">
-                            <i class="fas fa-folder"></i>
-                            Subcategoría #${idx + 1}
-                            <span class="color-badge" style="background:${colorEfectivo}; width:16px; height:16px; border-radius:4px; display:inline-block; margin-left:8px;"></span>
+                            <i class="fas fa-folder"></i> Subcategoría #${idx + 1}
+                            <span class="color-badge" style="background:${colorEfectivo}; width:16px; height:16px; border-radius:4px; display:inline-block; margin-left:8px; transition: background 0.1s ease;"></span>
                         </div>
                         <button type="button" class="btn-eliminar-subcategoria" onclick="window.crearCategoriaDebug.controller._eliminarSubcategoria('${subcat.id}')">
                             <i class="fas fa-trash-alt"></i> Eliminar
                         </button>
                     </div>
-                    <div class="subcategoria-grid">
+                    <!-- Primera fila: Nombre + Nivel de Riesgo -->
+                    <div class="subcategoria-row-2cols">
                         <div class="subcategoria-campo">
                             <label><i class="fas fa-tag"></i> Nombre *</label>
                             <input type="text" class="subcategoria-input" id="subcat_nombre_${subcat.id}"
@@ -280,30 +367,32 @@ class CrearCategoriaController {
                             <div class="char-limit-info"><span class="char-counter">${subcat.nombre.length}/${LIMITES.NOMBRE_SUBCATEGORIA}</span></div>
                         </div>
                         <div class="subcategoria-campo">
-                            <label><i class="fas fa-align-left"></i> Descripción</label>
-                            <input type="text" class="subcategoria-input" id="subcat_descripcion_${subcat.id}"
-                                value="${this._escapeHTML(subcat.descripcion)}" maxlength="${LIMITES.DESCRIPCION_SUBCATEGORIA}"
-                                oninput="window.crearCategoriaDebug.controller._actualizarSubcategoria('${subcat.id}', 'descripcion', this.value)">
-                            <div class="char-limit-info"><span class="char-counter">${subcat.descripcion.length}/${LIMITES.DESCRIPCION_SUBCATEGORIA}</span></div>
-                        </div>
-                        <div class="subcategoria-campo">
                             <label><i class="fas fa-chart-line"></i> Nivel de Riesgo</label>
                             <div class="riesgo-select-wrapper">
                                 <select class="subcategoria-select-riesgo" data-subcat-id="${subcat.id}"
                                     onchange="window.crearCategoriaDebug.controller._cambiarRiesgoSeleccionado('${subcat.id}', this.value)">
                                     ${riesgoOptions}
                                 </select>
-                                <div id="nuevoRiesgoContainer_${subcat.id}" class="nuevo-riesgo-container" style="display: none; margin-top: 10px;">
+                                <div id="nuevoRiesgoContainer_${subcat.id}" class="nuevo-riesgo-container" style="display: ${showNuevoRiesgo}; margin-top: 8px;">
                                     <input type="text" class="form-control" placeholder="Nombre del nuevo nivel" id="nuevoRiesgoNombre_${subcat.id}" maxlength="50">
                                     <div style="display: flex; gap: 8px; margin-top: 5px; align-items: center;">
-                                        <input type="color" id="nuevoRiesgoColor_${subcat.id}" value="#2f8cff" style="width: 40px; height: 40px;">
-                                        <span>Color</span>
-                                        <button type="button" class="btn-crear-riesgo" data-subcat-id="${subcat.id}" style="margin-left: auto;">Crear y asignar</button>
+                                        <input type="color" id="nuevoRiesgoColor_${subcat.id}" value="#2f8cff" style="width: 36px; height: 36px;">
+                                        <span style="flex:1;">Color</span>
+                                        <button type="button" class="btn-crear-riesgo" data-subcat-id="${subcat.id}">Crear y asignar</button>
                                     </div>
                                 </div>
                             </div>
                         </div>
                     </div>
+                    <!-- Segunda fila: Descripción (ancho completo) -->
+                    <div class="subcategoria-campo-full">
+                        <label><i class="fas fa-align-left"></i> Descripción</label>
+                        <input type="text" class="subcategoria-input" id="subcat_descripcion_${subcat.id}"
+                            value="${this._escapeHTML(subcat.descripcion)}" maxlength="${LIMITES.DESCRIPCION_SUBCATEGORIA}"
+                            oninput="window.crearCategoriaDebug.controller._actualizarSubcategoria('${subcat.id}', 'descripcion', this.value)">
+                        <div class="char-limit-info"><span class="char-counter">${subcat.descripcion.length}/${LIMITES.DESCRIPCION_SUBCATEGORIA}</span></div>
+                    </div>
+                    <!-- Tercera fila: controles de color -->
                     <div class="subcategoria-color-control">
                         <div class="herencia-color">
                             <label class="herencia-checkbox">
@@ -312,13 +401,24 @@ class CrearCategoriaController {
                                 <span> Heredar color de categoría</span>
                             </label>
                         </div>
-                        <div class="color-personalizado" style="${subcat.heredaColor ? 'opacity:0.5; pointer-events:none;' : ''}">
+                        ${subcat.heredaColor ? `
+                        <div class="tonalidad-control">
+                            <span class="tonalidad-label"><i class="fas fa-adjust"></i> Brillo:</span>
+                            <input type="range" class="tonalidad-slider" min="0" max="100" value="${sliderValue}"
+                                style="background: ${sliderGradient};"
+                                oninput="window.crearCategoriaDebug.controller._actualizarBrightnessFactor('${subcat.id}', this.value)">
+                            <span class="tonalidad-valor">${sliderValue}%</span>
+                            <span class="color-hex-mini">${colorEfectivo}</span>
+                        </div>
+                        ` : `
+                        <div class="color-personalizado">
                             <span><i class="fas fa-palette"></i> Color:</span>
                             <input type="color" class="color-personalizado-input" id="subcat_color_${subcat.id}"
-                                value="${subcat.colorPersonalizado || '#ff5733'}" ${subcat.heredaColor ? 'disabled' : ''}
+                                value="${subcat.colorPersonalizado || '#ff5733'}"
                                 onchange="window.crearCategoriaDebug.controller._actualizarColorPersonalizado('${subcat.id}', this.value);
                                          window.crearCategoriaDebug.controller._renderizarSubcategorias();">
                         </div>
+                        `}
                         <div class="color-actual">
                             <span>Color efectivo:</span>
                             <span class="color-muestra" style="background:${colorEfectivo};"></span>
@@ -333,10 +433,13 @@ class CrearCategoriaController {
 
         // Agregar event listeners a los botones "Crear y asignar"
         document.querySelectorAll('.btn-crear-riesgo').forEach(btn => {
-            btn.addEventListener('click', async (e) => {
+            btn.removeEventListener('click', this._handler);
+            const handler = async () => {
                 const subcatId = btn.dataset.subcatId;
                 await this._crearNuevoRiesgoYAsignar(subcatId);
-            });
+            };
+            btn.addEventListener('click', handler);
+            btn._handler = handler;
         });
     }
 
@@ -348,7 +451,7 @@ class CrearCategoriaController {
         const container = document.getElementById(`nuevoRiesgoContainer_${subcatId}`);
         if (valor === '__otro__') {
             if (container) container.style.display = 'block';
-            subcat.riesgoNivelId = '';
+            subcat.riesgoNivelId = '__otro__';
         } else {
             if (container) container.style.display = 'none';
             subcat.riesgoNivelId = valor;
@@ -375,10 +478,7 @@ class CrearCategoriaController {
         btn.disabled = true;
 
         try {
-            const nuevoNivel = await this.riesgoNivelManager.crearNivel(
-                { nombre, color },
-                this.usuarioActual
-            );
+            const nuevoNivel = await this.riesgoNivelManager.crearNivel({ nombre, color }, this.usuarioActual);
             this.nivelesRiesgo.push(nuevoNivel);
             subcat.riesgoNivelId = nuevoNivel.id;
             this._renderizarSubcategorias();
@@ -412,22 +512,30 @@ class CrearCategoriaController {
     }
 
     _obtenerDatosFormulario(subcatsValidas) {
-        const color = document.getElementById('colorPickerNative').value;
+        const colorCategoria = document.getElementById('colorPickerNative').value;
         const subcategorias = {};
         subcatsValidas.forEach(subcat => {
-            subcategorias[subcat.id] = {
-                id: subcat.id,
+            const id = subcat.id.startsWith('temp_') ? `sub_${Date.now()}_${Math.random().toString(36).substr(2, 4)}` : subcat.id;
+            let colorFinal;
+            if (subcat.heredaColor) {
+                colorFinal = this._calcularColorEfectivo(subcat, colorCategoria);
+            } else {
+                colorFinal = subcat.colorPersonalizado || colorCategoria;
+            }
+            subcategorias[id] = {
+                id: id,
                 nombre: subcat.nombre.trim(),
                 descripcion: subcat.descripcion?.trim() || '',
                 heredaColor: subcat.heredaColor,
-                color: !subcat.heredaColor ? (subcat.colorPersonalizado || null) : null,
-                riesgoNivelId: subcat.riesgoNivelId || null
+                color: colorFinal,
+                brightnessFactor: subcat.heredaColor ? subcat.brightnessFactor : null,
+                riesgoNivelId: (subcat.riesgoNivelId && subcat.riesgoNivelId !== '__otro__') ? subcat.riesgoNivelId : null
             };
         });
         return {
             nombre: document.getElementById('nombreCategoria').value.trim(),
             descripcion: document.getElementById('descripcionCategoria').value.trim(),
-            color: color,
+            color: colorCategoria,
             subcategorias: subcategorias,
             organizacionCamelCase: this.usuarioActual.organizacionCamelCase
         };
@@ -459,7 +567,6 @@ class CrearCategoriaController {
         }
     }
 
-    // ========== NAVEGACIÓN Y UTILIDADES ==========
     _volverALista() {
         window.location.href = '../categorias/categorias.html';
     }
@@ -486,12 +593,7 @@ class CrearCategoriaController {
 
     _escapeHTML(str) {
         if (!str) return '';
-        return str.replace(/[&<>]/g, function(m) {
-            if (m === '&') return '&amp;';
-            if (m === '<') return '&lt;';
-            if (m === '>') return '&gt;';
-            return m;
-        });
+        return str.replace(/[&<>]/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[m]));
     }
 }
 
