@@ -239,9 +239,6 @@ class PDFEstadisticasUnificadoGenerator extends PDFBaseGenerator {
                 Swal.fire({
                     title: 'Generando Reporte PDF Unificado...',
                     html: `<div style="margin-bottom:10px;"><i class="fas fa-chart-pie" style="font-size:32px; color:#c9a03d;"></i></div>
-                        <div class="progress-bar-container" style="width:100%; height:20px; background:rgba(0,0,0,0.1); border-radius:10px; margin-top:10px;">
-                            <div class="progress-bar" style="width:0%; height:100%; background:linear-gradient(90deg, #1a3b5d, #c9a03d); border-radius:10px;"></div>
-                        </div>
                         <p style="margin-top:12px;">Capturando gráficas...</p>`,
                     allowOutsideClick: false,
                     showConfirmButton: false,
@@ -1152,41 +1149,96 @@ class PDFEstadisticasUnificadoGenerator extends PDFBaseGenerator {
         await this._dibujarGraficaSimpleConTitulo(pdf, 'Colaboradores con más seguimientos', this.graficasCapturadas.seguimientos, margen + (anchoGrafica + espacioGraficas) * 2, yPos, anchoGrafica, 63);
     }
 
-    async _dibujarGraficaSimpleConTitulo(pdf, titulo, imagenDataURL, x, y, ancho, alto) {
-        const padding = 3;
-        const alturaTitulo = 14;
-        pdf.setFillColor(252, 252, 252);
-        pdf.setDrawColor(200, 200, 200);
-        pdf.roundedRect(x, y, ancho, alto, 3, 3, 'FD');
-        pdf.setDrawColor(201, 160, 61);
-        pdf.setLineWidth(0.5);
-        pdf.line(x + 4, y + alturaTitulo - 2, x + ancho - 4, y + alturaTitulo - 2);
-        pdf.setFont('helvetica', 'bold');
-        pdf.setFontSize(this.fonts.mini);
-        pdf.setTextColor(0, 0, 0);
-        pdf.text(titulo, x + (ancho / 2), y + 5, { align: 'center' });
-        const graficaX = x + padding;
-        const graficaY = y + alturaTitulo + 2;
-        const graficaAncho = ancho - (padding * 2);
-        const graficaAlto = alto - alturaTitulo - 6;
-        pdf.setFillColor(255, 255, 255);
-        pdf.rect(graficaX, graficaY, graficaAncho, graficaAlto, 'F');
-        if (imagenDataURL) {
-            try {
-                pdf.addImage(imagenDataURL, 'PNG', graficaX + 1, graficaY + 1, graficaAncho - 2, graficaAlto - 2);
-            } catch (error) {
-                pdf.setFont('helvetica', 'italic');
-                pdf.setFontSize(this.fonts.mini);
-                pdf.setTextColor(100, 100, 100);
-                pdf.text('Error al cargar gráfica', graficaX + (graficaAncho / 2), graficaY + (graficaAlto / 2), { align: 'center' });
-            }
-        } else {
-            pdf.setFont('helvetica', 'italic');
-            pdf.setFontSize(this.fonts.mini);
-            pdf.setTextColor(100, 100, 100);
-            pdf.text('Sin datos', graficaX + (graficaAncho / 2), graficaY + (graficaAlto / 2), { align: 'center' });
+   async _dibujarGraficaSimpleConTitulo(pdf, titulo, imagenDataURL, x, y, ancho, alto) {
+    const padding = 3;
+    const alturaTitulo = 14;
+    
+    pdf.setFillColor(252, 252, 252);
+    pdf.setDrawColor(200, 200, 200);
+    pdf.roundedRect(x, y, ancho, alto, 3, 3, 'FD');
+    
+    pdf.setDrawColor(201, 160, 61);
+    pdf.setLineWidth(0.5);
+    pdf.line(x + 4, y + alturaTitulo - 2, x + ancho - 4, y + alturaTitulo - 2);
+    
+    pdf.setFont('helvetica', 'bold');
+    pdf.setFontSize(this.fonts.mini);
+    pdf.setTextColor(0, 0, 0); // Título en NEGRO
+    pdf.text(titulo, x + (ancho / 2), y + 5, { align: 'center' });
+    
+    const graficaX = x + padding;
+    const graficaY = y + alturaTitulo + 2;
+    const graficaAncho = ancho - (padding * 2);
+    const graficaAlto = alto - alturaTitulo - 6;
+    
+    pdf.setFillColor(255, 255, 255);
+    pdf.rect(graficaX, graficaY, graficaAncho, graficaAlto, 'F');
+    
+    if (imagenDataURL) {
+        try {
+            // Aplicar filtro para hacer el texto de la imagen NEGRO
+            const imagenModificada = await this._forzarTextoNegroEnImagen(imagenDataURL);
+            pdf.addImage(imagenModificada, 'PNG', graficaX + 1, graficaY + 1, graficaAncho - 2, graficaAlto - 2);
+        } catch (error) {
+            console.error('Error al procesar imagen:', error);
+            // Fallback: usar imagen original
+            pdf.addImage(imagenDataURL, 'PNG', graficaX + 1, graficaY + 1, graficaAncho - 2, graficaAlto - 2);
         }
+    } else {
+        pdf.setFont('helvetica', 'italic');
+        pdf.setFontSize(this.fonts.mini);
+        pdf.setTextColor(100, 100, 100);
+        pdf.text('Sin datos', graficaX + (graficaAncho / 2), graficaY + (graficaAlto / 2), { align: 'center' });
     }
+}
+async _forzarTextoNegroEnImagen(dataURL) {
+    return new Promise((resolve) => {
+        const img = new Image();
+        img.onload = () => {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            
+            canvas.width = img.width;
+            canvas.height = img.height;
+            
+            // Dibujar imagen original
+            ctx.drawImage(img, 0, 0);
+            
+            // Obtener datos de píxeles
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const data = imageData.data;
+            
+            // Analizar y modificar colores (texto claro a NEGRO)
+            for (let i = 0; i < data.length; i += 4) {
+                const r = data[i];
+                const g = data[i + 1];
+                const b = data[i + 2];
+                const a = data[i + 3];
+                
+                // Detectar texto claro (blanco, gris claro, colores claros)
+                const esTextoClaro = (r > 180 && g > 180 && b > 180) || // blanco
+                                     (r > 150 && g > 150 && b > 150) || // gris claro
+                                     (Math.abs(r - g) < 50 && Math.abs(g - b) < 50 && r > 120); // grisáceo
+                
+                // Detectar colores de fondo oscuro o barras (no modificar)
+                const esBarraOscura = (r < 100 && g < 100 && b < 200) || // azul oscuro
+                                      (r < 100 && g > 100 && b < 100) || // verde oscuro
+                                      (r > 100 && g < 100 && b < 100);   // rojo oscuro
+                
+                // Convertir texto claro a NEGRO (pero no modificar barras)
+                if (esTextoClaro && !esBarraOscura && a > 200) {
+                    data[i] = 0;     // R = 0
+                    data[i + 1] = 0; // G = 0
+                    data[i + 2] = 0; // B = 0
+                }
+            }
+            
+            ctx.putImageData(imageData, 0, 0);
+            resolve(canvas.toDataURL('image/png'));
+        };
+        img.src = dataURL;
+    });
+}
 
     async _dibujarGraficaCircularConTitulo(pdf, titulo, imagenDataURL, x, y, ancho, alto) {
         const padding = 5;

@@ -1293,6 +1293,9 @@ class MapaCalorEstadistico {
         });
         L.marker([23.6345, -102.5528], { icon: mensaje }).addTo(this.mapa);
     }
+
+
+    
 }
 
 // Inicializar el componente
