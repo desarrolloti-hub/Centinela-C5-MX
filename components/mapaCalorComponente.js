@@ -895,46 +895,53 @@ class MapaCalorEstadistico {
         });
     }
     
-    actualizarMapa() {
-        if (!this.mapa) return;
-        
-        if (this.datosPorUbicacion.size === 0) {
-            this.mostrarMensajeInicialMapa();
-            return;
-        }
-        
-        const bounds = [];
-        
-        for (const [nombre, datos] of this.datosPorUbicacion) {
-            const [lat, lng] = datos.coordenadas;
-            bounds.push([lat, lng]);
-            
-            const icono = this.crearIconoPersonalizado(datos.color, datos.totalIncidentes, datos.nivel);
-            
-            L.marker([lat, lng], { icon: icono })
-                .bindTooltip(`${nombre}<br>Incidentes: ${datos.totalIncidentes}<br>Nivel: ${datos.nivel.toUpperCase()}`, {
-                    className: 'custom-tooltip',
-                    sticky: true
-                })
-                .bindPopup(this.crearPopupContenido(datos))
-                .addTo(this.mapa);
-            
-            const radio = Math.min(40 + (datos.totalIncidentes * 2), 120);
-            L.circleMarker([lat, lng], {
-                radius: radio,
-                fillColor: datos.color,
-                color: datos.color,
-                weight: 1,
-                opacity: 0.4,
-                fillOpacity: 0.15
-            }).addTo(this.mapa);
-        }
-        
-        if (bounds.length > 0) {
-            const group = L.featureGroup(bounds.map(b => L.marker(b)));
-            this.mapa.fitBounds(group.getBounds().pad(0.2));
-        }
+ actualizarMapa() {
+    if (!this.mapa) return;
+    
+    if (this.datosPorUbicacion.size === 0) {
+        this.mostrarMensajeInicialMapa();
+        return;
     }
+    
+    const bounds = [];
+    const markersGroup = []; // Para almacenar las coordenadas de los marcadores
+    
+    for (const [nombre, datos] of this.datosPorUbicacion) {
+        const [lat, lng] = datos.coordenadas;
+        bounds.push([lat, lng]);
+        
+        // Crear el marcador
+        const icono = this.crearIconoPersonalizado(datos.color, datos.totalIncidentes, datos.nivel);
+        
+        const marker = L.marker([lat, lng], { icon: icono })
+            .bindTooltip(`${nombre}<br>Incidentes: ${datos.totalIncidentes}<br>Nivel: ${datos.nivel.toUpperCase()}`, {
+                className: 'custom-tooltip',
+                sticky: true
+            })
+            .bindPopup(this.crearPopupContenido(datos))
+            .addTo(this.mapa);
+        
+        markersGroup.push(marker);
+        
+        // CORREGIDO: Usar EXACTAMENTE las mismas coordenadas [lat, lng]
+        // El radio se calcula igual que antes
+        const radio = Math.min(40 + (datos.totalIncidentes * 2), 120);
+        
+        L.circleMarker([lat, lng], {
+            radius: radio,
+            fillColor: datos.color,
+            color: datos.color,
+            weight: 1,
+            opacity: 0.4,
+            fillOpacity: 0.15
+        }).addTo(this.mapa);
+    }
+    
+    if (bounds.length > 0) {
+        const group = L.featureGroup(bounds.map(b => L.marker(b)));
+        this.mapa.fitBounds(group.getBounds().pad(0.2));
+    }
+}
     
     crearIconoPersonalizado(color, incidentes, nivel) {
         const tamanio = Math.min(32 + Math.floor(incidentes / 5), 48);
