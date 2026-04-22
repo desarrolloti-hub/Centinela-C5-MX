@@ -138,19 +138,24 @@
                                     <div class="form-help-text">Organización a la que pertenece la incidencia</div>
                                 </div>
 
-                               <!-- NUEVO CAMPO: Tipo de Evento -->
-                            <div class="full-width field-group-step" data-step="0">
-                                <label for="tipoEvento" class="form-label">Tipo de Evento *</label>
-                                <div class="input-group">
-                                    <span class="input-group-icon"><i class="fas fa-clock"></i></span>
-                                    <select class="form-control" id="tipoEvento" required>
-                                        <option value="">-- Selecciona el tipo de evento --</option>
-                                        <option value="tiempo_real">⏱️ Tiempo Real (fecha y hora actual automática)</option>
-                                        <option value="historico">📅 Histórico (seleccionar fecha y hora manualmente)</option>
-                                    </select>
+                                <!-- NUEVO: Tipo de Evento como botones (sin selección inicial) -->
+                                <div class="full-width field-group-step" data-step="0">
+                                    <label class="form-label">Tipo de Evento *</label>
+                                    <div class="tipo-evento-buttons">
+                                        <button type="button" class="tipo-evento-btn" data-tipo="tiempo_real">
+                                            <i class="fas fa-clock"></i>
+                                            <span>Tiempo Real</span>
+                                            <small>Fecha y hora actual automática</small>
+                                        </button>
+                                        <button type="button" class="tipo-evento-btn" data-tipo="historico">
+                                            <i class="fas fa-calendar-alt"></i>
+                                            <span>Histórico</span>
+                                            <small>Seleccionar fecha y hora manualmente</small>
+                                        </button>
+                                    </div>
+                                    <div class="form-help-text">Selecciona si el evento ocurrió ahora o en el pasado
+                                    </div>
                                 </div>
-                                <div class="form-help-text">Selecciona si el evento ocurrió ahora o en el pasado</div>
-                            </div>
 
                                 <!-- ============ PASO 1: Sucursal ============ -->
                                 <div class="full-width field-group-step" data-step="1">
@@ -160,7 +165,8 @@
                                         <input type="text" class="form-control" id="sucursalIncidencia"
                                             placeholder="Escribe para buscar sucursal..." autocomplete="off" required>
                                     </div>
-                                    <div class="form-help-text">Escribe y selecciona la sucursal de las sugerencias</div>
+                                    <div class="form-help-text">Escribe y selecciona la sucursal de las sugerencias
+                                    </div>
                                     <div id="sugerenciasSucursal" class="sugerencias-container"></div>
                                 </div>
 
@@ -172,7 +178,8 @@
                                         <input type="text" class="form-control" id="categoriaIncidencia"
                                             placeholder="Escribe para buscar categoría..." autocomplete="off" required>
                                     </div>
-                                    <div class="form-help-text">Escribe y selecciona la categoría de las sugerencias</div>
+                                    <div class="form-help-text">Escribe y selecciona la categoría de las sugerencias
+                                    </div>
                                     <div id="sugerenciasCategoria" class="sugerencias-container"></div>
                                 </div>
 
@@ -192,7 +199,8 @@
                                 <div class="full-width field-group-step" data-step="4">
                                     <label for="nivelRiesgo" class="form-label">Nivel de Riesgo *</label>
                                     <div class="input-group">
-                                        <span class="input-group-icon"><i class="fas fa-exclamation-triangle"></i></span>
+                                        <span class="input-group-icon"><i
+                                                class="fas fa-exclamation-triangle"></i></span>
                                         <select class="form-control" id="nivelRiesgo" required>
                                             <option value="">-- Selecciona el nivel de riesgo --</option>
                                             <option value="bajo">Bajo</option>
@@ -226,16 +234,19 @@
                                         <input type="text" class="form-control" id="fechaHoraIncidencia"
                                             placeholder="Selecciona fecha y hora" required>
                                     </div>
-                                    <div class="form-help-text">Fecha y hora en que ocurrió la incidencia (no puede ser futura)</div>
+                                    <div class="form-help-text">Fecha y hora en que ocurrió la incidencia (no puede ser
+                                        futura)</div>
                                 </div>
 
                                 <!-- ============ PASO 7: Descripción ============ -->
                                 <div class="full-width field-group-step" data-step="7">
-                                    <label for="detallesIncidencia" class="form-label">Descripción de la Incidencia *</label>
+                                    <label for="detallesIncidencia" class="form-label">Descripción de la Incidencia
+                                        *</label>
                                     <textarea class="form-control" id="detallesIncidencia" rows="5"
                                         placeholder="Describa detalladamente lo sucedido, incluyendo fechas, personas involucradas, y cualquier información relevante..."
                                         required></textarea>
-                                    <div class="form-help-text">Proporcione una descripción detallada del incidente</div>
+                                    <div class="form-help-text">Proporcione una descripción detallada del incidente
+                                    </div>
                                     <div class="char-limit-info">
                                         <span class="char-counter" id="contadorCaracteres">0/1000</span>
                                     </div>
@@ -269,21 +280,11 @@
                                 <p>Arrastra y suelta imágenes aquí</p>
                                 <p class="small">o haz clic para seleccionar archivos</p>
                                 <p class="small text-muted mt-2">También puedes pegar imágenes con Ctrl+V</p>
+                                <p class="small text-muted mt-2">Formatos: JPG, JPEG, PNG y WEBP. Máximo 5MB por imagen.
+                                </p>
                             </div>
 
-                            <div class="image-upload-section" style="display: none;">
-                                <div class="upload-area">
-                                    <input type="file" id="inputImagenes" multiple accept="image/*">
-                                    <button type="button" class="btn-upload" id="btnAgregarImagen">
-                                        <i class="fas fa-cloud-upload-alt"></i>
-                                        Agregar imágenes
-                                    </button>
-                                    <div class="upload-hint">
-                                        <i class="fas fa-info-circle"></i>
-                                        Formatos: JPG, PNG, GIF. Máximo 5MB por imagen.
-                                    </div>
-                                </div>
-                            </div>
+
 
                             <div class="images-preview-container">
                                 <h6>
