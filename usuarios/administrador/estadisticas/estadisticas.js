@@ -1,8 +1,5 @@
-// =============================================
-// estadisticas.js - VERSIÓN UNIFICADA
-// INCIDENCIAS + RECUPERACIÓN + DESEMPEÑO
-// =============================================
-
+// estadisticas.js - VERSIÓN CORREGIDA CON GRÁFICAS DE RECUPERACIÓN FUNCIONALES
+import { generadorPDFEstadisticasUnificado } from '/components/pdf-estadisticas-unificado.js';
 // =============================================
 // VARIABLES GLOBALES
 // =============================================
@@ -46,6 +43,7 @@ let graficoTipoEvento = null;
 let graficoEvolucionMensual = null;
 let graficoTopSucursales = null;
 let graficoComparativa = null;
+let regionesCache = [];
 
 // Almacenes para datos clickeables de recuperación
 window.registrosPorTipo = {};
@@ -60,10 +58,12 @@ let filtrosActivos = {
     sucursalId: 'todas',
     colaboradorId: 'todos',
     busqueda: '',
-    tipoEvento: 'todos'
+    tipoEvento: 'todos',
+    nivelRiesgoMapa: 'todos',
+    agrupacionMapa: 'sucursal'
 };
 
-// Colores para gráficas de incidencias
+// Colores para gráficas
 const COLORS = {
     critico: '#ef4444',
     alto: '#f97316',
@@ -78,7 +78,6 @@ const COLORS = {
     verde: '#10b981'
 };
 
-// Colores para recuperación
 const COLORS_REC = {
     rojo: '#ef4444',
     rojoClaro: 'rgba(239, 68, 68, 0.1)',
@@ -109,13 +108,15 @@ function escapeHTML(text) {
 
 function mostrarError(mensaje) {
     console.error(mensaje);
-    Swal.fire({
-        icon: 'error',
-        title: 'Error',
-        text: mensaje,
-        background: 'var(--color-bg-primary)',
-        color: 'white'
-    });
+    if (typeof Swal !== 'undefined') {
+        Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: mensaje,
+            background: 'var(--color-bg-primary)',
+            color: 'white'
+        });
+    }
 }
 
 function mostrarErrorInicializacion() {
@@ -134,14 +135,6 @@ function mostrarErrorInicializacion() {
     }
 }
 
-function mostrarLoading() {
-    const loadingIds = ['totalPerdidas', 'totalRecuperado', 'totalNeto', 'porcentajeRecuperacion', 'totalEventosRecuperacion', 'promedioPerdida'];
-    loadingIds.forEach(id => {
-        const el = document.getElementById(id);
-        if (el) el.textContent = '...';
-    });
-}
-
 function obtenerNombreSucursal(sucursalId) {
     if (!sucursalId) return 'No especificada';
     const sucursal = sucursalesCache.find(s => s.id === sucursalId);
@@ -154,9 +147,6 @@ function obtenerNombreCategoria(categoriaId) {
     return categoria ? categoria.nombre : 'No disponible';
 }
 
-// =============================================
-// OBTENER USUARIO ACTUAL
-// =============================================
 function obtenerUsuarioActual() {
     try {
         const adminInfo = localStorage.getItem('adminInfo');
@@ -171,7 +161,6 @@ function obtenerUsuarioActual() {
                 correoElectronico: adminData.correoElectronico || ''
             };
         }
-
         const userData = JSON.parse(localStorage.getItem('userData') || '{}');
         if (userData && Object.keys(userData).length > 0) {
             return {
@@ -183,16 +172,12 @@ function obtenerUsuarioActual() {
                 correoElectronico: userData.correo || userData.email || ''
             };
         }
-
         return null;
     } catch (error) {
         return null;
     }
 }
 
-// =============================================
-// OBTENER DATOS DE ORGANIZACIÓN
-// =============================================
 async function obtenerDatosOrganizacion() {
     try {
         const usuario = obtenerUsuarioActual();
@@ -203,10 +188,8 @@ async function obtenerDatosOrganizacion() {
             };
             return;
         }
-
         const userData = JSON.parse(localStorage.getItem('userData') || '{}');
         const adminInfo = JSON.parse(localStorage.getItem('adminInfo') || '{}');
-
         organizacionActual = {
             nombre: userData.organizacion || adminInfo.organizacion || 'Mi Empresa',
             camelCase: userData.organizacionCamelCase || adminInfo.organizacionCamelCase || ''
@@ -216,9 +199,6 @@ async function obtenerDatosOrganizacion() {
     }
 }
 
-// =============================================
-// INICIALIZACIÓN DE HISTORIAL
-// =============================================
 async function inicializarHistorial() {
     try {
         const { HistorialUsuarioManager } = await import('/clases/historialUsuario.js');
@@ -228,17 +208,11 @@ async function inicializarHistorial() {
     }
 }
 
-// =============================================
-// REGISTROS DE ACTIVIDAD
-// =============================================
 async function registrarAccesoVistaEstadisticas() {
-    if (!historialManager) return;
-    if (accesoVistaRegistrado) return;
-
+    if (!historialManager || accesoVistaRegistrado) return;
     try {
         const usuario = obtenerUsuarioActual();
         if (!usuario) return;
-
         await historialManager.registrarActividad({
             usuario: usuario,
             tipo: 'leer',
@@ -261,113 +235,59 @@ async function registrarAccesoVistaEstadisticas() {
 
 async function registrarAplicacionFiltros(filtrosAplicados, totalIncidencias, totalRecuperaciones) {
     if (!historialManager) return;
-
     try {
         const usuario = obtenerUsuarioActual();
         if (!usuario) return;
-
         const filtrosDetalles = {};
-
         if (filtrosAplicados.fechaInicio && filtrosAplicados.fechaFin) {
             filtrosDetalles.rangoFechas = `${filtrosAplicados.fechaInicio} al ${filtrosAplicados.fechaFin}`;
         }
-
         if (filtrosAplicados.categoriaId !== 'todas') {
             const categoria = categoriasCache.find(c => c.id === filtrosAplicados.categoriaId);
             filtrosDetalles.categoria = categoria?.nombre || filtrosAplicados.categoriaId;
         }
-
         if (filtrosAplicados.sucursalId !== 'todas') {
             const sucursal = sucursalesCache.find(s => s.id === filtrosAplicados.sucursalId);
             filtrosDetalles.sucursal = sucursal?.nombre || filtrosAplicados.sucursalId;
         }
-
         if (filtrosAplicados.colaboradorId !== 'todos') {
             filtrosDetalles.colaborador = filtrosAplicados.colaboradorId;
         }
-
         if (filtrosAplicados.busqueda) {
             filtrosDetalles.busqueda = filtrosAplicados.busqueda;
         }
-
         if (filtrosAplicados.tipoEvento !== 'todos') {
             filtrosDetalles.tipoEvento = filtrosAplicados.tipoEvento;
         }
-
         await historialManager.registrarActividad({
             usuario: usuario,
             tipo: 'leer',
             modulo: 'estadisticas',
             descripcion: `Aplicó filtros en estadísticas - ${totalIncidencias} incidencias, ${totalRecuperaciones} registros de recuperación`,
-            detalles: {
-                filtros: filtrosDetalles,
-                totalIncidencias: totalIncidencias,
-                totalRecuperaciones: totalRecuperaciones,
-                fechaAplicacion: new Date().toISOString()
-            }
+            detalles: { filtros: filtrosDetalles, totalIncidencias, totalRecuperaciones, fechaAplicacion: new Date().toISOString() }
         });
     } catch (error) {
         console.error('Error registrando aplicación de filtros:', error);
     }
 }
 
-async function registrarGeneracionPDFReporte(totalIncidencias, totalRecuperaciones, filtrosAplicados) {
-    if (!historialManager) return;
-
-    try {
-        const usuario = obtenerUsuarioActual();
-        if (!usuario) return;
-
-        await historialManager.registrarActividad({
-            usuario: usuario,
-            tipo: 'leer',
-            modulo: 'estadisticas',
-            descripcion: `Generó reporte PDF de estadísticas - ${totalIncidencias} incidencias, ${totalRecuperaciones} recuperaciones`,
-            detalles: {
-                totalIncidencias: totalIncidencias,
-                totalRecuperaciones: totalRecuperaciones,
-                filtrosAplicados: {
-                    fechaInicio: filtrosAplicados.fechaInicio,
-                    fechaFin: filtrosAplicados.fechaFin,
-                    categoria: filtrosAplicados.categoriaId !== 'todas' ?
-                        categoriasCache.find(c => c.id === filtrosAplicados.categoriaId)?.nombre : 'todas',
-                    sucursal: filtrosAplicados.sucursalId !== 'todas' ?
-                        sucursalesCache.find(s => s.id === filtrosAplicados.sucursalId)?.nombre : 'todas',
-                    colaborador: filtrosAplicados.colaboradorId !== 'todos' ? filtrosAplicados.colaboradorId : 'todos',
-                    tipoEvento: filtrosAplicados.tipoEvento !== 'todos' ? filtrosAplicados.tipoEvento : 'todos'
-                },
-                fechaGeneracion: new Date().toISOString()
-            }
-        });
-    } catch (error) {
-        console.error('Error registrando generación de PDF:', error);
-    }
-}
-
 async function registrarLimpiezaFiltros() {
     if (!historialManager) return;
-
     try {
         const usuario = obtenerUsuarioActual();
         if (!usuario) return;
-
         await historialManager.registrarActividad({
             usuario: usuario,
             tipo: 'leer',
             modulo: 'estadisticas',
             descripcion: 'Limpió los filtros de estadísticas',
-            detalles: {
-                fechaLimpieza: new Date().toISOString()
-            }
+            detalles: { fechaLimpieza: new Date().toISOString() }
         });
     } catch (error) {
         console.error('Error registrando limpieza de filtros:', error);
     }
 }
 
-// =============================================
-// OBTENER TOKEN DE AUTENTICACIÓN
-// =============================================
 async function obtenerTokenAuth() {
     try {
         if (window.firebase) {
@@ -380,44 +300,32 @@ async function obtenerTokenAuth() {
             const token = localStorage.getItem('firebaseToken') ||
                 localStorage.getItem('authToken') ||
                 localStorage.getItem('token');
-            if (token) {
-                authToken = token;
-            }
+            if (token) authToken = token;
         }
     } catch (error) {
         authToken = null;
     }
 }
 
-// =============================================
-// MOSTRAR/MOVER SECCIÓN DE RESULTADOS
-// =============================================
 function mostrarResultados() {
     const welcomeMsg = document.getElementById('welcomeMessage');
     const resultadosSection = document.getElementById('resultadosSection');
-
     if (welcomeMsg) welcomeMsg.style.display = 'none';
-    if (resultadosSection) {
-        resultadosSection.classList.add('visible');
-    }
+    if (resultadosSection) resultadosSection.classList.add('visible');
 }
 
 function mostrarMensajeSinResultados() {
     mostrarResultados();
-
     const graficasIds = [
         'graficoActualizadores', 'graficoReportadores', 'graficoSeguimientos',
         'graficoEstado', 'graficoRiesgo', 'graficoCategorias',
         'graficoSucursales', 'graficoTiempo'
     ];
-
     graficasIds.forEach(id => {
         const canvas = document.getElementById(id);
         if (canvas) {
             const ctx = canvas.getContext('2d');
-            if (charts[id]) {
-                delete charts[id];
-            }
+            if (charts[id]) delete charts[id];
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             ctx.font = '16px Arial';
             ctx.fillStyle = 'rgba(255,255,255,0.5)';
@@ -425,17 +333,10 @@ function mostrarMensajeSinResultados() {
             ctx.fillText('📭 Sin resultados con los filtros actuales', canvas.width / 2, canvas.height / 2);
         }
     });
-
     const tablaColab = document.getElementById('tablaColaboradoresBody');
-    if (tablaColab) {
-        tablaColab.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:40px;"><i class="fas fa-search" style="font-size: 32px; opacity: 0.3; margin-bottom: 10px;"></i><br>No hay incidencias que coincidan con los filtros</td></tr>';
-    }
-
+    if (tablaColab) tablaColab.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:40px;"><i class="fas fa-search" style="font-size: 32px; opacity: 0.3; margin-bottom: 10px;"></i><br>No hay incidencias que coincidan con los filtros</td></tr>';
     const tablaCat = document.getElementById('tablaCategoriasBody');
-    if (tablaCat) {
-        tablaCat.innerHTML = '<tr><td colspan="2" style="text-align:center; padding:40px;"><i class="fas fa-search" style="font-size: 32px; opacity: 0.3; margin-bottom: 10px;"></i><br>No hay incidencias que coincidan con los filtros</td></tr>';
-    }
-
+    if (tablaCat) tablaCat.innerHTML = '<tr><td colspan="2" style="text-align:center; padding:40px;"><i class="fas fa-search" style="font-size: 32px; opacity: 0.3; margin-bottom: 10px;"></i><br>No hay incidencias que coincidan con los filtros</td></tr>';
     setElementText('metricCriticas', '0');
     setElementText('metricAltas', '0');
     setElementText('metricPendientes', '0');
@@ -444,8 +345,6 @@ function mostrarMensajeSinResultados() {
     setElementText('metricAltasPorcentaje', '0% del total');
     setElementText('metricPendientesPorcentaje', '0% pendientes');
     setElementText('metricFinalizadasPorcentaje', '0% resueltas');
-    
-    // Limpiar KPIs de recuperación
     const formatter = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' });
     setElementText('totalPerdidas', formatter.format(0));
     setElementText('totalRecuperado', formatter.format(0));
@@ -455,21 +354,15 @@ function mostrarMensajeSinResultados() {
     setElementText('promedioPerdida', formatter.format(0));
 }
 
-// =============================================
-// INICIALIZACIÓN DE MANAGERS
-// =============================================
 async function inicializarEstadisticasManager() {
     try {
         await obtenerDatosOrganizacion();
-
         const { IncidenciaManager } = await import('/clases/incidencia.js');
         const { EstadisticasManager } = await import('/clases/estadistica.js');
         const { MercanciaPerdidaManager } = await import('/clases/incidenciaRecuperacion.js');
-
         incidenciaManager = new IncidenciaManager();
         estadisticasManager = new EstadisticasManager();
         mercanciaManager = new MercanciaPerdidaManager();
-
         return true;
     } catch (error) {
         console.error('Error al inicializar managers:', error);
@@ -478,17 +371,12 @@ async function inicializarEstadisticasManager() {
     }
 }
 
-// =============================================
-// CARGA DE DATOS AUXILIARES (Incidencias)
-// =============================================
 async function cargarSucursales() {
     try {
         const { SucursalManager } = await import('/clases/sucursal.js');
         const sucursalManager = new SucursalManager();
-
         if (organizacionActual.camelCase) {
             sucursalesCache = await sucursalManager.getSucursalesByOrganizacion(organizacionActual.camelCase);
-
             const filtroSucursal = document.getElementById('filtroSucursal');
             if (filtroSucursal) {
                 filtroSucursal.innerHTML = '<option value="todas">Todas las sucursales</option>';
@@ -511,7 +399,6 @@ async function cargarCategorias() {
         const { CategoriaManager } = await import('/clases/categoria.js');
         const categoriaManager = new CategoriaManager();
         categoriasCache = await categoriaManager.obtenerCategoriasPorOrganizacion(organizacionActual.camelCase);
-
         const filtroCategoria = document.getElementById('filtroCategoria');
         if (filtroCategoria) {
             filtroCategoria.innerHTML = '<option value="todas">Todas las categorías</option>';
@@ -528,32 +415,38 @@ async function cargarCategorias() {
     }
 }
 
-// =============================================
-// CARGA DE DATOS AUXILIARES (Recuperación)
-// =============================================
+async function cargarRegiones() {
+    try {
+        if (!organizacionActual?.camelCase) return;
+        const { RegionManager } = await import('/clases/region.js');
+        const regionManager = new RegionManager();
+        regionesCache = await regionManager.getRegionesByOrganizacion(organizacionActual.camelCase);
+        
+        // Depuración: Verificar que se cargaron las regiones con sus colores
+        console.log('Regiones cargadas:', regionesCache.map(r => ({ nombre: r.nombre, color: r.color })));
+        
+    } catch (error) {
+        console.error('Error cargando regiones:', error);
+        regionesCache = [];
+    }
+}
+
 async function cargarSucursalesRecuperacion() {
     try {
         if (!organizacionActual?.camelCase) return;
-
         const { SucursalManager } = await import('/clases/sucursal.js');
         const sucursalManager = new SucursalManager();
-
         const sucursales = await sucursalManager.getSucursalesByOrganizacion(organizacionActual.camelCase);
-        sucursalesRecuperacionCache = sucursales.map(s => s.nombre);
-        sucursalesRecuperacionCache = [...new Set(sucursalesRecuperacionCache)];
+        sucursalesRecuperacionCache = [...new Set(sucursales.map(s => s.nombre))];
     } catch (error) {
         sucursalesRecuperacionCache = [];
     }
 }
 
-// =============================================
-// CONFIGURAR FILTROS
-// =============================================
 function configurarFiltros() {
     document.getElementById('btnAplicarFiltros')?.addEventListener('click', aplicarFiltros);
     document.getElementById('btnLimpiarFiltros')?.addEventListener('click', limpiarFiltros);
     document.getElementById('btnLimpiarFiltrosSec')?.addEventListener('click', limpiarFiltros);
-
     let timeout;
     document.getElementById('buscarIncidencias')?.addEventListener('input', (e) => {
         clearTimeout(timeout);
@@ -562,7 +455,6 @@ function configurarFiltros() {
             aplicarFiltros();
         }, 500);
     });
-
     document.getElementById('btnGenerarPDF')?.addEventListener('click', generarReportePDF);
 }
 
@@ -570,112 +462,33 @@ function establecerFechasPorDefecto() {
     const hoy = new Date();
     const hace30Dias = new Date();
     hace30Dias.setDate(hoy.getDate() - 30);
-
     const fechaInicio = document.getElementById('filtroFechaInicio');
     const fechaFin = document.getElementById('filtroFechaFin');
-
     if (fechaInicio) fechaInicio.value = hace30Dias.toISOString().split('T')[0];
     if (fechaFin) fechaFin.value = hoy.toISOString().split('T')[0];
-
     filtrosActivos.fechaInicio = hace30Dias.toISOString().split('T')[0];
     filtrosActivos.fechaFin = hoy.toISOString().split('T')[0];
 }
 
-// =============================================
-// APLICAR FILTROS (FUNCIÓN PRINCIPAL UNIFICADA)
-// =============================================
-async function aplicarFiltros() {
-    const nuevosFiltros = {
-        fechaInicio: document.getElementById('filtroFechaInicio')?.value || null,
-        fechaFin: document.getElementById('filtroFechaFin')?.value || null,
-        categoriaId: document.getElementById('filtroCategoria')?.value || 'todas',
-        sucursalId: document.getElementById('filtroSucursal')?.value || 'todas',
-        colaboradorId: document.getElementById('filtroColaborador')?.value || 'todos',
-        busqueda: document.getElementById('buscarIncidencias')?.value || '',
-        tipoEvento: document.getElementById('filtroTipoEvento')?.value || 'todos'
-    };
-
-    filtrosActivos = nuevosFiltros;
-
-    // Cargar ambos módulos
-    await cargarIncidencias();
-    await cargarRegistrosRecuperacionConFiltros();
-
-    const totalIncidencias = incidenciasFiltradas?.length || 0;
-    const totalRecuperaciones = registrosRecuperacionFiltrados?.length || 0;
-
-    if (totalIncidencias > 0 || totalRecuperaciones > 0) {
-        await registrarAplicacionFiltros(filtrosActivos, totalIncidencias, totalRecuperaciones);
-    }
-}
-
-async function limpiarFiltros() {
-    const hoy = new Date();
-    const hace30Dias = new Date();
-    hace30Dias.setDate(hoy.getDate() - 30);
-
-    const fechaInicio = document.getElementById('filtroFechaInicio');
-    const fechaFin = document.getElementById('filtroFechaFin');
-    const filtroCategoria = document.getElementById('filtroCategoria');
-    const filtroSucursal = document.getElementById('filtroSucursal');
-    const filtroColaborador = document.getElementById('filtroColaborador');
-    const filtroTipoEvento = document.getElementById('filtroTipoEvento');
-    const buscar = document.getElementById('buscarIncidencias');
-
-    if (fechaInicio) fechaInicio.value = hace30Dias.toISOString().split('T')[0];
-    if (fechaFin) fechaFin.value = hoy.toISOString().split('T')[0];
-    if (filtroCategoria) filtroCategoria.value = 'todas';
-    if (filtroSucursal) filtroSucursal.value = 'todas';
-    if (filtroColaborador) filtroColaborador.value = 'todos';
-    if (filtroTipoEvento) filtroTipoEvento.value = 'todos';
-    if (buscar) buscar.value = '';
-
-    filtrosActivos = {
-        fechaInicio: hace30Dias.toISOString().split('T')[0],
-        fechaFin: hoy.toISOString().split('T')[0],
-        categoriaId: 'todas',
-        sucursalId: 'todas',
-        colaboradorId: 'todos',
-        busqueda: '',
-        tipoEvento: 'todos'
-    };
-
-    await registrarLimpiezaFiltros();
-    await cargarIncidencias();
-    await cargarRegistrosRecuperacionConFiltros();
-}
-
-// =============================================
-// FILTRAR INCIDENCIAS
-// =============================================
 function filtrarIncidencias(incidencias) {
     return incidencias.filter(inc => {
         if (filtrosActivos.fechaInicio) {
             const fechaInc = inc.fechaInicio instanceof Date ? inc.fechaInicio : new Date(inc.fechaInicio);
             if (fechaInc < new Date(filtrosActivos.fechaInicio)) return false;
         }
-
         if (filtrosActivos.fechaFin) {
             const fechaInc = inc.fechaInicio instanceof Date ? inc.fechaInicio : new Date(inc.fechaInicio);
             const fechaFin = new Date(filtrosActivos.fechaFin);
             fechaFin.setHours(23, 59, 59);
             if (fechaInc > fechaFin) return false;
         }
-
-        if (filtrosActivos.categoriaId !== 'todas' && inc.categoriaId !== filtrosActivos.categoriaId) {
-            return false;
-        }
-
-        if (filtrosActivos.sucursalId !== 'todas' && inc.sucursalId !== filtrosActivos.sucursalId) {
-            return false;
-        }
-
+        if (filtrosActivos.categoriaId !== 'todas' && inc.categoriaId !== filtrosActivos.categoriaId) return false;
+        if (filtrosActivos.sucursalId !== 'todas' && inc.sucursalId !== filtrosActivos.sucursalId) return false;
         if (filtrosActivos.colaboradorId !== 'todos') {
             const coincideColaborador = inc.creadoPorNombre === filtrosActivos.colaboradorId ||
                 inc.actualizadoPorNombre === filtrosActivos.colaboradorId;
             if (!coincideColaborador) return false;
         }
-
         if (filtrosActivos.busqueda) {
             const busqueda = filtrosActivos.busqueda.toLowerCase();
             const coincide = inc.id?.toLowerCase().includes(busqueda) ||
@@ -683,36 +496,26 @@ function filtrarIncidencias(incidencias) {
                 (inc.creadoPorNombre && inc.creadoPorNombre.toLowerCase().includes(busqueda));
             if (!coincide) return false;
         }
-
         return true;
     });
 }
 
-// =============================================
-// CARGAR INCIDENCIAS Y GENERAR GRÁFICAS
-// =============================================
 async function cargarIncidencias() {
     if (!incidenciaManager || !organizacionActual.camelCase) {
         mostrarError('No se pudo cargar el gestor de incidencias');
         return;
     }
-
     try {
         if (incidenciasCache.length === 0) {
             incidenciasCache = await incidenciaManager.getIncidenciasByOrganizacion(organizacionActual.camelCase);
         }
-
         incidenciasFiltradas = filtrarIncidencias(incidenciasCache);
-
         if (incidenciasFiltradas.length === 0) {
             mostrarMensajeSinResultados();
             return;
         }
-
         mostrarResultados();
-
         const datos = procesarDatosGraficas(incidenciasFiltradas);
-
         datosGraficas = {
             topActualizadores: datos.topActualizadores,
             topReportadores: datos.topReportadores,
@@ -724,44 +527,28 @@ async function cargarIncidencias() {
             tiemposPromedio: datos.tiemposPromedio,
             incidenciasFiltradas: incidenciasFiltradas
         };
-
         actualizarMetricasPrincipales(datos.metricas);
         renderizarTodasLasGraficas(datos);
-
-        setTimeout(() => {
-            configurarKpiCardsClickeables();
-        }, 100);
-
+        setTimeout(() => configurarKpiCardsClickeables(), 100);
         if (datos.colaboradores && datos.colaboradores.length > 0) {
             renderizarTablaColaboradores(datos.colaboradores);
             cargarFiltroColaboradores(datos.colaboradores);
         } else {
             renderizarTablaColaboradores([]);
         }
-
         if (datos.categoriasData && datos.categoriasData.length > 0) {
             renderizarTablaCategorias(datos.categoriasData);
         } else {
             renderizarTablaCategorias([]);
         }
-
         const fechaEl = document.getElementById('fechaActualizacion');
-        if (fechaEl) {
-            fechaEl.textContent = new Date().toLocaleString('es-MX');
-        }
-
+        if (fechaEl) fechaEl.textContent = new Date().toLocaleString('es-MX');
     } catch (error) {
         console.error('Error al cargar incidencias:', error);
         mostrarError('Error al cargar estadísticas: ' + error.message);
     }
 }
 
-
-
-
-// =============================================
-// PROCESAR DATOS PARA LAS GRÁFICAS DE INCIDENCIAS
-// =============================================
 function procesarDatosGraficas(incidencias) {
     const metricas = {
         total: incidencias.length,
@@ -772,167 +559,195 @@ function procesarDatosGraficas(incidencias) {
         medias: incidencias.filter(i => i.nivelRiesgo === 'medio').length,
         bajas: incidencias.filter(i => i.nivelRiesgo === 'bajo').length
     };
-
+    
     const actualizacionesPorColaborador = new Map();
     incidencias.forEach(inc => {
         if (inc.actualizadoPorNombre) {
-            const nombre = inc.actualizadoPorNombre;
-            actualizacionesPorColaborador.set(nombre, (actualizacionesPorColaborador.get(nombre) || 0) + 1);
+            actualizacionesPorColaborador.set(inc.actualizadoPorNombre, (actualizacionesPorColaborador.get(inc.actualizadoPorNombre) || 0) + 1);
         }
     });
-
     const topActualizadores = Array.from(actualizacionesPorColaborador.entries())
         .map(([nombre, cantidad]) => ({ nombre, cantidad }))
-        .sort((a, b) => b.cantidad - a.cantidad)
-        .slice(0, 5);
-
+        .sort((a, b) => b.cantidad - a.cantidad).slice(0, 5);
+    
     const reportesPorColaborador = new Map();
     incidencias.forEach(inc => {
         if (inc.creadoPorNombre) {
-            const nombre = inc.creadoPorNombre;
-            reportesPorColaborador.set(nombre, (reportesPorColaborador.get(nombre) || 0) + 1);
+            reportesPorColaborador.set(inc.creadoPorNombre, (reportesPorColaborador.get(inc.creadoPorNombre) || 0) + 1);
         }
     });
-
     const topReportadores = Array.from(reportesPorColaborador.entries())
         .map(([nombre, cantidad]) => ({ nombre, cantidad }))
-        .sort((a, b) => b.cantidad - a.cantidad)
-        .slice(0, 5);
-
+        .sort((a, b) => b.cantidad - a.cantidad).slice(0, 5);
+    
     const seguimientosPorColaborador = new Map();
     incidencias.forEach(inc => {
         if (inc.seguimiento) {
             Object.values(inc.seguimiento).forEach(seg => {
                 if (seg.usuarioNombre) {
-                    const nombre = seg.usuarioNombre;
-                    seguimientosPorColaborador.set(nombre, (seguimientosPorColaborador.get(nombre) || 0) + 1);
+                    seguimientosPorColaborador.set(seg.usuarioNombre, (seguimientosPorColaborador.get(seg.usuarioNombre) || 0) + 1);
                 }
             });
         }
     });
-
     const topSeguimientos = Array.from(seguimientosPorColaborador.entries())
         .map(([nombre, cantidad]) => ({ nombre, cantidad }))
-        .sort((a, b) => b.cantidad - a.cantidad)
-        .slice(0, 5);
-
-    const estadoData = {
-        pendientes: metricas.pendientes,
-        finalizadas: metricas.finalizadas
-    };
-
-    const riesgoData = {
-        critico: metricas.criticas,
-        alto: metricas.altas,
-        medio: metricas.medias,
-        bajo: metricas.bajas
-    };
-
+        .sort((a, b) => b.cantidad - a.cantidad).slice(0, 5);
+    
+    const estadoData = { pendientes: metricas.pendientes, finalizadas: metricas.finalizadas };
+    const riesgoData = { critico: metricas.criticas, alto: metricas.altas, medio: metricas.medias, bajo: metricas.bajas };
+    
+    // =============================================
+    // CATEGORÍAS - Con color desde la base de datos
+    // =============================================
     const categoriasMap = new Map();
     incidencias.forEach(inc => {
         if (inc.categoriaId) {
-            const nombre = obtenerNombreCategoria(inc.categoriaId);
-            categoriasMap.set(nombre, (categoriasMap.get(nombre) || 0) + 1);
+            const categoria = categoriasCache.find(c => c.id === inc.categoriaId);
+            const nombre = categoria ? categoria.nombre : obtenerNombreCategoria(inc.categoriaId);
+            const color = categoria ? categoria.color : '#2f8cff'; // Color por defecto si no tiene
+            categoriasMap.set(nombre, {
+                cantidad: (categoriasMap.get(nombre)?.cantidad || 0) + 1,
+                color: color
+            });
         }
     });
-
     const categoriasData = Array.from(categoriasMap.entries())
-        .map(([nombre, cantidad]) => ({ nombre, cantidad }))
+        .map(([nombre, data]) => ({ nombre, cantidad: data.cantidad, color: data.color }))
         .sort((a, b) => b.cantidad - a.cantidad)
         .slice(0, 5);
-
+    
+    // =============================================
+    // SUCURSALES - Con color de la región de cada sucursal
+    // =============================================
     const sucursalesMap = new Map();
-    incidencias.forEach(inc => {
-        if (inc.sucursalId) {
-            const nombre = obtenerNombreSucursal(inc.sucursalId);
-            sucursalesMap.set(nombre, (sucursalesMap.get(nombre) || 0) + 1);
+    
+    // Obtener colores de regiones para cada sucursal
+// Obtener colores de regiones para cada sucursal
+for (const inc of incidencias) {
+    if (inc.sucursalId) {
+        const sucursal = sucursalesCache.find(s => s.id === inc.sucursalId);
+        const nombre = sucursal ? sucursal.nombre : obtenerNombreSucursal(inc.sucursalId);
+        
+        if (!sucursalesMap.has(nombre)) {
+            // Obtener el color de la región de esta sucursal
+            let regionColor = '#6c757d'; // Color por defecto
+            if (sucursal && sucursal.regionId && regionesCache) {  // <--- CORREGIDO: regionesCache sin window
+                const region = regionesCache.find(r => r.id === sucursal.regionId);
+                if (region && region.color) {
+                    regionColor = region.color;
+                }
+            }
+            sucursalesMap.set(nombre, {
+                cantidad: 0,
+                color: regionColor
+            });
         }
-    });
-
+        sucursalesMap.get(nombre).cantidad++;
+    }
+}
+    
     const sucursalesData = Array.from(sucursalesMap.entries())
-        .map(([nombre, cantidad]) => ({ nombre, cantidad }))
+        .map(([nombre, data]) => ({ nombre, cantidad: data.cantidad, color: data.color }))
         .sort((a, b) => b.cantidad - a.cantidad)
         .slice(0, 5);
-
+    
+    // Tiempos de resolución (sin cambios)
     const tiemposResolucion = new Map();
-    const incidenciasFinalizadas = incidencias.filter(i =>
-        i.estado === 'finalizada' && i.fechaFinalizacion && i.fechaInicio
-    );
-
+    const incidenciasFinalizadas = incidencias.filter(i => i.estado === 'finalizada');
+    
     incidenciasFinalizadas.forEach(inc => {
-        if (inc.actualizadoPorNombre) {
-            const inicio = inc.fechaInicio instanceof Date ? inc.fechaInicio : new Date(inc.fechaInicio);
-            const fin = inc.fechaFinalizacion instanceof Date ? inc.fechaFinalizacion : new Date(inc.fechaFinalizacion);
-            const diferenciaMs = fin - inicio;
-            const tiempoHoras = Math.round(diferenciaMs / (1000 * 60 * 60));
-
-            if (tiempoHoras > 0 && tiempoHoras < 720) {
+        const inicio = inc.fechaInicio instanceof Date ? inc.fechaInicio : new Date(inc.fechaInicio);
+        let fechaFin = null;
+        
+        if (inc.fechaFinalizacion) {
+            fechaFin = inc.fechaFinalizacion instanceof Date ? inc.fechaFinalizacion : new Date(inc.fechaFinalizacion);
+        } else if (inc.fechaActualizacion) {
+            fechaFin = inc.fechaActualizacion instanceof Date ? inc.fechaActualizacion : new Date(inc.fechaActualizacion);
+        } else if (inc.seguimiento) {
+            const seguimientosArray = Object.values(inc.seguimiento);
+            if (seguimientosArray.length > 0) {
+                const fechasSeguimientos = seguimientosArray
+                    .map(seg => seg.fecha ? new Date(seg.fecha) : null)
+                    .filter(f => f !== null);
+                if (fechasSeguimientos.length > 0) {
+                    fechaFin = new Date(Math.max(...fechasSeguimientos));
+                }
+            }
+        }
+        
+        if (!fechaFin && inc.fechaActualizacion) {
+            fechaFin = inc.fechaActualizacion instanceof Date ? inc.fechaActualizacion : new Date(inc.fechaActualizacion);
+        }
+        
+        if (fechaFin && inicio && inc.actualizadoPorNombre) {
+            const diffMs = fechaFin - inicio;
+            const diffHoras = diffMs / (1000 * 60 * 60);
+            
+            if (diffHoras > 0 && diffHoras < 720) {
                 if (!tiemposResolucion.has(inc.actualizadoPorNombre)) {
                     tiemposResolucion.set(inc.actualizadoPorNombre, { total: 0, count: 0 });
                 }
                 const data = tiemposResolucion.get(inc.actualizadoPorNombre);
-                data.total += tiempoHoras;
+                data.total += diffHoras;
                 data.count++;
             }
         }
     });
-
+    
     const tiemposPromedio = Array.from(tiemposResolucion.entries())
-        .map(([nombre, data]) => ({
-            nombre: nombre,
-            promedio: data.count > 0 ? Math.round(data.total / data.count) : 0
+        .map(([nombre, data]) => ({ 
+            nombre, 
+            promedio: data.count > 0 ? Math.round(data.total / data.count) : 0,
+            incidenciasResueltas: data.count
         }))
         .filter(t => t.promedio > 0)
         .sort((a, b) => a.promedio - b.promedio)
         .slice(0, 8);
-
+    
     const colaboradoresMap = new Map();
-
     incidencias.forEach(inc => {
         if (inc.creadoPorNombre) {
             if (!colaboradoresMap.has(inc.creadoPorNombre)) {
-                colaboradoresMap.set(inc.creadoPorNombre, {
-                    nombre: inc.creadoPorNombre,
-                    reportados: 0,
-                    actualizados: 0,
-                    seguimientos: 0,
-                    tiempoTotal: 0,
-                    incidenciasResueltas: 0
+                colaboradoresMap.set(inc.creadoPorNombre, { 
+                    nombre: inc.creadoPorNombre, 
+                    reportados: 0, 
+                    actualizados: 0, 
+                    seguimientos: 0, 
+                    tiempoTotal: 0, 
+                    incidenciasResueltas: 0 
                 });
             }
             colaboradoresMap.get(inc.creadoPorNombre).reportados++;
         }
-
+        
         if (inc.actualizadoPorNombre) {
             if (!colaboradoresMap.has(inc.actualizadoPorNombre)) {
-                colaboradoresMap.set(inc.actualizadoPorNombre, {
-                    nombre: inc.actualizadoPorNombre,
-                    reportados: 0,
-                    actualizados: 0,
-                    seguimientos: 0,
-                    tiempoTotal: 0,
-                    incidenciasResueltas: 0
+                colaboradoresMap.set(inc.actualizadoPorNombre, { 
+                    nombre: inc.actualizadoPorNombre, 
+                    reportados: 0, 
+                    actualizados: 0, 
+                    seguimientos: 0, 
+                    tiempoTotal: 0, 
+                    incidenciasResueltas: 0 
                 });
             }
             const col = colaboradoresMap.get(inc.actualizadoPorNombre);
             col.actualizados++;
-
-            if (inc.estado === 'finalizada') {
-                col.incidenciasResueltas++;
-            }
+            if (inc.estado === 'finalizada') col.incidenciasResueltas++;
         }
-
+        
         if (inc.seguimiento) {
             Object.values(inc.seguimiento).forEach(seg => {
                 if (seg.usuarioNombre) {
                     if (!colaboradoresMap.has(seg.usuarioNombre)) {
-                        colaboradoresMap.set(seg.usuarioNombre, {
-                            nombre: seg.usuarioNombre,
-                            reportados: 0,
-                            actualizados: 0,
-                            seguimientos: 0,
-                            tiempoTotal: 0,
-                            incidenciasResueltas: 0
+                        colaboradoresMap.set(seg.usuarioNombre, { 
+                            nombre: seg.usuarioNombre, 
+                            reportados: 0, 
+                            actualizados: 0, 
+                            seguimientos: 0, 
+                            tiempoTotal: 0, 
+                            incidenciasResueltas: 0 
                         });
                     }
                     colaboradoresMap.get(seg.usuarioNombre).seguimientos++;
@@ -940,28 +755,44 @@ function procesarDatosGraficas(incidencias) {
             });
         }
     });
-
+    
     incidenciasFinalizadas.forEach(inc => {
         if (inc.actualizadoPorNombre && colaboradoresMap.has(inc.actualizadoPorNombre)) {
             const inicio = inc.fechaInicio instanceof Date ? inc.fechaInicio : new Date(inc.fechaInicio);
-            const fin = inc.fechaFinalizacion instanceof Date ? inc.fechaFinalizacion : new Date(inc.fechaFinalizacion);
-            const tiempo = Math.round((fin - inicio) / (1000 * 60 * 60));
-
-            if (tiempo > 0 && tiempo < 720) {
-                const col = colaboradoresMap.get(inc.actualizadoPorNombre);
-                col.tiempoTotal += tiempo;
+            let fechaFin = null;
+            if (inc.fechaFinalizacion) {
+                fechaFin = inc.fechaFinalizacion instanceof Date ? inc.fechaFinalizacion : new Date(inc.fechaFinalizacion);
+            } else if (inc.fechaActualizacion) {
+                fechaFin = inc.fechaActualizacion instanceof Date ? inc.fechaActualizacion : new Date(inc.fechaActualizacion);
+            } else if (inc.seguimiento) {
+                const seguimientosArray = Object.values(inc.seguimiento);
+                if (seguimientosArray.length > 0) {
+                    const fechasSeguimientos = seguimientosArray
+                        .map(seg => seg.fecha ? new Date(seg.fecha) : null)
+                        .filter(f => f !== null);
+                    if (fechasSeguimientos.length > 0) {
+                        fechaFin = new Date(Math.max(...fechasSeguimientos));
+                    }
+                }
+            }
+            
+            if (fechaFin) {
+                const tiempo = Math.round((fechaFin - inicio) / (1000 * 60 * 60));
+                if (tiempo > 0 && tiempo < 720) {
+                    colaboradoresMap.get(inc.actualizadoPorNombre).tiempoTotal += tiempo;
+                }
             }
         }
     });
-
+    
     return {
-        metricas,
-        topActualizadores,
-        topReportadores,
+        metricas, 
+        topActualizadores, 
+        topReportadores, 
         topSeguimientos,
-        estadoData,
-        riesgoData,
-        categoriasData,
+        estadoData, 
+        riesgoData, 
+        categoriasData, 
         sucursalesData,
         tiemposPromedio,
         colaboradores: Array.from(colaboradoresMap.values())
@@ -969,26 +800,18 @@ function procesarDatosGraficas(incidencias) {
     };
 }
 
-// =============================================
-// ACTUALIZAR MÉTRICAS PRINCIPALES
-// =============================================
 function actualizarMetricasPrincipales(metricas) {
     const total = metricas.total || 1;
-
     setElementText('metricCriticas', metricas.criticas);
     setElementText('metricAltas', metricas.altas);
     setElementText('metricPendientes', metricas.pendientes);
     setElementText('metricTotal', total);
-
     setElementText('metricCriticasPorcentaje', `${Math.round((metricas.criticas / total) * 100)}% del total`);
     setElementText('metricAltasPorcentaje', `${Math.round((metricas.altas / total) * 100)}% del total`);
     setElementText('metricPendientesPorcentaje', `${Math.round((metricas.pendientes / total) * 100)}% pendientes`);
     setElementText('metricFinalizadasPorcentaje', `${Math.round((metricas.finalizadas / total) * 100)}% resueltas`);
 }
 
-// =============================================
-// RENDERIZAR TODAS LAS GRÁFICAS DE INCIDENCIAS
-// =============================================
 function renderizarTodasLasGraficas(datos) {
     Object.keys(charts).forEach(key => {
         if (charts[key] && typeof charts[key].destroy === 'function') {
@@ -996,7 +819,6 @@ function renderizarTodasLasGraficas(datos) {
             delete charts[key];
         }
     });
-
     crearGraficoActualizadores(datos.topActualizadores);
     crearGraficoReportadores(datos.topReportadores);
     crearGraficoSeguimientos(datos.topSeguimientos);
@@ -1005,7 +827,6 @@ function renderizarTodasLasGraficas(datos) {
     crearGraficoCategorias(datos.categoriasData);
     crearGraficoSucursales(datos.sucursalesData);
     crearGraficoTiempoResolucion(datos.tiemposPromedio);
-
     agregarEventosClickCanvas();
 }
 
@@ -1020,7 +841,6 @@ function agregarEventosClickCanvas() {
         { id: 'graficoSucursales', handler: mostrarAlertSucursales },
         { id: 'graficoTiempo', handler: mostrarAlertTiempoResolucion }
     ];
-
     canvasConfigs.forEach(config => {
         const canvas = document.getElementById(config.id);
         if (canvas) {
@@ -1035,32 +855,17 @@ function crearGraficoActualizadores(actualizadores) {
     const canvas = document.getElementById('graficoActualizadores');
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
-
     if (!actualizadores || actualizadores.length === 0) {
         mostrarMensajeSinDatosEnCanvas(ctx, canvas, 'Sin datos de actualizaciones');
         return;
     }
-
     charts.actualizadores = new Chart(ctx, {
         type: 'bar',
         data: {
             labels: actualizadores.map(a => a.nombre.length > 12 ? a.nombre.substring(0, 10) + '...' : a.nombre),
-            datasets: [{
-                label: 'Incidencias actualizadas',
-                data: actualizadores.map(a => a.cantidad),
-                backgroundColor: COLORS.azul,
-                borderRadius: 4
-            }]
+            datasets: [{ label: 'Incidencias actualizadas', data: actualizadores.map(a => a.cantidad), backgroundColor: COLORS.azul, borderRadius: 4 }]
         },
-        options: {
-            responsive: true,
-            maintainAspectRatio: true,
-            plugins: { legend: { labels: { color: 'white' } } },
-            scales: {
-                y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.1)' }, ticks: { color: 'white', stepSize: 1 } },
-                x: { grid: { display: false }, ticks: { color: 'white', maxRotation: 45 } }
-            }
-        }
+        options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { labels: { color: 'white' } } }, scales: { y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.1)' }, ticks: { color: 'white', stepSize: 1 } }, x: { grid: { display: false }, ticks: { color: 'white', maxRotation: 45 } } } }
     });
 }
 
@@ -1068,32 +873,17 @@ function crearGraficoReportadores(reportadores) {
     const canvas = document.getElementById('graficoReportadores');
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
-
     if (!reportadores || reportadores.length === 0) {
         mostrarMensajeSinDatosEnCanvas(ctx, canvas, 'Sin datos de reportes');
         return;
     }
-
     charts.reportadores = new Chart(ctx, {
         type: 'bar',
         data: {
             labels: reportadores.map(r => r.nombre.length > 12 ? r.nombre.substring(0, 10) + '...' : r.nombre),
-            datasets: [{
-                label: 'Incidencias reportadas',
-                data: reportadores.map(r => r.cantidad),
-                backgroundColor: COLORS.verde,
-                borderRadius: 4
-            }]
+            datasets: [{ label: 'Incidencias reportadas', data: reportadores.map(r => r.cantidad), backgroundColor: COLORS.verde, borderRadius: 4 }]
         },
-        options: {
-            responsive: true,
-            maintainAspectRatio: true,
-            plugins: { legend: { labels: { color: 'white' } } },
-            scales: {
-                y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.1)' }, ticks: { color: 'white', stepSize: 1 } },
-                x: { grid: { display: false }, ticks: { color: 'white', maxRotation: 45 } }
-            }
-        }
+        options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { labels: { color: 'white' } } }, scales: { y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.1)' }, ticks: { color: 'white', stepSize: 1 } }, x: { grid: { display: false }, ticks: { color: 'white', maxRotation: 45 } } } }
     });
 }
 
@@ -1101,32 +891,17 @@ function crearGraficoSeguimientos(seguimientos) {
     const canvas = document.getElementById('graficoSeguimientos');
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
-
     if (!seguimientos || seguimientos.length === 0) {
         mostrarMensajeSinDatosEnCanvas(ctx, canvas, 'Sin datos de seguimientos');
         return;
     }
-
     charts.seguimientos = new Chart(ctx, {
         type: 'bar',
         data: {
             labels: seguimientos.map(s => s.nombre.length > 12 ? s.nombre.substring(0, 10) + '...' : s.nombre),
-            datasets: [{
-                label: 'Seguimientos realizados',
-                data: seguimientos.map(s => s.cantidad),
-                backgroundColor: COLORS.naranja,
-                borderRadius: 4
-            }]
+            datasets: [{ label: 'Seguimientos realizados', data: seguimientos.map(s => s.cantidad), backgroundColor: COLORS.naranja, borderRadius: 4 }]
         },
-        options: {
-            responsive: true,
-            maintainAspectRatio: true,
-            plugins: { legend: { labels: { color: 'white' } } },
-            scales: {
-                y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.1)' }, ticks: { color: 'white', stepSize: 1 } },
-                x: { grid: { display: false }, ticks: { color: 'white', maxRotation: 45 } }
-            }
-        }
+        options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { labels: { color: 'white' } } }, scales: { y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.1)' }, ticks: { color: 'white', stepSize: 1 } }, x: { grid: { display: false }, ticks: { color: 'white', maxRotation: 45 } } } }
     });
 }
 
@@ -1134,39 +909,14 @@ function crearGraficoEstado(estado) {
     const canvas = document.getElementById('graficoEstado');
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
-
     if ((!estado.pendientes || estado.pendientes === 0) && (!estado.finalizadas || estado.finalizadas === 0)) {
         mostrarMensajeSinDatosEnCanvas(ctx, canvas, 'Sin datos de estado');
         return;
     }
-
     charts.estado = new Chart(ctx, {
         type: 'doughnut',
-        data: {
-            labels: ['Pendientes', 'Finalizadas'],
-            datasets: [{
-                data: [estado.pendientes || 0, estado.finalizadas || 0],
-                backgroundColor: [COLORS.pendiente, COLORS.finalizada],
-                borderWidth: 0,
-                hoverOffset: 15
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: true,
-            plugins: {
-                legend: { labels: { color: 'white' }, position: 'bottom' },
-                tooltip: {
-                    callbacks: {
-                        label: (ctx) => {
-                            const total = (estado.pendientes || 0) + (estado.finalizadas || 0);
-                            const porcentaje = total > 0 ? Math.round((ctx.raw / total) * 100) : 0;
-                            return `${ctx.label}: ${ctx.raw} (${porcentaje}%)`;
-                        }
-                    }
-                }
-            }
-        }
+        data: { labels: ['Pendientes', 'Finalizadas'], datasets: [{ data: [estado.pendientes || 0, estado.finalizadas || 0], backgroundColor: [COLORS.pendiente, COLORS.finalizada], borderWidth: 0, hoverOffset: 15 }] },
+        options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { labels: { color: 'white' }, position: 'bottom' }, tooltip: { callbacks: { label: (ctx) => { const total = (estado.pendientes || 0) + (estado.finalizadas || 0); const porcentaje = total > 0 ? Math.round((ctx.raw / total) * 100) : 0; return `${ctx.label}: ${ctx.raw} (${porcentaje}%)`; } } } } }
     });
 }
 
@@ -1174,40 +924,14 @@ function crearGraficoRiesgo(riesgo) {
     const canvas = document.getElementById('graficoRiesgo');
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
-
-    if ((!riesgo.critico || riesgo.critico === 0) && (!riesgo.alto || riesgo.alto === 0) &&
-        (!riesgo.medio || riesgo.medio === 0) && (!riesgo.bajo || riesgo.bajo === 0)) {
+    if ((!riesgo.critico || riesgo.critico === 0) && (!riesgo.alto || riesgo.alto === 0) && (!riesgo.medio || riesgo.medio === 0) && (!riesgo.bajo || riesgo.bajo === 0)) {
         mostrarMensajeSinDatosEnCanvas(ctx, canvas, 'Sin datos de riesgo');
         return;
     }
-
     charts.riesgo = new Chart(ctx, {
         type: 'doughnut',
-        data: {
-            labels: ['Crítico', 'Alto', 'Medio', 'Bajo'],
-            datasets: [{
-                data: [riesgo.critico || 0, riesgo.alto || 0, riesgo.medio || 0, riesgo.bajo || 0],
-                backgroundColor: [COLORS.critico, COLORS.alto, COLORS.medio, COLORS.bajo],
-                borderWidth: 0,
-                hoverOffset: 15
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: true,
-            plugins: {
-                legend: { labels: { color: 'white' }, position: 'bottom' },
-                tooltip: {
-                    callbacks: {
-                        label: (ctx) => {
-                            const total = (riesgo.critico || 0) + (riesgo.alto || 0) + (riesgo.medio || 0) + (riesgo.bajo || 0);
-                            const porcentaje = total > 0 ? Math.round((ctx.raw / total) * 100) : 0;
-                            return `${ctx.label}: ${ctx.raw} (${porcentaje}%)`;
-                        }
-                    }
-                }
-            }
-        }
+        data: { labels: ['Crítico', 'Alto', 'Medio', 'Bajo'], datasets: [{ data: [riesgo.critico || 0, riesgo.alto || 0, riesgo.medio || 0, riesgo.bajo || 0], backgroundColor: [COLORS.critico, COLORS.alto, COLORS.medio, COLORS.bajo], borderWidth: 0, hoverOffset: 15 }] },
+        options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { labels: { color: 'white' }, position: 'bottom' }, tooltip: { callbacks: { label: (ctx) => { const total = (riesgo.critico || 0) + (riesgo.alto || 0) + (riesgo.medio || 0) + (riesgo.bajo || 0); const porcentaje = total > 0 ? Math.round((ctx.raw / total) * 100) : 0; return `${ctx.label}: ${ctx.raw} (${porcentaje}%)`; } } } } }
     });
 }
 
@@ -1215,31 +939,43 @@ function crearGraficoCategorias(categorias) {
     const canvas = document.getElementById('graficoCategorias');
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
-
     if (!categorias || categorias.length === 0) {
         mostrarMensajeSinDatosEnCanvas(ctx, canvas, 'Sin datos de categorías');
         return;
     }
-
+    
+    // Usar el color de cada categoría desde la base de datos
+    const colores = categorias.map(c => c.color || '#2f8cff');
+    
     charts.categorias = new Chart(ctx, {
         type: 'bar',
         data: {
             labels: categorias.map(c => c.nombre.length > 15 ? c.nombre.substring(0, 12) + '...' : c.nombre),
-            datasets: [{
-                label: 'Incidencias',
-                data: categorias.map(c => c.cantidad),
-                backgroundColor: COLORS.morado,
-                borderRadius: 4
+            datasets: [{ 
+                label: 'Incidencias', 
+                data: categorias.map(c => c.cantidad), 
+                backgroundColor: colores,
+                borderRadius: 4 
             }]
         },
-        options: {
-            responsive: true,
-            maintainAspectRatio: true,
-            plugins: { legend: { labels: { color: 'white' } } },
-            scales: {
-                y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.1)' }, ticks: { color: 'white', stepSize: 1 } },
-                x: { grid: { display: false }, ticks: { color: 'white', maxRotation: 45 } }
-            }
+        options: { 
+            responsive: true, 
+            maintainAspectRatio: true, 
+            plugins: { 
+                legend: { labels: { color: 'white' } },
+                tooltip: { callbacks: { label: (ctx) => `${ctx.dataset.label}: ${ctx.raw}` } }
+            }, 
+            scales: { 
+                y: { 
+                    beginAtZero: true, 
+                    grid: { color: 'rgba(255,255,255,0.1)' }, 
+                    ticks: { color: 'white', stepSize: 1 } 
+                }, 
+                x: { 
+                    grid: { display: false }, 
+                    ticks: { color: 'white', maxRotation: 45 } 
+                } 
+            } 
         }
     });
 }
@@ -1248,31 +984,43 @@ function crearGraficoSucursales(sucursales) {
     const canvas = document.getElementById('graficoSucursales');
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
-
     if (!sucursales || sucursales.length === 0) {
         mostrarMensajeSinDatosEnCanvas(ctx, canvas, 'Sin datos de sucursales');
         return;
     }
-
+    
+    // Usar el color de la región de cada sucursal
+    const colores = sucursales.map(s => s.color || '#6c757d');
+    
     charts.sucursales = new Chart(ctx, {
         type: 'bar',
         data: {
             labels: sucursales.map(s => s.nombre.length > 15 ? s.nombre.substring(0, 12) + '...' : s.nombre),
-            datasets: [{
-                label: 'Incidencias',
-                data: sucursales.map(s => s.cantidad),
-                backgroundColor: COLORS.turquesa,
-                borderRadius: 4
+            datasets: [{ 
+                label: 'Incidencias', 
+                data: sucursales.map(s => s.cantidad), 
+                backgroundColor: colores,
+                borderRadius: 4 
             }]
         },
-        options: {
-            responsive: true,
-            maintainAspectRatio: true,
-            plugins: { legend: { labels: { color: 'white' } } },
-            scales: {
-                y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.1)' }, ticks: { color: 'white', stepSize: 1 } },
-                x: { grid: { display: false }, ticks: { color: 'white', maxRotation: 45 } }
-            }
+        options: { 
+            responsive: true, 
+            maintainAspectRatio: true, 
+            plugins: { 
+                legend: { labels: { color: 'white' } },
+                tooltip: { callbacks: { label: (ctx) => `${ctx.dataset.label}: ${ctx.raw}` } }
+            }, 
+            scales: { 
+                y: { 
+                    beginAtZero: true, 
+                    grid: { color: 'rgba(255,255,255,0.1)' }, 
+                    ticks: { color: 'white', stepSize: 1 } 
+                }, 
+                x: { 
+                    grid: { display: false }, 
+                    ticks: { color: 'white', maxRotation: 45 } 
+                } 
+            } 
         }
     });
 }
@@ -1281,12 +1029,10 @@ function crearGraficoTiempoResolucion(tiempos) {
     const canvas = document.getElementById('graficoTiempo');
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
-
     if (!tiempos || tiempos.length === 0) {
         mostrarMensajeSinDatosEnCanvas(ctx, canvas, 'Sin datos de tiempo de resolución');
         return;
     }
-
     const nombres = tiempos.map(t => t.nombre.length > 15 ? t.nombre.substring(0, 12) + '...' : t.nombre);
     const promedios = tiempos.map(t => t.promedio);
     const colores = tiempos.map(t => {
@@ -1294,46 +1040,10 @@ function crearGraficoTiempoResolucion(tiempos) {
         if (t.promedio <= 72) return COLORS.alto;
         return COLORS.critico;
     });
-
     charts.tiempo = new Chart(ctx, {
         type: 'bar',
-        data: {
-            labels: nombres,
-            datasets: [{
-                label: 'Horas promedio de resolución',
-                data: promedios,
-                backgroundColor: colores,
-                borderRadius: 4
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: true,
-            indexAxis: 'y',
-            plugins: {
-                legend: { labels: { color: 'white' } },
-                tooltip: {
-                    callbacks: {
-                        label: (ctx) => {
-                            const horas = ctx.raw;
-                            const dias = Math.floor(horas / 24);
-                            const horasResto = horas % 24;
-                            let texto = `${horas} horas`;
-                            if (dias > 0) texto = `${dias} día${dias > 1 ? 's' : ''} y ${horasResto} horas`;
-                            return `${ctx.dataset.label}: ${texto}`;
-                        }
-                    }
-                }
-            },
-            scales: {
-                x: {
-                    beginAtZero: true,
-                    grid: { color: 'rgba(255,255,255,0.1)' },
-                    ticks: { color: 'white', stepSize: 24, callback: (value) => value >= 24 ? `${value / 24}d` : `${value}h` }
-                },
-                y: { grid: { display: false }, ticks: { color: 'white', font: { size: 10 } } }
-            }
-        }
+        data: { labels: nombres, datasets: [{ label: 'Horas promedio de resolución', data: promedios, backgroundColor: colores, borderRadius: 4 }] },
+        options: { responsive: true, maintainAspectRatio: true, indexAxis: 'y', plugins: { legend: { labels: { color: 'white' } }, tooltip: { callbacks: { label: (ctx) => { const horas = ctx.raw; const dias = Math.floor(horas / 24); const horasResto = horas % 24; let texto = `${horas} horas`; if (dias > 0) texto = `${dias} día${dias > 1 ? 's' : ''} y ${horasResto} horas`; return `${ctx.dataset.label}: ${texto}`; } } } }, scales: { x: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.1)' }, ticks: { color: 'white', stepSize: 24, callback: (value) => value >= 24 ? `${value / 24}d` : `${value}h` } }, y: { grid: { display: false }, ticks: { color: 'white', font: { size: 10 } } } } }
     });
 }
 
@@ -1345,62 +1055,39 @@ function mostrarMensajeSinDatosEnCanvas(ctx, canvas, mensaje) {
     ctx.fillText(mensaje, canvas.width / 2, canvas.height / 2);
 }
 
-// =============================================
-// TABLAS DE DESEMPEÑO
-// =============================================
 function renderizarTablaColaboradores(colaboradores) {
     const tbody = document.getElementById('tablaColaboradoresBody');
     if (!tbody) return;
-
     if (!colaboradores || colaboradores.length === 0) {
         tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:30px;">No hay datos de colaboradores</td</tr>';
         return;
     }
-
     tbody.innerHTML = colaboradores.slice(0, 10).map(col => {
         const tiempoPromedio = col.incidenciasResueltas > 0 ? Math.round(col.tiempoTotal / col.incidenciasResueltas) : 0;
         const totalActividad = (col.reportados || 0) + (col.actualizados || 0) + (col.seguimientos || 0);
-        const maxActividad = colaboradores.length > 0 ?
-            Math.max(...colaboradores.map(c => (c.reportados || 0) + (c.actualizados || 0) + (c.seguimientos || 0))) : 1;
+        const maxActividad = colaboradores.length > 0 ? Math.max(...colaboradores.map(c => (c.reportados || 0) + (c.actualizados || 0) + (c.seguimientos || 0))) : 1;
         const eficiencia = Math.min(100, Math.round((totalActividad / maxActividad) * 100));
-
         let tiempoColor = COLORS.bajo;
         if (tiempoPromedio > 72) tiempoColor = COLORS.critico;
         else if (tiempoPromedio > 24) tiempoColor = COLORS.alto;
         else if (tiempoPromedio > 0) tiempoColor = COLORS.medio;
-
-        return `
-            <tr>
-                <td><i class="fas fa-user-circle" style="color: ${COLORS.azul}; margin-right: 8px;"></i> ${escapeHTML(col.nombre)}</td>
-                <td><span class="badge-value badge-info">${col.reportados || 0}</span></td>
-                <td><span class="badge-value badge-warning">${col.actualizados || 0}</span></td>
-                <td><span class="badge-value badge-success">${col.seguimientos || 0}</span></td>
-                <td><span class="badge-value" style="background: ${tiempoColor}20; color: ${tiempoColor};">${tiempoPromedio} h</span></td>
-                <td>
-                    <div style="display: flex; align-items: center; gap: 8px;">
-                        <div class="eficiencia-bar" style="flex: 1; height: 6px; background: rgba(255,255,255,0.1); border-radius: 3px;">
-                            <div class="eficiencia-fill" style="width: ${eficiencia}%; height: 100%; background: linear-gradient(90deg, ${COLORS.verde}, ${COLORS.azul}); border-radius: 3px;"></div>
-                        </div>
-                        <span style="color: white; min-width: 40px;">${eficiencia}%</span>
-                    </div>
-                </td>
-            </tr>
-        `;
+        return `<tr><td><i class="fas fa-user-circle" style="color: ${COLORS.azul}; margin-right: 8px;"></i> ${escapeHTML(col.nombre)}</td><td><span class="badge-value badge-info">${col.reportados || 0}</span></td><td><span class="badge-value badge-warning">${col.actualizados || 0}</span></td><td><span class="badge-value badge-success">${col.seguimientos || 0}</span></td><td><span class="badge-value" style="background: ${tiempoColor}20; color: ${tiempoColor};">${tiempoPromedio} h</span></td><td><div style="display: flex; align-items: center; gap: 8px;"><div class="eficiencia-bar" style="flex: 1; height: 6px; background: rgba(255,255,255,0.1); border-radius: 3px;"><div class="eficiencia-fill" style="width: ${eficiencia}%; height: 100%; background: linear-gradient(90deg, ${COLORS.verde}, ${COLORS.azul}); border-radius: 3px;"></div></div><span style="color: white; min-width: 40px;">${eficiencia}%</span></div></td></tr>`;
     }).join('');
 }
 
 function renderizarTablaCategorias(categorias) {
     const tbody = document.getElementById('tablaCategoriasBody');
     if (!tbody) return;
-
     if (!categorias || categorias.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="2" style="text-align:center; padding:30px;">No hay datos de categorías</td</tr>';
+        tbody.innerHTML = '<tr><td colspan="2" style="text-align:center; padding:30px;">No hay datos de categorías</td></tr>';
         return;
     }
-
     tbody.innerHTML = categorias.map(cat => `
         <tr>
-            <td>${escapeHTML(cat.nombre)}</td>
+            <td>
+                <span style="display: inline-block; width: 12px; height: 12px; background: ${cat.color || '#2f8cff'}; border-radius: 3px; margin-right: 8px;"></span>
+                ${escapeHTML(cat.nombre)}
+            </td>
             <td><span class="badge-value badge-info">${cat.cantidad}</span></td>
         </tr>
     `).join('');
@@ -1409,12 +1096,10 @@ function renderizarTablaCategorias(categorias) {
 function cargarFiltroColaboradores(colaboradores) {
     const selectColab = document.getElementById('filtroColaborador');
     if (!selectColab) return;
-
     if (!colaboradores || colaboradores.length === 0) {
         selectColab.innerHTML = '<option value="todos">Todos los colaboradores</option>';
         return;
     }
-
     const opciones = ['<option value="todos">Todos los colaboradores</option>'];
     colaboradores.slice(0, 20).forEach(col => {
         opciones.push(`<option value="${escapeHTML(col.nombre)}">${escapeHTML(col.nombre)}</option>`);
@@ -1422,376 +1107,199 @@ function cargarFiltroColaboradores(colaboradores) {
     selectColab.innerHTML = opciones.join('');
 }
 
-// =============================================
-// FUNCIONES PARA ALERTAS DE GRÁFICAS - INCIDENCIAS
-// =============================================
-function mostrarAlertActualizadores() {
-    const data = datosGraficas.topActualizadores;
+// Funciones para alertas de incidencias
+function mostrarAlertActualizadores() { mostrarRegistrosPorCriterio('topActualizadores', 'actualizadoPorNombre', 'Incidencias actualizadas por'); }
+function mostrarAlertReportadores() { mostrarRegistrosPorCriterio('topReportadores', 'creadoPorNombre', 'Incidencias reportadas por'); }
+function mostrarAlertSeguimientos() { mostrarRegistrosPorCriterio('topSeguimientos', 'seguimiento', 'Incidencias con seguimiento de'); }
+function mostrarAlertEstado() { mostrarRegistrosPorEstado(); }
+function mostrarAlertRiesgo() { mostrarRegistrosPorRiesgo(); }
+function mostrarAlertCategorias() { mostrarRegistrosPorCategoria(); }
+function mostrarAlertSucursales() { mostrarRegistrosPorSucursal(); }
+function mostrarAlertTiempoResolucion() { mostrarRegistrosPorTiempo(); }
+
+function mostrarRegistrosPorCriterio(criterioKey, campo, tituloBase) {
+    const data = datosGraficas[criterioKey];
     if (!data || data.length === 0) {
-        Swal.fire({ icon: 'info', title: 'Sin datos', text: 'No hay información de actualizaciones para mostrar', background: 'var(--color-bg-primary)', color: 'white' });
+        Swal.fire({ icon: 'info', title: 'Sin datos', text: 'No hay información para mostrar', background: 'var(--color-bg-primary)', color: 'white' });
         return;
     }
     const colaborador = data[0];
-    const incidencias = datosGraficas.incidenciasFiltradas?.filter(i => i.actualizadoPorNombre === colaborador.nombre) || [];
-    if (incidencias.length === 0) {
-        Swal.fire({ icon: 'info', title: 'Sin registros', text: `No hay incidencias actualizadas por ${colaborador.nombre}`, background: 'var(--color-bg-primary)', color: 'white' });
-        return;
-    }
-    mostrarRegistrosEnSweet(incidencias, `Incidencias actualizadas por ${colaborador.nombre}`, `<i class="fas fa-edit"></i>`);
-}
-
-function mostrarAlertReportadores() {
-    const data = datosGraficas.topReportadores;
-    if (!data || data.length === 0) {
-        Swal.fire({ icon: 'info', title: 'Sin datos', text: 'No hay información de reportes para mostrar', background: 'var(--color-bg-primary)', color: 'white' });
-        return;
-    }
-    const colaborador = data[0];
-    const incidencias = datosGraficas.incidenciasFiltradas?.filter(i => i.creadoPorNombre === colaborador.nombre) || [];
-    if (incidencias.length === 0) {
-        Swal.fire({ icon: 'info', title: 'Sin registros', text: `No hay incidencias reportadas por ${colaborador.nombre}`, background: 'var(--color-bg-primary)', color: 'white' });
-        return;
-    }
-    mostrarRegistrosEnSweet(incidencias, `Incidencias reportadas por ${colaborador.nombre}`, `<i class="fas fa-flag"></i>`);
-}
-
-function mostrarAlertSeguimientos() {
-    const data = datosGraficas.topSeguimientos;
-    if (!data || data.length === 0) {
-        Swal.fire({ icon: 'info', title: 'Sin datos', text: 'No hay información de seguimientos para mostrar', background: 'var(--color-bg-primary)', color: 'white' });
-        return;
-    }
-    const colaborador = data[0];
-    const incidencias = datosGraficas.incidenciasFiltradas?.filter(i => {
-        if (i.seguimiento) return Object.values(i.seguimiento).some(seg => seg.usuarioNombre === colaborador.nombre);
-        return false;
-    }) || [];
-    if (incidencias.length === 0) {
-        Swal.fire({ icon: 'info', title: 'Sin registros', text: `No hay incidencias con seguimiento de ${colaborador.nombre}`, background: 'var(--color-bg-primary)', color: 'white' });
-        return;
-    }
-    mostrarRegistrosEnSweet(incidencias, `Incidencias con seguimiento de ${colaborador.nombre}`, `<i class="fas fa-history"></i>`);
-}
-
-function mostrarAlertEstado() {
-    const data = datosGraficas.estadoData;
-    const total = (data.pendientes || 0) + (data.finalizadas || 0);
-    if (total === 0) {
-        Swal.fire({ icon: 'info', title: 'Sin datos', text: 'No hay incidencias para mostrar', background: 'var(--color-bg-primary)', color: 'white' });
-        return;
-    }
-    const incidencias = datosGraficas.incidenciasFiltradas?.filter(i => i.estado === 'pendiente') || [];
-    if (incidencias.length > 0) {
-        mostrarRegistrosEnSweet(incidencias, 'Incidencias Pendientes', '<i class="fas fa-clock"></i>');
+    let incidencias = [];
+    if (campo === 'seguimiento') {
+        incidencias = datosGraficas.incidenciasFiltradas?.filter(i => i.seguimiento && Object.values(i.seguimiento).some(seg => seg.usuarioNombre === colaborador.nombre)) || [];
     } else {
-        const incidenciasFinalizadas = datosGraficas.incidenciasFiltradas?.filter(i => i.estado === 'finalizada') || [];
-        mostrarRegistrosEnSweet(incidenciasFinalizadas, 'Incidencias Finalizadas', '<i class="fas fa-check-circle"></i>');
+        incidencias = datosGraficas.incidenciasFiltradas?.filter(i => i[campo] === colaborador.nombre) || [];
     }
-}
-
-function mostrarAlertRiesgo() {
-    const data = datosGraficas.riesgoData;
-    const total = (data.critico || 0) + (data.alto || 0) + (data.medio || 0) + (data.bajo || 0);
-    if (total === 0) {
-        Swal.fire({ icon: 'info', title: 'Sin datos', text: 'No hay incidencias para mostrar', background: 'var(--color-bg-primary)', color: 'white' });
+    if (incidencias.length === 0) {
+        Swal.fire({ icon: 'info', title: 'Sin registros', text: `No hay incidencias para ${colaborador.nombre}`, background: 'var(--color-bg-primary)', color: 'white' });
         return;
     }
-    const incidencias = datosGraficas.incidenciasFiltradas?.filter(i => i.nivelRiesgo === 'critico') || [];
-    if (incidencias.length > 0) {
-        mostrarRegistrosEnSweet(incidencias, 'Incidencias Críticas', '<i class="fas fa-exclamation-triangle"></i>');
-    } else {
-        const incidenciasAltas = datosGraficas.incidenciasFiltradas?.filter(i => i.nivelRiesgo === 'alto') || [];
-        mostrarRegistrosEnSweet(incidenciasAltas, 'Incidencias Altas', '<i class="fas fa-exclamation-circle"></i>');
-    }
+    mostrarRegistrosEnSweet(incidencias, `${tituloBase} ${colaborador.nombre}`, `<i class="fas fa-chart-simple"></i>`);
 }
 
-function mostrarAlertCategorias() {
+function mostrarRegistrosPorEstado() {
+    const pendientes = datosGraficas.incidenciasFiltradas?.filter(i => i.estado === 'pendiente') || [];
+    const finalizadas = datosGraficas.incidenciasFiltradas?.filter(i => i.estado === 'finalizada') || [];
+    if (pendientes.length > 0) mostrarRegistrosEnSweet(pendientes, 'Incidencias Pendientes', '<i class="fas fa-clock"></i>');
+    else if (finalizadas.length > 0) mostrarRegistrosEnSweet(finalizadas, 'Incidencias Finalizadas', '<i class="fas fa-check-circle"></i>');
+    else Swal.fire({ icon: 'info', title: 'Sin datos', text: 'No hay incidencias para mostrar', background: 'var(--color-bg-primary)', color: 'white' });
+}
+
+function mostrarRegistrosPorRiesgo() {
+    const criticas = datosGraficas.incidenciasFiltradas?.filter(i => i.nivelRiesgo === 'critico') || [];
+    const altas = datosGraficas.incidenciasFiltradas?.filter(i => i.nivelRiesgo === 'alto') || [];
+    if (criticas.length > 0) mostrarRegistrosEnSweet(criticas, 'Incidencias Críticas', '<i class="fas fa-exclamation-triangle"></i>');
+    else if (altas.length > 0) mostrarRegistrosEnSweet(altas, 'Incidencias Altas', '<i class="fas fa-exclamation-circle"></i>');
+    else Swal.fire({ icon: 'info', title: 'Sin datos', text: 'No hay incidencias para mostrar', background: 'var(--color-bg-primary)', color: 'white' });
+}
+
+function mostrarRegistrosPorCategoria() {
     const data = datosGraficas.categoriasData;
-    if (!data || data.length === 0) {
-        Swal.fire({ icon: 'info', title: 'Sin datos', text: 'No hay información de categorías para mostrar', background: 'var(--color-bg-primary)', color: 'white' });
-        return;
-    }
+    if (!data || data.length === 0) { Swal.fire({ icon: 'info', title: 'Sin datos', text: 'No hay información de categorías', background: 'var(--color-bg-primary)', color: 'white' }); return; }
     const categoriaNombre = data[0].nombre;
     const categoria = categoriasCache.find(c => c.nombre === categoriaNombre);
-    if (!categoria) {
-        Swal.fire({ icon: 'error', title: 'Error', text: 'No se encontró la categoría', background: 'var(--color-bg-primary)', color: 'white' });
-        return;
-    }
+    if (!categoria) { Swal.fire({ icon: 'error', title: 'Error', text: 'No se encontró la categoría', background: 'var(--color-bg-primary)', color: 'white' }); return; }
     const incidencias = datosGraficas.incidenciasFiltradas?.filter(i => i.categoriaId === categoria.id) || [];
-    if (incidencias.length === 0) {
-        Swal.fire({ icon: 'info', title: 'Sin registros', text: `No hay incidencias en la categoría ${categoriaNombre}`, background: 'var(--color-bg-primary)', color: 'white' });
-        return;
-    }
+    if (incidencias.length === 0) { Swal.fire({ icon: 'info', title: 'Sin registros', text: `No hay incidencias en la categoría ${categoriaNombre}`, background: 'var(--color-bg-primary)', color: 'white' }); return; }
     mostrarRegistrosEnSweet(incidencias, `Incidencias: ${categoriaNombre} (Top 1)`, '<i class="fas fa-tag"></i>');
 }
 
-function mostrarAlertSucursales() {
+function mostrarRegistrosPorSucursal() {
     const data = datosGraficas.sucursalesData;
-    if (!data || data.length === 0) {
-        Swal.fire({ icon: 'info', title: 'Sin datos', text: 'No hay información de sucursales para mostrar', background: 'var(--color-bg-primary)', color: 'white' });
-        return;
-    }
+    if (!data || data.length === 0) { Swal.fire({ icon: 'info', title: 'Sin datos', text: 'No hay información de sucursales', background: 'var(--color-bg-primary)', color: 'white' }); return; }
     const sucursalNombre = data[0].nombre;
     const sucursal = sucursalesCache.find(s => s.nombre === sucursalNombre);
-    if (!sucursal) {
-        Swal.fire({ icon: 'error', title: 'Error', text: 'No se encontró la sucursal', background: 'var(--color-bg-primary)', color: 'white' });
-        return;
-    }
+    if (!sucursal) { Swal.fire({ icon: 'error', title: 'Error', text: 'No se encontró la sucursal', background: 'var(--color-bg-primary)', color: 'white' }); return; }
     const incidencias = datosGraficas.incidenciasFiltradas?.filter(i => i.sucursalId === sucursal.id) || [];
-    if (incidencias.length === 0) {
-        Swal.fire({ icon: 'info', title: 'Sin registros', text: `No hay incidencias en la sucursal ${sucursalNombre}`, background: 'var(--color-bg-primary)', color: 'white' });
-        return;
-    }
+    if (incidencias.length === 0) { Swal.fire({ icon: 'info', title: 'Sin registros', text: `No hay incidencias en la sucursal ${sucursalNombre}`, background: 'var(--color-bg-primary)', color: 'white' }); return; }
     mostrarRegistrosEnSweet(incidencias, `Incidencias: ${sucursalNombre} (Top 1)`, '<i class="fas fa-store"></i>');
 }
 
-function mostrarAlertTiempoResolucion() {
+function mostrarRegistrosPorTiempo() {
     const data = datosGraficas.tiemposPromedio;
     if (!data || data.length === 0) {
-        Swal.fire({ icon: 'info', title: 'Sin datos', text: 'No hay información de tiempos de resolución para mostrar.', background: 'var(--color-bg-primary)', color: 'white' });
+        Swal.fire({ 
+            icon: 'info', 
+            title: 'Sin datos', 
+            text: 'No hay información de tiempos de resolución.\n\nNota: Solo se muestran incidencias FINALIZADAS que tienen fecha de inicio y fecha de finalización/actualización.', 
+            background: 'var(--color-bg-primary)', 
+            color: 'white' 
+        });
         return;
     }
+    
     const colaborador = data[0];
-    const incidencias = datosGraficas.incidenciasFiltradas?.filter(i => i.actualizadoPorNombre === colaborador.nombre) || [];
+    
+    // Filtrar incidencias finalizadas actualizadas por este colaborador
+    const incidencias = datosGraficas.incidenciasFiltradas?.filter(i => 
+        i.actualizadoPorNombre === colaborador.nombre && 
+        i.estado === 'finalizada'
+    ) || [];
+    
     if (incidencias.length === 0) {
-        Swal.fire({ icon: 'info', title: 'Sin registros', text: `No hay incidencias actualizadas por ${colaborador.nombre}`, background: 'var(--color-bg-primary)', color: 'white' });
+        Swal.fire({ 
+            icon: 'info', 
+            title: 'Sin registros', 
+            text: `No hay incidencias finalizadas actualizadas por ${colaborador.nombre}`, 
+            background: 'var(--color-bg-primary)', 
+            color: 'white' 
+        });
         return;
     }
-    mostrarRegistrosEnSweet(incidencias, `Incidencias resueltas por ${colaborador.nombre} (Promedio: ${colaborador.promedio} horas)`, `<i class="fas fa-clock"></i>`);
+    
+    // Calcular tiempos individuales para mostrar en el detalle
+    const incidenciasConTiempo = incidencias.map(inc => {
+        const inicio = inc.fechaInicio instanceof Date ? inc.fechaInicio : new Date(inc.fechaInicio);
+        let fechaFin = null;
+        
+        if (inc.fechaFinalizacion) {
+            fechaFin = inc.fechaFinalizacion instanceof Date ? inc.fechaFinalizacion : new Date(inc.fechaFinalizacion);
+        } else if (inc.fechaActualizacion) {
+            fechaFin = inc.fechaActualizacion instanceof Date ? inc.fechaActualizacion : new Date(inc.fechaActualizacion);
+        }
+        
+        const tiempoHoras = fechaFin ? Math.round((fechaFin - inicio) / (1000 * 60 * 60)) : 0;
+        return { ...inc, tiempoResolucionHoras: tiempoHoras };
+    }).filter(inc => inc.tiempoResolucionHoras > 0);
+    
+    mostrarRegistrosEnSweet(
+        incidenciasConTiempo, 
+        `Incidencias resueltas por ${colaborador.nombre} (Promedio: ${colaborador.promedio} horas)`, 
+        `<i class="fas fa-clock"></i>`
+    );
 }
 
-// =============================================
-// CONFIGURAR CLICS EN KPI CARDS DE INCIDENCIAS
-// =============================================
 function configurarKpiCardsClickeables() {
     const criticasCard = document.querySelector('.metric-card.criticas');
     if (criticasCard) {
         criticasCard.style.cursor = 'pointer';
         criticasCard.addEventListener('click', () => {
             const incidenciasCriticas = datosGraficas.incidenciasFiltradas?.filter(i => i.nivelRiesgo === 'critico') || [];
-            if (incidenciasCriticas.length === 0) {
-                Swal.fire({ icon: 'info', title: 'Sin registros', text: 'No hay incidencias críticas para mostrar', background: 'var(--color-bg-primary)', color: 'white' });
-                return;
-            }
-            mostrarRegistrosEnSweet(incidenciasCriticas, 'Incidencias Críticas', '<i class="fas fa-exclamation-triangle"></i>');
+            if (incidenciasCriticas.length === 0) Swal.fire({ icon: 'info', title: 'Sin registros', text: 'No hay incidencias críticas', background: 'var(--color-bg-primary)', color: 'white' });
+            else mostrarRegistrosEnSweet(incidenciasCriticas, 'Incidencias Críticas', '<i class="fas fa-exclamation-triangle"></i>');
         });
     }
-
     const altasCard = document.querySelector('.metric-card.altas');
     if (altasCard) {
         altasCard.style.cursor = 'pointer';
         altasCard.addEventListener('click', () => {
             const incidenciasAltas = datosGraficas.incidenciasFiltradas?.filter(i => i.nivelRiesgo === 'alto') || [];
-            if (incidenciasAltas.length === 0) {
-                Swal.fire({ icon: 'info', title: 'Sin registros', text: 'No hay incidencias altas para mostrar', background: 'var(--color-bg-primary)', color: 'white' });
-                return;
-            }
-            mostrarRegistrosEnSweet(incidenciasAltas, 'Incidencias Altas', '<i class="fas fa-exclamation-circle"></i>');
+            if (incidenciasAltas.length === 0) Swal.fire({ icon: 'info', title: 'Sin registros', text: 'No hay incidencias altas', background: 'var(--color-bg-primary)', color: 'white' });
+            else mostrarRegistrosEnSweet(incidenciasAltas, 'Incidencias Altas', '<i class="fas fa-exclamation-circle"></i>');
         });
     }
-
     const pendientesCard = document.querySelector('.metric-card.pendientes');
     if (pendientesCard) {
         pendientesCard.style.cursor = 'pointer';
         pendientesCard.addEventListener('click', () => {
             const incidenciasPendientes = datosGraficas.incidenciasFiltradas?.filter(i => i.estado === 'pendiente') || [];
-            if (incidenciasPendientes.length === 0) {
-                Swal.fire({ icon: 'info', title: 'Sin registros', text: 'No hay incidencias pendientes para mostrar', background: 'var(--color-bg-primary)', color: 'white' });
-                return;
-            }
-            mostrarRegistrosEnSweet(incidenciasPendientes, 'Incidencias Pendientes', '<i class="fas fa-clock"></i>');
+            if (incidenciasPendientes.length === 0) Swal.fire({ icon: 'info', title: 'Sin registros', text: 'No hay incidencias pendientes', background: 'var(--color-bg-primary)', color: 'white' });
+            else mostrarRegistrosEnSweet(incidenciasPendientes, 'Incidencias Pendientes', '<i class="fas fa-clock"></i>');
         });
     }
-
     const totalCard = document.querySelector('.metric-card.total');
     if (totalCard) {
         totalCard.style.cursor = 'pointer';
         totalCard.addEventListener('click', () => {
             const incidencias = datosGraficas.incidenciasFiltradas || [];
-            if (incidencias.length === 0) {
-                Swal.fire({ icon: 'info', title: 'Sin registros', text: 'No hay incidencias para mostrar', background: 'var(--color-bg-primary)', color: 'white' });
-                return;
-            }
-            mostrarRegistrosEnSweet(incidencias, 'Todas las Incidencias', '<i class="fas fa-chart-bar"></i>');
+            if (incidencias.length === 0) Swal.fire({ icon: 'info', title: 'Sin registros', text: 'No hay incidencias', background: 'var(--color-bg-primary)', color: 'white' });
+            else mostrarRegistrosEnSweet(incidencias, 'Todas las Incidencias', '<i class="fas fa-chart-bar"></i>');
         });
     }
 }
 
-// =============================================
-// FUNCIÓN PARA MOSTRAR REGISTROS EN SWEETALERT
-// =============================================
-function mostrarRegistrosEnSweet(incidencias, titulo, icono = '<i class="fas fa-chart-simple"></i>') {
+function mostrarRegistrosEnSweet(incidencias, titulo, icono) {
     if (!incidencias || incidencias.length === 0) {
-        Swal.fire({ icon: 'info', title: 'Sin registros', text: 'No hay incidencias para mostrar', background: 'var(--color-bg-primary)', color: 'white', customClass: { popup: 'swal2-popup-custom' } });
+        Swal.fire({ icon: 'info', title: 'Sin registros', text: 'No hay incidencias para mostrar', background: 'var(--color-bg-primary)', color: 'white' });
         return;
     }
-
     const totalCriticas = incidencias.filter(i => i.nivelRiesgo === 'critico').length;
     const totalAltas = incidencias.filter(i => i.nivelRiesgo === 'alto').length;
     const totalPendientes = incidencias.filter(i => i.estado === 'pendiente').length;
     const totalFinalizadas = incidencias.filter(i => i.estado === 'finalizada').length;
-
     const incidenciasMostrar = incidencias.slice(0, 15);
     const hayMas = incidencias.length > 15;
-
-    let registrosHtml = `
-        <div class="swal-resumen-stats">
-            <div class="swal-stats-grid">
-                <div class="swal-stat-item" style="border-left-color: #8b5cf6;"><span class="swal-stat-label">Total incidencias</span><span class="swal-stat-value">${incidencias.length}</span></div>
-                <div class="swal-stat-item" style="border-left-color: #ef4444;"><span class="swal-stat-label">Críticas + Altas</span><span class="swal-stat-value" style="color: #ef4444;">${totalCriticas + totalAltas}</span></div>
-                <div class="swal-stat-item" style="border-left-color: #f59e0b;"><span class="swal-stat-label">Pendientes</span><span class="swal-stat-value" style="color: #f59e0b;">${totalPendientes}</span></div>
-                <div class="swal-stat-item" style="border-left-color: #10b981;"><span class="swal-stat-label">Finalizadas</span><span class="swal-stat-value" style="color: #10b981;">${totalFinalizadas}</span></div>
-            </div>
-        </div>
-        <div class="swal-registros-list">
-    `;
-
+    let registrosHtml = `<div class="swal-resumen-stats"><div class="swal-stats-grid"><div class="swal-stat-item" style="border-left-color: #8b5cf6;"><span class="swal-stat-label">Total incidencias</span><span class="swal-stat-value">${incidencias.length}</span></div><div class="swal-stat-item" style="border-left-color: #ef4444;"><span class="swal-stat-label">Críticas + Altas</span><span class="swal-stat-value" style="color: #ef4444;">${totalCriticas + totalAltas}</span></div><div class="swal-stat-item" style="border-left-color: #f59e0b;"><span class="swal-stat-label">Pendientes</span><span class="swal-stat-value" style="color: #f59e0b;">${totalPendientes}</span></div><div class="swal-stat-item" style="border-left-color: #10b981;"><span class="swal-stat-label">Finalizadas</span><span class="swal-stat-value" style="color: #10b981;">${totalFinalizadas}</span></div></div></div><div class="swal-registros-list">`;
     incidenciasMostrar.forEach(inc => {
         const fecha = inc.fechaInicio instanceof Date ? inc.fechaInicio.toLocaleDateString('es-MX') : (inc.fechaInicio ? new Date(inc.fechaInicio).toLocaleDateString('es-MX') : 'N/A');
-
-        let estadoColor = '#6c757d';
-        let estadoIcon = 'fa-circle';
+        let estadoColor = '#6c757d', estadoIcon = 'fa-circle';
         if (inc.estado === 'finalizada') { estadoColor = '#10b981'; estadoIcon = 'fa-check-circle'; }
         else if (inc.estado === 'pendiente') { estadoColor = '#f59e0b'; estadoIcon = 'fa-clock'; }
-
-        let riesgoColor = '#6c757d';
-        let riesgoIcon = 'fa-chart-line';
-        let riesgoTexto = inc.nivelRiesgo ? inc.nivelRiesgo.charAt(0).toUpperCase() + inc.nivelRiesgo.slice(1) : 'N/A';
+        let riesgoColor = '#6c757d', riesgoIcon = 'fa-chart-line', riesgoTexto = inc.nivelRiesgo ? inc.nivelRiesgo.charAt(0).toUpperCase() + inc.nivelRiesgo.slice(1) : 'N/A';
         if (inc.nivelRiesgo === 'critico') { riesgoColor = '#ef4444'; riesgoIcon = 'fa-exclamation-triangle'; }
         else if (inc.nivelRiesgo === 'alto') { riesgoColor = '#f97316'; riesgoIcon = 'fa-exclamation-circle'; }
         else if (inc.nivelRiesgo === 'medio') { riesgoColor = '#eab308'; riesgoIcon = 'fa-chart-simple'; }
         else if (inc.nivelRiesgo === 'bajo') { riesgoColor = '#10b981'; riesgoIcon = 'fa-check'; }
-
         const detalles = inc.detalles ? (inc.detalles.length > 80 ? inc.detalles.substring(0, 80) + '...' : inc.detalles) : 'Sin detalles';
-
-        const tienePDF = inc.pdfUrl && inc.pdfUrl.trim() !== '';
-        const pdfEstado = inc.estadoGeneracion || 'pendiente';
-        let pdfIcono = tienePDF ? '<i class="fas fa-file-pdf" style="color: #c0392b;"></i>' : (pdfEstado === 'generando' ? '<i class="fas fa-spinner fa-spin"></i>' : '<i class="fas fa-file-pdf" style="color: #6c757d;"></i>');
-        let pdfTexto = tienePDF ? 'Ver PDF' : (pdfEstado === 'generando' ? 'Generando PDF...' : 'PDF no disponible');
-        let pdfColor = tienePDF ? '#c0392b' : (pdfEstado === 'generando' ? '#f59e0b' : '#6c757d');
-
-        registrosHtml += `
-            <div class="swal-registro-card" data-incidencia-id="${inc.id}">
-                <div class="swal-card-header"><span class="swal-id"><i class="fas fa-hashtag"></i> ${escapeHTML(inc.id.substring(0, 12))}...</span><span class="swal-fecha"><i class="fas fa-calendar-alt"></i> ${fecha}</span></div>
-                <div class="swal-card-body">
-                    <div class="swal-info-principal">
-                        <div class="swal-sucursal"><i class="fas fa-store"></i> ${escapeHTML(obtenerNombreSucursal(inc.sucursalId) || 'Sin asignar')}</div>
-                        <div class="swal-tipo-evento"><i class="fas ${riesgoIcon}" style="color: ${riesgoColor};"></i> ${riesgoTexto}<span class="swal-estado-badge" style="margin-left: 8px; color: ${estadoColor};"><i class="fas ${estadoIcon}"></i> ${inc.estado ? inc.estado.charAt(0).toUpperCase() + inc.estado.slice(1) : 'N/A'}</span></div>
-                    </div>
-                    <div class="swal-montos"><span class="swal-monto-perdido"><i class="fas fa-user"></i> ${escapeHTML(inc.creadoPorNombre || 'N/A')}</span>${inc.actualizadoPorNombre ? `<span class="swal-monto-recuperado"><i class="fas fa-edit"></i> ${escapeHTML(inc.actualizadoPorNombre)}</span>` : ''}</div>
-                </div>
-                <div class="swal-card-footer"><div class="swal-narracion"><i class="fas fa-file-alt"></i><span>${escapeHTML(detalles)}</span></div></div>
-                <div class="swal-card-actions" style="display: flex; justify-content: flex-end; gap: 8px; padding: 8px 14px 12px 14px; border-top: 1px solid rgba(255,255,255,0.05);">
-                    <button class="swal-pdf-btn" data-incidencia-id="${inc.id}" data-pdf-url="${inc.pdfUrl || ''}" data-pdf-estado="${pdfEstado}" style="background: rgba(0,0,0,0.5); border: none; border-radius: 8px; padding: 6px 12px; color: white; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; font-size: 0.7rem;">${pdfIcono}<span style="color: ${pdfColor};">${pdfTexto}</span></button>
-                </div>
-            </div>
-        `;
+        registrosHtml += `<div class="swal-registro-card" data-incidencia-id="${inc.id}"><div class="swal-card-header"><span class="swal-id"><i class="fas fa-hashtag"></i> ${escapeHTML(inc.id.substring(0, 12))}...</span><span class="swal-fecha"><i class="fas fa-calendar-alt"></i> ${fecha}</span></div><div class="swal-card-body"><div class="swal-info-principal"><div class="swal-sucursal"><i class="fas fa-store"></i> ${escapeHTML(obtenerNombreSucursal(inc.sucursalId) || 'Sin asignar')}</div><div class="swal-tipo-evento"><i class="fas ${riesgoIcon}" style="color: ${riesgoColor};"></i> ${riesgoTexto}<span class="swal-estado-badge" style="margin-left: 8px; color: ${estadoColor};"><i class="fas ${estadoIcon}"></i> ${inc.estado ? inc.estado.charAt(0).toUpperCase() + inc.estado.slice(1) : 'N/A'}</span></div></div><div class="swal-montos"><span class="swal-monto-perdido"><i class="fas fa-user"></i> ${escapeHTML(inc.creadoPorNombre || 'N/A')}</span>${inc.actualizadoPorNombre ? `<span class="swal-monto-recuperado"><i class="fas fa-edit"></i> ${escapeHTML(inc.actualizadoPorNombre)}</span>` : ''}</div></div><div class="swal-card-footer"><div class="swal-narracion"><i class="fas fa-file-alt"></i><span>${escapeHTML(detalles)}</span></div></div></div>`;
     });
-
     if (hayMas) registrosHtml += `<div class="swal-mas-registros"><i class="fas fa-ellipsis-h"></i> y ${incidencias.length - 15} incidencias más.</div>`;
     registrosHtml += `</div>`;
-
-    Swal.fire({
-        title: `${icono} ${titulo}`, html: registrosHtml, width: '880px', background: 'transparent',
-        showConfirmButton: true, confirmButtonText: '<i class="fas fa-check"></i> Cerrar', confirmButtonColor: '#28a745',
-        customClass: { popup: 'swal2-popup-custom', title: 'swal2-title-custom', confirmButton: 'swal2-confirm' },
-        backdrop: `rgba(0,0,0,0.8) left top no-repeat`,
-        didOpen: () => {
-            document.querySelectorAll('.swal-pdf-btn').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    const incidenciaId = btn.dataset.incidenciaId;
-                    const pdfUrl = btn.dataset.pdfUrl;
-                    const pdfEstado = btn.dataset.pdfEstado;
-                    abrirPDFDesdeSweet(incidenciaId, pdfUrl, pdfEstado);
-                });
-            });
-            document.querySelectorAll('.swal-registro-card').forEach(card => {
-                const incidenciaId = card.dataset.incidenciaId;
-                card.addEventListener('click', (e) => {
-                    if (!e.target.closest('.swal-pdf-btn')) window.verDetalleIncidenciaDesdeSweet(incidenciaId);
-                });
-            });
-        }
-    });
+    Swal.fire({ title: `${icono || ''} ${titulo}`, html: registrosHtml, width: '880px', background: 'transparent', showConfirmButton: true, confirmButtonText: '<i class="fas fa-check"></i> Cerrar', confirmButtonColor: '#28a745', customClass: { popup: 'swal2-popup-custom', title: 'swal2-title-custom', confirmButton: 'swal2-confirm' }, backdrop: `rgba(0,0,0,0.8) left top no-repeat` });
 }
-
-function abrirPDFDesdeSweet(incidenciaId, pdfUrl, pdfEstado) {
-    const incidencia = datosGraficas.incidenciasFiltradas?.find(i => i.id === incidenciaId);
-    if (!incidencia) {
-        Swal.fire({ icon: 'error', title: 'Error', text: 'No se encontró la incidencia', background: 'var(--color-bg-primary)', color: 'white' });
-        return;
-    }
-    const urlActual = incidencia.pdfUrl || pdfUrl;
-    const estadoActual = incidencia.estadoGeneracion || pdfEstado;
-    if (urlActual && urlActual.trim() !== '') {
-        window.open(urlActual, '_blank');
-        Swal.fire({ icon: 'success', title: 'Abriendo PDF', text: 'El PDF se abrirá en el visor del navegador', timer: 1500, showConfirmButton: false, toast: true, position: 'top-end', background: 'var(--color-bg-primary)', color: 'white' });
-    } else if (estadoActual === 'generando') {
-        Swal.fire({ icon: 'info', title: 'Generando PDF', text: 'El PDF se está generando en segundo plano.', confirmButtonText: 'Entendido', background: 'var(--color-bg-primary)', color: 'white' });
-    } else {
-        Swal.fire({ icon: 'info', title: 'PDF no disponible', text: 'Este registro aún no tiene un PDF generado.', confirmButtonText: 'Entendido', background: 'var(--color-bg-primary)', color: 'white' });
-    }
-}
-
-window.verDetalleIncidenciaDesdeSweet = function(incidenciaId) {
-    Swal.close();
-    const incidencia = datosGraficas.incidenciasFiltradas?.find(i => i.id === incidenciaId);
-    if (!incidencia) {
-        Swal.fire({ icon: 'error', title: 'Incidencia no encontrada', text: 'No se pudo encontrar la incidencia seleccionada', background: 'var(--color-bg-primary)', color: 'white', customClass: { popup: 'swal2-popup-custom' } });
-        return;
-    }
-
-    const formatter = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' });
-    const fecha = incidencia.fechaInicio instanceof Date ? incidencia.fechaInicio.toLocaleDateString('es-MX') : (incidencia.fechaInicio ? new Date(incidencia.fechaInicio).toLocaleDateString('es-MX') : 'N/A');
-
-    let estadoColor = '#6c757d', estadoIcon = 'fa-circle';
-    if (incidencia.estado === 'finalizada') { estadoColor = '#10b981'; estadoIcon = 'fa-check-circle'; }
-    else if (incidencia.estado === 'pendiente') { estadoColor = '#f59e0b'; estadoIcon = 'fa-clock'; }
-
-    let riesgoColor = '#6c757d', riesgoIcon = 'fa-chart-line', riesgoTexto = incidencia.nivelRiesgo ? incidencia.nivelRiesgo.charAt(0).toUpperCase() + incidencia.nivelRiesgo.slice(1) : 'N/A';
-    if (incidencia.nivelRiesgo === 'critico') { riesgoColor = '#ef4444'; riesgoIcon = 'fa-exclamation-triangle'; }
-    else if (incidencia.nivelRiesgo === 'alto') { riesgoColor = '#f97316'; riesgoIcon = 'fa-exclamation-circle'; }
-    else if (incidencia.nivelRiesgo === 'medio') { riesgoColor = '#eab308'; riesgoIcon = 'fa-chart-simple'; }
-    else if (incidencia.nivelRiesgo === 'bajo') { riesgoColor = '#10b981'; riesgoIcon = 'fa-check'; }
-
-    const tienePDF = incidencia.pdfUrl && incidencia.pdfUrl.trim() !== '';
-    const pdfEstado = incidencia.estadoGeneracion || 'pendiente';
-    let pdfIcono = tienePDF ? '<i class="fas fa-file-pdf" style="color: #c0392b;"></i>' : (pdfEstado === 'generando' ? '<i class="fas fa-spinner fa-spin"></i>' : '<i class="fas fa-file-pdf" style="color: #6c757d;"></i>');
-    let pdfTexto = tienePDF ? 'Ver PDF' : (pdfEstado === 'generando' ? 'Generando PDF...' : 'PDF no disponible');
-    let pdfColor = tienePDF ? '#c0392b' : (pdfEstado === 'generando' ? '#f59e0b' : '#6c757d');
-
-    let seguimientosHtml = '';
-    if (incidencia.seguimiento && Object.keys(incidencia.seguimiento).length > 0) {
-        const seguimientosList = Object.values(incidencia.seguimiento);
-        seguimientosHtml = `<div style="background: rgba(0,0,0,0.3); border-radius: 16px; padding: 16px;"><div style="font-size: 0.7rem; text-transform: uppercase; color: #9ca3af; margin-bottom: 12px;"><i class="fas fa-history"></i> Seguimientos (${seguimientosList.length})</div><div style="display: flex; flex-direction: column; gap: 8px; max-height: 200px; overflow-y: auto;">${seguimientosList.map(seg => `<div style="display: flex; justify-content: space-between; align-items: center; padding: 8px; background: rgba(0,0,0,0.2); border-radius: 10px;"><div style="display: flex; flex-direction: column;"><span style="color: #3b82f6; font-weight: 600;">${escapeHTML(seg.usuarioNombre || 'Usuario')}</span><span style="font-size: 0.65rem; color: #9ca3af;">${seg.fecha ? new Date(seg.fecha).toLocaleString('es-MX') : 'Fecha no disponible'}</span></div><span style="font-size: 0.7rem; color: #d1d5db;">${escapeHTML(seg.comentario ? (seg.comentario.substring(0, 50) + (seg.comentario.length > 50 ? '...' : '')) : 'Sin comentario')}</span></div>`).join('')}</div></div>`;
-    }
-
-    const detallesHtml = `
-        <div style="display: flex; flex-direction: column; gap: 16px;">
-            <div class="swal-resumen-stats" style="margin-bottom: 0;"><div class="swal-stats-grid"><div class="swal-stat-item" style="border-left-color: #8b5cf6;"><span class="swal-stat-label">ID Incidencia</span><span class="swal-stat-value" style="font-size: 0.8rem;">${escapeHTML(incidencia.id)}</span></div><div class="swal-stat-item" style="border-left-color: #3b82f6;"><span class="swal-stat-label">Fecha</span><span class="swal-stat-value" style="font-size: 0.9rem;">${fecha}</span></div><div class="swal-stat-item" style="border-left-color: ${estadoColor};"><span class="swal-stat-label">Estado</span><span class="swal-stat-value" style="color: ${estadoColor};"><i class="fas ${estadoIcon}"></i> ${incidencia.estado ? incidencia.estado.charAt(0).toUpperCase() + incidencia.estado.slice(1) : 'N/A'}</span></div></div></div>
-            <div style="background: rgba(0,0,0,0.4); border-radius: 16px; padding: 16px; border: 1px solid rgba(255,255,255,0.08);"><div style="display: flex; flex-wrap: wrap; gap: 20px; justify-content: space-between;"><div><div style="font-size: 0.7rem; text-transform: uppercase; color: #9ca3af;">Sucursal</div><div style="font-size: 1rem; font-weight: 600; margin-top: 4px;"><i class="fas fa-store" style="color: var(--color-accent-primary);"></i> ${escapeHTML(obtenerNombreSucursal(incidencia.sucursalId) || 'N/A')}</div></div><div><div style="font-size: 0.7rem; text-transform: uppercase; color: #9ca3af;">Categoría</div><div style="font-size: 1rem; font-weight: 600; margin-top: 4px;"><i class="fas fa-tag"></i> ${escapeHTML(obtenerNombreCategoria(incidencia.categoriaId) || 'N/A')}</div></div><div><div style="font-size: 0.7rem; text-transform: uppercase; color: #9ca3af;">Nivel de riesgo</div><div style="font-size: 1rem; font-weight: 600; margin-top: 4px; color: ${riesgoColor};"><i class="fas ${riesgoIcon}"></i> ${riesgoTexto}</div></div></div></div>
-            <div style="display: flex; flex-wrap: wrap; gap: 16px;"><div style="flex: 1; background: rgba(59, 130, 246, 0.1); border-radius: 16px; padding: 16px; border-left: 3px solid #3b82f6;"><div style="font-size: 0.7rem; text-transform: uppercase; color: #9ca3af;">Creado por</div><div style="font-size: 1rem; font-weight: 600; margin-top: 4px;"><i class="fas fa-user-plus"></i> ${escapeHTML(incidencia.creadoPorNombre || 'N/A')}</div></div><div style="flex: 1; background: rgba(245, 158, 11, 0.1); border-radius: 16px; padding: 16px; border-left: 3px solid #f59e0b;"><div style="font-size: 0.7rem; text-transform: uppercase; color: #9ca3af;">Actualizado por</div><div style="font-size: 1rem; font-weight: 600; margin-top: 4px;"><i class="fas fa-user-edit"></i> ${escapeHTML(incidencia.actualizadoPorNombre || 'N/A')}</div></div></div>
-            ${incidencia.detalles ? `<div style="background: rgba(0,0,0,0.3); border-radius: 16px; padding: 16px;"><div style="font-size: 0.7rem; text-transform: uppercase; color: #9ca3af; margin-bottom: 8px;"><i class="fas fa-file-alt"></i> Detalles</div><div style="font-size: 0.85rem; line-height: 1.5; color: #d1d5db;">${escapeHTML(incidencia.detalles)}</div></div>` : ''}
-            ${seguimientosHtml}
-            <div style="display: flex; justify-content: center; gap: 12px; margin-top: 8px;"><button id="btnPdfDesdeSweetDetalle" style="background: linear-gradient(145deg, #0f0f0f, #1a1a1a); border: 1px solid ${tienePDF ? '#c0392b' : '#6c757d'}; border-radius: 12px; padding: 10px 24px; color: white; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; font-size: 0.8rem;">${pdfIcono}<span style="color: ${pdfColor};">${pdfTexto}</span></button></div>
-        </div>
-    `;
-
-    Swal.fire({
-        title: `<i class="fas fa-info-circle" style="color: var(--color-accent-primary);"></i> Detalles de la incidencia`,
-        html: detallesHtml, width: '750px', background: 'transparent',
-        showConfirmButton: true, confirmButtonText: '<i class="fas fa-check"></i> Cerrar',
-        customClass: { popup: 'swal2-popup-custom', title: 'swal2-title-custom', confirmButton: 'swal2-confirm' },
-        didOpen: () => {
-            const btnPdf = document.getElementById('btnPdfDesdeSweetDetalle');
-            if (btnPdf) btnPdf.addEventListener('click', (e) => { e.stopPropagation(); abrirPDFDesdeSweet(incidencia.id, incidencia.pdfUrl, incidencia.estadoGeneracion); });
-        }
-    });
-};
 
 // =============================================
-// FUNCIONES DE RECUPERACIÓN (Módulo completo)
+// FUNCIONES DE RECUPERACIÓN - COMPLETAS Y FUNCIONALES
 // =============================================
 
 function calcularEstadisticasRecuperacion(registros) {
@@ -1941,7 +1449,9 @@ function actualizarGraficoTipoEvento(registros) {
         window.registrosPorTipo[tipo].push(r);
     });
 
-    const ctx = document.getElementById('graficoTipoEvento').getContext('2d');
+    const canvas = document.getElementById('graficoTipoEvento');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
     const labels = Object.keys(tipos).map(k => nombresTipos[k] || k);
     const data = Object.values(tipos);
     const backgroundColors = Object.keys(tipos).map(k => colores[k] || COLORS_REC.gris);
@@ -2003,7 +1513,9 @@ function actualizarGraficoEvolucionMensual(registros) {
     const labels = mesesOrdenados.map(m => meses[m].nombre);
     const perdidosData = mesesOrdenados.map(m => meses[m].perdido);
     const recuperadosData = mesesOrdenados.map(m => meses[m].recuperado);
-    const ctx = document.getElementById('graficoEvolucionMensual').getContext('2d');
+    const canvas = document.getElementById('graficoEvolucionMensual');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
 
     if (graficoEvolucionMensual) {
         graficoEvolucionMensual.data.labels = labels;
@@ -2039,6 +1551,22 @@ function actualizarGraficoEvolucionMensual(registros) {
 function actualizarGraficoTopSucursales(registros) {
     const sucursalesMap = {};
     window.registrosPorSucursal = {};
+    
+// Obtener colores de regiones para cada sucursal
+const sucursalesColores = new Map();
+if (sucursalesCache && sucursalesCache.length > 0) {
+    for (const suc of sucursalesCache) {
+        let regionColor = '#FF6600'; // Color por defecto
+        if (suc.regionId && regionesCache) {  // <--- CORREGIDO: regionesCache sin window
+            const region = regionesCache.find(r => r.id === suc.regionId);
+            if (region && region.color) {
+                regionColor = region.color;
+            }
+        }
+        sucursalesColores.set(suc.nombre, regionColor);
+    }
+}
+    
     registros.forEach(r => {
         const sucursal = r.nombreEmpresaCC || 'Sin asignar';
         if (!sucursalesMap[sucursal]) {
@@ -2051,22 +1579,48 @@ function actualizarGraficoTopSucursales(registros) {
         window.registrosPorSucursal[sucursal].push(r);
     });
 
-    const sucursalesArray = Object.entries(sucursalesMap).map(([nombre, datos]) => ({ nombre, ...datos })).sort((a, b) => b.perdido - a.perdido).slice(0, 8);
+    const sucursalesArray = Object.entries(sucursalesMap)
+        .map(([nombre, datos]) => ({ 
+            nombre, 
+            ...datos,
+            color: sucursalesColores.get(nombre) || '#FF6600'
+        }))
+        .sort((a, b) => b.perdido - a.perdido)
+        .slice(0, 8);
+    
     const labels = sucursalesArray.map(s => s.nombre.length > 25 ? s.nombre.substring(0, 22) + '...' : s.nombre);
     const perdidosData = sucursalesArray.map(s => s.perdido);
+    const colores = sucursalesArray.map(s => s.color);
     const nombresCompletos = sucursalesArray.map(s => s.nombre);
-    const ctx = document.getElementById('graficoTopSucursales').getContext('2d');
+    
+    const canvas = document.getElementById('graficoTopSucursales');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
 
     if (graficoTopSucursales) {
         graficoTopSucursales.data.labels = labels;
         graficoTopSucursales.data.datasets[0].data = perdidosData;
+        graficoTopSucursales.data.datasets[0].backgroundColor = colores;
         graficoTopSucursales.update();
     } else {
         graficoTopSucursales = new Chart(ctx, {
             type: 'bar',
-            data: { labels: labels, datasets: [{ label: 'Monto perdido', data: perdidosData, backgroundColor: '#FF6600', borderColor: '#FF6600', borderRadius: 8, barPercentage: 0.7, categoryPercentage: 0.8 }] },
+            data: { 
+                labels: labels, 
+                datasets: [{ 
+                    label: 'Monto perdido', 
+                    data: perdidosData, 
+                    backgroundColor: colores,
+                    borderColor: colores,
+                    borderRadius: 8, 
+                    barPercentage: 0.7, 
+                    categoryPercentage: 0.8 
+                }] 
+            },
             options: {
-                indexAxis: 'y', responsive: true, maintainAspectRatio: true,
+                indexAxis: 'y', 
+                responsive: true, 
+                maintainAspectRatio: true,
                 onClick: (event, activeElements) => {
                     if (activeElements.length > 0) {
                         const index = activeElements[0].index;
@@ -2079,15 +1633,33 @@ function actualizarGraficoTopSucursales(registros) {
                         mostrarRegistrosRecuperacionEnSweet(registrosSucursal, `Registros de ${sucursalNombre}`, `<i class="fas fa-building"></i> ${sucursalNombre}`);
                     }
                 },
-                plugins: { legend: { labels: { color: 'white', font: { size: 10 } } }, tooltip: { callbacks: { label: (ctx) => { const formatter = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }); return `${ctx.dataset.label}: ${formatter.format(ctx.raw)}`; } } } },
-                scales: { x: { ticks: { callback: (value) => { const formatter = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', notation: 'compact' }); return formatter.format(value); }, color: '#aaa' }, grid: { color: 'rgba(255,255,255,0.05)' } }, y: { ticks: { color: '#aaa', font: { size: 10 } }, grid: { display: false } } }
+                plugins: { 
+                    legend: { labels: { color: 'white', font: { size: 10 } } }, 
+                    tooltip: { callbacks: { label: (ctx) => { const formatter = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }); return `${ctx.dataset.label}: ${formatter.format(ctx.raw)}`; } } } 
+                },
+                scales: { 
+                    x: { 
+                        ticks: { 
+                            callback: (value) => { const formatter = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', notation: 'compact' }); return formatter.format(value); }, 
+                            color: '#aaa' 
+                        }, 
+                        grid: { color: 'rgba(255,255,255,0.05)' } 
+                    }, 
+                    y: { 
+                        ticks: { color: '#aaa', font: { size: 10 } }, 
+                        grid: { display: false } 
+                    } 
+                }
             }
         });
     }
 }
 
 function actualizarGraficoComparativaRecuperacion(estadisticas) {
-    const ctx = document.getElementById('graficoComparativa').getContext('2d');
+    const canvas = document.getElementById('graficoComparativa');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    
     if (graficoComparativa) {
         graficoComparativa.data.datasets[0].data = [estadisticas.totalPerdido, estadisticas.totalRecuperado];
         graficoComparativa.update();
@@ -2139,10 +1711,10 @@ function actualizarTablaResumenRecuperacion(registros) {
     const sucursalesArray = Object.entries(sucursalesMap).map(([nombre, datos]) => ({ nombre, ...datos, neto: datos.perdido - datos.recuperado, porcentaje: datos.perdido > 0 ? (datos.recuperado / datos.perdido) * 100 : 0 })).sort((a, b) => b.perdido - a.perdido);
     const formatter = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' });
     if (sucursalesArray.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="6" class="text-center"><i class="fas fa-inbox"></i> No hay datos para mostrar con los filtros seleccionados</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="6" class="text-center"><i class="fas fa-inbox"></i> No hay datos para mostrar con los filtros seleccionados</td</tr>`;
         return;
     }
-    tbody.innerHTML = sucursalesArray.map(s => `<tr><td title="${escapeHTML(s.nombre)}">${escapeHTML(s.nombre.length > 35 ? s.nombre.substring(0, 32) + '...' : s.nombre)}</td><td>${s.eventos}</td><td style="color: ${COLORS_REC.rojo}; font-weight: 600;">${formatter.format(s.perdido)}</td><td style="color: ${COLORS_REC.verde}; font-weight: 600;">${formatter.format(s.recuperado)}</td><td style="color: ${s.neto > 0 ? COLORS_REC.rojo : COLORS_REC.verde};">${formatter.format(s.neto)}</td><td><span style="background: rgba(59,130,246,0.2); padding: 4px 8px; border-radius: 20px;">${s.porcentaje.toFixed(2)}%</span></td></tr>`).join('');
+    tbody.innerHTML = sucursalesArray.map(s => `<tr><td title="${escapeHTML(s.nombre)}">${escapeHTML(s.nombre.length > 35 ? s.nombre.substring(0, 32) + '...' : s.nombre)}</td><td>${s.eventos}</td><td style="color: ${COLORS_REC.rojo}; font-weight: 600;">${formatter.format(s.perdido)}</td><td style="color: ${COLORS_REC.verde}; font-weight: 600;">${formatter.format(s.recuperado)}</td><td style="color: ${s.neto > 0 ? COLORS_REC.rojo : COLORS_REC.verde};">${formatter.format(s.neto)}</td><td><span style="background: rgba(59,130,246,0.2); padding: 4px 8px; border-radius: 20px;">${s.porcentaje.toFixed(2)}%</span></td>`).join('');
 }
 
 function actualizarGraficaVaciaRecuperacion() {
@@ -2189,9 +1761,6 @@ function mostrarRegistrosRecuperacionEnSweet(registros, titulo, icono = '<i clas
         const fecha = registro.getFechaFormateada ? registro.getFechaFormateada() : (registro.fecha ? new Date(registro.fecha).toLocaleDateString('es-MX') : 'N/A');
         const tipoTexto = registro.getTipoEventoTexto ? registro.getTipoEventoTexto() : (registro.tipoEvento || 'N/A');
         const estadoTexto = registro.getEstadoTexto ? registro.getEstadoTexto() : (registro.estado || 'activo');
-        const tienePDF = registro.pdfGenerado === true || (registro.pdfUrl && registro.pdfUrl.trim() !== '');
-        const pdfIcono = tienePDF ? '<i class="fas fa-file-pdf" style="color: #c0392b;"></i>' : '<i class="fas fa-file-pdf" style="color: #6c757d;"></i>';
-        const pdfTitle = tienePDF ? 'Ver PDF' : (registro.estadoGeneracion === 'generando' ? 'Generando PDF...' : 'PDF pendiente');
 
         let estadoColor = '#6c757d', estadoIcon = 'fa-circle';
         if (estadoTexto === 'Recuperado') { estadoColor = '#10b981'; estadoIcon = 'fa-check-circle'; }
@@ -2201,16 +1770,12 @@ function mostrarRegistrosRecuperacionEnSweet(registros, titulo, icono = '<i clas
         let tipoIcon = 'fa-tag', tipoDisplay = tipoTexto;
         if (tipoTexto === 'robo' || tipoTexto === 'Robo') { tipoIcon = 'fa-mask'; tipoDisplay = 'Robo'; }
         else if (tipoTexto === 'extravio' || tipoTexto === 'Extravío') { tipoIcon = 'fa-map-marker-alt'; tipoDisplay = 'Extravío'; }
-        else if (tipoTexto === 'accidente' || tipoTexto === 'Accidente') { tipoIcon = 'fa-car-crash'; tipoDisplay = 'Accidente'; }
-
+        else if (tipoTexto === 'accidente' || tipoTexto === 'Accidente') { tipoIcon = 'fa-circle-exclamation'; tipoDisplay = 'Accidente'; }
         registrosHtml += `
             <div class="swal-registro-card" data-registro-id="${registro.id}">
                 <div class="swal-card-header"><span class="swal-id"><i class="fas fa-hashtag"></i> ${escapeHTML(registro.id.substring(0, 12))}...</span><span class="swal-fecha"><i class="fas fa-calendar-alt"></i> ${fecha}</span></div>
                 <div class="swal-card-body"><div class="swal-info-principal"><div class="swal-sucursal"><i class="fas fa-store"></i> ${escapeHTML(registro.nombreEmpresaCC || 'Sin asignar')}</div><div class="swal-tipo-evento"><i class="fas ${tipoIcon}"></i> ${tipoDisplay}<span class="swal-estado-badge" style="margin-left: 8px; color: ${estadoColor};"><i class="fas ${estadoIcon}"></i> ${estadoTexto}</span></div></div><div class="swal-montos"><span class="swal-monto-perdido"><i class="fas fa-arrow-down"></i> ${formatter.format(registro.montoPerdido || 0)}</span><span class="swal-monto-recuperado"><i class="fas fa-arrow-up"></i> ${formatter.format(registro.montoRecuperado || 0)}</span></div></div>
                 ${registro.narracionEventos ? `<div class="swal-card-footer"><div class="swal-narracion"><i class="fas fa-file-alt"></i><span>${escapeHTML(registro.narracionEventos.substring(0, 100))}${registro.narracionEventos.length > 100 ? '...' : ''}</span></div></div>` : ''}
-                <div class="swal-card-actions" style="display: flex; justify-content: flex-end; gap: 8px; padding: 8px 14px 12px 14px; border-top: 1px solid rgba(255,255,255,0.05);">
-                    <button class="swal-pdf-btn-rec" data-registro-id="${registro.id}" data-pdf-url="${registro.pdfUrl || ''}" data-pdf-estado="${registro.estadoGeneracion || 'pendiente'}" style="background: rgba(0,0,0,0.5); border: none; border-radius: 8px; padding: 6px 12px; color: white; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; font-size: 0.7rem;">${pdfIcono}<span>${pdfTitle}</span></button>
-                </div>
             </div>
         `;
     });
@@ -2222,116 +1787,10 @@ function mostrarRegistrosRecuperacionEnSweet(registros, titulo, icono = '<i clas
         title: `${icono} ${titulo}`, html: registrosHtml, width: '880px', background: 'transparent',
         showConfirmButton: true, confirmButtonText: '<i class="fas fa-check"></i> Cerrar', confirmButtonColor: '#28a745',
         customClass: { popup: 'swal2-popup-custom', title: 'swal2-title-custom', confirmButton: 'swal2-confirm' },
-        backdrop: `rgba(0,0,0,0.8) left top no-repeat`,
-        didOpen: () => {
-            document.querySelectorAll('.swal-pdf-btn-rec').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    const registroId = btn.dataset.registroId;
-                    const pdfUrl = btn.dataset.pdfUrl;
-                    const pdfEstado = btn.dataset.pdfEstado;
-                    abrirPDFRecuperacionDesdeSweet(registroId, pdfUrl, pdfEstado);
-                });
-            });
-            document.querySelectorAll('.swal-registro-card').forEach(card => {
-                const registroId = card.dataset.registroId;
-                card.addEventListener('click', (e) => {
-                    if (!e.target.closest('.swal-pdf-btn-rec')) window.verDetalleRegistroRecuperacionDesdeSweet(registroId);
-                });
-            });
-        }
+        backdrop: `rgba(0,0,0,0.8) left top no-repeat`
     });
 }
 
-function abrirPDFRecuperacionDesdeSweet(registroId, pdfUrl, pdfEstado) {
-    const registro = datosActualesRecuperacion.registros.find(r => r.id === registroId);
-    if (!registro) {
-        Swal.fire({ icon: 'error', title: 'Error', text: 'No se encontró el registro', background: 'var(--color-bg-primary)', color: 'white' });
-        return;
-    }
-    const urlActual = registro.pdfUrl || pdfUrl;
-    const estadoActual = registro.estadoGeneracion || pdfEstado;
-    if (urlActual && urlActual.trim() !== '') {
-        window.open(urlActual, '_blank');
-        Swal.fire({ icon: 'success', title: 'Abriendo PDF', text: 'El PDF se abrirá en el visor del navegador', timer: 1500, showConfirmButton: false, toast: true, position: 'top-end', background: 'var(--color-bg-primary)', color: 'white' });
-    } else if (estadoActual === 'generando') {
-        Swal.fire({ icon: 'info', title: 'Generando PDF', text: 'El PDF se está generando en segundo plano.', confirmButtonText: 'Entendido', background: 'var(--color-bg-primary)', color: 'white' });
-    } else {
-        Swal.fire({ icon: 'info', title: 'PDF pendiente', text: 'La generación del PDF comenzará en breve.', confirmButtonText: 'Entendido', background: 'var(--color-bg-primary)', color: 'white' });
-    }
-}
-
-window.verDetalleRegistroRecuperacionDesdeSweet = function(registroId) {
-    Swal.close();
-    const registro = datosActualesRecuperacion.registros.find(r => r.id === registroId);
-    if (!registro) {
-        Swal.fire({ icon: 'error', title: 'Registro no encontrado', text: 'No se pudo encontrar el registro seleccionado', background: 'var(--color-bg-primary)', color: 'white' });
-        return;
-    }
-
-    const formatter = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' });
-    const fecha = registro.getFechaFormateada ? registro.getFechaFormateada() : (registro.fecha ? new Date(registro.fecha).toLocaleDateString('es-MX') : 'N/A');
-    const tipoTexto = registro.getTipoEventoTexto ? registro.getTipoEventoTexto() : (registro.tipoEvento || 'N/A');
-    const estadoTexto = registro.getEstadoTexto ? registro.getEstadoTexto() : (registro.estado || 'activo');
-
-    const tienePDF = registro.pdfGenerado === true || (registro.pdfUrl && registro.pdfUrl.trim() !== '');
-    const pdfEstado = registro.estadoGeneracion || 'pendiente';
-    let pdfIcono = tienePDF ? '<i class="fas fa-file-pdf" style="color: #c0392b;"></i>' : (pdfEstado === 'generando' ? '<i class="fas fa-spinner fa-spin"></i>' : '<i class="fas fa-file-pdf" style="color: #6c757d;"></i>');
-    let pdfTexto = tienePDF ? 'Ver PDF' : (pdfEstado === 'generando' ? 'Generando PDF...' : 'PDF pendiente');
-    let pdfColor = tienePDF ? '#c0392b' : (pdfEstado === 'generando' ? '#f59e0b' : '#6c757d');
-
-    let estadoColor = '#6c757d', estadoIcon = 'fa-circle';
-    if (estadoTexto === 'Recuperado') { estadoColor = '#10b981'; estadoIcon = 'fa-check-circle'; }
-    else if (estadoTexto === 'Activo') { estadoColor = '#f59e0b'; estadoIcon = 'fa-exclamation-circle'; }
-
-    let tipoIcon = 'fa-tag';
-    if (tipoTexto === 'robo' || tipoTexto === 'Robo') tipoIcon = 'fa-mask';
-    else if (tipoTexto === 'extravio' || tipoTexto === 'Extravío') tipoIcon = 'fa-map-marker-alt';
-    else if (tipoTexto === 'accidente' || tipoTexto === 'Accidente') tipoIcon = 'fa-car-crash';
-
-    let evidenciasHtml = '';
-    if (registro.evidencias && registro.evidencias.length > 0) {
-        const evidenciasMostrar = registro.evidencias.slice(0, 6);
-        evidenciasHtml = `<div style="background: rgba(0,0,0,0.3); border-radius: 16px; padding: 16px; margin-top: 8px;"><div style="font-size: 0.7rem; text-transform: uppercase; color: #9ca3af; margin-bottom: 12px;"><i class="fas fa-images"></i> Evidencias (${registro.evidencias.length})</div><div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 10px;">${evidenciasMostrar.map(ev => `<div style="cursor: pointer; border-radius: 8px; overflow: hidden; aspect-ratio: 1/1; background: rgba(0,0,0,0.5);" onclick="window.verImagenGrandeSweet('${ev.url}')"><img src="${ev.url}" style="width: 100%; height: 100%; object-fit: cover;" alt="Evidencia">${ev.comentario ? `<div style="font-size: 0.6rem; padding: 4px; text-align: center; background: rgba(0,0,0,0.7);">${escapeHTML(ev.comentario.substring(0, 20))}${ev.comentario.length > 20 ? '...' : ''}</div>` : ''}</div>`).join('')}</div>${registro.evidencias.length > 6 ? `<div style="text-align: center; margin-top: 8px; font-size: 0.65rem; color: #9ca3af;">+ ${registro.evidencias.length - 6} evidencias más</div>` : ''}</div>`;
-    }
-
-    let recuperacionesHtml = '';
-    if (registro.historialRecuperaciones && registro.historialRecuperaciones.length > 0) {
-        recuperacionesHtml = `<div style="background: rgba(0,0,0,0.3); border-radius: 16px; padding: 16px;"><div style="font-size: 0.7rem; text-transform: uppercase; color: #9ca3af; margin-bottom: 12px;"><i class="fas fa-history"></i> Historial de recuperaciones</div><div style="display: flex; flex-direction: column; gap: 8px;">${registro.historialRecuperaciones.map(rec => `<div style="display: flex; justify-content: space-between; align-items: center; padding: 8px; background: rgba(0,0,0,0.2); border-radius: 10px;"><span style="color: #10b981; font-weight: 600;">${formatter.format(rec.monto)}</span><span style="font-size: 0.7rem; color: #9ca3af;">${new Date(rec.fecha).toLocaleDateString('es-MX')}</span>${rec.comentario ? `<span style="font-size: 0.65rem; color: #d1d5db;">${escapeHTML(rec.comentario.substring(0, 30))}${rec.comentario.length > 30 ? '...' : ''}</span>` : ''}</div>`).join('')}</div></div>`;
-    }
-
-    const detallesHtml = `
-        <div style="display: flex; flex-direction: column; gap: 16px;">
-            <div class="swal-resumen-stats" style="margin-bottom: 0;"><div class="swal-stats-grid"><div class="swal-stat-item" style="border-left-color: #8b5cf6;"><span class="swal-stat-label">ID Registro</span><span class="swal-stat-value" style="font-size: 0.8rem;">${escapeHTML(registro.id)}</span></div><div class="swal-stat-item" style="border-left-color: #3b82f6;"><span class="swal-stat-label">Fecha</span><span class="swal-stat-value" style="font-size: 0.9rem;">${fecha}</span></div><div class="swal-stat-item" style="border-left-color: ${estadoColor};"><span class="swal-stat-label">Estado</span><span class="swal-stat-value" style="color: ${estadoColor};"><i class="fas ${estadoIcon}"></i> ${estadoTexto}</span></div></div></div>
-            <div style="background: rgba(0,0,0,0.4); border-radius: 16px; padding: 16px; border: 1px solid rgba(255,255,255,0.08);"><div style="display: flex; flex-wrap: wrap; gap: 20px; justify-content: space-between;"><div><div style="font-size: 0.7rem; text-transform: uppercase; color: #9ca3af;">Sucursal</div><div style="font-size: 1rem; font-weight: 600; margin-top: 4px;"><i class="fas fa-store" style="color: var(--color-accent-primary);"></i> ${escapeHTML(registro.nombreEmpresaCC || 'N/A')}</div></div><div><div style="font-size: 0.7rem; text-transform: uppercase; color: #9ca3af;">Tipo de evento</div><div style="font-size: 1rem; font-weight: 600; margin-top: 4px;"><i class="fas ${tipoIcon}"></i> ${tipoTexto}</div></div>${registro.hora ? `<div><div style="font-size: 0.7rem; text-transform: uppercase; color: #9ca3af;">Hora</div><div style="font-size: 1rem; font-weight: 600; margin-top: 4px;"><i class="fas fa-clock"></i> ${escapeHTML(registro.hora)}</div></div>` : ''}</div></div>
-            <div style="display: flex; flex-wrap: wrap; gap: 16px;"><div style="flex: 1; background: rgba(239, 68, 68, 0.1); border-radius: 16px; padding: 16px; border-left: 3px solid #ef4444;"><div style="font-size: 0.7rem; text-transform: uppercase; color: #9ca3af;">Monto perdido</div><div style="font-size: 1.5rem; font-weight: 700; color: #ef4444;">${formatter.format(registro.montoPerdido || 0)}</div></div><div style="flex: 1; background: rgba(16, 185, 129, 0.1); border-radius: 16px; padding: 16px; border-left: 3px solid #10b981;"><div style="font-size: 0.7rem; text-transform: uppercase; color: #9ca3af;">Monto recuperado</div><div style="font-size: 1.5rem; font-weight: 700; color: #10b981;">${formatter.format(registro.montoRecuperado || 0)}</div></div></div>
-            ${recuperacionesHtml}
-            ${registro.narracionEventos ? `<div style="background: rgba(0,0,0,0.3); border-radius: 16px; padding: 16px;"><div style="font-size: 0.7rem; text-transform: uppercase; color: #9ca3af; margin-bottom: 8px;"><i class="fas fa-file-alt"></i> Narración del evento</div><div style="font-size: 0.85rem; line-height: 1.5; color: #d1d5db;">${escapeHTML(registro.narracionEventos)}</div></div>` : ''}
-            ${registro.detallesPerdida ? `<div style="background: rgba(0,0,0,0.3); border-radius: 16px; padding: 16px;"><div style="font-size: 0.7rem; text-transform: uppercase; color: #9ca3af; margin-bottom: 8px;"><i class="fas fa-info-circle"></i> Detalles de la pérdida</div><div style="font-size: 0.85rem; line-height: 1.5; color: #d1d5db;">${escapeHTML(registro.detallesPerdida)}</div></div>` : ''}
-            ${evidenciasHtml}
-            <div style="display: flex; justify-content: center; gap: 12px; margin-top: 8px;"><button id="btnPdfDesdeSweetDetalleRec" style="background: linear-gradient(145deg, #0f0f0f, #1a1a1a); border: 1px solid ${tienePDF ? '#c0392b' : '#6c757d'}; border-radius: 12px; padding: 10px 24px; color: white; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; font-size: 0.8rem;">${pdfIcono}<span style="color: ${pdfColor};">${pdfTexto}</span></button></div>
-        </div>
-    `;
-
-    Swal.fire({
-        title: `<i class="fas fa-info-circle" style="color: var(--color-accent-primary);"></i> Detalles del registro`,
-        html: detallesHtml, width: '750px', background: 'transparent',
-        showConfirmButton: true, confirmButtonText: '<i class="fas fa-check"></i> Cerrar',
-        customClass: { popup: 'swal2-popup-custom', title: 'swal2-title-custom', confirmButton: 'swal2-confirm' },
-        didOpen: () => {
-            const btnPdf = document.getElementById('btnPdfDesdeSweetDetalleRec');
-            if (btnPdf) btnPdf.addEventListener('click', (e) => { e.stopPropagation(); abrirPDFRecuperacionDesdeSweet(registro.id, registro.pdfUrl, registro.estadoGeneracion); });
-        }
-    });
-};
-
-window.verImagenGrandeSweet = function(url) {
-    Swal.fire({ title: 'Evidencia', imageUrl: url, imageAlt: 'Evidencia ampliada', background: 'rgba(0,0,0,0.95)', backdrop: 'rgba(0,0,0,0.9)', showConfirmButton: true, confirmButtonText: '<i class="fas fa-times"></i> Cerrar', confirmButtonColor: '#dc3545', customClass: { popup: 'swal2-popup-custom' } });
-};
-
-// =============================================
-// CARGAR REGISTROS DE RECUPERACIÓN
-// =============================================
 async function cargarRegistrosRecuperacionConFiltros() {
     if (!organizacionActual?.camelCase || !mercanciaManager) {
         console.log('No se pudo inicializar el módulo de recuperación');
@@ -2339,23 +1798,19 @@ async function cargarRegistrosRecuperacionConFiltros() {
     }
 
     try {
-        const sucursal = document.getElementById('filtroSucursal')?.value || 'todas';
-        const fechaInicio = document.getElementById('filtroFechaInicio')?.value;
-        const fechaFin = document.getElementById('filtroFechaFin')?.value;
-        const tipoEvento = document.getElementById('filtroTipoEvento')?.value || 'todos';
-
         if (registrosRecuperacionCache.length === 0) {
             registrosRecuperacionCache = await mercanciaManager.getRegistrosByOrganizacion(organizacionActual.camelCase);
         }
 
         let registrosFiltrados = registrosRecuperacionCache;
 
+        const sucursal = document.getElementById('filtroSucursal')?.value || 'todas';
         if (sucursal !== 'todas') {
             registrosFiltrados = registrosFiltrados.filter(r => r.nombreEmpresaCC === sucursal);
         }
 
-        if (fechaInicio) {
-            const fechaInicioObj = new Date(fechaInicio);
+        if (filtrosActivos.fechaInicio) {
+            const fechaInicioObj = new Date(filtrosActivos.fechaInicio);
             fechaInicioObj.setHours(0, 0, 0, 0);
             registrosFiltrados = registrosFiltrados.filter(r => {
                 const fechaRegistro = r.fecha ? new Date(r.fecha) : null;
@@ -2363,8 +1818,8 @@ async function cargarRegistrosRecuperacionConFiltros() {
             });
         }
 
-        if (fechaFin) {
-            const fechaFinObj = new Date(fechaFin);
+        if (filtrosActivos.fechaFin) {
+            const fechaFinObj = new Date(filtrosActivos.fechaFin);
             fechaFinObj.setHours(23, 59, 59, 999);
             registrosFiltrados = registrosFiltrados.filter(r => {
                 const fechaRegistro = r.fecha ? new Date(r.fecha) : null;
@@ -2372,8 +1827,8 @@ async function cargarRegistrosRecuperacionConFiltros() {
             });
         }
 
-        if (tipoEvento !== 'todos') {
-            registrosFiltrados = registrosFiltrados.filter(r => r.tipoEvento === tipoEvento);
+        if (filtrosActivos.tipoEvento !== 'todos') {
+            registrosFiltrados = registrosFiltrados.filter(r => r.tipoEvento === filtrosActivos.tipoEvento);
         }
 
         registrosRecuperacionFiltrados = registrosFiltrados;
@@ -2390,80 +1845,239 @@ async function cargarRegistrosRecuperacionConFiltros() {
     }
 }
 
-// =============================================
-// GENERAR REPORTE PDF UNIFICADO
-// =============================================
 async function generarReportePDF() {
     try {
-        if ((!incidenciasFiltradas || incidenciasFiltradas.length === 0) && (!registrosRecuperacionFiltrados || registrosRecuperacionFiltrados.length === 0)) {
-            Swal.fire({ icon: 'warning', title: 'Sin datos', text: 'No hay datos para generar el reporte estadístico.', background: 'var(--color-bg-primary)', color: 'white' });
-            return;
-        }
+        // ===== CAMBIAR TEXTOS HTML A NEGRO =====
+        prepararTextosParaPDF();
+        
+        // ===== CAMBIAR GRÁFICAS A NEGRO =====
+        cambiarGraficasAModoPDF();
+        
+        // Delay para que los cambios se apliquen
+        await new Promise(resolve => setTimeout(resolve, 200));
+        
+        Swal.fire({
+            title: 'Preparando PDF...',
+            text: 'Estamos generando tu reporte estadístico completo',
+            icon: 'info',
+            showConfirmButton: false,
+            allowOutsideClick: false,
+            didOpen: () => {
+                Swal.showLoading();
+            }
+        });
 
-        Swal.fire({ title: 'Preparando datos...', text: 'Generando reporte estadístico', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); } });
-
-        const datosIncidencias = incidenciasFiltradas?.length > 0 ? procesarDatosGraficas(incidenciasFiltradas) : null;
-        const datosRecuperacion = {
-            estadisticas: datosActualesRecuperacion.estadisticas,
-            registros: datosActualesRecuperacion.registros,
-            sucursalesResumen: []
-        };
-
-        const tbody = document.getElementById('tablaResumenBody');
-        if (tbody && datosActualesRecuperacion.registros.length > 0) {
-            const filas = tbody.querySelectorAll('tr');
+        // Obtener datos de la tabla de sucursales desde el HTML
+        const tablaResumenBody = document.getElementById('tablaResumenBody');
+        let sucursalesResumenData = [];
+        
+        if (tablaResumenBody) {
+            const filas = tablaResumenBody.querySelectorAll('tr');
             filas.forEach(fila => {
                 const celdas = fila.querySelectorAll('td');
-                if (celdas.length >= 6 && !celdas[0].textContent.includes('No hay datos')) {
-                    datosRecuperacion.sucursalesResumen.push({
-                        nombre: celdas[0].textContent.trim(),
-                        eventos: parseInt(celdas[1].textContent) || 0,
-                        perdido: parseFloat(celdas[2].textContent.replace(/[^0-9.-]/g, '')) || 0,
-                        recuperado: parseFloat(celdas[3].textContent.replace(/[^0-9.-]/g, '')) || 0,
-                        neto: parseFloat(celdas[4].textContent.replace(/[^0-9.-]/g, '')) || 0,
-                        porcentaje: parseFloat(celdas[5].textContent) || 0
+                if (celdas.length >= 6 && !celdas[0].innerText.includes('No hay datos')) {
+                    sucursalesResumenData.push({
+                        nombre: celdas[0]?.innerText || 'N/A',
+                        eventos: parseInt(celdas[1]?.innerText) || 0,
+                        perdido: parseFloat(celdas[2]?.innerText.replace(/[^0-9.-]/g, '')) || 0,
+                        recuperado: parseFloat(celdas[3]?.innerText.replace(/[^0-9.-]/g, '')) || 0,
+                        neto: parseFloat(celdas[4]?.innerText.replace(/[^0-9.-]/g, '')) || 0,
+                        porcentaje: parseFloat(celdas[5]?.innerText.replace('%', '')) || 0
                     });
                 }
             });
         }
 
-        Swal.close();
-        await registrarGeneracionPDFReporte(incidenciasFiltradas?.length || 0, registrosRecuperacionFiltrados?.length || 0, filtrosActivos);
+        // Obtener datos de colaboradores desde datosGraficas
+        const colaboradoresData = (datosGraficas.colaboradores || []).map(col => ({
+            nombre: col.nombre || 'N/A',
+            reportados: col.reportados || 0,
+            actualizados: col.actualizados || 0,
+            seguimientos: col.seguimientos || 0,
+            tiempoTotal: col.tiempoTotal || 0,
+            incidenciasResueltas: col.incidenciasResueltas || 0
+        }));
 
-        const { generadorPDFEstadisticasUnificado } = await import('/components/pdf-estadisticas-unificado.js');
+        // Obtener datos de categorías
+        const categoriasData = datosGraficas.categoriasData || [];
 
-        generadorPDFEstadisticasUnificado.configurar({ organizacionActual, sucursalesCache, categoriasCache, usuariosCache: [], authToken });
+        const datosParaPDF = {
+            datosIncidencias: {
+                metricas: {
+                    criticas: parseInt(document.getElementById('metricCriticas')?.textContent || '0'),
+                    altas: parseInt(document.getElementById('metricAltas')?.textContent || '0'),
+                    pendientes: parseInt(document.getElementById('metricPendientes')?.textContent || '0'),
+                    total: parseInt(document.getElementById('metricTotal')?.textContent || '0'),
+                    finalizadas: (parseInt(document.getElementById('metricTotal')?.textContent || '0') - parseInt(document.getElementById('metricPendientes')?.textContent || '0'))
+                },
+                colaboradores: colaboradoresData,
+                categoriasData: categoriasData
+            },
+            datosRecuperacion: {
+                estadisticas: datosActualesRecuperacion.estadisticas,
+                sucursalesResumen: sucursalesResumenData
+            },
+            datosMapaCalor: {
+                datosPorUbicacion: window.mapaCalorComponente?.datosPorUbicacion ? Array.from(window.mapaCalorComponente.datosPorUbicacion.entries()) : [],
+                estadisticasGenerales: {
+                    totalIncidentes: document.getElementById('mapaTotalIncidentes')?.textContent || '0',
+                    criticasAltas: document.getElementById('mapaCriticasAltas')?.textContent || '0',
+                    totalPerdido: document.getElementById('mapaTotalPerdido')?.textContent || '$0',
+                    tasaRecuperacion: document.getElementById('mapaTasaRecuperacion')?.textContent || '0%'
+                }
+            },
+            filtrosAplicados: filtrosActivos
+        };
 
-        await generadorPDFEstadisticasUnificado.generarReporte({ datosIncidencias, datosRecuperacion }, {
-            mostrarAlerta: true, fechaInicio: filtrosActivos.fechaInicio, fechaFin: filtrosActivos.fechaFin, filtrosAplicados: filtrosActivos
+        generadorPDFEstadisticasUnificado.configurar({
+            organizacionActual: organizacionActual,
+            sucursalesCache: sucursalesCache,
+            categoriasCache: categoriasCache,
+            authToken: authToken
         });
+
+        await generadorPDFEstadisticasUnificado.generarReporte(datosParaPDF, { mostrarAlerta: true });
+
+        // ===== RESTAURAR TEXTOS HTML A BLANCO =====
+        restaurarTextosOriginales();
+        
+        // ===== RESTAURAR GRÁFICAS A BLANCO =====
+        restaurarGraficasAModoNormal();
 
     } catch (error) {
         console.error('Error generando PDF:', error);
-        Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo generar el reporte PDF: ' + error.message, background: 'var(--color-bg-primary)', color: 'white' });
+        // En caso de error, restaurar todo
+        restaurarTextosOriginales();
+        restaurarGraficasAModoNormal();
+        Swal.close();
+        Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: 'No se pudo generar el PDF: ' + error.message,
+            background: 'var(--color-bg-primary)',
+            color: 'white'
+        });
     }
 }
 
 // =============================================
-// INICIALIZACIÓN UNIFICADA
+// FUNCIONES PRINCIPALES CON SINCRONIZACIÓN
 // =============================================
+
+async function aplicarFiltros() {
+    const nuevosFiltros = {
+        fechaInicio: document.getElementById('filtroFechaInicio')?.value || null,
+        fechaFin: document.getElementById('filtroFechaFin')?.value || null,
+        categoriaId: document.getElementById('filtroCategoria')?.value || 'todas',
+        sucursalId: document.getElementById('filtroSucursal')?.value || 'todas',
+        colaboradorId: document.getElementById('filtroColaborador')?.value || 'todos',
+        busqueda: document.getElementById('buscarIncidencias')?.value || '',
+        tipoEvento: document.getElementById('filtroTipoEvento')?.value || 'todos',
+        nivelRiesgoMapa: document.getElementById('filtroNivelRiesgoMapa')?.value || 'todos',
+        agrupacionMapa: document.getElementById('filtroAgrupacionMapa')?.value || 'sucursal'
+    };
+    filtrosActivos = nuevosFiltros;
+    
+    // Sincronizar con el mapa de calor
+    if (window.mapaCalorComponente) {
+        window.mapaCalorComponente.sincronizarFiltros({
+            fechaInicio: nuevosFiltros.fechaInicio,
+            fechaFin: nuevosFiltros.fechaFin,
+            nivelRiesgo: nuevosFiltros.nivelRiesgoMapa,
+            agrupacion: nuevosFiltros.agrupacionMapa
+        });
+        window.mapaCalorComponente.aplicarFiltros();
+    }
+    
+    await cargarIncidencias();
+    await cargarRegistrosRecuperacionConFiltros();
+    
+    const totalIncidencias = incidenciasFiltradas?.length || 0;
+    const totalRecuperaciones = registrosRecuperacionFiltrados?.length || 0;
+    if (totalIncidencias > 0 || totalRecuperaciones > 0) {
+        await registrarAplicacionFiltros(filtrosActivos, totalIncidencias, totalRecuperaciones);
+    }
+}
+
+async function limpiarFiltros() {
+    const hoy = new Date();
+    const hace30Dias = new Date();
+    hace30Dias.setDate(hoy.getDate() - 30);
+    
+    const fechaInicio = document.getElementById('filtroFechaInicio');
+    const fechaFin = document.getElementById('filtroFechaFin');
+    const filtroCategoria = document.getElementById('filtroCategoria');
+    const filtroSucursal = document.getElementById('filtroSucursal');
+    const filtroColaborador = document.getElementById('filtroColaborador');
+    const filtroTipoEvento = document.getElementById('filtroTipoEvento');
+    const filtroNivelRiesgoMapa = document.getElementById('filtroNivelRiesgoMapa');
+    const filtroAgrupacionMapa = document.getElementById('filtroAgrupacionMapa');
+    const buscar = document.getElementById('buscarIncidencias');
+    
+    if (fechaInicio) fechaInicio.value = hace30Dias.toISOString().split('T')[0];
+    if (fechaFin) fechaFin.value = hoy.toISOString().split('T')[0];
+    if (filtroCategoria) filtroCategoria.value = 'todas';
+    if (filtroSucursal) filtroSucursal.value = 'todas';
+    if (filtroColaborador) filtroColaborador.value = 'todos';
+    if (filtroTipoEvento) filtroTipoEvento.value = 'todos';
+    if (filtroNivelRiesgoMapa) filtroNivelRiesgoMapa.value = 'todos';
+    if (filtroAgrupacionMapa) filtroAgrupacionMapa.value = 'sucursal';
+    if (buscar) buscar.value = '';
+    
+    filtrosActivos = {
+        fechaInicio: hace30Dias.toISOString().split('T')[0],
+        fechaFin: hoy.toISOString().split('T')[0],
+        categoriaId: 'todas',
+        sucursalId: 'todas',
+        colaboradorId: 'todos',
+        busqueda: '',
+        tipoEvento: 'todos',
+        nivelRiesgoMapa: 'todos',
+        agrupacionMapa: 'sucursal'
+    };
+    
+    if (window.mapaCalorComponente) {
+        window.mapaCalorComponente.sincronizarFiltros({
+            fechaInicio: filtrosActivos.fechaInicio,
+            fechaFin: filtrosActivos.fechaFin,
+            nivelRiesgo: 'todos',
+            agrupacion: 'sucursal'
+        });
+        window.mapaCalorComponente.aplicarFiltros();
+    }
+    
+    await registrarLimpiezaFiltros();
+    await cargarIncidencias();
+    await cargarRegistrosRecuperacionConFiltros();
+}
+
 async function inicializarDashboardUnificado() {
     try {
         await obtenerDatosOrganizacion();
         await inicializarHistorial();
         await inicializarEstadisticasManager();
         await obtenerTokenAuth();
-
         configurarFiltros();
-
-        await Promise.all([cargarSucursales(), cargarCategorias(), cargarSucursalesRecuperacion()]);
-
+        await Promise.all([cargarSucursales(), cargarCategorias(), cargarSucursalesRecuperacion(), cargarRegiones()]); // Agregar cargarRegiones aquí
         establecerFechasPorDefecto();
         await registrarAccesoVistaEstadisticas();
-
-        await cargarIncidencias();
-        await cargarRegistrosRecuperacionConFiltros();
-
+        
+        // Sincronizar filtros con el mapa de calor
+        sincronizarFiltrosConMapa();
+        
+        // NO cargar datos automáticamente - esperar a que el usuario aplique filtros
+        const welcomeMsg = document.getElementById('welcomeMessage');
+        const resultadosSection = document.getElementById('resultadosSection');
+        if (welcomeMsg) welcomeMsg.style.display = 'block';
+        if (resultadosSection) resultadosSection.classList.remove('visible');
+        
+        incidenciasFiltradas = [];
+        registrosRecuperacionFiltrados = [];
+        
+        if (window.mapaCalorComponente) {
+            window.mapaCalorComponente.mostrarMensajeInicialMapa();
+        }
+        
     } catch (error) {
         console.error('Error al inicializar estadísticas unificadas:', error);
         mostrarError('Error al cargar la página: ' + error.message);
@@ -2471,13 +2085,188 @@ async function inicializarDashboardUnificado() {
     }
 }
 
+function sincronizarFiltrosConMapa() {
+    setTimeout(() => {
+        if (window.mapaCalorComponente) {
+            const nivelRiesgo = document.getElementById('filtroNivelRiesgoMapa')?.value || 'todos';
+            const agrupacion = document.getElementById('filtroAgrupacionMapa')?.value || 'sucursal';
+            
+            window.mapaCalorComponente.sincronizarFiltros({
+                fechaInicio: filtrosActivos.fechaInicio,
+                fechaFin: filtrosActivos.fechaFin,
+                nivelRiesgo: nivelRiesgo,
+                agrupacion: agrupacion
+            });
+        }
+    }, 500);
+}
+
+
+// =============================================
+// FUNCIONES PARA MANEJAR COLORES DE TEXTO EN PDF
+// =============================================
+
+// Función para cambiar TODOS los textos a negro antes del PDF
+function prepararTextosParaPDF() {
+    // Cambiar todos los textos de tarjetas métricas
+    document.querySelectorAll('.metric-card .metric-title, .metric-card .metric-value, .metric-card .metric-subtitle').forEach(el => {
+        el.style.setProperty('color', '#000000', 'important');
+    });
+    
+    // Cambiar títulos de secciones
+    document.querySelectorAll('.seccion-titulo h2, .seccion-titulo p').forEach(el => {
+        el.style.setProperty('color', '#000000', 'important');
+    });
+    
+    // Cambiar textos de tablas
+    document.querySelectorAll('.table, .resumen-tabla, .table th, .table td, .resumen-tabla th, .resumen-tabla td').forEach(el => {
+        el.style.setProperty('color', '#000000', 'important');
+    });
+    
+    // Cambiar headers de cards
+    document.querySelectorAll('.card-header h5, .card-grafica .card-header h5').forEach(el => {
+        el.style.setProperty('color', '#000000', 'important');
+    });
+    
+    // Cambiar KPIs de recuperación
+    document.querySelectorAll('.kpi-info h3, .kpi-info p').forEach(el => {
+        el.style.setProperty('color', '#000000', 'important');
+    });
+    
+    // Cambiar textos de filtros
+    document.querySelectorAll('.filtros-header h5, .filtro-grupo label').forEach(el => {
+        el.style.setProperty('color', '#000000', 'important');
+    });
+    
+    // Cambiar valores de inputs y selects
+    document.querySelectorAll('.filtro-select, .filtro-input').forEach(el => {
+        el.style.setProperty('color', '#000000', 'important');
+        el.style.setProperty('background', '#ffffff', 'important');
+    });
+    
+    // Cambiar footer
+    document.querySelectorAll('.footer-datetime').forEach(el => {
+        el.style.setProperty('color', '#000000', 'important');
+    });
+}
+
+// Función para restaurar colores originales (blanco)
+function restaurarTextosOriginales() {
+    document.querySelectorAll('.metric-card .metric-title, .metric-card .metric-value, .metric-card .metric-subtitle').forEach(el => {
+        el.style.removeProperty('color');
+    });
+    
+    document.querySelectorAll('.seccion-titulo h2, .seccion-titulo p').forEach(el => {
+        el.style.removeProperty('color');
+    });
+    
+    document.querySelectorAll('.table, .resumen-tabla, .table th, .table td, .resumen-tabla th, .resumen-tabla td').forEach(el => {
+        el.style.removeProperty('color');
+    });
+    
+    document.querySelectorAll('.card-header h5, .card-grafica .card-header h5').forEach(el => {
+        el.style.removeProperty('color');
+    });
+    
+    document.querySelectorAll('.kpi-info h3, .kpi-info p').forEach(el => {
+        el.style.removeProperty('color');
+    });
+    
+    document.querySelectorAll('.filtros-header h5, .filtro-grupo label').forEach(el => {
+        el.style.removeProperty('color');
+    });
+    
+    document.querySelectorAll('.filtro-select, .filtro-input').forEach(el => {
+        el.style.removeProperty('color');
+        el.style.removeProperty('background');
+    });
+    
+    document.querySelectorAll('.footer-datetime').forEach(el => {
+        el.style.removeProperty('color');
+    });
+}
+// =============================================
+// FUNCIONES PARA CAMBIAR COLORES DE GRÁFICAS PARA PDF
+// =============================================
+
+// Función para cambiar TODAS las gráficas a modo PDF (texto negro)
+function cambiarGraficasAModoPDF() {
+    // Lista de todas las gráficas que tienes
+    const graficas = [
+        { chart: charts.actualizadores },
+        { chart: charts.reportadores },
+        { chart: charts.seguimientos },
+        { chart: charts.estado },
+        { chart: charts.riesgo },
+        { chart: charts.categorias },
+        { chart: charts.sucursales },
+        { chart: charts.tiempo },
+        { chart: graficoTipoEvento },
+        { chart: graficoEvolucionMensual },
+        { chart: graficoTopSucursales },
+        { chart: graficoComparativa }
+    ];
+    
+    graficas.forEach(g => {
+        if (g.chart && g.chart.options) {
+            // Cambiar colores de texto de los ejes
+            if (g.chart.options.scales) {
+                if (g.chart.options.scales.y && g.chart.options.scales.y.ticks) {
+                    g.chart.options.scales.y.ticks.color = '#000000';
+                }
+                if (g.chart.options.scales.x && g.chart.options.scales.x.ticks) {
+                    g.chart.options.scales.x.ticks.color = '#000000';
+                }
+            }
+            // Cambiar color de la leyenda
+            if (g.chart.options.plugins && g.chart.options.plugins.legend) {
+                if (g.chart.options.plugins.legend.labels) {
+                    g.chart.options.plugins.legend.labels.color = '#000000';
+                }
+            }
+            // Actualizar la gráfica
+            g.chart.update();
+        }
+    });
+}
+
+// Función para restaurar gráficas a modo normal (texto blanco)
+function restaurarGraficasAModoNormal() {
+    const graficas = [
+        { chart: charts.actualizadores },
+        { chart: charts.reportadores },
+        { chart: charts.seguimientos },
+        { chart: charts.estado },
+        { chart: charts.riesgo },
+        { chart: charts.categorias },
+        { chart: charts.sucursales },
+        { chart: charts.tiempo },
+        { chart: graficoTipoEvento },
+        { chart: graficoEvolucionMensual },
+        { chart: graficoTopSucursales },
+        { chart: graficoComparativa }
+    ];
+    
+    graficas.forEach(g => {
+        if (g.chart && g.chart.options) {
+            // Restaurar colores de texto de los ejes a blanco
+            if (g.chart.options.scales) {
+                if (g.chart.options.scales.y && g.chart.options.scales.y.ticks) {
+                    g.chart.options.scales.y.ticks.color = 'white';
+                }
+                if (g.chart.options.scales.x && g.chart.options.scales.x.ticks) {
+                    g.chart.options.scales.x.ticks.color = 'white';
+                }
+            }
+            // Restaurar color de la leyenda a blanco
+            if (g.chart.options.plugins && g.chart.options.plugins.legend) {
+                if (g.chart.options.plugins.legend.labels) {
+                    g.chart.options.plugins.legend.labels.color = 'white';
+                }
+            }
+            // Actualizar la gráfica
+            g.chart.update();
+        }
+    });
+}
 document.addEventListener('DOMContentLoaded', inicializarDashboardUnificado);
-
-
-
-
-
-
-
-
-

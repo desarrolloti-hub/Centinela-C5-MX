@@ -1,5 +1,5 @@
 /**
- * EDITAR CATEGORÍAS - CON NIVELES DE RIESGO EN SUBCATEGORÍAS
+ * EDITAR CATEGORÍAS - CON SLIDER DE BRILLO Y NUEVO LAYOUT
  * Sistema Centinela
  */
 
@@ -17,13 +17,11 @@ let empresaActual = null;
 let historialManager = null;
 let nivelesRiesgo = [];
 
-// Variable global para debugging
 window.editarCategoriaDebug = {
     estado: 'iniciando',
     controller: null
 };
 
-// LÍMITES DE CARACTERES
 const LIMITES = {
     NOMBRE_CATEGORIA: 50,
     DESCRIPCION_CATEGORIA: 500,
@@ -38,14 +36,10 @@ async function inicializarCategoriaManager() {
     try {
         obtenerDatosEmpresa();
         await inicializarHistorial();
-        
         const { CategoriaManager } = await import('/clases/categoria.js');
         categoriaManager = new CategoriaManager();
-        
-        // Inicializar RiesgoNivelManager
         riesgoNivelManager = new RiesgoNivelManager();
         await cargarNivelesRiesgo();
-        
         return true;
     } catch (error) {
         console.error('❌ Error al cargar módulos:', error);
@@ -141,17 +135,17 @@ document.addEventListener('DOMContentLoaded', async function () {
     await cargarCategoria(categoriaId);
     inicializarComponentes();
     inicializarEventos();
-    window.editarCategoriaDebug.controller = { 
-        cambiarRiesgoSeleccionado, 
-        crearNuevoRiesgoYAsignar,
-        actualizarSubcategoria,
+    window.editarCategoriaDebug.controller = {
         eliminarSubcategoria,
+        actualizarSubcategoria,
         cambiarHerenciaColor,
         actualizarColorPersonalizado,
-        renderizarSubcategorias
+        renderizarSubcategorias,
+        cambiarRiesgoSeleccionado,
+        crearNuevoRiesgoYAsignar,
+        actualizarBrightnessFactor
     };
 
-    // Si viene con parámetro de nueva subcategoría
     if (urlParams.get('nuevaSubcategoria') === 'true') {
         setTimeout(() => {
             agregarSubcategoria();
@@ -163,7 +157,6 @@ document.addEventListener('DOMContentLoaded', async function () {
         }, 500);
     }
 
-    // Si viene con parámetro de editar subcategoría
     const editarSubcategoriaId = urlParams.get('editarSubcategoria');
     if (editarSubcategoriaId) {
         setTimeout(() => {
@@ -206,9 +199,9 @@ async function cargarCategoria(id) {
                         fechaCreacion: sub.fechaCreacion || new Date().toISOString(),
                         fechaActualizacion: sub.fechaActualizacion || new Date().toISOString(),
                         heredaColor: sub.heredaColor !== undefined ? sub.heredaColor : true,
-                        color: sub.color || null,
                         colorPersonalizado: sub.color || '#ff5733',
-                        riesgoNivelId: sub.riesgoNivelId || null   // ← NUEVO
+                        brightnessFactor: sub.brightnessFactor !== undefined ? sub.brightnessFactor : 1.0,
+                        riesgoNivelId: sub.riesgoNivelId || null
                     });
                 }
             });
@@ -248,9 +241,8 @@ function actualizarContadorCaracteres() {
 }
 
 // =============================================
-// GESTIÓN DE SUBCATEGORÍAS (CON NIVEL DE RIESGO)
+// GESTIÓN DE SUBCATEGORÍAS
 // =============================================
-
 function agregarSubcategoria() {
     const subcatId = `temp_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
     subcategorias.push({
@@ -259,16 +251,14 @@ function agregarSubcategoria() {
         descripcion: '',
         heredaColor: true,
         colorPersonalizado: '#ff5733',
+        brightnessFactor: 1.0,
         riesgoNivelId: '',
         esNuevo: true
     });
     renderizarSubcategorias();
     setTimeout(() => {
         const input = document.getElementById(`subcat_nombre_${subcatId}`);
-        if (input) {
-            input.focus();
-            input.maxLength = LIMITES.NOMBRE_SUBCATEGORIA;
-        }
+        if (input) input.focus();
     }, 100);
 }
 
@@ -278,8 +268,7 @@ function eliminarSubcategoria(subcatId) {
         text: 'Esta acción no se puede deshacer',
         icon: 'warning',
         showCancelButton: true,
-        confirmButtonText: 'Sí, eliminar',
-        cancelButtonText: 'Cancelar'
+        confirmButtonText: 'Sí, eliminar'
     }).then((result) => {
         if (result.isConfirmed) {
             subcategorias = subcategorias.filter(s => s.id !== subcatId);
@@ -290,8 +279,8 @@ function eliminarSubcategoria(subcatId) {
 }
 
 function actualizarSubcategoria(subcatId, campo, valor) {
-    const subcategoria = subcategorias.find(s => s.id === subcatId);
-    if (subcategoria) {
+    const subcat = subcategorias.find(s => s.id === subcatId);
+    if (subcat) {
         if (campo === 'nombre' && valor.length > LIMITES.NOMBRE_SUBCATEGORIA) {
             valor = valor.substring(0, LIMITES.NOMBRE_SUBCATEGORIA);
             mostrarNotificacion(`El nombre no puede exceder ${LIMITES.NOMBRE_SUBCATEGORIA} caracteres`, 'warning', 3000);
@@ -300,11 +289,12 @@ function actualizarSubcategoria(subcatId, campo, valor) {
             valor = valor.substring(0, LIMITES.DESCRIPCION_SUBCATEGORIA);
             mostrarNotificacion(`La descripción no puede exceder ${LIMITES.DESCRIPCION_SUBCATEGORIA} caracteres`, 'warning', 3000);
         }
-        subcategoria[campo] = valor;
+        subcat[campo] = valor;
         // Actualizar contador visual
         const input = document.getElementById(`subcat_${campo}_${subcatId}`);
         if (input) {
-            const counter = input.closest('.subcategoria-campo')?.querySelector('.char-counter');
+            const parent = input.closest('.subcategoria-campo') || input.closest('.subcategoria-campo-full');
+            const counter = parent?.querySelector('.char-counter');
             if (counter) {
                 const limite = campo === 'nombre' ? LIMITES.NOMBRE_SUBCATEGORIA : LIMITES.DESCRIPCION_SUBCATEGORIA;
                 counter.textContent = `${valor.length}/${limite}`;
@@ -313,31 +303,102 @@ function actualizarSubcategoria(subcatId, campo, valor) {
     }
 }
 
-function cambiarHerenciaColor(subcatId, heredaColor) {
-    const subcategoria = subcategorias.find(s => s.id === subcatId);
-    if (subcategoria) {
-        subcategoria.heredaColor = heredaColor;
+function cambiarHerenciaColor(subcatId, hereda) {
+    const subcat = subcategorias.find(s => s.id === subcatId);
+    if (subcat) {
+        subcat.heredaColor = hereda;
+        if (hereda) {
+            subcat.brightnessFactor = 1.0;
+            subcat.colorPersonalizado = null;
+        } else {
+            if (!subcat.colorPersonalizado) {
+                const catColor = document.getElementById('colorPickerNative')?.value || '#2f8cff';
+                subcat.colorPersonalizado = catColor;
+            }
+        }
         renderizarSubcategorias();
     }
 }
 
 function actualizarColorPersonalizado(subcatId, color) {
-    const subcategoria = subcategorias.find(s => s.id === subcatId);
-    if (subcategoria) {
-        subcategoria.colorPersonalizado = color;
+    const subcat = subcategorias.find(s => s.id === subcatId);
+    if (subcat && !subcat.heredaColor) {
+        subcat.colorPersonalizado = color;
         renderizarSubcategorias();
     }
 }
 
-// ========== NUEVAS FUNCIONES PARA NIVEL DE RIESGO ==========
+// ========== FUNCIONES DE COLOR ==========
+function hexToRgb(hex) {
+    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    return result ? {
+        r: parseInt(result[1], 16),
+        g: parseInt(result[2], 16),
+        b: parseInt(result[3], 16)
+    } : null;
+}
+
+function adjustBrightness(rgb, factor) {
+    let r = Math.min(255, Math.max(0, Math.round(rgb.r * factor)));
+    let g = Math.min(255, Math.max(0, Math.round(rgb.g * factor)));
+    let b = Math.min(255, Math.max(0, Math.round(rgb.b * factor)));
+    return `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)}`;
+}
+
+function calcularColorEfectivo(subcat, colorCategoria) {
+    if (!subcat.heredaColor) {
+        return subcat.colorPersonalizado || colorCategoria;
+    }
+    const rgb = hexToRgb(colorCategoria);
+    if (!rgb) return colorCategoria;
+    let factor = subcat.brightnessFactor;
+    factor = Math.min(1.5, Math.max(0.5, factor));
+    return adjustBrightness(rgb, factor);
+}
+
+// Actualiza solo la vista previa del color sin re-renderizar toda la subcategoría
+function actualizarVistaPreviaColorSubcategoria(subcatId) {
+    const subcat = subcategorias.find(s => s.id === subcatId);
+    if (!subcat) return;
+    const colorCategoria = document.getElementById('colorPickerNative')?.value || '#2f8cff';
+    const colorEfectivo = calcularColorEfectivo(subcat, colorCategoria);
+    
+    const itemDiv = document.getElementById(`subcategoria_${subcatId}`);
+    if (itemDiv) {
+        itemDiv.style.borderLeftColor = colorEfectivo;
+        const badge = itemDiv.querySelector('.color-badge');
+        if (badge) badge.style.backgroundColor = colorEfectivo;
+        const muestra = itemDiv.querySelector('.color-muestra');
+        if (muestra) muestra.style.backgroundColor = colorEfectivo;
+        const hexSpan = itemDiv.querySelector('.color-actual span:last-child');
+        if (hexSpan) hexSpan.textContent = colorEfectivo;
+        const hexMini = itemDiv.querySelector('.color-hex-mini');
+        if (hexMini) hexMini.textContent = colorEfectivo;
+        const percentSpan = itemDiv.querySelector('.tonalidad-valor');
+        if (percentSpan) {
+            const percent = Math.round((subcat.brightnessFactor - 0.5) * 100);
+            percentSpan.textContent = `${percent}%`;
+        }
+    }
+}
+
+function actualizarBrightnessFactor(subcatId, percentValue) {
+    const subcat = subcategorias.find(s => s.id === subcatId);
+    if (subcat && subcat.heredaColor) {
+        const factor = 0.5 + (percentValue / 100);
+        subcat.brightnessFactor = Math.min(1.5, Math.max(0.5, factor));
+        actualizarVistaPreviaColorSubcategoria(subcatId);
+    }
+}
+
+// ========== FUNCIONES PARA NIVEL DE RIESGO ==========
 function cambiarRiesgoSeleccionado(subcatId, valor) {
     const subcat = subcategorias.find(s => s.id === subcatId);
     if (!subcat) return;
-
     const container = document.getElementById(`nuevoRiesgoContainer_${subcatId}`);
     if (valor === '__otro__') {
         if (container) container.style.display = 'block';
-        subcat.riesgoNivelId = '';
+        subcat.riesgoNivelId = '__otro__';
     } else {
         if (container) container.style.display = 'none';
         subcat.riesgoNivelId = valor;
@@ -347,22 +408,18 @@ function cambiarRiesgoSeleccionado(subcatId, valor) {
 async function crearNuevoRiesgoYAsignar(subcatId) {
     const subcat = subcategorias.find(s => s.id === subcatId);
     if (!subcat) return;
-
     const nombreInput = document.getElementById(`nuevoRiesgoNombre_${subcatId}`);
     const colorInput = document.getElementById(`nuevoRiesgoColor_${subcatId}`);
     const nombre = nombreInput?.value.trim();
     const color = colorInput?.value || '#2f8cff';
-
     if (!nombre) {
         mostrarNotificacion('Debes escribir un nombre para el nuevo nivel de riesgo', 'warning');
         return;
     }
-
     const btn = document.querySelector(`.btn-crear-riesgo[data-subcat-id="${subcatId}"]`);
     const originalText = btn.innerHTML;
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
     btn.disabled = true;
-
     try {
         const usuario = obtenerUsuarioActual();
         const nuevoNivel = await riesgoNivelManager.crearNivel({ nombre, color }, usuario);
@@ -379,7 +436,7 @@ async function crearNuevoRiesgoYAsignar(subcatId) {
     }
 }
 
-// ========== RENDERIZADO PRINCIPAL ==========
+// ========== RENDERIZADO PRINCIPAL (NUEVO LAYOUT) ==========
 function renderizarSubcategorias() {
     const container = document.getElementById('subcategoriasList');
     if (!container) return;
@@ -399,30 +456,38 @@ function renderizarSubcategorias() {
     let html = '';
 
     subcategorias.forEach((subcat, index) => {
-        const colorEfectivo = subcat.heredaColor ? colorCategoria : (subcat.colorPersonalizado || '#ff5733');
+        const colorEfectivo = calcularColorEfectivo(subcat, colorCategoria);
+        const sliderValue = subcat.heredaColor ? Math.round((subcat.brightnessFactor - 0.5) * 100) : 50;
         
+        // Gradiente para el slider
+        const rgbBase = hexToRgb(colorCategoria);
+        const darkColor = rgbBase ? adjustBrightness(rgbBase, 0.5) : '#2f8cff';
+        const lightColor = rgbBase ? adjustBrightness(rgbBase, 1.5) : '#2f8cff';
+        const sliderGradient = `linear-gradient(90deg, ${darkColor} 0%, ${colorCategoria} 50%, ${lightColor} 100%)`;
+
         // Opciones del select de niveles de riesgo
         let riesgoOptions = '<option value="">-- Seleccionar --</option>';
         nivelesRiesgo.forEach(nivel => {
             const selected = (subcat.riesgoNivelId === nivel.id) ? 'selected' : '';
             riesgoOptions += `<option value="${nivel.id}" ${selected}>${escapeHTML(nivel.nombre)} (${nivel.color})</option>`;
         });
-        riesgoOptions += '<option value="__otro__">➕ Crear nuevo nivel...</option>';
+        riesgoOptions += '<option value="__otro__" ' + (subcat.riesgoNivelId === '__otro__' ? 'selected' : '') + '>Crear nuevo nivel...</option>';
+        const showNuevoRiesgo = (subcat.riesgoNivelId === '__otro__') ? 'block' : 'none';
 
         html += `
-            <div class="subcategoria-item" id="subcategoria_${subcat.id}" style="border-left: 4px solid ${colorEfectivo};">
+            <div class="subcategoria-item" style="border-left: 4px solid ${colorEfectivo}; transition: border-left-color 0.1s ease;" id="subcategoria_${subcat.id}">
                 <div class="subcategoria-header">
                     <div class="subcategoria-titulo">
-                        <i class="fas fa-folder"></i>
-                        Subcategoría #${index + 1}
-                        <span class="color-badge" style="background: ${colorEfectivo}; width: 16px; height: 16px; border-radius: 4px; display: inline-block; margin-left: 8px;"></span>
+                        <i class="fas fa-folder"></i> Subcategoría #${index + 1}
+                        <span class="color-badge" style="background: ${colorEfectivo}; width:16px; height:16px; border-radius:4px; display:inline-block; margin-left:8px; transition: background 0.1s ease;"></span>
                     </div>
                     <button type="button" class="btn-eliminar-subcategoria" 
                             onclick="window.editarCategoriaDebug.controller.eliminarSubcategoria('${subcat.id}')">
                         <i class="fas fa-trash-alt"></i> Eliminar
                     </button>
                 </div>
-                <div class="subcategoria-grid">
+                <!-- Primera fila: Nombre + Nivel de Riesgo -->
+                <div class="subcategoria-row-2cols">
                     <div class="subcategoria-campo">
                         <label><i class="fas fa-tag"></i> Nombre *</label>
                         <input type="text" class="subcategoria-input" id="subcat_nombre_${subcat.id}"
@@ -431,30 +496,32 @@ function renderizarSubcategorias() {
                         <div class="char-limit-info"><span class="char-counter">${subcat.nombre.length}/${LIMITES.NOMBRE_SUBCATEGORIA}</span></div>
                     </div>
                     <div class="subcategoria-campo">
-                        <label><i class="fas fa-align-left"></i> Descripción</label>
-                        <input type="text" class="subcategoria-input" id="subcat_descripcion_${subcat.id}"
-                            value="${escapeHTML(subcat.descripcion)}" maxlength="${LIMITES.DESCRIPCION_SUBCATEGORIA}"
-                            oninput="window.editarCategoriaDebug.controller.actualizarSubcategoria('${subcat.id}', 'descripcion', this.value)">
-                        <div class="char-limit-info"><span class="char-counter">${subcat.descripcion.length}/${LIMITES.DESCRIPCION_SUBCATEGORIA}</span></div>
-                    </div>
-                    <div class="subcategoria-campo">
                         <label><i class="fas fa-chart-line"></i> Nivel de Riesgo</label>
                         <div class="riesgo-select-wrapper">
                             <select class="subcategoria-select-riesgo" data-subcat-id="${subcat.id}"
                                 onchange="window.editarCategoriaDebug.controller.cambiarRiesgoSeleccionado('${subcat.id}', this.value)">
                                 ${riesgoOptions}
                             </select>
-                            <div id="nuevoRiesgoContainer_${subcat.id}" class="nuevo-riesgo-container" style="display: none; margin-top: 10px;">
+                            <div id="nuevoRiesgoContainer_${subcat.id}" class="nuevo-riesgo-container" style="display: ${showNuevoRiesgo}; margin-top: 8px;">
                                 <input type="text" class="form-control" placeholder="Nombre del nuevo nivel" id="nuevoRiesgoNombre_${subcat.id}" maxlength="50">
                                 <div style="display: flex; gap: 8px; margin-top: 5px; align-items: center;">
-                                    <input type="color" id="nuevoRiesgoColor_${subcat.id}" value="#2f8cff" style="width: 40px; height: 40px;">
-                                    <span>Color</span>
-                                    <button type="button" class="btn-crear-riesgo" data-subcat-id="${subcat.id}" style="margin-left: auto;">Crear y asignar</button>
+                                    <input type="color" id="nuevoRiesgoColor_${subcat.id}" value="#2f8cff" style="width: 36px; height: 36px;">
+                                    <span style="flex:1;">Color</span>
+                                    <button type="button" class="btn-crear-riesgo" data-subcat-id="${subcat.id}">Crear y asignar</button>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
+                <!-- Segunda fila: Descripción (ancho completo) -->
+                <div class="subcategoria-campo-full">
+                    <label><i class="fas fa-align-left"></i> Descripción</label>
+                    <input type="text" class="subcategoria-input" id="subcat_descripcion_${subcat.id}"
+                        value="${escapeHTML(subcat.descripcion)}" maxlength="${LIMITES.DESCRIPCION_SUBCATEGORIA}"
+                        oninput="window.editarCategoriaDebug.controller.actualizarSubcategoria('${subcat.id}', 'descripcion', this.value)">
+                    <div class="char-limit-info"><span class="char-counter">${subcat.descripcion.length}/${LIMITES.DESCRIPCION_SUBCATEGORIA}</span></div>
+                </div>
+                <!-- Tercera fila: controles de color -->
                 <div class="subcategoria-color-control">
                     <div class="herencia-color">
                         <label class="herencia-checkbox">
@@ -463,13 +530,24 @@ function renderizarSubcategorias() {
                             <span> Heredar color de categoría</span>
                         </label>
                     </div>
-                    <div class="color-personalizado" style="${subcat.heredaColor ? 'opacity:0.5; pointer-events:none;' : ''}">
+                    ${subcat.heredaColor ? `
+                    <div class="tonalidad-control">
+                        <span class="tonalidad-label"><i class="fas fa-adjust"></i> Brillo:</span>
+                        <input type="range" class="tonalidad-slider" min="0" max="100" value="${sliderValue}"
+                            style="background: ${sliderGradient};"
+                            oninput="window.editarCategoriaDebug.controller.actualizarBrightnessFactor('${subcat.id}', this.value)">
+                        <span class="tonalidad-valor">${sliderValue}%</span>
+                        <span class="color-hex-mini">${colorEfectivo}</span>
+                    </div>
+                    ` : `
+                    <div class="color-personalizado">
                         <span><i class="fas fa-palette"></i> Color:</span>
                         <input type="color" class="color-personalizado-input" id="subcat_color_${subcat.id}"
-                            value="${subcat.colorPersonalizado || '#ff5733'}" ${subcat.heredaColor ? 'disabled' : ''}
+                            value="${subcat.colorPersonalizado || '#ff5733'}"
                             onchange="window.editarCategoriaDebug.controller.actualizarColorPersonalizado('${subcat.id}', this.value);
                                      window.editarCategoriaDebug.controller.renderizarSubcategorias();">
                     </div>
+                    `}
                     <div class="color-actual">
                         <span>Color efectivo:</span>
                         <span class="color-muestra" style="background:${colorEfectivo};"></span>
@@ -484,22 +562,13 @@ function renderizarSubcategorias() {
 
     // Agregar event listeners a los botones "Crear y asignar"
     document.querySelectorAll('.btn-crear-riesgo').forEach(btn => {
-        btn.removeEventListener('click', window._tmpRiesgoHandler);
-        const handler = async (e) => {
-            const subcatId = btn.dataset.subcatId;
-            await crearNuevoRiesgoYAsignar(subcatId);
+        btn.removeEventListener('click', window._tmpHandler);
+        const handler = async () => {
+            const sid = btn.dataset.subcatId;
+            await crearNuevoRiesgoYAsignar(sid);
         };
         btn.addEventListener('click', handler);
-        btn._tmpRiesgoHandler = handler;
-    });
-
-    // Mostrar/ocultar contenedores según selección previa
-    subcategorias.forEach(subcat => {
-        const containerDiv = document.getElementById(`nuevoRiesgoContainer_${subcat.id}`);
-        if (containerDiv && subcat.riesgoNivelId === '') {
-            // Si no tiene asignado y no es "otro", no mostrar
-            // Pero mejor lo dejamos oculto por defecto; se mostrará solo si se eligió "__otro__"
-        }
+        btn._tmpHandler = handler;
     });
 }
 
@@ -535,19 +604,19 @@ function validarYGuardar() {
     }
     descripcionInput.classList.remove('is-invalid');
 
-    const subcategoriasValidas = subcategorias.filter(s => s.nombre && s.nombre.trim() !== '');
-    if (subcategorias.length > 0 && subcategoriasValidas.length === 0) {
+    const subcatsValidas = subcategorias.filter(s => s.nombre && s.nombre.trim() !== '');
+    if (subcategorias.length > 0 && subcatsValidas.length === 0) {
         mostrarError('Las subcategorías agregadas deben tener nombre');
         return;
     }
 
-    const nombres = subcategoriasValidas.map(s => s.nombre.trim().toLowerCase());
+    const nombres = subcatsValidas.map(s => s.nombre.trim().toLowerCase());
     if (new Set(nombres).size !== nombres.length) {
         mostrarError('No puede haber subcategorías con el mismo nombre');
         return;
     }
 
-    for (const subcat of subcategoriasValidas) {
+    for (const subcat of subcatsValidas) {
         if (subcat.nombre && subcat.nombre.length > LIMITES.NOMBRE_SUBCATEGORIA) {
             mostrarError(`El nombre de la subcategoría no puede exceder ${LIMITES.NOMBRE_SUBCATEGORIA} caracteres`);
             return;
@@ -558,18 +627,24 @@ function validarYGuardar() {
         }
     }
 
-    const datos = obtenerDatosFormulario(subcategoriasValidas);
+    const datos = obtenerDatosFormulario(subcatsValidas);
     guardarCategoria(datos);
 }
 
-function obtenerDatosFormulario(subcategoriasValidas) {
+function obtenerDatosFormulario(subcatsValidas) {
     const nombre = document.getElementById('nombreCategoria').value.trim();
     const descripcion = document.getElementById('descripcionCategoria').value.trim();
-    const color = document.getElementById('colorPickerNative')?.value || '#2f8cff';
+    const colorCategoria = document.getElementById('colorPickerNative')?.value || '#2f8cff';
 
     const subcategoriasObj = {};
-    subcategoriasValidas.forEach(subcat => {
+    subcatsValidas.forEach(subcat => {
         const id = subcat.id.startsWith('temp_') ? `sub_${Date.now()}_${Math.random().toString(36).substr(2, 4)}` : subcat.id;
+        let colorFinal;
+        if (subcat.heredaColor) {
+            colorFinal = calcularColorEfectivo(subcat, colorCategoria);
+        } else {
+            colorFinal = subcat.colorPersonalizado || colorCategoria;
+        }
         subcategoriasObj[id] = {
             id: id,
             nombre: subcat.nombre.trim(),
@@ -577,8 +652,9 @@ function obtenerDatosFormulario(subcategoriasValidas) {
             fechaCreacion: subcat.fechaCreacion || new Date().toISOString(),
             fechaActualizacion: new Date().toISOString(),
             heredaColor: subcat.heredaColor !== undefined ? subcat.heredaColor : true,
-            color: !subcat.heredaColor ? (subcat.colorPersonalizado || null) : null,
-            riesgoNivelId: subcat.riesgoNivelId || null   // ← NUEVO
+            color: colorFinal,
+            brightnessFactor: subcat.heredaColor ? subcat.brightnessFactor : null,
+            riesgoNivelId: (subcat.riesgoNivelId && subcat.riesgoNivelId !== '__otro__') ? subcat.riesgoNivelId : null
         };
     });
 
@@ -586,7 +662,7 @@ function obtenerDatosFormulario(subcategoriasValidas) {
         id: categoriaActual.id,
         nombre: nombre,
         descripcion: descripcion,
-        color: color,
+        color: colorCategoria,
         subcategorias: subcategoriasObj,
         organizacionCamelCase: categoriaActual.organizacionCamelCase || empresaActual.camelCase,
         organizacionNombre: categoriaActual.organizacionNombre || empresaActual.nombre
@@ -684,6 +760,7 @@ function detectarCambiosSubcategorias(originales, actualizadas) {
             if (original.heredaColor !== actual.heredaColor) cambiosSub.push({ campo: 'heredaColor', anterior: original.heredaColor, nuevo: actual.heredaColor });
             if (!actual.heredaColor && original.color !== actual.color) cambiosSub.push({ campo: 'color', anterior: original.color, nuevo: actual.color });
             if (original.riesgoNivelId !== actual.riesgoNivelId) cambiosSub.push({ campo: 'riesgoNivelId', anterior: original.riesgoNivelId, nuevo: actual.riesgoNivelId });
+            if (original.brightnessFactor !== actual.brightnessFactor) cambiosSub.push({ campo: 'brightnessFactor', anterior: original.brightnessFactor, nuevo: actual.brightnessFactor });
             if (cambiosSub.length > 0) cambios.modificadas.push({ id: actual.id, nombre: actual.nombre, cambios: cambiosSub });
         }
     });
@@ -700,8 +777,7 @@ function cancelarEdicion() {
         text: 'Los cambios no guardados se perderán',
         icon: 'warning',
         showCancelButton: true,
-        confirmButtonText: 'Sí, cancelar',
-        cancelButtonText: 'No, continuar'
+        confirmButtonText: 'Sí, cancelar'
     }).then((result) => { if (result.isConfirmed) volverALista(); });
 }
 
@@ -754,14 +830,3 @@ function escapeHTML(text) {
         return m;
     });
 }
-
-// Exponer funciones globales
-window.editarCategoriaDebug.controller = {
-    eliminarSubcategoria,
-    actualizarSubcategoria,
-    cambiarHerenciaColor,
-    actualizarColorPersonalizado,
-    renderizarSubcategorias,
-    cambiarRiesgoSeleccionado,
-    crearNuevoRiesgoYAsignar
-};

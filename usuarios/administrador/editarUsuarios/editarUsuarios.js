@@ -1085,6 +1085,7 @@ function configurarGuardado(elements, userManager) {
                 codigoColaborador: nuevoCodigo,
                 status: nuevoEstado,
                 cargo: cargoObjeto,
+                cargoId: cargoObjeto?.id || null,
                 areaAsignadaId: areaId
             };
 

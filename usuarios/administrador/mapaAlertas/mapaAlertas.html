@@ -20,7 +20,7 @@
     <link rel="icon" href="/assets/images/logo.png" type="image/png">
     <link rel="manifest" href="/manifest.json">
 
-    <!-- TU CSS - NOMBRE CORRECTO -->
+    <!-- TU CSS -->
     <link rel="stylesheet" href="mapaAlertas.css">
 
     <!-- SweetAlert2 -->
@@ -151,7 +151,7 @@
                 </div>
             </div>
 
-                        <!-- Panel inferior - Botones centrados -->
+            <!-- Panel inferior - Botones centrados -->
             <div class="control-panel">
                 <button class="control-btn" id="btnCentrarMapa">
                     <i class="fas fa-crosshairs"></i>
@@ -161,11 +161,7 @@
                     <i class="fas fa-sync-alt"></i>
                     <span>Actualizar</span>
                 </button>
-                <button class="control-btn" id="btnHeatmap">
-                    <i class="fas fa-fire"></i>
-                    <span>Mapa de Calor</span>
-                </button>
-                <!-- NUEVO BOTÓN FULLSCREEN -->
+                <!-- Botón Fullscreen -->
                 <button class="control-btn" id="btnFullscreen">
                     <i class="fas fa-expand"></i>
                     <span>Pantalla Completa</span>
@@ -249,42 +245,35 @@
     <script type="module" src="/components/cargadorTemas.js"></script>
     <script type="module" src="/components/particulas.js"></script>
 
-    <!-- TU JS - NOMBRE CORRECTO -->
+    <!-- TU JS -->
     <script type="module" src="mapaAlertas.js"></script>
-    <script type="module" src="/components/autenticador.js"></script>
     <script src="/components/protector-admin.js"> </script>
 
     <!-- Script para el acordeón de la leyenda en responsive -->
     <script>
         (function () {
-            // Inicializar acordeón de leyenda solo en responsive
             function initLegendAccordion() {
                 const legendPanel = document.getElementById('legendPanel');
                 const legendHeader = document.getElementById('legendHeader');
 
                 if (!legendPanel || !legendHeader) return;
 
-                // Función para verificar si es responsive
                 function isResponsive() {
                     return window.innerWidth <= 768;
                 }
 
-                // Función para actualizar el estado del acordeón
                 function updateAccordion() {
                     if (isResponsive()) {
-                        // En responsive: colapsado por defecto
                         if (!legendPanel.classList.contains('expanded')) {
                             legendPanel.classList.remove('expanded');
                         }
                         legendHeader.style.cursor = 'pointer';
                     } else {
-                        // En desktop: siempre expandido
                         legendPanel.classList.add('expanded');
                         legendHeader.style.cursor = 'default';
                     }
                 }
 
-                // Evento de clic solo en responsive
                 legendHeader.addEventListener('click', function (e) {
                     if (isResponsive()) {
                         e.stopPropagation();
@@ -292,16 +281,13 @@
                     }
                 });
 
-                // Escuchar cambios de tamaño de ventana
                 window.addEventListener('resize', function () {
                     updateAccordion();
                 });
 
-                // Inicializar
                 updateAccordion();
             }
 
-            // Esperar a que el DOM esté listo
             if (document.readyState === 'loading') {
                 document.addEventListener('DOMContentLoaded', initLegendAccordion);
             } else {

@@ -1,5 +1,5 @@
-// mapaAlertas.js - VERSIÓN COMPLETA OPTIMIZADA
-// Con heatmap mejorado, fullscreen, canvas icons y rendimiento optimizado
+// mapaAlertas.js - VERSIÓN COMPLETA SIN MAPA DE CALOR
+// Con fullscreen, canvas icons, rendimiento optimizado Y CENTRADO AUTOMÁTICO
 
 import { SucursalManager } from '/clases/sucursal.js';
 import { RegionManager } from '/clases/region.js';
@@ -34,18 +34,6 @@ const CONFIG = {
         'alto': { color: '#ff8844', icono: 'fa-exclamation-triangle', texto: 'ALTO', peso: 3 },
         'medio': { color: '#ffbb33', icono: 'fa-exclamation-circle', texto: 'MEDIO', peso: 2 },
         'bajo': { color: '#00C851', icono: 'fa-info-circle', texto: 'BAJO', peso: 1 }
-    },
-    heatmapConfig: {
-        radius: 20,
-        blur: 12,
-        maxZoom: 17,
-        minOpacity: 0.4,
-        gradient: {
-            0.0: '#00C851',
-            0.33: '#ffbb33',
-            0.66: '#ff8844',
-            1.0: '#ff4444'
-        }
     }
 };
 
@@ -70,13 +58,6 @@ let incidenciaManager = null;
 let usuarioActual = null;
 let unsubscribeIncidencias = null;
 let isFirstSnapshot = true;
-
-// Variables para Heatmap (mejoradas)
-let heatmapLayer = null;
-let heatmapVisible = false;
-let puntosHeatmap = [];
-let heatmapCache = null;
-let heatmapDebounceTimer = null;
 
 // Cache de datos para el generador IPH
 let organizacionActual = null;
@@ -124,15 +105,12 @@ function inicializarBotonesPanel() {
     const controlPanel = document.querySelector('.control-panel');
     if (!controlPanel) return;
 
-    // Limpiar botones existentes para evitar duplicados
     const existingBtns = controlPanel.querySelectorAll('.control-btn');
     existingBtns.forEach(btn => btn.remove());
 
-    // Crear botones en orden
     const botones = [
         { id: 'btnCentrarMapa', icon: 'fa-crosshairs', text: 'Centrar', onClick: centrarMapa },
         { id: 'btnRefrescarRegiones', icon: 'fa-sync-alt', text: 'Actualizar', onClick: refrescarRegiones },
-        { id: 'btnHeatmap', icon: 'fa-fire', text: 'Mapa de Calor', onClick: toggleHeatmap, special: true },
         { id: 'btnFullscreen', icon: 'fa-expand', text: 'Pantalla Completa', onClick: toggleFullscreen }
     ];
 
@@ -141,12 +119,6 @@ function inicializarBotonesPanel() {
         button.id = btn.id;
         button.className = 'control-btn';
         button.innerHTML = `<i class="fas ${btn.icon}"></i><span>${btn.text}</span>`;
-        
-        if (btn.special) {
-            button.style.background = 'linear-gradient(135deg, #ff4444, #ff8844)';
-            button.style.border = 'none';
-        }
-        
         button.addEventListener('click', btn.onClick);
         controlPanel.appendChild(button);
     });
@@ -156,9 +128,7 @@ async function inicializarHistorial() {
     try {
         const { HistorialUsuarioManager } = await import('/clases/historialUsuario.js');
         historialManager = new HistorialUsuarioManager();
-    } catch (error) {
-        // Error silencioso
-    }
+    } catch (error) {}
 }
 
 function obtenerUsuarioActual() {
@@ -279,29 +249,6 @@ async function registrarGeneracionPDF(incidenciaId, tipo, incidencia) {
     }
 }
 
-async function registrarActivacionHeatmap(activado, puntos) {
-    if (!historialManager) return;
-
-    try {
-        const usuario = obtenerUsuarioActual();
-        if (!usuario) return;
-
-        await historialManager.registrarActividad({
-            usuario: usuario,
-            tipo: 'leer',
-            modulo: 'mapa',
-            descripcion: activado ? 'Activó el mapa de calor' : 'Desactivó el mapa de calor',
-            detalles: {
-                accion: activado ? 'activar' : 'desactivar',
-                puntosHeatmap: activado ? puntos.length : 0,
-                fecha: new Date().toISOString()
-            }
-        });
-    } catch (error) {
-        console.error('Error registrando heatmap:', error);
-    }
-}
-
 async function registrarFiltroRegion(regionId, regionNombre, sucursalesMostradas) {
     if (!historialManager) return;
 
@@ -323,186 +270,6 @@ async function registrarFiltroRegion(regionId, regionNombre, sucursalesMostradas
         });
     } catch (error) {
         console.error('Error registrando filtro por región:', error);
-    }
-}
-
-// =============================================
-// HEATMAP MEJORADO - GENERAR PUNTOS CON CACHÉ
-// =============================================
-function generarPuntosHeatmap(forceUpdate = false) {
-    if (heatmapCache && !forceUpdate && heatmapVisible) {
-        puntosHeatmap = heatmapCache;
-        return;
-    }
-
-    const nuevosPuntos = [];
-    const ahora = new Date();
-    
-    incidencias.forEach(inc => {
-        const sucursal = sucursalesMap.get(inc.sucursalId);
-        if (sucursal && sucursal.latitud && sucursal.longitud) {
-            const nivel = CONFIG.nivelesRiesgo[inc.nivelRiesgo];
-            let intensidad = nivel?.peso || 1;
-            
-            const fechaInc = new Date(inc.fecha);
-            const horasDiff = (ahora - fechaInc) / (1000 * 60 * 60);
-            
-            if (horasDiff < 1) {
-                intensidad *= 2.0;
-            } else if (horasDiff < 6) {
-                intensidad *= 1.5;
-            } else if (horasDiff < 24) {
-                intensidad *= 1.2;
-            } else if (horasDiff > 72) {
-                intensidad *= 0.7;
-            }
-            
-            if (inc.estado === 'pendiente') {
-                intensidad *= 1.3;
-            }
-            
-            nuevosPuntos.push({
-                lat: parseFloat(sucursal.latitud),
-                lng: parseFloat(sucursal.longitud),
-                intensity: Math.min(intensidad, 5)
-            });
-        }
-    });
-    
-    puntosHeatmap = nuevosPuntos;
-    heatmapCache = [...nuevosPuntos];
-}
-
-function crearHeatmapLayer() {
-    return new Promise((resolve, reject) => {
-        if (typeof L.heatLayer !== 'undefined') {
-            resolve(L.heatLayer(puntosHeatmap, CONFIG.heatmapConfig));
-            return;
-        }
-        
-        const script = document.createElement('script');
-        script.src = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet.heat/0.2.0/leaflet-heat.js';
-        script.onload = () => {
-            resolve(L.heatLayer(puntosHeatmap, CONFIG.heatmapConfig));
-        };
-        script.onerror = () => {
-            reject(new Error('No se pudo cargar la librería de heatmap'));
-        };
-        document.head.appendChild(script);
-    });
-}
-
-function actualizarHeatmap() {
-    if (!heatmapVisible) return;
-    
-    if (heatmapDebounceTimer) clearTimeout(heatmapDebounceTimer);
-    
-    heatmapDebounceTimer = setTimeout(async () => {
-        generarPuntosHeatmap(true);
-        
-        if (heatmapLayer && mapa && mapa.hasLayer(heatmapLayer)) {
-            mapa.removeLayer(heatmapLayer);
-        }
-        
-        try {
-            heatmapLayer = await crearHeatmapLayer();
-            if (heatmapLayer && mapa && heatmapVisible) {
-                heatmapLayer.addTo(mapa);
-            }
-        } catch (error) {
-            console.error('Error actualizando heatmap:', error);
-        }
-        
-        heatmapDebounceTimer = null;
-    }, 300);
-}
-
-async function toggleHeatmap() {
-    const btn = document.getElementById('btnHeatmap');
-    if (!btn) return;
-
-    if (!heatmapVisible) {
-        if (puntosHeatmap.length === 0) {
-            generarPuntosHeatmap(true);
-        }
-
-        if (puntosHeatmap.length === 0) {
-            Swal.fire({
-                icon: 'info',
-                title: 'Sin datos',
-                text: 'No hay incidencias para mostrar en el mapa de calor',
-                toast: true,
-                position: 'top-end',
-                showConfirmButton: false,
-                timer: 3000,
-                background: 'var(--color-bg-secondary)',
-                color: 'var(--color-text-primary)'
-            });
-            return;
-        }
-
-        try {
-            const originalHtml = btn.innerHTML;
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i><span>Cargando...</span>';
-            btn.disabled = true;
-            
-            heatmapLayer = await crearHeatmapLayer();
-            
-            if (heatmapLayer && mapa) {
-                heatmapLayer.addTo(mapa);
-                heatmapVisible = true;
-                btn.style.background = 'linear-gradient(135deg, #ff8844, #ff4444)';
-                btn.style.boxShadow = '0 0 15px rgba(255, 68, 68, 0.5)';
-                btn.innerHTML = '<i class="fas fa-fire"></i><span>Ocultar Calor</span>';
-                
-                await registrarActivacionHeatmap(true, puntosHeatmap);
-                
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Mapa de Calor Activado',
-                    text: `Mostrando ${puntosHeatmap.length} zonas con intensidad`,
-                    toast: true,
-                    position: 'top-end',
-                    showConfirmButton: false,
-                    timer: 2000,
-                    background: 'var(--color-bg-secondary)',
-                    color: 'var(--color-text-primary)'
-                });
-            }
-        } catch (error) {
-            console.error('Error activando heatmap:', error);
-            Swal.fire({
-                icon: 'error',
-                title: 'Error',
-                text: 'No se pudo cargar el mapa de calor',
-                background: 'var(--color-bg-secondary)',
-                color: 'var(--color-text-primary)'
-            });
-        } finally {
-            btn.disabled = false;
-        }
-
-    } else {
-        if (heatmapLayer && mapa && mapa.hasLayer(heatmapLayer)) {
-            mapa.removeLayer(heatmapLayer);
-        }
-        heatmapVisible = false;
-        btn.style.background = 'linear-gradient(135deg, #ff4444, #ff8844)';
-        btn.style.boxShadow = 'none';
-        btn.innerHTML = '<i class="fas fa-fire"></i><span>Mapa de Calor</span>';
-
-        await registrarActivacionHeatmap(false, []);
-
-        Swal.fire({
-            icon: 'info',
-            title: 'Mapa de Calor Oculto',
-            toast: true,
-            position: 'top-end',
-            showConfirmButton: false,
-            timer: 1500,
-            background: 'var(--color-bg-secondary)',
-            color: 'var(--color-text-primary)'
-        });
     }
 }
 
@@ -906,7 +673,7 @@ function agregarSucursalAlMapa(sucursal, region) {
 }
 
 // =============================================
-// INICIAR LISTENER DE INCIDENCIAS REALES
+// INICIAR LISTENER DE INCIDENCIAS REALES (CON CENTRADO AUTOMÁTICO)
 // =============================================
 async function iniciarListenerIncidenciasReales() {
     try {
@@ -943,12 +710,6 @@ async function iniciarListenerIncidenciasReales() {
             const incidenciasAnteriores = [...incidencias];
             incidencias = nuevasIncidencias;
 
-            if (heatmapVisible) {
-                actualizarHeatmap();
-            } else {
-                generarPuntosHeatmap(true);
-            }
-
             snapshot.docChanges().forEach((change) => {
                 if (change.type === 'added') {
                     const yaExiste = incidenciasAnteriores.some(inc => inc.id === change.doc.id);
@@ -966,6 +727,9 @@ async function iniciarListenerIncidenciasReales() {
                         const sucursal = sucursalesMap.get(nuevaIncidencia.sucursalId);
                         if (sucursal) {
                             mostrarNotificacionIncidencia(nuevaIncidencia, sucursal);
+                            
+                            // 🆕 CENTRAR MAPA AUTOMÁTICAMENTE EN LA NUEVA INCIDENCIA
+                            centrarEnSucursal(sucursal.id);
                         }
                     }
                 }
@@ -973,7 +737,6 @@ async function iniciarListenerIncidenciasReales() {
 
             if (isFirstSnapshot) {
                 isFirstSnapshot = false;
-                generarPuntosHeatmap(true);
             }
 
             actualizarListaUltimasIncidencias();
@@ -1230,7 +993,7 @@ async function generarPDFSimple(incidencia) {
 }
 
 // =============================================
-// MOSTRAR NOTIFICACIÓN DE NUEVA INCIDENCIA
+// MOSTRAR NOTIFICACIÓN DE NUEVA INCIDENCIA (UNA SOLA VEZ)
 // =============================================
 function mostrarNotificacionIncidencia(incidencia, sucursal) {
     const nivel = CONFIG.nivelesRiesgo[incidencia.nivelRiesgo] || CONFIG.nivelesRiesgo.bajo;
