@@ -350,7 +350,7 @@ class ImageEditorModal {
                         </div>
                         <div class="editor-tools-panel">
                             <div class="tools-section">
-                                <h6>Color</h6>
+                                <h6>Selecciona un color para dibujar</h6>
                                 <div class="color-picker">
                                     <input type="color" id="modalColorPicker" value="#ff0000">
                                     <span class="color-value" id="modalColorValue">#ff0000</span>
@@ -623,7 +623,7 @@ class ImageEditorModal {
             if (el.type === 'circle') {
                 const dx = x - el.x;
                 const dy = y - el.y;
-                const dist = Math.sqrt(dx*dx + dy*dy);
+                const dist = Math.sqrt(dx * dx + dy * dy);
                 // Tolerancia de 10 píxeles
                 if (Math.abs(dist - el.radius) <= 10) {
                     return el;
@@ -632,7 +632,7 @@ class ImageEditorModal {
                 // Distancia a la línea
                 const ax = el.endX - el.startX;
                 const ay = el.endY - el.startY;
-                const len = Math.sqrt(ax*ax + ay*ay);
+                const len = Math.sqrt(ax * ax + ay * ay);
                 if (len === 0) continue;
                 const u = ((x - el.startX) * ax + (y - el.startY) * ay) / (len * len);
                 if (u >= 0 && u <= 1) {
@@ -646,10 +646,10 @@ class ImageEditorModal {
                 const arrowLength = 15;
                 const tipX = el.endX;
                 const tipY = el.endY;
-                const leftX = tipX - arrowLength * Math.cos(angle - Math.PI/6);
-                const leftY = tipY - arrowLength * Math.sin(angle - Math.PI/6);
-                const rightX = tipX - arrowLength * Math.cos(angle + Math.PI/6);
-                const rightY = tipY - arrowLength * Math.sin(angle + Math.PI/6);
+                const leftX = tipX - arrowLength * Math.cos(angle - Math.PI / 6);
+                const leftY = tipY - arrowLength * Math.sin(angle - Math.PI / 6);
+                const rightX = tipX - arrowLength * Math.cos(angle + Math.PI / 6);
+                const rightY = tipY - arrowLength * Math.sin(angle + Math.PI / 6);
                 // Punto dentro del triángulo (simplificado: distancia a los bordes)
                 if (this.pointInTriangle(x, y, tipX, tipY, leftX, leftY, rightX, rightY)) {
                     return el;
@@ -792,7 +792,7 @@ class ImageEditorModal {
             const dy = mouseY - this.startY;
 
             if (this.currentTool === 'circle') {
-                const radius = Math.sqrt(dx*dx + dy*dy);
+                const radius = Math.sqrt(dx * dx + dy * dy);
                 this.ctx.arc(this.startX, this.startY, radius, 0, 2 * Math.PI);
                 this.ctx.stroke();
             } else if (this.currentTool === 'arrow') {
@@ -803,10 +803,10 @@ class ImageEditorModal {
                 const arrowLength = 15;
                 this.ctx.beginPath();
                 this.ctx.moveTo(mouseX, mouseY);
-                this.ctx.lineTo(mouseX - arrowLength * Math.cos(angle - Math.PI/6),
-                               mouseY - arrowLength * Math.sin(angle - Math.PI/6));
-                this.ctx.lineTo(mouseX - arrowLength * Math.cos(angle + Math.PI/6),
-                               mouseY - arrowLength * Math.sin(angle + Math.PI/6));
+                this.ctx.lineTo(mouseX - arrowLength * Math.cos(angle - Math.PI / 6),
+                    mouseY - arrowLength * Math.sin(angle - Math.PI / 6));
+                this.ctx.lineTo(mouseX - arrowLength * Math.cos(angle + Math.PI / 6),
+                    mouseY - arrowLength * Math.sin(angle + Math.PI / 6));
                 this.ctx.closePath();
                 this.ctx.fill();
             } else if (this.currentTool === 'rectangle') {
@@ -837,7 +837,7 @@ class ImageEditorModal {
 
                     if (Math.abs(dx) > minDistance || Math.abs(dy) > minDistance) {
                         if (this.currentTool === 'circle') {
-                            const radius = Math.sqrt(dx*dx + dy*dy);
+                            const radius = Math.sqrt(dx * dx + dy * dy);
                             this.elements.push({
                                 type: 'circle',
                                 x: this.startX,
