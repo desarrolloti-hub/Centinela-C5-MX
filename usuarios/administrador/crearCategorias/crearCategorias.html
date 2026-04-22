@@ -8,87 +8,20 @@
 
     <!-- Estilos -->
     <link rel="stylesheet" href="/components/personalization/personalization.css">
-
-    <link
-        href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Rajdhani:wght@500;700&display=swap"
-        rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <!-- Icono en barra de titulo -->
     <link rel="icon" href="/assets/images/logo.png" type="image/png">
-    <!-- Archivo para PWA -->
     <link rel="manifest" href="/manifest.json">
-    <!-- Estilos modulo -->
     <link rel="stylesheet" href="crearCategorias.css">
-    <!-- SweetAlert2 -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
-
-    <!-- SEO Básico -->
-    <meta name="description"
-        content="Centinela es un sistema inteligente de seguridad para almacenamiento, monitoreo y predicción de incidencias. Plataforma confiable para prevención y análisis en tiempo real.">
-    <meta name="keywords"
-        content="centinela, centinela, sistema de seguridad, seguridad inteligente, predicción de incidencias, monitoreo de seguridad, plataforma de seguridad, análisis de riesgos, prevención de incidentes">
-    <meta name="author" content="Centinela">
-    <link rel="canonical" href="https://centinela-c5.web.app/" />
-
-    <!-- Open Graph / Facebook / WhatsApp / LinkedIn -->
-    <meta property="og:type" content="website">
-    <meta property="og:url" content="https://centinela-c5.web.app">
-    <meta property="og:title" content="Centinela-C5 | Sistema Inteligente de Seguridad y Predicción">
-    <meta property="og:description"
-        content="Centinela-C5 es una plataforma avanzada de seguridad para almacenamiento, monitoreo y predicción de incidencias en tiempo real.">
-    <meta property="og:image" content="https://centinela-c5.web.app/assets/images/logo.png">
-    <meta property="og:image:width" content="500">
-    <meta property="og:image:height" content="500">
-    <meta property="og:image:alt" content="Vista previa oficial de Centinela-C5">
-    <meta property="og:image" content="https://centinela-c5.web.app/assets/images/logo.png">
-    <meta property="og:image:width" content="500">
-    <meta property="og:image:height" content="500">
-    <meta property="og:image:alt" content="Logo oficial de Centinela">
-    <meta property="og:site_name" content="Centinela">
-
-    <!-- Twitter Card -->
-    <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:url" content="https://centinela-c5.web.app">
-    <meta name="twitter:title" content="Centinela-C5 | Seguridad Inteligente">
-    <meta name="twitter:description"
-        content="Sistema de seguridad inteligente para monitoreo, almacenamiento y predicción de incidencias.">
-    <meta name="twitter:image" content="https://centinela-c5.web.app/assets/images/logo.png">
-    <meta name="twitter:creator" content="">
-
-    <!-- Schema.org / JSON-LD -->
-    <script type="application/ld+json">
-    {
-    "@context": "https://schema.org",
-    "@type": "LocalBusiness",
-    "name": "Centinela",
-    "operatingSystem": "Web",
-    "applicationCategory": "SecurityApplication",
-    "description": "Centinela es un sistema inteligente de seguridad para el almacenamiento, monitoreo y predicción de incidencias en tiempo real.",
-    "url": "https://centinela-c5.web.app",
-    "image": "https://centinela-c5.web.app/assets/images/logo.png",
-    "publisher": {
-        "@type": "Organization",
-        "name": "Centinela",
-        "logo": {
-        "@type": "ImageObject",
-        "url": "https://centinela-c5.web.app/assets/images/logo.png"
-        }
-    },
-    "offers": {
-        "@type": "Offer",
-        "price": "0",
-        "priceCurrency": "MXN"
-    }
-    }
-    </script>
+    <meta name="description" content="Centinela C5 - Crear categorías con subcategorías y niveles de riesgo">
 </head>
 
 <body>
     <canvas id="particle-canvas"></canvas>
     <br>
 
-    <!-- Contenedor principal -->
     <div class="custom-container">
         <!-- Header -->
         <div class="header-section">
@@ -99,14 +32,12 @@
                 </h1>
                 <div class="header-description-text">
                     <i class="fas fa-tags"></i>
-                    "Registra una nueva categoría. Las subcategorías tomarán su color automáticamente."
+                    "Registra una nueva categoría. Las subcategorías pueden heredar el color o tener uno propio, y cada una puede asociarse a un nivel de riesgo."
                 </div>
             </div>
         </div>
 
-        <!-- ============================================= -->
-        <!-- FORMULARIO 1: INFORMACIÓN PRINCIPAL DE LA CATEGORÍA -->
-        <!-- ============================================= -->
+        <!-- Formulario principal -->
         <div class="form-row">
             <div class="full-width">
                 <div class="card">
@@ -118,7 +49,6 @@
                     </div>
                     <div class="card-body">
                         <form id="formCategoriaPrincipal">
-                            <!-- Grid de 2 columnas -->
                             <div class="form-grid">
                                 <div class="full-width">
                                     <h6 class="section-title"><i class="fas fa-info-circle"></i>Información Básica</h6>
@@ -134,10 +64,8 @@
                                     <div class="form-help-text">Nombre único para identificar la categoría</div>
                                 </div>
 
-                                <!-- Descripción -->
                                 <div class="full-width">
-                                    <label for="descripcionCategoria" class="form-label">Descripción de la
-                                        Categoría</label>
+                                    <label for="descripcionCategoria" class="form-label">Descripción de la Categoría</label>
                                     <textarea class="form-control" id="descripcionCategoria" rows="4"
                                         placeholder="Describa el propósito y uso de esta categoría..."></textarea>
                                     <div class="form-help-text">Proporcione una descripción detallada (opcional)</div>
@@ -146,13 +74,11 @@
                                     </div>
                                 </div>
 
-                                <!-- Campo de Color -->
                                 <div class="full-width">
                                     <label class="form-label">Color de Identificación</label>
                                     <div class="color-selector-simple">
                                         <div class="color-preview-card" id="colorPreviewCard">
-                                            <div class="color-circle" id="colorDisplay"
-                                                style="background-color: #2f8cff;"></div>
+                                            <div class="color-circle" id="colorDisplay" style="background-color: #2f8cff;"></div>
                                             <div class="color-info">
                                                 <span class="color-hex" id="colorHex">#2f8cff</span>
                                                 <span class="color-label">
@@ -163,8 +89,7 @@
                                         </div>
                                     </div>
                                     <input type="color" id="colorPickerNative" value="#2f8cff"
-                                        style="position: absolute; opacity: 0; width: 0; height: 0; pointer-events: none;"
-                                        aria-hidden="true">
+                                        style="position: absolute; opacity: 0; width: 0; height: 0; pointer-events: none;">
                                     <div class="form-help-text">
                                         <i class="fas fa-palette"></i>
                                         Este color identificará visualmente la categoría
@@ -177,9 +102,7 @@
             </div>
         </div>
 
-        <!-- ============================================= -->
-        <!-- SECCIÓN 2: SUBCATEGORÍAS + BOTONES -->
-        <!-- ============================================= -->
+        <!-- Sección de Subcategorías -->
         <div class="form-row" style="margin-top: 20px;">
             <div class="full-width">
                 <div class="card">
@@ -187,36 +110,26 @@
                         <h5><i class="fas fa-sitemap"></i>Gestión de Subcategorías</h5>
                     </div>
                     <div class="card-body">
-                        <!-- Sección de Subcategorías -->
-                        <div class="form-row">
-                            <div class="full-width">
-                                <!-- Contenedor dinámico de subcategorías -->
-                                <div id="subcategoriasList" class="subcategorias-container">
-                                    <div class="empty-state" id="subcategoriasEmpty">
-                                        <i class="fas fa-sitemap"></i>
-                                        <p>No hay subcategorías agregadas</p>
-                                        <small>Haga clic en "Agregar Subcategoría" para añadir una</small>
-                                    </div>
-                                </div>
-
-                                <!-- Botón para agregar subcategoría -->
-                                <div class="button-container" style="margin-top: 15px;">
-                                    <button type="button" class="btn-agregar-subcategoria" id="btnAgregarSubcategoria">
-                                        <i class="fas fa-plus-circle"></i>
-                                        Agregar Subcategoría
-                                    </button>
-                                </div>
+                        <div id="subcategoriasList" class="subcategorias-container">
+                            <div class="empty-state" id="subcategoriasEmpty">
+                                <i class="fas fa-sitemap"></i>
+                                <p>No hay subcategorías agregadas</p>
+                                <small>Haga clic en "Agregar Subcategoría" para añadir una</small>
                             </div>
                         </div>
 
-                        <!-- Mensaje informativo de herencia -->
-                        <div class="alert alert-info" style="margin-top: 20px;">
-                            <i class="fas fa-share-alt"></i>
-                            Las subcategorías conservan automáticamente el color de la categoría principal. Puedes
-                            asignar un color personalizado.
+                        <div class="button-container" style="margin-top: 15px;">
+                            <button type="button" class="btn-agregar-subcategoria" id="btnAgregarSubcategoria">
+                                <i class="fas fa-plus-circle"></i>
+                                Agregar Subcategoría
+                            </button>
                         </div>
 
-                        <!-- BOTONES DE ACCIÓN -->
+                        <div class="alert alert-info" style="margin-top: 20px;">
+                            <i class="fas fa-share-alt"></i>
+                            Las subcategorías conservan automáticamente el color de la categoría principal. Puedes asignar un color personalizado y además asociar un nivel de riesgo (existente o nuevo).
+                        </div>
+
                         <div class="action-buttons-container">
                             <button type="button" class="btn btn-success" id="btnCrearCategoria">
                                 <i class="fas fa-check"></i>Crear Categoría
@@ -232,16 +145,13 @@
     </div>
     <br>
 
-    <!-- Scripts -->
     <script type="module" src="/components/autenticador.js"></script>
     <script type="module" src="/components/cargadorTemas.js"></script>
     <script type="module" src="/components/particulas.js"></script>
     <script type="module" src="/components/navbarAdministrador.js"></script>
     <script src="/components/footerAdministrador.js"></script>
-    <script type="module" src="crearCategorias.js"></script>    
-    <script src="/components/protector-admin.js"> </script>
-
-</body>
+    <script type="module" src="crearCategorias.js"></script>
+    <script src="/components/protector-admin.js"></script>
 </body>
 
 </html>
