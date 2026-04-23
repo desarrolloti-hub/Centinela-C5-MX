@@ -2184,3 +2184,31 @@ p, h1, h2, h3, h4, h5, h6, span, div {
         max-height: 180px;
     }
 }
+/* Tabla de riesgos */
+.riesgo-tabla-container {
+    animation: fadeIn 0.3s ease;
+}
+
+.riesgo-tabla tbody tr:hover {
+    background: rgba(255, 255, 255, 0.05);
+    transition: background 0.2s ease;
+}
+
+.riesgo-tabla td:first-child,
+.riesgo-tabla th:first-child {
+    position: sticky;
+    left: 0;
+    background: inherit;
+}
+
+/* Responsive para tabla de riesgos */
+@media (max-width: 550px) {
+    .riesgo-tabla {
+        font-size: 0.7rem;
+    }
+    
+    .riesgo-tabla td,
+    .riesgo-tabla th {
+        padding: 6px 4px;
+    }
+}
