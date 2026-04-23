@@ -1,4 +1,9 @@
 // estadisticas.js - VERSIÓN CORREGIDA CON GRÁFICAS DE RECUPERACIÓN FUNCIONALES
+  // version con colores para el nivel de riesgo ya funcional. 
+
+
+
+  
 import { generadorPDFEstadisticasUnificado } from '/components/pdf-estadisticas-unificado.js';
 // =============================================
 // VARIABLES GLOBALES
@@ -18,6 +23,9 @@ let charts = {};
 let authToken = null;
 let historialManager = null;
 let accesoVistaRegistrado = false;
+
+
+
 
 // Datos para clics de incidencias
 let datosGraficas = {
@@ -49,6 +57,9 @@ let regionesCache = [];
 window.registrosPorTipo = {};
 window.registrosPorMes = {};
 window.registrosPorSucursal = {};
+// Cache para niveles de riesgo dinámicos
+window.nivelesRiesgoEstaticos = null;
+
 
 // Filtros activos
 let filtrosActivos = {
@@ -515,8 +526,8 @@ async function cargarIncidencias() {
             return;
         }
         mostrarResultados();
-        const datos = procesarDatosGraficas(incidenciasFiltradas);
-        datosGraficas = {
+        const datos = await procesarDatosGraficas(incidenciasFiltradas);    
+            datosGraficas = {
             topActualizadores: datos.topActualizadores,
             topReportadores: datos.topReportadores,
             topSeguimientos: datos.topSeguimientos,
@@ -549,7 +560,7 @@ async function cargarIncidencias() {
     }
 }
 
-function procesarDatosGraficas(incidencias) {
+async function procesarDatosGraficas(incidencias) {
     const metricas = {
         total: incidencias.length,
         pendientes: incidencias.filter(i => i.estado === 'pendiente').length,
@@ -595,8 +606,58 @@ function procesarDatosGraficas(incidencias) {
         .sort((a, b) => b.cantidad - a.cantidad).slice(0, 5);
     
     const estadoData = { pendientes: metricas.pendientes, finalizadas: metricas.finalizadas };
-    const riesgoData = { critico: metricas.criticas, alto: metricas.altas, medio: metricas.medias, bajo: metricas.bajas };
+    // =============================================
+// NIVELES DE RIESGO - DINÁMICOS (desde RiesgoNivelManager)
+// =============================================
+const riesgoData = {};
+const nivelesRiesgoMap = new Map(); // Para almacenar colores
+
+// Cargar niveles de riesgo dinámicos si no están cargados
+if (!window.nivelesRiesgoEstaticos && organizacionActual?.camelCase) {
+    try {
+        const { RiesgoNivelManager } = await import('/clases/riesgoNivel.js');
+        const riesgoManager = new RiesgoNivelManager();
+        const niveles = await riesgoManager.obtenerTodosNiveles(organizacionActual.camelCase);
+        
+        window.nivelesRiesgoEstaticos = niveles;
+        
+        // Inicializar contadores para cada nivel
+        niveles.forEach(nivel => {
+            riesgoData[nivel.id] = 0;
+            nivelesRiesgoMap.set(nivel.id, nivel.color || '#6c757d');
+        });
+    } catch (error) {
+        console.error('Error cargando niveles de riesgo dinámicos:', error);
+        // Fallback a niveles estáticos si hay error
+        window.nivelesRiesgoEstaticos = [];
+    }
+}
+
+// Si tenemos niveles dinámicos, contar incidencias por nivel de riesgo
+if (window.nivelesRiesgoEstaticos && window.nivelesRiesgoEstaticos.length > 0) {
+    // Reiniciar contadores
+    window.nivelesRiesgoEstaticos.forEach(nivel => {
+        riesgoData[nivel.id] = 0;
+    });
     
+    // Contar incidencias por nivel de riesgo
+    incidencias.forEach(inc => {
+        const nivelRiesgo = inc.nivelRiesgo;
+        if (nivelRiesgo && riesgoData.hasOwnProperty(nivelRiesgo)) {
+            riesgoData[nivelRiesgo]++;
+        } else if (nivelRiesgo && !riesgoData.hasOwnProperty(nivelRiesgo)) {
+            // Si encontramos un nivel que no está en nuestro mapa, lo agregamos
+            riesgoData[nivelRiesgo] = 1;
+            nivelesRiesgoMap.set(nivelRiesgo, '#6c757d');
+        }
+    });
+} else {
+    // Fallback: usar niveles estáticos (compatibilidad con datos antiguos)
+    riesgoData.critico = metricas.criticas;
+    riesgoData.alto = metricas.altas;
+    riesgoData.medio = metricas.medias;
+    riesgoData.bajo = metricas.bajas;
+}    
     // =============================================
     // CATEGORÍAS - Con color desde la base de datos
     // =============================================
@@ -831,21 +892,12 @@ function renderizarTodasLasGraficas(datos) {
 }
 
 function agregarEventosClickCanvas() {
-    const canvasConfigs = [
-        { id: 'graficoActualizadores', handler: mostrarAlertActualizadores },
-        { id: 'graficoReportadores', handler: mostrarAlertReportadores },
-        { id: 'graficoSeguimientos', handler: mostrarAlertSeguimientos },
-        { id: 'graficoEstado', handler: mostrarAlertEstado },
-        { id: 'graficoRiesgo', handler: mostrarAlertRiesgo },
-        { id: 'graficoCategorias', handler: mostrarAlertCategorias },
-        { id: 'graficoSucursales', handler: mostrarAlertSucursales },
-        { id: 'graficoTiempo', handler: mostrarAlertTiempoResolucion }
-    ];
-    canvasConfigs.forEach(config => {
-        const canvas = document.getElementById(config.id);
+    // Los eventos onClick ya están dentro de cada gráfica en sus options
+    // Solo aseguramos que los canvas tengan cursor pointer
+    const canvasIds = ['graficoActualizadores', 'graficoReportadores', 'graficoSeguimientos', 'graficoEstado', 'graficoRiesgo', 'graficoCategorias', 'graficoSucursales', 'graficoTiempo'];
+    canvasIds.forEach(id => {
+        const canvas = document.getElementById(id);
         if (canvas) {
-            canvas.removeEventListener('click', config.handler);
-            canvas.addEventListener('click', config.handler);
             canvas.style.cursor = 'pointer';
         }
     });
@@ -865,7 +917,26 @@ function crearGraficoActualizadores(actualizadores) {
             labels: actualizadores.map(a => a.nombre.length > 12 ? a.nombre.substring(0, 10) + '...' : a.nombre),
             datasets: [{ label: 'Incidencias actualizadas', data: actualizadores.map(a => a.cantidad), backgroundColor: COLORS.azul, borderRadius: 4 }]
         },
-        options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { labels: { color: 'white' } } }, scales: { y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.1)' }, ticks: { color: 'white', stepSize: 1 } }, x: { grid: { display: false }, ticks: { color: 'white', maxRotation: 45 } } } }
+        options: { 
+            responsive: true, 
+            maintainAspectRatio: true, 
+            plugins: { legend: { labels: { color: 'white' } } }, 
+            scales: { y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.1)' }, ticks: { color: 'white', stepSize: 1 } }, x: { grid: { display: false }, ticks: { color: 'white', maxRotation: 45 } } },
+            onClick: (event, activeElements) => {
+                if (activeElements.length > 0) {
+                    const index = activeElements[0].index;
+                    const colaborador = actualizadores[index];
+                    if (colaborador) {
+                        const incidencias = datosGraficas.incidenciasFiltradas?.filter(i => i.actualizadoPorNombre === colaborador.nombre) || [];
+                        if (incidencias.length === 0) {
+                            Swal.fire({ icon: 'info', title: 'Sin registros', text: `No hay incidencias actualizadas por ${colaborador.nombre}`, background: 'var(--color-bg-primary)', color: 'white' });
+                        } else {
+                            mostrarRegistrosEnSweet(incidencias, `Incidencias actualizadas por: ${colaborador.nombre}`, '<i class="fas fa-edit"></i>');
+                        }
+                    }
+                }
+            }
+        }
     });
 }
 
@@ -883,7 +954,26 @@ function crearGraficoReportadores(reportadores) {
             labels: reportadores.map(r => r.nombre.length > 12 ? r.nombre.substring(0, 10) + '...' : r.nombre),
             datasets: [{ label: 'Incidencias reportadas', data: reportadores.map(r => r.cantidad), backgroundColor: COLORS.verde, borderRadius: 4 }]
         },
-        options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { labels: { color: 'white' } } }, scales: { y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.1)' }, ticks: { color: 'white', stepSize: 1 } }, x: { grid: { display: false }, ticks: { color: 'white', maxRotation: 45 } } } }
+        options: { 
+            responsive: true, 
+            maintainAspectRatio: true, 
+            plugins: { legend: { labels: { color: 'white' } } }, 
+            scales: { y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.1)' }, ticks: { color: 'white', stepSize: 1 } }, x: { grid: { display: false }, ticks: { color: 'white', maxRotation: 45 } } },
+            onClick: (event, activeElements) => {
+                if (activeElements.length > 0) {
+                    const index = activeElements[0].index;
+                    const colaborador = reportadores[index];
+                    if (colaborador) {
+                        const incidencias = datosGraficas.incidenciasFiltradas?.filter(i => i.creadoPorNombre === colaborador.nombre) || [];
+                        if (incidencias.length === 0) {
+                            Swal.fire({ icon: 'info', title: 'Sin registros', text: `No hay incidencias reportadas por ${colaborador.nombre}`, background: 'var(--color-bg-primary)', color: 'white' });
+                        } else {
+                            mostrarRegistrosEnSweet(incidencias, `Incidencias reportadas por: ${colaborador.nombre}`, '<i class="fas fa-flag"></i>');
+                        }
+                    }
+                }
+            }
+        }
     });
 }
 
@@ -901,7 +991,26 @@ function crearGraficoSeguimientos(seguimientos) {
             labels: seguimientos.map(s => s.nombre.length > 12 ? s.nombre.substring(0, 10) + '...' : s.nombre),
             datasets: [{ label: 'Seguimientos realizados', data: seguimientos.map(s => s.cantidad), backgroundColor: COLORS.naranja, borderRadius: 4 }]
         },
-        options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { labels: { color: 'white' } } }, scales: { y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.1)' }, ticks: { color: 'white', stepSize: 1 } }, x: { grid: { display: false }, ticks: { color: 'white', maxRotation: 45 } } } }
+        options: { 
+            responsive: true, 
+            maintainAspectRatio: true, 
+            plugins: { legend: { labels: { color: 'white' } } }, 
+            scales: { y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.1)' }, ticks: { color: 'white', stepSize: 1 } }, x: { grid: { display: false }, ticks: { color: 'white', maxRotation: 45 } } },
+            onClick: (event, activeElements) => {
+                if (activeElements.length > 0) {
+                    const index = activeElements[0].index;
+                    const colaborador = seguimientos[index];
+                    if (colaborador) {
+                        const incidencias = datosGraficas.incidenciasFiltradas?.filter(i => i.seguimiento && Object.values(i.seguimiento).some(seg => seg.usuarioNombre === colaborador.nombre)) || [];
+                        if (incidencias.length === 0) {
+                            Swal.fire({ icon: 'info', title: 'Sin registros', text: `No hay seguimientos de ${colaborador.nombre}`, background: 'var(--color-bg-primary)', color: 'white' });
+                        } else {
+                            mostrarRegistrosEnSweet(incidencias, `Seguimientos realizados por: ${colaborador.nombre}`, '<i class="fas fa-history"></i>');
+                        }
+                    }
+                }
+            }
+        }
     });
 }
 
@@ -916,7 +1025,24 @@ function crearGraficoEstado(estado) {
     charts.estado = new Chart(ctx, {
         type: 'doughnut',
         data: { labels: ['Pendientes', 'Finalizadas'], datasets: [{ data: [estado.pendientes || 0, estado.finalizadas || 0], backgroundColor: [COLORS.pendiente, COLORS.finalizada], borderWidth: 0, hoverOffset: 15 }] },
-        options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { labels: { color: 'white' }, position: 'bottom' }, tooltip: { callbacks: { label: (ctx) => { const total = (estado.pendientes || 0) + (estado.finalizadas || 0); const porcentaje = total > 0 ? Math.round((ctx.raw / total) * 100) : 0; return `${ctx.label}: ${ctx.raw} (${porcentaje}%)`; } } } } }
+        options: { 
+            responsive: true, 
+            maintainAspectRatio: true, 
+            plugins: { legend: { labels: { color: 'white' }, position: 'bottom' }, tooltip: { callbacks: { label: (ctx) => { const total = (estado.pendientes || 0) + (estado.finalizadas || 0); const porcentaje = total > 0 ? Math.round((ctx.raw / total) * 100) : 0; return `${ctx.label}: ${ctx.raw} (${porcentaje}%)`; } } } },
+            onClick: (event, activeElements) => {
+                if (activeElements.length > 0) {
+                    const index = activeElements[0].index;
+                    const estadoKey = index === 0 ? 'pendiente' : 'finalizada';
+                    const estadoNombre = index === 0 ? 'Pendientes' : 'Finalizadas';
+                    const incidencias = datosGraficas.incidenciasFiltradas?.filter(i => i.estado === estadoKey) || [];
+                    if (incidencias.length === 0) {
+                        Swal.fire({ icon: 'info', title: 'Sin registros', text: `No hay incidencias ${estadoNombre}`, background: 'var(--color-bg-primary)', color: 'white' });
+                    } else {
+                        mostrarRegistrosEnSweet(incidencias, `Incidencias ${estadoNombre}`, `<i class="fas ${estadoKey === 'pendiente' ? 'fa-clock' : 'fa-check-circle'}"></i>`);
+                    }
+                }
+            }
+        }
     });
 }
 
@@ -924,15 +1050,133 @@ function crearGraficoRiesgo(riesgo) {
     const canvas = document.getElementById('graficoRiesgo');
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
-    if ((!riesgo.critico || riesgo.critico === 0) && (!riesgo.alto || riesgo.alto === 0) && (!riesgo.medio || riesgo.medio === 0) && (!riesgo.bajo || riesgo.bajo === 0)) {
+    
+    const tieneDatos = Object.values(riesgo).some(valor => valor > 0);
+    
+    if (!tieneDatos) {
         mostrarMensajeSinDatosEnCanvas(ctx, canvas, 'Sin datos de riesgo');
+        if (typeof actualizarTablaRiesgo === 'function') actualizarTablaRiesgo([]);
         return;
     }
+    
+    let labels = [];
+    let data = [];
+    let backgroundColors = [];
+    let totalIncidencias = 0;
+    let nivelesMap = [];
+    
+    if (window.nivelesRiesgoEstaticos && window.nivelesRiesgoEstaticos.length > 0) {
+        window.nivelesRiesgoEstaticos.forEach(nivel => {
+            const cantidad = riesgo[nivel.id] || 0;
+            totalIncidencias += cantidad;
+            labels.push(nivel.nombre);
+            data.push(cantidad);
+            backgroundColors.push(nivel.color || '#6c757d');
+            nivelesMap.push({ id: nivel.id, nombre: nivel.nombre });
+        });
+        
+        Object.keys(riesgo).forEach(key => {
+            if (riesgo[key] > 0 && !window.nivelesRiesgoEstaticos.some(n => n.id === key)) {
+                labels.push(key);
+                data.push(riesgo[key]);
+                backgroundColors.push('#6c757d');
+                totalIncidencias += riesgo[key];
+                nivelesMap.push({ id: key, nombre: key });
+            }
+        });
+    } else {
+        labels = ['Crítico', 'Alto', 'Medio', 'Bajo'];
+        data = [riesgo.critico || 0, riesgo.alto || 0, riesgo.medio || 0, riesgo.bajo || 0];
+        backgroundColors = [COLORS.critico, COLORS.alto, COLORS.medio, COLORS.bajo];
+        totalIncidencias = data.reduce((a, b) => a + b, 0);
+        nivelesMap = [
+            { id: 'critico', nombre: 'Crítico' },
+            { id: 'alto', nombre: 'Alto' },
+            { id: 'medio', nombre: 'Medio' },
+            { id: 'bajo', nombre: 'Bajo' }
+        ];
+    }
+    
+    const filteredLabels = [];
+    const filteredData = [];
+    const filteredColors = [];
+    const filteredNiveles = [];
+    const filteredPorcentajes = [];
+    
+    for (let i = 0; i < labels.length; i++) {
+        if (data[i] > 0) {
+            filteredLabels.push(labels[i]);
+            filteredData.push(data[i]);
+            filteredColors.push(backgroundColors[i]);
+            filteredNiveles.push(nivelesMap[i]);
+            const porcentaje = totalIncidencias > 0 ? ((data[i] / totalIncidencias) * 100).toFixed(1) : 0;
+            filteredPorcentajes.push(porcentaje);
+        }
+    }
+    
+    if (filteredData.length === 0) {
+        mostrarMensajeSinDatosEnCanvas(ctx, canvas, 'Sin datos de riesgo');
+        if (typeof actualizarTablaRiesgo === 'function') actualizarTablaRiesgo([]);
+        return;
+    }
+    
+    if (charts.riesgo) {
+        charts.riesgo.destroy();
+    }
+    
     charts.riesgo = new Chart(ctx, {
-        type: 'doughnut',
-        data: { labels: ['Crítico', 'Alto', 'Medio', 'Bajo'], datasets: [{ data: [riesgo.critico || 0, riesgo.alto || 0, riesgo.medio || 0, riesgo.bajo || 0], backgroundColor: [COLORS.critico, COLORS.alto, COLORS.medio, COLORS.bajo], borderWidth: 0, hoverOffset: 15 }] },
-        options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { labels: { color: 'white' }, position: 'bottom' }, tooltip: { callbacks: { label: (ctx) => { const total = (riesgo.critico || 0) + (riesgo.alto || 0) + (riesgo.medio || 0) + (riesgo.bajo || 0); const porcentaje = total > 0 ? Math.round((ctx.raw / total) * 100) : 0; return `${ctx.label}: ${ctx.raw} (${porcentaje}%)`; } } } } }
+        type: 'bar',
+        data: { 
+            labels: filteredLabels, 
+            datasets: [{ 
+                label: 'Incidencias', 
+                data: filteredData, 
+                backgroundColor: filteredColors,
+                borderColor: filteredColors.map(c => c),
+                borderWidth: 1,
+                borderRadius: 8,
+                barPercentage: 0.7,
+                categoryPercentage: 0.8
+            }] 
+        },
+        options: { 
+            indexAxis: 'y',
+            responsive: true, 
+            maintainAspectRatio: true,
+            onClick: (event, activeElements) => {
+                if (activeElements.length > 0) {
+                    const index = activeElements[0].index;
+                    const nivel = filteredNiveles[index];
+                    if (nivel) {
+                        const incidencias = datosGraficas.incidenciasFiltradas?.filter(i => i.nivelRiesgo === nivel.id) || [];
+                        if (incidencias.length === 0) {
+                            Swal.fire({ icon: 'info', title: 'Sin registros', text: `No hay incidencias con nivel de riesgo: ${nivel.nombre}`, background: 'var(--color-bg-primary)', color: 'white' });
+                        } else {
+                            mostrarRegistrosEnSweet(incidencias, `Incidencias: ${nivel.nombre}`, '<i class="fas fa-exclamation-triangle"></i>');
+                        }
+                    }
+                }
+            },
+            plugins: { 
+                legend: { labels: { color: 'white' }, position: 'top' }, 
+                tooltip: { callbacks: { label: (ctx) => { const total = filteredData.reduce((a, b) => a + b, 0); const porcentaje = total > 0 ? ((ctx.raw / total) * 100).toFixed(1) : 0; return `${ctx.dataset.label}: ${ctx.raw} (${porcentaje}%)`; } } }
+            },
+            scales: { 
+                x: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.1)' }, ticks: { color: 'white', stepSize: 1 } }, 
+                y: { grid: { display: false }, ticks: { color: 'white', font: { size: 12 } } } 
+            } 
+        }
     });
+    
+    const tablaData = filteredLabels.map((label, index) => ({
+        nombre: label,
+        cantidad: filteredData[index],
+        porcentaje: filteredPorcentajes[index],
+        color: filteredColors[index]
+    }));
+    if (typeof actualizarTablaRiesgo === 'function') {
+        actualizarTablaRiesgo(tablaData);
+    }
 }
 
 function crearGraficoCategorias(categorias) {
@@ -944,7 +1188,6 @@ function crearGraficoCategorias(categorias) {
         return;
     }
     
-    // Usar el color de cada categoría desde la base de datos
     const colores = categorias.map(c => c.color || '#2f8cff');
     
     charts.categorias = new Chart(ctx, {
@@ -966,16 +1209,26 @@ function crearGraficoCategorias(categorias) {
                 tooltip: { callbacks: { label: (ctx) => `${ctx.dataset.label}: ${ctx.raw}` } }
             }, 
             scales: { 
-                y: { 
-                    beginAtZero: true, 
-                    grid: { color: 'rgba(255,255,255,0.1)' }, 
-                    ticks: { color: 'white', stepSize: 1 } 
-                }, 
-                x: { 
-                    grid: { display: false }, 
-                    ticks: { color: 'white', maxRotation: 45 } 
-                } 
-            } 
+                y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.1)' }, ticks: { color: 'white', stepSize: 1 } }, 
+                x: { grid: { display: false }, ticks: { color: 'white', maxRotation: 45 } } 
+            },
+            onClick: (event, activeElements) => {
+                if (activeElements.length > 0) {
+                    const index = activeElements[0].index;
+                    const categoria = categorias[index];
+                    if (categoria) {
+                        const categoriaObj = categoriasCache.find(c => c.nombre === categoria.nombre);
+                        if (categoriaObj) {
+                            const incidencias = datosGraficas.incidenciasFiltradas?.filter(i => i.categoriaId === categoriaObj.id) || [];
+                            if (incidencias.length === 0) {
+                                Swal.fire({ icon: 'info', title: 'Sin registros', text: `No hay incidencias en la categoría: ${categoria.nombre}`, background: 'var(--color-bg-primary)', color: 'white' });
+                            } else {
+                                mostrarRegistrosEnSweet(incidencias, `Incidencias: ${categoria.nombre}`, '<i class="fas fa-tag"></i>');
+                            }
+                        }
+                    }
+                }
+            }
         }
     });
 }
@@ -989,7 +1242,6 @@ function crearGraficoSucursales(sucursales) {
         return;
     }
     
-    // Usar el color de la región de cada sucursal
     const colores = sucursales.map(s => s.color || '#6c757d');
     
     charts.sucursales = new Chart(ctx, {
@@ -1011,20 +1263,29 @@ function crearGraficoSucursales(sucursales) {
                 tooltip: { callbacks: { label: (ctx) => `${ctx.dataset.label}: ${ctx.raw}` } }
             }, 
             scales: { 
-                y: { 
-                    beginAtZero: true, 
-                    grid: { color: 'rgba(255,255,255,0.1)' }, 
-                    ticks: { color: 'white', stepSize: 1 } 
-                }, 
-                x: { 
-                    grid: { display: false }, 
-                    ticks: { color: 'white', maxRotation: 45 } 
-                } 
-            } 
+                y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.1)' }, ticks: { color: 'white', stepSize: 1 } }, 
+                x: { grid: { display: false }, ticks: { color: 'white', maxRotation: 45 } } 
+            },
+            onClick: (event, activeElements) => {
+                if (activeElements.length > 0) {
+                    const index = activeElements[0].index;
+                    const sucursal = sucursales[index];
+                    if (sucursal) {
+                        const sucursalObj = sucursalesCache.find(s => s.nombre === sucursal.nombre);
+                        if (sucursalObj) {
+                            const incidencias = datosGraficas.incidenciasFiltradas?.filter(i => i.sucursalId === sucursalObj.id) || [];
+                            if (incidencias.length === 0) {
+                                Swal.fire({ icon: 'info', title: 'Sin registros', text: `No hay incidencias en la sucursal: ${sucursal.nombre}`, background: 'var(--color-bg-primary)', color: 'white' });
+                            } else {
+                                mostrarRegistrosEnSweet(incidencias, `Incidencias: ${sucursal.nombre}`, '<i class="fas fa-store"></i>');
+                            }
+                        }
+                    }
+                }
+            }
         }
     });
 }
-
 function crearGraficoTiempoResolucion(tiempos) {
     const canvas = document.getElementById('graficoTiempo');
     if (!canvas) return;
@@ -1043,7 +1304,44 @@ function crearGraficoTiempoResolucion(tiempos) {
     charts.tiempo = new Chart(ctx, {
         type: 'bar',
         data: { labels: nombres, datasets: [{ label: 'Horas promedio de resolución', data: promedios, backgroundColor: colores, borderRadius: 4 }] },
-        options: { responsive: true, maintainAspectRatio: true, indexAxis: 'y', plugins: { legend: { labels: { color: 'white' } }, tooltip: { callbacks: { label: (ctx) => { const horas = ctx.raw; const dias = Math.floor(horas / 24); const horasResto = horas % 24; let texto = `${horas} horas`; if (dias > 0) texto = `${dias} día${dias > 1 ? 's' : ''} y ${horasResto} horas`; return `${ctx.dataset.label}: ${texto}`; } } } }, scales: { x: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.1)' }, ticks: { color: 'white', stepSize: 24, callback: (value) => value >= 24 ? `${value / 24}d` : `${value}h` } }, y: { grid: { display: false }, ticks: { color: 'white', font: { size: 10 } } } } }
+        options: { 
+            responsive: true, 
+            maintainAspectRatio: true, 
+            indexAxis: 'y', 
+            plugins: { 
+                legend: { labels: { color: 'white' } }, 
+                tooltip: { callbacks: { label: (ctx) => { const horas = ctx.raw; const dias = Math.floor(horas / 24); const horasResto = horas % 24; let texto = `${horas} horas`; if (dias > 0) texto = `${dias} día${dias > 1 ? 's' : ''} y ${horasResto} horas`; return `${ctx.dataset.label}: ${texto}`; } } } 
+            }, 
+            scales: { 
+                x: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.1)' }, ticks: { color: 'white', stepSize: 24, callback: (value) => value >= 24 ? `${value / 24}d` : `${value}h` } }, 
+                y: { grid: { display: false }, ticks: { color: 'white', font: { size: 10 } } } 
+            },
+            onClick: (event, activeElements) => {
+                if (activeElements.length > 0) {
+                    const index = activeElements[0].index;
+                    const colaborador = tiempos[index];
+                    if (colaborador) {
+                        const incidencias = datosGraficas.incidenciasFiltradas?.filter(i => i.actualizadoPorNombre === colaborador.nombre && i.estado === 'finalizada') || [];
+                        if (incidencias.length === 0) {
+                            Swal.fire({ icon: 'info', title: 'Sin registros', text: `No hay incidencias finalizadas por ${colaborador.nombre}`, background: 'var(--color-bg-primary)', color: 'white' });
+                        } else {
+                            const incidenciasConTiempo = incidencias.map(inc => {
+                                const inicio = inc.fechaInicio instanceof Date ? inc.fechaInicio : new Date(inc.fechaInicio);
+                                let fechaFin = null;
+                                if (inc.fechaFinalizacion) {
+                                    fechaFin = inc.fechaFinalizacion instanceof Date ? inc.fechaFinalizacion : new Date(inc.fechaFinalizacion);
+                                } else if (inc.fechaActualizacion) {
+                                    fechaFin = inc.fechaActualizacion instanceof Date ? inc.fechaActualizacion : new Date(inc.fechaActualizacion);
+                                }
+                                const tiempoHoras = fechaFin ? Math.round((fechaFin - inicio) / (1000 * 60 * 60)) : 0;
+                                return { ...inc, tiempoResolucionHoras: tiempoHoras };
+                            }).filter(inc => inc.tiempoResolucionHoras > 0);
+                            mostrarRegistrosEnSweet(incidenciasConTiempo, `Incidencias resueltas por: ${colaborador.nombre} (Promedio: ${colaborador.promedio} horas)`, '<i class="fas fa-clock"></i>');
+                        }
+                    }
+                }
+            }
+        }
     });
 }
 
@@ -1146,11 +1444,51 @@ function mostrarRegistrosPorEstado() {
 }
 
 function mostrarRegistrosPorRiesgo() {
-    const criticas = datosGraficas.incidenciasFiltradas?.filter(i => i.nivelRiesgo === 'critico') || [];
-    const altas = datosGraficas.incidenciasFiltradas?.filter(i => i.nivelRiesgo === 'alto') || [];
-    if (criticas.length > 0) mostrarRegistrosEnSweet(criticas, 'Incidencias Críticas', '<i class="fas fa-exclamation-triangle"></i>');
-    else if (altas.length > 0) mostrarRegistrosEnSweet(altas, 'Incidencias Altas', '<i class="fas fa-exclamation-circle"></i>');
-    else Swal.fire({ icon: 'info', title: 'Sin datos', text: 'No hay incidencias para mostrar', background: 'var(--color-bg-primary)', color: 'white' });
+    // Obtener el primer nivel de riesgo que tenga datos (para mostrar el top 1)
+    const riesgoData = datosGraficas.riesgoData;
+    
+    if (!riesgoData || Object.keys(riesgoData).length === 0) {
+        Swal.fire({ icon: 'info', title: 'Sin datos', text: 'No hay información de niveles de riesgo', background: 'var(--color-bg-primary)', color: 'white' });
+        return;
+    }
+    
+    // Encontrar el nivel de riesgo con mayor cantidad de incidencias
+    let topRiesgoId = null;
+    let topCantidad = 0;
+    
+    Object.keys(riesgoData).forEach(riesgoId => {
+        const cantidad = riesgoData[riesgoId];
+        if (cantidad > topCantidad) {
+            topCantidad = cantidad;
+            topRiesgoId = riesgoId;
+        }
+    });
+    
+    if (!topRiesgoId || topCantidad === 0) {
+        Swal.fire({ icon: 'info', title: 'Sin datos', text: 'No hay incidencias con niveles de riesgo', background: 'var(--color-bg-primary)', color: 'white' });
+        return;
+    }
+    
+    // Obtener el nombre del nivel de riesgo
+    let riesgoNombre = topRiesgoId;
+    let riesgoIcon = '<i class="fas fa-exclamation-triangle"></i>';
+    
+    if (window.nivelesRiesgoEstaticos) {
+        const nivel = window.nivelesRiesgoEstaticos.find(n => n.id === topRiesgoId);
+        if (nivel) {
+            riesgoNombre = nivel.nombre;
+        }
+    }
+    
+    // Filtrar incidencias por ese nivel de riesgo
+    const incidenciasRiesgo = datosGraficas.incidenciasFiltradas?.filter(i => i.nivelRiesgo === topRiesgoId) || [];
+    
+    if (incidenciasRiesgo.length === 0) {
+        Swal.fire({ icon: 'info', title: 'Sin registros', text: `No hay incidencias con nivel de riesgo ${riesgoNombre}`, background: 'var(--color-bg-primary)', color: 'white' });
+        return;
+    }
+    
+    mostrarRegistrosEnSweet(incidenciasRiesgo, `Incidencias: ${riesgoNombre}`, riesgoIcon);
 }
 
 function mostrarRegistrosPorCategoria() {
