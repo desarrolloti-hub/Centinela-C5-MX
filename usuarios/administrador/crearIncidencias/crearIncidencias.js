@@ -284,7 +284,6 @@ class CrearIncidenciaController {
             if (riesgoInfo && riesgoInfo.id) {
                 this._mostrarRiesgoAsignadoUnico(riesgoInfo.id, riesgoInfo.nombre);
                 this.riesgoSeleccionadoId = riesgoInfo.id;
-                this._agregarHintRiesgoAutomatico(riesgoInfo.nombre);
                 return;
             }
         }
