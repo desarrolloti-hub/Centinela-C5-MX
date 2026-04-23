@@ -1,5 +1,5 @@
 /* =============================================
-   MAPA ALERTAS - ESTILOS COMPLETOS (VERSIÓN FINAL CON SOPORTE DE TEMAS)
+   MAPA ALERTAS - ESTILOS COMPLETOS (SIN HEATMAP)
    ============================================= */
 
 * {
@@ -603,15 +603,6 @@ body {
     border-color: var(--color-accent-primary, #00cfff);
 }
 
-/* Botón Heatmap con colores dinámicos */
-#btnHeatmap {
-    background: linear-gradient(135deg, #ff4444, #ff8844);
-    border: none;
-}
-
-#btnHeatmap i {
-    color: #ffffff;
-}
 /* =============================================
    NOTIFICACIONES SWEETALERT2 - ESTILOS CORREGIDOS
    ============================================= */
@@ -1284,8 +1275,8 @@ body {
 ::-webkit-scrollbar-thumb:hover {
     background: var(--color-accent-secondary, #00a0cc);
 }
-@media (max-width: 768px) {
 
+@media (max-width: 768px) {
     .control-panel {
         bottom: 15px;
         padding: 6px 12px;
@@ -1297,7 +1288,7 @@ body {
     }
 
     .control-btn span {
-        display: inline; /* Mostrar texto también en móvil */
+        display: inline;
         font-size: 0.65rem;
     }
 
@@ -1305,9 +1296,8 @@ body {
         font-size: 0.75rem;
     }
 }
+
 @media (max-width: 480px) {
-
-
     .control-panel {
         bottom: 10px;
         padding: 5px 10px;
@@ -1326,6 +1316,7 @@ body {
         font-size: 0.7rem;
     }
 }
+
 /* =============================================
    FULLSCREEN - ESTILOS PARA MAPA EN PANTALLA COMPLETA
    ============================================= */

@@ -100,7 +100,7 @@
         <div class="header-section">
             <div class="header-content">
                 <h1 class="main-title">
-                    
+
                     Registro de Mercancía Perdida
                 </h1>
                 <div class="header-description-text">
@@ -160,7 +160,7 @@
                                         <select class="form-control" id="tipoEvento" required>
                                             <option value="">-- Selecciona el tipo de evento --</option>
                                             <option value="robo">Robo</option>
-                                            <option value="accidente">Accidente</option>
+                                            <option value="accidente">Incidencia</option>
                                             <option value="accidente">Recuperación</option>
                                             <option value="otro">Otro</option>
                                         </select>
@@ -178,8 +178,8 @@
                                                 placeholder="0.00" step="0.01" min="0" required>
                                         </div>
                                         <div class="monto-preview">
-                                            <i class="fas fa-chart-line"></i> <span
-                                                id="montoPerdidoPreview">$0.00</span>
+                                            <i class="fas fa-chart-line"></i> <span id="montoPerdidoPreview">-
+                                                $0.00</span>
                                         </div>
                                     </div>
                                     <div class="form-help-text">Monto total de la mercancía perdida</div>
@@ -240,7 +240,7 @@
                                     </div>
                                 </div>
 
-                          
+
                             </div>
                         </form>
                     </div>
@@ -251,67 +251,68 @@
         <!-- ============================================= -->
         <!-- SECCIÓN: EVIDENCIAS FOTOGRÁFICAS -->
         <!-- ============================================= -->
-  <!-- ============================================= -->
-<!-- SECCIÓN: EVIDENCIAS FOTOGRÁFICAS (OCULTA HASTA LLENAR DETALLES) -->
-<!-- ============================================= -->
-<div class="form-row" style="margin-top: 20px;">
-    <div class="full-width">
-        <div class="image-upload-section-wrapper" id="seccionImagenesWrapper">
-            <div class="card">
-                <div class="card-header">
-                    <h5><i class="fas fa-images"></i>Evidencias Fotográficas</h5>
-                </div>
-                <div class="card-body">
-                    <!-- Alerta informativa -->
-                    <div class="alert alert-info" style="margin-bottom: 20px;">
-                        <i class="fas fa-info-circle"></i>
-                        Puedes agregar imágenes como evidencia. Haz clic en el botón Editar para abrir el editor
-                        completo donde podrás dibujar círculos, flechas y agregar comentarios.
-                    </div>
-
-                    <!-- Sección de carga de imágenes -->
-                    <div class="image-upload-section">
-                        <div class="upload-area">
-                            <input type="file" id="inputImagenes" multiple accept="image/*" style="display: none;">
-                            <button type="button" class="btn-upload" id="btnAgregarImagen">
-                                <i class="fas fa-cloud-upload-alt"></i>
-                                Agregar evidencias
-                            </button>
-                            <div class="upload-hint">
+        <!-- ============================================= -->
+        <!-- SECCIÓN: EVIDENCIAS FOTOGRÁFICAS (OCULTA HASTA LLENAR DETALLES) -->
+        <!-- ============================================= -->
+        <div class="form-row" style="margin-top: 20px;">
+            <div class="full-width">
+                <div class="image-upload-section-wrapper" id="seccionImagenesWrapper">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5><i class="fas fa-images"></i>Evidencias Fotográficas</h5>
+                        </div>
+                        <div class="card-body">
+                            <!-- Alerta informativa -->
+                            <div class="alert alert-info" style="margin-bottom: 20px;">
                                 <i class="fas fa-info-circle"></i>
-                                Formatos: JPG, PNG, GIF. Máximo 5MB por imagen.
+                                Puedes agregar imágenes como evidencia. Haz clic en el botón Editar para abrir el editor
+                                completo donde podrás dibujar círculos, flechas y agregar comentarios.
+                            </div>
+
+                            <!-- Sección de carga de imágenes -->
+                            <div class="image-upload-section">
+                                <div class="upload-area">
+                                    <input type="file" id="inputImagenes" multiple accept="image/*"
+                                        style="display: none;">
+                                    <button type="button" class="btn-upload" id="btnAgregarImagen">
+                                        <i class="fas fa-cloud-upload-alt"></i>
+                                        Agregar evidencias
+                                    </button>
+                                    <div class="upload-hint">
+                                        <i class="fas fa-info-circle"></i>
+                                        Formatos: JPG, PNG, GIF. Máximo 5MB por imagen.
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Vista previa de imágenes -->
+                            <div class="images-preview-container">
+                                <h6>
+                                    <i class="fas fa-images"></i>
+                                    Evidencias seleccionadas (<span id="imagenesCount">0</span>)
+                                </h6>
+                                <div class="images-grid" id="imagenesPreview">
+                                    <div class="no-images">
+                                        <i class="fas fa-images"></i>
+                                        <p>No hay evidencias seleccionadas</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- BOTONES DE ACCIÓN -->
+                            <div class="action-buttons-container">
+                                <button type="button" class="btn btn-success" id="btnCrearRegistro">
+                                    <i class="fas fa-save"></i>Registrar Evento
+                                </button>
+                                <button type="button" class="btn btn-secondary" id="btnCancelar">
+                                    <i class="fas fa-times"></i>Cancelar
+                                </button>
                             </div>
                         </div>
-                    </div>
-
-                    <!-- Vista previa de imágenes -->
-                    <div class="images-preview-container">
-                        <h6>
-                            <i class="fas fa-images"></i>
-                            Evidencias seleccionadas (<span id="imagenesCount">0</span>)
-                        </h6>
-                        <div class="images-grid" id="imagenesPreview">
-                            <div class="no-images">
-                                <i class="fas fa-images"></i>
-                                <p>No hay evidencias seleccionadas</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- BOTONES DE ACCIÓN -->
-                    <div class="action-buttons-container">
-                        <button type="button" class="btn btn-success" id="btnCrearRegistro">
-                                        <i class="fas fa-save"></i>Registrar Evento
-                                    </button>
-                                    <button type="button" class="btn btn-secondary" id="btnCancelar">
-                                        <i class="fas fa-times"></i>Cancelar
-                                    </button>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
-</div>
     </div>
 
     <br>
@@ -323,7 +324,7 @@
     <script type="module" src="/components/navbarAdministrador.js"></script>
     <script src="/components/imagenEditorEvidencias.js"></script>
     <script src="/components/footerAdministrador.js"></script>
-    <script type="module" src="./crearIncidenciasRecuperacion.js"></script>    
+    <script type="module" src="./crearIncidenciasRecuperacion.js"></script>
     <script src="/components/protector-admin.js"> </script>
 
 </body>

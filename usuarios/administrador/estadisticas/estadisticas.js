@@ -1847,6 +1847,15 @@ async function cargarRegistrosRecuperacionConFiltros() {
 
 async function generarReportePDF() {
     try {
+        // ===== CAMBIAR TEXTOS HTML A NEGRO =====
+        prepararTextosParaPDF();
+        
+        // ===== CAMBIAR GRÁFICAS A NEGRO =====
+        cambiarGraficasAModoPDF();
+        
+        // Delay para que los cambios se apliquen
+        await new Promise(resolve => setTimeout(resolve, 200));
+        
         Swal.fire({
             title: 'Preparando PDF...',
             text: 'Estamos generando tu reporte estadístico completo',
@@ -1929,8 +1938,17 @@ async function generarReportePDF() {
 
         await generadorPDFEstadisticasUnificado.generarReporte(datosParaPDF, { mostrarAlerta: true });
 
+        // ===== RESTAURAR TEXTOS HTML A BLANCO =====
+        restaurarTextosOriginales();
+        
+        // ===== RESTAURAR GRÁFICAS A BLANCO =====
+        restaurarGraficasAModoNormal();
+
     } catch (error) {
         console.error('Error generando PDF:', error);
+        // En caso de error, restaurar todo
+        restaurarTextosOriginales();
+        restaurarGraficasAModoNormal();
         Swal.close();
         Swal.fire({
             icon: 'error',
@@ -2083,4 +2101,172 @@ function sincronizarFiltrosConMapa() {
     }, 500);
 }
 
+
+// =============================================
+// FUNCIONES PARA MANEJAR COLORES DE TEXTO EN PDF
+// =============================================
+
+// Función para cambiar TODOS los textos a negro antes del PDF
+function prepararTextosParaPDF() {
+    // Cambiar todos los textos de tarjetas métricas
+    document.querySelectorAll('.metric-card .metric-title, .metric-card .metric-value, .metric-card .metric-subtitle').forEach(el => {
+        el.style.setProperty('color', '#000000', 'important');
+    });
+    
+    // Cambiar títulos de secciones
+    document.querySelectorAll('.seccion-titulo h2, .seccion-titulo p').forEach(el => {
+        el.style.setProperty('color', '#000000', 'important');
+    });
+    
+    // Cambiar textos de tablas
+    document.querySelectorAll('.table, .resumen-tabla, .table th, .table td, .resumen-tabla th, .resumen-tabla td').forEach(el => {
+        el.style.setProperty('color', '#000000', 'important');
+    });
+    
+    // Cambiar headers de cards
+    document.querySelectorAll('.card-header h5, .card-grafica .card-header h5').forEach(el => {
+        el.style.setProperty('color', '#000000', 'important');
+    });
+    
+    // Cambiar KPIs de recuperación
+    document.querySelectorAll('.kpi-info h3, .kpi-info p').forEach(el => {
+        el.style.setProperty('color', '#000000', 'important');
+    });
+    
+    // Cambiar textos de filtros
+    document.querySelectorAll('.filtros-header h5, .filtro-grupo label').forEach(el => {
+        el.style.setProperty('color', '#000000', 'important');
+    });
+    
+    // Cambiar valores de inputs y selects
+    document.querySelectorAll('.filtro-select, .filtro-input').forEach(el => {
+        el.style.setProperty('color', '#000000', 'important');
+        el.style.setProperty('background', '#ffffff', 'important');
+    });
+    
+    // Cambiar footer
+    document.querySelectorAll('.footer-datetime').forEach(el => {
+        el.style.setProperty('color', '#000000', 'important');
+    });
+}
+
+// Función para restaurar colores originales (blanco)
+function restaurarTextosOriginales() {
+    document.querySelectorAll('.metric-card .metric-title, .metric-card .metric-value, .metric-card .metric-subtitle').forEach(el => {
+        el.style.removeProperty('color');
+    });
+    
+    document.querySelectorAll('.seccion-titulo h2, .seccion-titulo p').forEach(el => {
+        el.style.removeProperty('color');
+    });
+    
+    document.querySelectorAll('.table, .resumen-tabla, .table th, .table td, .resumen-tabla th, .resumen-tabla td').forEach(el => {
+        el.style.removeProperty('color');
+    });
+    
+    document.querySelectorAll('.card-header h5, .card-grafica .card-header h5').forEach(el => {
+        el.style.removeProperty('color');
+    });
+    
+    document.querySelectorAll('.kpi-info h3, .kpi-info p').forEach(el => {
+        el.style.removeProperty('color');
+    });
+    
+    document.querySelectorAll('.filtros-header h5, .filtro-grupo label').forEach(el => {
+        el.style.removeProperty('color');
+    });
+    
+    document.querySelectorAll('.filtro-select, .filtro-input').forEach(el => {
+        el.style.removeProperty('color');
+        el.style.removeProperty('background');
+    });
+    
+    document.querySelectorAll('.footer-datetime').forEach(el => {
+        el.style.removeProperty('color');
+    });
+}
+// =============================================
+// FUNCIONES PARA CAMBIAR COLORES DE GRÁFICAS PARA PDF
+// =============================================
+
+// Función para cambiar TODAS las gráficas a modo PDF (texto negro)
+function cambiarGraficasAModoPDF() {
+    // Lista de todas las gráficas que tienes
+    const graficas = [
+        { chart: charts.actualizadores },
+        { chart: charts.reportadores },
+        { chart: charts.seguimientos },
+        { chart: charts.estado },
+        { chart: charts.riesgo },
+        { chart: charts.categorias },
+        { chart: charts.sucursales },
+        { chart: charts.tiempo },
+        { chart: graficoTipoEvento },
+        { chart: graficoEvolucionMensual },
+        { chart: graficoTopSucursales },
+        { chart: graficoComparativa }
+    ];
+    
+    graficas.forEach(g => {
+        if (g.chart && g.chart.options) {
+            // Cambiar colores de texto de los ejes
+            if (g.chart.options.scales) {
+                if (g.chart.options.scales.y && g.chart.options.scales.y.ticks) {
+                    g.chart.options.scales.y.ticks.color = '#000000';
+                }
+                if (g.chart.options.scales.x && g.chart.options.scales.x.ticks) {
+                    g.chart.options.scales.x.ticks.color = '#000000';
+                }
+            }
+            // Cambiar color de la leyenda
+            if (g.chart.options.plugins && g.chart.options.plugins.legend) {
+                if (g.chart.options.plugins.legend.labels) {
+                    g.chart.options.plugins.legend.labels.color = '#000000';
+                }
+            }
+            // Actualizar la gráfica
+            g.chart.update();
+        }
+    });
+}
+
+// Función para restaurar gráficas a modo normal (texto blanco)
+function restaurarGraficasAModoNormal() {
+    const graficas = [
+        { chart: charts.actualizadores },
+        { chart: charts.reportadores },
+        { chart: charts.seguimientos },
+        { chart: charts.estado },
+        { chart: charts.riesgo },
+        { chart: charts.categorias },
+        { chart: charts.sucursales },
+        { chart: charts.tiempo },
+        { chart: graficoTipoEvento },
+        { chart: graficoEvolucionMensual },
+        { chart: graficoTopSucursales },
+        { chart: graficoComparativa }
+    ];
+    
+    graficas.forEach(g => {
+        if (g.chart && g.chart.options) {
+            // Restaurar colores de texto de los ejes a blanco
+            if (g.chart.options.scales) {
+                if (g.chart.options.scales.y && g.chart.options.scales.y.ticks) {
+                    g.chart.options.scales.y.ticks.color = 'white';
+                }
+                if (g.chart.options.scales.x && g.chart.options.scales.x.ticks) {
+                    g.chart.options.scales.x.ticks.color = 'white';
+                }
+            }
+            // Restaurar color de la leyenda a blanco
+            if (g.chart.options.plugins && g.chart.options.plugins.legend) {
+                if (g.chart.options.plugins.legend.labels) {
+                    g.chart.options.plugins.legend.labels.color = 'white';
+                }
+            }
+            // Actualizar la gráfica
+            g.chart.update();
+        }
+    });
+}
 document.addEventListener('DOMContentLoaded', inicializarDashboardUnificado);

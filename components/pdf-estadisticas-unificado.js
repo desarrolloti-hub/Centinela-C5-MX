@@ -112,100 +112,175 @@ class PDFEstadisticasUnificadoGenerator extends PDFBaseGenerator {
         if (config.authToken) this.authToken = config.authToken;
     }
 
-    async capturarTodasLasGraficas() {
-        const incidenciasCanvasIds = [
-            { id: 'graficoActualizadores', key: 'actualizadores' },
-            { id: 'graficoReportadores', key: 'reportadores' },
-            { id: 'graficoSeguimientos', key: 'seguimientos' },
-            { id: 'graficoEstado', key: 'estado' },
-            { id: 'graficoRiesgo', key: 'riesgo' },
-            { id: 'graficoCategorias', key: 'categorias' },
-            { id: 'graficoSucursales', key: 'sucursalesIncidencias' },
-            { id: 'graficoTiempo', key: 'tiempoResolucion' }
-        ];
+  async capturarTodasLasGraficas() {
+    const incidenciasCanvasIds = [
+        { id: 'graficoActualizadores', key: 'actualizadores' },
+        { id: 'graficoReportadores', key: 'reportadores' },
+        { id: 'graficoSeguimientos', key: 'seguimientos' },
+        { id: 'graficoEstado', key: 'estado' },
+        { id: 'graficoRiesgo', key: 'riesgo' },
+        { id: 'graficoCategorias', key: 'categorias' },
+        { id: 'graficoSucursales', key: 'sucursalesIncidencias' },
+        { id: 'graficoTiempo', key: 'tiempoResolucion' }
+    ];
 
-        for (const item of incidenciasCanvasIds) {
-            const canvas = document.getElementById(item.id);
-            if (canvas && canvas instanceof HTMLCanvasElement) {
-                try {
-                    const scale = 2;
-                    const tempCanvas = document.createElement('canvas');
-                    tempCanvas.width = canvas.width * scale;
-                    tempCanvas.height = canvas.height * scale;
-                    const tempCtx = tempCanvas.getContext('2d');
-                    tempCtx.drawImage(canvas, 0, 0, tempCanvas.width, tempCanvas.height);
-                    this.graficasCapturadas[item.key] = tempCanvas.toDataURL('image/png', 1.0);
-                } catch (error) {
-                    console.error(`Error capturando gráfica ${item.id}:`, error);
-                    this.graficasCapturadas[item.key] = null;
-                }
-            } else {
-                this.graficasCapturadas[item.key] = null;
-            }
-        }
-
-        const recuperacionCanvasIds = [
-            { id: 'graficoTipoEvento', key: 'tipoEvento' },
-            { id: 'graficoEvolucionMensual', key: 'evolucionMensual' },
-            { id: 'graficoTopSucursales', key: 'topSucursalesRecuperacion' },
-            { id: 'graficoComparativa', key: 'comparativa' }
-        ];
-
-        for (const item of recuperacionCanvasIds) {
-            const canvas = document.getElementById(item.id);
-            if (canvas && canvas instanceof HTMLCanvasElement) {
-                try {
-                    const scale = 2;
-                    const tempCanvas = document.createElement('canvas');
-                    tempCanvas.width = canvas.width * scale;
-                    tempCanvas.height = canvas.height * scale;
-                    const tempCtx = tempCanvas.getContext('2d');
-                    tempCtx.drawImage(canvas, 0, 0, tempCanvas.width, tempCanvas.height);
-                    this.graficasCapturadas[item.key] = tempCanvas.toDataURL('image/png', 1.0);
-                } catch (error) {
-                    console.error(`Error capturando gráfica ${item.id}:`, error);
-                    this.graficasCapturadas[item.key] = null;
-                }
-            } else {
-                this.graficasCapturadas[item.key] = null;
-            }
-        }
-
-        const mapaElement = document.getElementById('mapaCalorComponente');
-        if (mapaElement && mapaElement instanceof HTMLElement) {
-            try {
-                if (typeof html2canvas !== 'undefined') {
-                    await new Promise(resolve => setTimeout(resolve, 200));
-                    const canvas = await html2canvas(mapaElement, {
-                        scale: 2,
-                        backgroundColor: '#1a1a2e',
-                        useCORS: true,
-                        logging: false
-                    });
-                    this.graficasCapturadas.mapaCalor = canvas.toDataURL('image/png', 1.0);
-                }
-            } catch (error) {
-                console.error('Error capturando mapa de calor:', error);
-                this.graficasCapturadas.mapaCalor = null;
-            }
-        }
-
-        const graficoTopMapa = document.getElementById('mapaGraficoTop');
-        if (graficoTopMapa && graficoTopMapa instanceof HTMLCanvasElement) {
+    for (const item of incidenciasCanvasIds) {
+        const canvas = document.getElementById(item.id);
+        if (canvas && canvas instanceof HTMLCanvasElement) {
             try {
                 const scale = 2;
                 const tempCanvas = document.createElement('canvas');
-                tempCanvas.width = graficoTopMapa.width * scale;
-                tempCanvas.height = graficoTopMapa.height * scale;
+                tempCanvas.width = canvas.width * scale;
+                tempCanvas.height = canvas.height * scale;
                 const tempCtx = tempCanvas.getContext('2d');
-                tempCtx.drawImage(graficoTopMapa, 0, 0, tempCanvas.width, tempCanvas.height);
-                this.graficasCapturadas.graficoTopUbicaciones = tempCanvas.toDataURL('image/png', 1.0);
+                tempCtx.drawImage(canvas, 0, 0, tempCanvas.width, tempCanvas.height);
+                this.graficasCapturadas[item.key] = tempCanvas.toDataURL('image/png', 1.0);
             } catch (error) {
-                console.error('Error capturando gráfica top del mapa:', error);
-                this.graficasCapturadas.graficoTopUbicaciones = null;
+                console.error(`Error capturando gráfica ${item.id}:`, error);
+                this.graficasCapturadas[item.key] = null;
             }
+        } else {
+            this.graficasCapturadas[item.key] = null;
         }
     }
+
+    const recuperacionCanvasIds = [
+        { id: 'graficoTipoEvento', key: 'tipoEvento' },
+        { id: 'graficoEvolucionMensual', key: 'evolucionMensual' },
+        { id: 'graficoTopSucursales', key: 'topSucursalesRecuperacion' },
+        { id: 'graficoComparativa', key: 'comparativa' }
+    ];
+
+    for (const item of recuperacionCanvasIds) {
+        const canvas = document.getElementById(item.id);
+        if (canvas && canvas instanceof HTMLCanvasElement) {
+            try {
+                const scale = 2;
+                const tempCanvas = document.createElement('canvas');
+                tempCanvas.width = canvas.width * scale;
+                tempCanvas.height = canvas.height * scale;
+                const tempCtx = tempCanvas.getContext('2d');
+                tempCtx.drawImage(canvas, 0, 0, tempCanvas.width, tempCanvas.height);
+                this.graficasCapturadas[item.key] = tempCanvas.toDataURL('image/png', 1.0);
+            } catch (error) {
+                console.error(`Error capturando gráfica ${item.id}:`, error);
+                this.graficasCapturadas[item.key] = null;
+            }
+        } else {
+            this.graficasCapturadas[item.key] = null;
+        }
+    }
+
+    // ========== CAPTURA DEL MAPA DE CALOR - SOLO OCULTAR LOS CÍRCULOS GRANDES ==========
+    const mapaElement = document.getElementById('mapaCalorComponente');
+    if (mapaElement && mapaElement instanceof HTMLElement) {
+        try {
+            if (typeof html2canvas !== 'undefined') {
+                await new Promise(resolve => setTimeout(resolve, 200));
+                
+                // Buscar SOLO los círculos grandes (los que tienen fill-opacity="0.15" o radio grande)
+                // Una forma más segura: buscar círculos que NO sean los marcadores
+                // Los marcadores generalmente son imágenes (img) o tienen la clase leaflet-marker-icon
+                const todosLosPaths = mapaElement.querySelectorAll('path');
+                const estilosOriginales = [];
+                
+                todosLosPaths.forEach(path => {
+                    // Verificar si es un círculo grande (no un marcador)
+                    // Los círculos de calor tienen fill-opacity ~0.15 y stroke-opacity ~0.4
+                    const fillOpacity = path.getAttribute('fill-opacity');
+                    const strokeOpacity = path.getAttribute('stroke-opacity');
+                    const radioMatch = path.getAttribute('d')?.match(/a(\d+),(\d+)/i);
+                    const radio = radioMatch ? parseInt(radioMatch[1]) : 0;
+                    
+                    // Si tiene fill-opacity bajo (0.15) y radio grande (>30), es un círculo de calor
+                    if ((fillOpacity === '0.15' || parseFloat(fillOpacity) === 0.15) && radio > 30) {
+                        estilosOriginales.push({
+                            elemento: path,
+                            fillOpacity: fillOpacity,
+                            strokeOpacity: strokeOpacity
+                        });
+                        // Ocultar SOLO estos círculos
+                        path.setAttribute('fill-opacity', '0');
+                        path.setAttribute('stroke-opacity', '0');
+                    }
+                });
+                
+                // También buscar círculos marcadores con fill-opacity 0.15
+                const circulosMarcadores = mapaElement.querySelectorAll('circle');
+                circulosMarcadores.forEach(circle => {
+                    const fillOpacity = circle.getAttribute('fill-opacity');
+                    if (fillOpacity === '0.15' || parseFloat(fillOpacity) === 0.15) {
+                        estilosOriginales.push({
+                            elemento: circle,
+                            fillOpacity: fillOpacity,
+                            strokeOpacity: circle.getAttribute('stroke-opacity')
+                        });
+                        circle.setAttribute('fill-opacity', '0');
+                        circle.setAttribute('stroke-opacity', '0');
+                    }
+                });
+                
+                await new Promise(resolve => setTimeout(resolve, 50));
+                
+                const canvas = await html2canvas(mapaElement, {
+                    scale: 2,
+                    backgroundColor: '#1a1a2e',
+                    useCORS: true,
+                    logging: false,
+                    onclone: (clonedDoc, element) => {
+                        // En el clon, también ocultar SOLO los círculos de calor
+                        const clonedPaths = clonedDoc.querySelectorAll('path');
+                        clonedPaths.forEach(path => {
+                            const fillOpacity = path.getAttribute('fill-opacity');
+                            const radioMatch = path.getAttribute('d')?.match(/a(\d+),(\d+)/i);
+                            const radio = radioMatch ? parseInt(radioMatch[1]) : 0;
+                            if ((fillOpacity === '0.15' || parseFloat(fillOpacity) === 0.15) && radio > 30) {
+                                path.setAttribute('fill-opacity', '0');
+                                path.setAttribute('stroke-opacity', '0');
+                            }
+                        });
+                        
+                        const clonedCircles = clonedDoc.querySelectorAll('circle');
+                        clonedCircles.forEach(circle => {
+                            const fillOpacity = circle.getAttribute('fill-opacity');
+                            if (fillOpacity === '0.15' || parseFloat(fillOpacity) === 0.15) {
+                                circle.setAttribute('fill-opacity', '0');
+                                circle.setAttribute('stroke-opacity', '0');
+                            }
+                        });
+                    }
+                });
+                
+                // Restaurar los círculos
+                estilosOriginales.forEach(original => {
+                    if (original.fillOpacity) original.elemento.setAttribute('fill-opacity', original.fillOpacity);
+                    if (original.strokeOpacity) original.elemento.setAttribute('stroke-opacity', original.strokeOpacity);
+                });
+                
+                this.graficasCapturadas.mapaCalor = canvas.toDataURL('image/png', 1.0);
+            }
+        } catch (error) {
+            console.error('Error capturando mapa de calor:', error);
+            this.graficasCapturadas.mapaCalor = null;
+        }
+    }
+
+    const graficoTopMapa = document.getElementById('mapaGraficoTop');
+    if (graficoTopMapa && graficoTopMapa instanceof HTMLCanvasElement) {
+        try {
+            const scale = 2;
+            const tempCanvas = document.createElement('canvas');
+            tempCanvas.width = graficoTopMapa.width * scale;
+            tempCanvas.height = graficoTopMapa.height * scale;
+            const tempCtx = tempCanvas.getContext('2d');
+            tempCtx.drawImage(graficoTopMapa, 0, 0, tempCanvas.width, tempCanvas.height);
+            this.graficasCapturadas.graficoTopUbicaciones = tempCanvas.toDataURL('image/png', 1.0);
+        } catch (error) {
+            console.error('Error capturando gráfica top del mapa:', error);
+            this.graficasCapturadas.graficoTopUbicaciones = null;
+        }
+    }
+}
 
     configurarDatos(datos) {
         this.datosIncidencias = datos.datosIncidencias;
@@ -239,9 +314,6 @@ class PDFEstadisticasUnificadoGenerator extends PDFBaseGenerator {
                 Swal.fire({
                     title: 'Generando Reporte PDF Unificado...',
                     html: `<div style="margin-bottom:10px;"><i class="fas fa-chart-pie" style="font-size:32px; color:#c9a03d;"></i></div>
-                        <div class="progress-bar-container" style="width:100%; height:20px; background:rgba(0,0,0,0.1); border-radius:10px; margin-top:10px;">
-                            <div class="progress-bar" style="width:0%; height:100%; background:linear-gradient(90deg, #1a3b5d, #c9a03d); border-radius:10px;"></div>
-                        </div>
                         <p style="margin-top:12px;">Capturando gráficas...</p>`,
                     allowOutsideClick: false,
                     showConfirmButton: false,
@@ -271,7 +343,7 @@ class PDFEstadisticasUnificadoGenerator extends PDFBaseGenerator {
             }
 
             const pdf = new this.jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
-            this.totalPaginas = 9;
+            this.totalPaginas = 10;
             this.paginaActualReal = 1;
 
             await this._generarContenido(pdf);
@@ -459,7 +531,7 @@ class PDFEstadisticasUnificadoGenerator extends PDFBaseGenerator {
         this._dibujarAvisoPrivacidad(pdf);
         this.dibujarPiePagina(pdf);
 
-        // PÁGINA 8 - MAPA DE CALOR
+        // PÁGINA 8 - MAPA DE CALORcapturarTodasLasGraficas
         pdf.addPage();
         this.paginaActualReal++;
         this.dibujarEncabezadoBase(pdf, 'REPORTE ESTADÍSTICO UNIFICADO', 'MAPA DE CALOR ESTADÍSTICO');
@@ -476,10 +548,12 @@ class PDFEstadisticasUnificadoGenerator extends PDFBaseGenerator {
         await this._dibujarMapaCalor(pdf, yPos);
         this.dibujarPiePagina(pdf);
 
-        // PÁGINA 9 - TOP UBICACIONES + TABLA
+            // =============================================
+        // PÁGINA 9 - TOP UBICACIONES CON MÁS INCIDENTES (SOLO GRÁFICA)
+        // =============================================
         pdf.addPage();
         this.paginaActualReal++;
-        this.dibujarEncabezadoBase(pdf, 'REPORTE ESTADÍSTICO UNIFICADO', 'ANÁLISIS POR UBICACIÓN');
+        this.dibujarEncabezadoBase(pdf, 'REPORTE ESTADÍSTICO UNIFICADO', 'ANÁLISIS POR UBICACIÓN - PARTE 1');
         yPos = this.alturaEncabezado + 8;
         pdf.setFont('helvetica', 'bold');
         pdf.setFontSize(this.fonts.titulo);
@@ -490,8 +564,20 @@ class PDFEstadisticasUnificadoGenerator extends PDFBaseGenerator {
         pdf.setLineWidth(0.5);
         pdf.line(GRID_CONFIG.MARGEN_PAGINA, yPos - 2, GRID_CONFIG.MARGEN_PAGINA + 100, yPos - 2);
         yPos += 10;
-        await this._dibujarGraficoTopUbicacionesMediano(pdf, yPos);
-        yPos += 65;
+        
+        // Gráfica más grande en la página 9 (aprovechando todo el espacio)
+        await this._dibujarGraficoTopUbicacionesGrande(pdf, yPos);
+        
+        this._dibujarAvisoPrivacidad(pdf);
+        this.dibujarPiePagina(pdf);
+
+        // =============================================
+        // PÁGINA 10 - DETALLE POR UBICACIÓN (TOP 10) - TABLA COMPLETA
+        // =============================================
+        pdf.addPage();
+        this.paginaActualReal++;
+        this.dibujarEncabezadoBase(pdf, 'REPORTE ESTADÍSTICO UNIFICADO', 'ANÁLISIS POR UBICACIÓN - PARTE 2');
+        yPos = this.alturaEncabezado + 8;
         pdf.setFont('helvetica', 'bold');
         pdf.setFontSize(this.fonts.titulo);
         pdf.setTextColor(0, 0, 0);
@@ -501,7 +587,10 @@ class PDFEstadisticasUnificadoGenerator extends PDFBaseGenerator {
         pdf.setLineWidth(0.5);
         pdf.line(GRID_CONFIG.MARGEN_PAGINA, yPos - 2, GRID_CONFIG.MARGEN_PAGINA + 90, yPos - 2);
         yPos += 8;
-        await this._dibujarTablaMapaCalor(pdf, yPos);
+        
+        // Tabla más grande y completa en la página 10
+        await this._dibujarTablaMapaCalorGrande(pdf, yPos);
+        
         this._dibujarAvisoPrivacidad(pdf);
         this.dibujarPiePagina(pdf);
     }
@@ -823,6 +912,248 @@ class PDFEstadisticasUnificadoGenerator extends PDFBaseGenerator {
             pdf.setFontSize(this.fonts.mini);
             pdf.setTextColor(100, 100, 100);
             pdf.text('Sin datos de ubicaciones', graficaX + (graficaAncho / 2), graficaY + (graficaAlto / 2), { align: 'center' });
+        }
+    }
+        // =============================================
+    // GRÁFICA TOP UBICACIONES MÁS GRANDE (PÁGINA 9)
+    // =============================================
+    async _dibujarGraficoTopUbicacionesGrande(pdf, yPos) {
+        const margen = GRID_CONFIG.MARGEN_PAGINA;
+        const anchoPagina = pdf.internal.pageSize.getWidth();
+        const altoPagina = pdf.internal.pageSize.getHeight();
+        const anchoGrafica = anchoPagina - (margen * 2);
+        const altoGrafica = altoPagina - yPos - 35; // Usar casi toda la página
+
+        pdf.setFillColor(252, 252, 252);
+        pdf.setDrawColor(200, 200, 200);
+        pdf.roundedRect(margen, yPos, anchoGrafica, altoGrafica, 3, 3, 'FD');
+
+        pdf.setFont('helvetica', 'bold');
+        pdf.setFontSize(this.fonts.normal);
+        pdf.setTextColor(0, 0, 0);
+        pdf.text('Top ubicaciones con más incidentes', margen + 5, yPos + 6);
+
+        pdf.setDrawColor(201, 160, 61);
+        pdf.setLineWidth(0.5);
+        pdf.line(margen + 5, yPos + 10, margen + anchoGrafica - 5, yPos + 10);
+
+        const graficaX = margen + 5;
+        const graficaY = yPos + 16;
+        const graficaAncho = anchoGrafica - 10;
+        const graficaAlto = altoGrafica - 25;
+
+        pdf.setFillColor(255, 255, 255);
+        pdf.rect(graficaX, graficaY, graficaAncho, graficaAlto, 'F');
+
+        if (this.graficasCapturadas.graficoTopUbicaciones) {
+            try {
+                pdf.addImage(this.graficasCapturadas.graficoTopUbicaciones, 'PNG', graficaX + 1, graficaY + 1, graficaAncho - 2, graficaAlto - 2);
+            } catch (error) {
+                pdf.setFont('helvetica', 'italic');
+                pdf.setFontSize(this.fonts.normal);
+                pdf.setTextColor(100, 100, 100);
+                pdf.text('Error al cargar gráfica', graficaX + (graficaAncho / 2), graficaY + (graficaAlto / 2), { align: 'center' });
+            }
+        } else {
+            pdf.setFont('helvetica', 'italic');
+            pdf.setFontSize(this.fonts.normal);
+            pdf.setTextColor(100, 100, 100);
+            pdf.text('Sin datos de ubicaciones', graficaX + (graficaAncho / 2), graficaY + (graficaAlto / 2), { align: 'center' });
+        }
+    }
+
+    // =============================================
+    // TABLA MAPA CALOR GRANDE (PÁGINA 10)
+    // =============================================
+      // =============================================
+    // TABLA MAPA CALOR GRANDE (PÁGINA 10) - CORREGIDA
+    // =============================================
+    async _dibujarTablaMapaCalorGrande(pdf, yPos) {
+        const margen = GRID_CONFIG.MARGEN_PAGINA;
+        const anchoPagina = pdf.internal.pageSize.getWidth();
+        const altoPagina = pdf.internal.pageSize.getHeight();
+        const anchoTabla = anchoPagina - (margen * 2);
+        
+        // Calcular espacio disponible
+        const altoDisponible = altoPagina - yPos - 30;
+        
+        // Obtener datos de ubicaciones del mapa de calor
+        let ubicacionesData = [];
+        
+        if (window.mapaCalorComponente && window.mapaCalorComponente.datosPorUbicacion) {
+            // Convertir Map a array y ordenar por incidentes
+            ubicacionesData = Array.from(window.mapaCalorComponente.datosPorUbicacion.values())
+                .sort((a, b) => b.totalIncidentes - a.totalIncidentes)
+                .slice(0, 10);
+        } else if (this.datosMapaCalor && this.datosMapaCalor.datosPorUbicacion) {
+            ubicacionesData = this.datosMapaCalor.datosPorUbicacion
+                .sort((a, b) => b.totalIncidentes - a.totalIncidentes)
+                .slice(0, 10);
+        }
+        
+        // Si no hay datos, mostrar mensaje
+        if (!ubicacionesData || ubicacionesData.length === 0) {
+            pdf.setFillColor(252, 252, 252);
+            pdf.setDrawColor(200, 200, 200);
+            pdf.roundedRect(margen, yPos, anchoTabla, 60, 3, 3, 'FD');
+            
+            pdf.setFont('helvetica', 'bold');
+            pdf.setFontSize(this.fonts.normal);
+            pdf.setTextColor(0, 0, 0);
+            pdf.text('Información detallada por ubicación (Top 10)', margen + 5, yPos + 6);
+            
+            pdf.setDrawColor(201, 160, 61);
+            pdf.setLineWidth(0.5);
+            pdf.line(margen + 5, yPos + 10, margen + anchoTabla - 5, yPos + 10);
+            
+            pdf.setFont('helvetica', 'italic');
+            pdf.setFontSize(this.fonts.normal);
+            pdf.setTextColor(100, 100, 100);
+            pdf.text('No hay datos de ubicaciones para mostrar. Aplica filtros en el mapa de calor.', 
+                margen + (anchoTabla / 2), yPos + 40, { align: 'center' });
+            return;
+        }
+        
+        // Configuración de la tabla
+        const formatter = new Intl.NumberFormat('es-MX', { 
+            style: 'currency', 
+            currency: 'MXN', 
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 0 
+        });
+        
+        // Definir anchos de columnas (en mm)
+        const colAnchos = {
+            ubicacion: 65,
+            incidentes: 22,
+            perdido: 35,
+            recuperado: 35,
+            neto: 35,
+            nivel: 28
+        };
+        
+        const xInicio = margen + 3;
+        const altoFila = 7;
+        const headerY = yPos + 16;
+        let currentY = headerY + altoFila;
+        
+        // Calcular cuántas filas caben
+        const espacioFilas = altoDisponible - 40;
+        const maxFilas = Math.min(Math.floor(espacioFilas / (altoFila + 1)), ubicacionesData.length, 10);
+        
+        // Dibujar fondo del contenedor
+        const altoTotal = 40 + (maxFilas * (altoFila + 1.5)) + 10;
+        pdf.setFillColor(252, 252, 252);
+        pdf.setDrawColor(200, 200, 200);
+        pdf.roundedRect(margen, yPos, anchoTabla, Math.min(altoTotal, altoDisponible), 3, 3, 'FD');
+        
+        // Título
+        pdf.setFont('helvetica', 'bold');
+        pdf.setFontSize(this.fonts.normal);
+        pdf.setTextColor(0, 0, 0);
+        pdf.text('Información detallada por ubicación (Top 10)', margen + 5, yPos + 6);
+        
+        // Línea decorativa
+        pdf.setDrawColor(201, 160, 61);
+        pdf.setLineWidth(0.5);
+        pdf.line(margen + 5, yPos + 10, margen + anchoTabla - 5, yPos + 10);
+        
+        // HEADER de la tabla
+        pdf.setFillColor(26, 59, 93);
+        pdf.rect(xInicio - 2, headerY - 4, anchoTabla - 2, altoFila + 2, 'F');
+        
+        pdf.setFont('helvetica', 'bold');
+        pdf.setFontSize(this.fonts.micro);
+        pdf.setTextColor(255, 255, 255);
+        
+        let currentX = xInicio;
+        pdf.text('Ubicación', currentX, headerY);
+        currentX += colAnchos.ubicacion;
+        pdf.text('Inc', currentX, headerY);
+        currentX += colAnchos.incidentes;
+        pdf.text('Perdido', currentX, headerY);
+        currentX += colAnchos.perdido;
+        pdf.text('Recuperado', currentX, headerY);
+        currentX += colAnchos.recuperado;
+        pdf.text('Neta', currentX, headerY);
+        currentX += colAnchos.neto;
+        pdf.text('Nivel', currentX, headerY);
+        
+        // DATOS de la tabla
+        pdf.setFont('helvetica', 'normal');
+        pdf.setFontSize(this.fonts.micro);
+        pdf.setTextColor(0, 0, 0);
+        
+        for (let i = 0; i < maxFilas; i++) {
+            const ubic = ubicacionesData[i];
+            
+            // Fondo alternado
+            if (i % 2 === 0) {
+                pdf.setFillColor(248, 248, 252);
+                pdf.rect(xInicio - 2, currentY - 3, anchoTabla - 2, altoFila + 2, 'F');
+            }
+            
+            currentX = xInicio;
+            
+            // Nombre de ubicación (truncado)
+            let nombre = ubic.nombre || 'N/A';
+            if (nombre.length > 28) nombre = nombre.substring(0, 25) + '...';
+            pdf.text(nombre, currentX, currentY);
+            currentX += colAnchos.ubicacion;
+            
+            // Incidentes
+            pdf.text((ubic.totalIncidentes || 0).toString(), currentX, currentY);
+            currentX += colAnchos.incidentes;
+            
+            // Perdido
+            const perdido = ubic.totalPerdido || 0;
+            let perdidoStr = perdido >= 1000000 ? `$${(perdido / 1000000).toFixed(1)}M` :
+                             perdido >= 1000 ? `$${(perdido / 1000).toFixed(0)}K` :
+                             formatter.format(perdido);
+            pdf.setTextColor(239, 68, 68);
+            pdf.text(perdidoStr, currentX, currentY);
+            currentX += colAnchos.perdido;
+            
+            // Recuperado
+            const recuperado = ubic.totalRecuperado || 0;
+            let recuperadoStr = recuperado >= 1000000 ? `$${(recuperado / 1000000).toFixed(1)}M` :
+                               recuperado >= 1000 ? `$${(recuperado / 1000).toFixed(0)}K` :
+                               formatter.format(recuperado);
+            pdf.setTextColor(16, 185, 129);
+            pdf.text(recuperadoStr, currentX, currentY);
+            currentX += colAnchos.recuperado;
+            
+            // Neta (Perdido - Recuperado)
+            const neto = perdido - recuperado;
+            let netoStr = Math.abs(neto) >= 1000000 ? `$${(neto / 1000000).toFixed(1)}M` :
+                         Math.abs(neto) >= 1000 ? `$${(neto / 1000).toFixed(0)}K` :
+                         formatter.format(neto);
+            pdf.setTextColor(neto > 0 ? 239 : 16, neto > 0 ? 68 : 185, neto > 0 ? 68 : 129);
+            pdf.text(netoStr, currentX, currentY);
+            currentX += colAnchos.neto;
+            
+            // Nivel de riesgo
+            let nivelTexto = '';
+            let nivelColor = '';
+            switch (ubic.nivel) {
+                case 'critico': nivelTexto = 'Crítico'; nivelColor = '#ef4444'; break;
+                case 'alto': nivelTexto = 'Alto'; nivelColor = '#f97316'; break;
+                case 'medio': nivelTexto = 'Medio'; nivelColor = '#eab308'; break;
+                default: nivelTexto = 'Bajo'; nivelColor = '#10b981'; break;
+            }
+            pdf.setTextColor(nivelColor);
+            pdf.text(nivelTexto, currentX, currentY);
+            
+            currentY += altoFila + 1.5;
+        }
+        
+        // Mostrar cuántas filas se están mostrando
+        if (ubicacionesData.length > maxFilas) {
+            pdf.setFont('helvetica', 'italic');
+            pdf.setFontSize(this.fonts.micro);
+            pdf.setTextColor(100, 100, 100);
+            pdf.text(`* Mostrando ${maxFilas} de ${ubicacionesData.length} ubicaciones`, 
+                margen + 5, currentY + 3);
         }
     }
 
@@ -1152,41 +1483,96 @@ class PDFEstadisticasUnificadoGenerator extends PDFBaseGenerator {
         await this._dibujarGraficaSimpleConTitulo(pdf, 'Colaboradores con más seguimientos', this.graficasCapturadas.seguimientos, margen + (anchoGrafica + espacioGraficas) * 2, yPos, anchoGrafica, 63);
     }
 
-    async _dibujarGraficaSimpleConTitulo(pdf, titulo, imagenDataURL, x, y, ancho, alto) {
-        const padding = 3;
-        const alturaTitulo = 14;
-        pdf.setFillColor(252, 252, 252);
-        pdf.setDrawColor(200, 200, 200);
-        pdf.roundedRect(x, y, ancho, alto, 3, 3, 'FD');
-        pdf.setDrawColor(201, 160, 61);
-        pdf.setLineWidth(0.5);
-        pdf.line(x + 4, y + alturaTitulo - 2, x + ancho - 4, y + alturaTitulo - 2);
-        pdf.setFont('helvetica', 'bold');
-        pdf.setFontSize(this.fonts.mini);
-        pdf.setTextColor(0, 0, 0);
-        pdf.text(titulo, x + (ancho / 2), y + 5, { align: 'center' });
-        const graficaX = x + padding;
-        const graficaY = y + alturaTitulo + 2;
-        const graficaAncho = ancho - (padding * 2);
-        const graficaAlto = alto - alturaTitulo - 6;
-        pdf.setFillColor(255, 255, 255);
-        pdf.rect(graficaX, graficaY, graficaAncho, graficaAlto, 'F');
-        if (imagenDataURL) {
-            try {
-                pdf.addImage(imagenDataURL, 'PNG', graficaX + 1, graficaY + 1, graficaAncho - 2, graficaAlto - 2);
-            } catch (error) {
-                pdf.setFont('helvetica', 'italic');
-                pdf.setFontSize(this.fonts.mini);
-                pdf.setTextColor(100, 100, 100);
-                pdf.text('Error al cargar gráfica', graficaX + (graficaAncho / 2), graficaY + (graficaAlto / 2), { align: 'center' });
-            }
-        } else {
-            pdf.setFont('helvetica', 'italic');
-            pdf.setFontSize(this.fonts.mini);
-            pdf.setTextColor(100, 100, 100);
-            pdf.text('Sin datos', graficaX + (graficaAncho / 2), graficaY + (graficaAlto / 2), { align: 'center' });
+   async _dibujarGraficaSimpleConTitulo(pdf, titulo, imagenDataURL, x, y, ancho, alto) {
+    const padding = 3;
+    const alturaTitulo = 14;
+    
+    pdf.setFillColor(252, 252, 252);
+    pdf.setDrawColor(200, 200, 200);
+    pdf.roundedRect(x, y, ancho, alto, 3, 3, 'FD');
+    
+    pdf.setDrawColor(201, 160, 61);
+    pdf.setLineWidth(0.5);
+    pdf.line(x + 4, y + alturaTitulo - 2, x + ancho - 4, y + alturaTitulo - 2);
+    
+    pdf.setFont('helvetica', 'bold');
+    pdf.setFontSize(this.fonts.mini);
+    pdf.setTextColor(0, 0, 0); // Título en NEGRO
+    pdf.text(titulo, x + (ancho / 2), y + 5, { align: 'center' });
+    
+    const graficaX = x + padding;
+    const graficaY = y + alturaTitulo + 2;
+    const graficaAncho = ancho - (padding * 2);
+    const graficaAlto = alto - alturaTitulo - 6;
+    
+    pdf.setFillColor(255, 255, 255);
+    pdf.rect(graficaX, graficaY, graficaAncho, graficaAlto, 'F');
+    
+    if (imagenDataURL) {
+        try {
+            // Aplicar filtro para hacer el texto de la imagen NEGRO
+            const imagenModificada = await this._forzarTextoNegroEnImagen(imagenDataURL);
+            pdf.addImage(imagenModificada, 'PNG', graficaX + 1, graficaY + 1, graficaAncho - 2, graficaAlto - 2);
+        } catch (error) {
+            console.error('Error al procesar imagen:', error);
+            // Fallback: usar imagen original
+            pdf.addImage(imagenDataURL, 'PNG', graficaX + 1, graficaY + 1, graficaAncho - 2, graficaAlto - 2);
         }
+    } else {
+        pdf.setFont('helvetica', 'italic');
+        pdf.setFontSize(this.fonts.mini);
+        pdf.setTextColor(100, 100, 100);
+        pdf.text('Sin datos', graficaX + (graficaAncho / 2), graficaY + (graficaAlto / 2), { align: 'center' });
     }
+}
+async _forzarTextoNegroEnImagen(dataURL) {
+    return new Promise((resolve) => {
+        const img = new Image();
+        img.onload = () => {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            
+            canvas.width = img.width;
+            canvas.height = img.height;
+            
+            // Dibujar imagen original
+            ctx.drawImage(img, 0, 0);
+            
+            // Obtener datos de píxeles
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const data = imageData.data;
+            
+            // Analizar y modificar colores (texto claro a NEGRO)
+            for (let i = 0; i < data.length; i += 4) {
+                const r = data[i];
+                const g = data[i + 1];
+                const b = data[i + 2];
+                const a = data[i + 3];
+                
+                // Detectar texto claro (blanco, gris claro, colores claros)
+                const esTextoClaro = (r > 180 && g > 180 && b > 180) || // blanco
+                                     (r > 150 && g > 150 && b > 150) || // gris claro
+                                     (Math.abs(r - g) < 50 && Math.abs(g - b) < 50 && r > 120); // grisáceo
+                
+                // Detectar colores de fondo oscuro o barras (no modificar)
+                const esBarraOscura = (r < 100 && g < 100 && b < 200) || // azul oscuro
+                                      (r < 100 && g > 100 && b < 100) || // verde oscuro
+                                      (r > 100 && g < 100 && b < 100);   // rojo oscuro
+                
+                // Convertir texto claro a NEGRO (pero no modificar barras)
+                if (esTextoClaro && !esBarraOscura && a > 200) {
+                    data[i] = 0;     // R = 0
+                    data[i + 1] = 0; // G = 0
+                    data[i + 2] = 0; // B = 0
+                }
+            }
+            
+            ctx.putImageData(imageData, 0, 0);
+            resolve(canvas.toDataURL('image/png'));
+        };
+        img.src = dataURL;
+    });
+}
 
     async _dibujarGraficaCircularConTitulo(pdf, titulo, imagenDataURL, x, y, ancho, alto) {
         const padding = 5;

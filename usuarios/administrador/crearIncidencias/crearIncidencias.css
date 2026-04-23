@@ -2039,3 +2039,180 @@ select:not(.field-disabled):focus {
         display: none;
     }
 }
+
+/* =============================================
+   MODAL DE CREACIÓN DE NIVEL DE RIESGO
+   ============================================= */
+
+/* Contenedor principal del modal */
+.riesgo-modal-contenido {
+    text-align: left;
+    padding: 5px 0;
+}
+
+/* Campo individual */
+.riesgo-campo {
+    margin-bottom: 20px;
+}
+
+/* Etiqueta del campo */
+.riesgo-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+    color: var(--color-text-primary);
+    font-weight: 600;
+    font-family: var(--font-family-primary);
+    font-size: 14px;
+    letter-spacing: 0.3px;
+}
+
+.riesgo-label i {
+    color: var(--color-accent-primary);
+    font-size: 14px;
+}
+
+/* Input de texto */
+.riesgo-input {
+    width: 100%;
+    background: var(--color-bg-tertiary);
+    color: var(--color-text-primary);
+    border: 1px solid var(--color-border-light);
+    border-radius: var(--border-radius-small);
+    padding: 12px 15px;
+    font-family: var(--font-family-secondary);
+    font-size: 14px;
+    transition: all 0.3s ease;
+}
+
+.riesgo-input:focus {
+    outline: none;
+    border-color: var(--color-accent-primary);
+    box-shadow: 0 0 0 2px rgba(0, 207, 255, 0.2);
+}
+
+.riesgo-input::placeholder {
+    color: rgba(255, 255, 255, 0.3);
+}
+
+/* Input de color - CUADRADO (no rectángulo) */
+.riesgo-color-input {
+    width: 100%;
+    height: 50px;
+    border: 2px solid var(--color-border-light);
+    border-radius: var(--border-radius-small);
+    cursor: pointer;
+    background: var(--color-bg-tertiary);
+    padding: 4px;
+    transition: all 0.3s ease;
+}
+
+.riesgo-color-input:hover {
+    border-color: var(--color-accent-primary);
+    transform: translateY(-1px);
+}
+
+.riesgo-color-input:focus {
+    outline: none;
+    border-color: var(--color-accent-primary);
+    box-shadow: 0 0 0 2px rgba(0, 207, 255, 0.2);
+}
+
+/* Personalizar el botón nativo del color picker para que sea cuadrado */
+.riesgo-color-input::-webkit-color-swatch-wrapper {
+    padding: 0;
+}
+
+.riesgo-color-input::-webkit-color-swatch {
+    border: none;
+    border-radius: var(--border-radius-small);
+}
+
+/* Estilos específicos del modal de SweetAlert2 */
+.riesgo-modal-popup {
+    border-radius: var(--border-radius-large) !important;
+    border: 1px solid var(--color-border-light) !important;
+}
+
+/* Botones del modal */
+.riesgo-btn-confirmar {
+    background: linear-gradient(145deg, #0f0f0f, #1a1a1a) !important;
+    border: 1px solid var(--color-accent-primary) !important;
+    color: var(--color-text-primary) !important;
+    font-family: var(--font-family-primary) !important;
+    font-weight: 600 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.5px !important;
+    padding: 10px 20px !important;
+    border-radius: var(--border-radius-medium) !important;
+    transition: all 0.3s ease !important;
+}
+
+.riesgo-btn-confirmar:hover {
+    transform: translateY(-2px) !important;
+    background: linear-gradient(145deg, #1a1a1a, #0f0f0f) !important;
+    box-shadow: 0 0 15px rgba(0, 207, 255, 0.3) !important;
+    border-color: var(--color-accent-secondary) !important;
+}
+
+.riesgo-btn-cancelar {
+    background: transparent !important;
+    border: 1px solid var(--color-border-light) !important;
+    color: var(--color-text-secondary) !important;
+    font-family: var(--font-family-primary) !important;
+    font-weight: 600 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.5px !important;
+    padding: 10px 20px !important;
+    border-radius: var(--border-radius-medium) !important;
+    transition: all 0.3s ease !important;
+}
+
+.riesgo-btn-cancelar:hover {
+    border-color: var(--color-danger) !important;
+    color: var(--color-danger) !important;
+    transform: translateY(-2px) !important;
+    background: rgba(220, 53, 69, 0.1) !important;
+}
+
+/* Responsive para móvil */
+@media (max-width: 768px) {
+    .riesgo-modal-contenido {
+        padding: 0;
+    }
+
+    .riesgo-input {
+        padding: 10px 12px;
+        font-size: 13px;
+    }
+
+    .riesgo-color-input {
+        height: 45px;
+    }
+
+    .riesgo-btn-confirmar,
+    .riesgo-btn-cancelar {
+        padding: 8px 16px !important;
+        font-size: 12px !important;
+    }
+}
+
+@media (max-width: 480px) {
+    .riesgo-label {
+        font-size: 12px;
+    }
+
+    .riesgo-label i {
+        font-size: 12px;
+    }
+
+    .riesgo-input {
+        padding: 8px 10px;
+        font-size: 12px;
+    }
+
+    .riesgo-color-input {
+        height: 40px;
+    }
+}

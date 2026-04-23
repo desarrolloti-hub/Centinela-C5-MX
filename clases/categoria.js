@@ -1,4 +1,4 @@
-// categoria.js - VERSIÓN CORREGIDA CON REGISTRO DE ACTIVIDADES Y CONSUMO FIREBASE
+// categoria.js - VERSIÓN COMPLETA CON MÉTODOS PARA RIESGO EN SUBCATEGORÍAS
 
 import { db } from '/config/firebase-config.js';
 import {
@@ -15,7 +15,6 @@ import {
     addDoc
 } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-firestore.js";
 
-// [MODIFICACIÓN 1]: Importar la instancia de consumo
 import consumo from '/clases/consumoFirebase.js';
 
 class Categoria {
@@ -60,7 +59,64 @@ class Categoria {
         }
     }
 
-    agregarSubcategoria(nombre, descripcion = '', heredaColor = true, colorPersonalizado = null) {
+    // ==================== MÉTODOS PARA NIVEL DE RIESGO EN SUBCATEGORÍAS ====================
+
+    /**
+     * Obtiene el nivel de riesgo asignado a una subcategoría
+     * @param {string} subcatId - ID de la subcategoría
+     * @returns {string|null} - ID del nivel de riesgo o null si no tiene
+     */
+    obtenerRiesgoDeSubcategoria(subcatId) {
+        const subcat = this.subcategorias[subcatId];
+        if (!subcat) return null;
+        return subcat.riesgoNivelId || null;
+    }
+
+    /**
+     * Asigna un nivel de riesgo a una subcategoría
+     * @param {string} subcatId - ID de la subcategoría
+     * @param {string} riesgoId - ID del nivel de riesgo
+     * @returns {boolean} - true si se asignó correctamente
+     */
+    asignarRiesgoASubcategoria(subcatId, riesgoId) {
+        if (!this.subcategorias[subcatId]) {
+            console.error(`Subcategoría ${subcatId} no encontrada`);
+            return false;
+        }
+
+        this.subcategorias[subcatId].riesgoNivelId = riesgoId;
+        this.subcategorias[subcatId].fechaActualizacion = new Date().toISOString();
+        this.fechaActualizacion = new Date();
+        return true;
+    }
+
+    /**
+     * Verifica si una subcategoría tiene nivel de riesgo asignado
+     * @param {string} subcatId - ID de la subcategoría
+     * @returns {boolean}
+     */
+    subcategoriaTieneRiesgo(subcatId) {
+        const subcat = this.subcategorias[subcatId];
+        return subcat && subcat.riesgoNivelId && subcat.riesgoNivelId !== '';
+    }
+
+    /**
+     * Elimina el nivel de riesgo de una subcategoría
+     * @param {string} subcatId - ID de la subcategoría
+     * @returns {boolean}
+     */
+    eliminarRiesgoDeSubcategoria(subcatId) {
+        if (!this.subcategorias[subcatId]) {
+            return false;
+        }
+
+        delete this.subcategorias[subcatId].riesgoNivelId;
+        this.subcategorias[subcatId].fechaActualizacion = new Date().toISOString();
+        this.fechaActualizacion = new Date();
+        return true;
+    }
+
+    agregarSubcategoria(nombre, descripcion = '', heredaColor = true, colorPersonalizado = null, riesgoId = null) {
         try {
             if (!nombre || nombre.trim() === '') {
                 throw new Error('El nombre de la subcategoría es requerido');
@@ -75,7 +131,8 @@ class Categoria {
                 fechaCreacion: new Date().toISOString(),
                 fechaActualizacion: new Date().toISOString(),
                 heredaColor: heredaColor,
-                color: !heredaColor ? colorPersonalizado : null
+                color: !heredaColor ? colorPersonalizado : null,
+                riesgoNivelId: riesgoId || null
             };
 
             return subcatId;
@@ -161,7 +218,8 @@ class Categoria {
             subcategoriasArray.push({
                 id: subcatId,
                 ...subcat,
-                colorEfectivo: colorEfectivo
+                colorEfectivo: colorEfectivo,
+                riesgoNivelId: subcat.riesgoNivelId || null
             });
         }
         return subcategoriasArray;
@@ -293,6 +351,273 @@ class CategoriaManager {
         return `categorias_${orgId}`;
     }
 
+    // ==================== MÉTODO: ASIGNAR RIESGO A SUBCATEGORÍA ====================
+    async asignarRiesgoASubcategoria(categoriaId, subcategoriaId, riesgoId, usuarioActual = null, organizacionOverride = null) {
+        try {
+            const orgId = organizacionOverride || this.organizacionCamelCase;
+
+            if (!orgId) {
+                throw new Error('Se requiere ID de organización');
+            }
+
+            // Obtener la categoría actual
+            const categoria = await this.obtenerCategoriaPorId(categoriaId, orgId);
+
+            if (!categoria) {
+                throw new Error('Categoría no encontrada');
+            }
+
+            if (!categoria.subcategorias[subcategoriaId]) {
+                throw new Error('Subcategoría no encontrada');
+            }
+
+            const nombreSubcategoria = categoria.subcategorias[subcategoriaId].nombre || subcategoriaId;
+            const nombreCategoria = categoria.nombre;
+
+            // Asignar el nivel de riesgo usando el método de la clase Categoria
+            const asignado = categoria.asignarRiesgoASubcategoria(subcategoriaId, riesgoId);
+
+            if (!asignado) {
+                throw new Error('No se pudo asignar el riesgo a la subcategoría');
+            }
+
+            const collectionName = this._getCollectionName(orgId);
+            const categoriaRef = doc(db, collectionName, categoriaId);
+
+            await consumo.registrarFirestoreActualizacion(collectionName, categoriaId);
+            await updateDoc(categoriaRef, {
+                subcategorias: categoria.subcategorias,
+                fechaActualizacion: serverTimestamp()
+            });
+
+            // Actualizar caché
+            const categoriaIndex = this.categorias.findIndex(c => c.id === categoriaId);
+            if (categoriaIndex !== -1) {
+                this.categorias[categoriaIndex].subcategorias = categoria.subcategorias;
+                this.categorias[categoriaIndex].fechaActualizacion = new Date();
+            }
+
+            // Registrar en historial
+            if (usuarioActual) {
+                const historial = await this._getHistorialManager();
+                if (historial) {
+                    await historial.registrarActividad({
+                        usuario: usuarioActual,
+                        tipo: 'editar',
+                        modulo: 'categorias',
+                        descripcion: `Asignó nivel de riesgo a subcategoría "${nombreSubcategoria}" de categoría "${nombreCategoria}"`,
+                        detalles: {
+                            categoriaId,
+                            categoriaNombre: nombreCategoria,
+                            subcategoriaId,
+                            subcategoriaNombre: nombreSubcategoria,
+                            riesgoId
+                        }
+                    });
+                }
+            }
+
+            return true;
+
+        } catch (error) {
+            console.error('Error asignando riesgo a subcategoría:', error);
+            throw error;
+        }
+    }
+
+    // ==================== MÉTODO: OBTENER RIESGO DE SUBCATEGORÍA ====================
+    async obtenerRiesgoDeSubcategoria(categoriaId, subcategoriaId, organizacionOverride = null) {
+        try {
+            const orgId = organizacionOverride || this.organizacionCamelCase;
+
+            if (!orgId) {
+                return null;
+            }
+
+            const categoria = await this.obtenerCategoriaPorId(categoriaId, orgId);
+
+            if (!categoria) {
+                return null;
+            }
+
+            return categoria.obtenerRiesgoDeSubcategoria(subcategoriaId);
+
+        } catch (error) {
+            console.error('Error obteniendo riesgo de subcategoría:', error);
+            return null;
+        }
+    }
+
+    // ==================== MÉTODO: VERIFICAR SI SUBCATEGORÍA TIENE RIESGO ====================
+    async subcategoriaTieneRiesgo(categoriaId, subcategoriaId, organizacionOverride = null) {
+        try {
+            const orgId = organizacionOverride || this.organizacionCamelCase;
+
+            if (!orgId) {
+                return false;
+            }
+
+            const categoria = await this.obtenerCategoriaPorId(categoriaId, orgId);
+
+            if (!categoria) {
+                return false;
+            }
+
+            return categoria.subcategoriaTieneRiesgo(subcategoriaId);
+
+        } catch (error) {
+            console.error('Error verificando si subcategoría tiene riesgo:', error);
+            return false;
+        }
+    }
+
+    // ==================== MÉTODO: ELIMINAR RIESGO DE SUBCATEGORÍA ====================
+    async eliminarRiesgoDeSubcategoria(categoriaId, subcategoriaId, usuarioActual = null, organizacionOverride = null) {
+        try {
+            const orgId = organizacionOverride || this.organizacionCamelCase;
+
+            if (!orgId) {
+                throw new Error('Se requiere ID de organización');
+            }
+
+            const categoria = await this.obtenerCategoriaPorId(categoriaId, orgId);
+
+            if (!categoria) {
+                throw new Error('Categoría no encontrada');
+            }
+
+            if (!categoria.subcategorias[subcategoriaId]) {
+                throw new Error('Subcategoría no encontrada');
+            }
+
+            const nombreSubcategoria = categoria.subcategorias[subcategoriaId].nombre || subcategoriaId;
+            const nombreCategoria = categoria.nombre;
+            const riesgoIdAnterior = categoria.subcategorias[subcategoriaId].riesgoNivelId;
+
+            // Eliminar el nivel de riesgo
+            const eliminado = categoria.eliminarRiesgoDeSubcategoria(subcategoriaId);
+
+            if (!eliminado) {
+                throw new Error('No se pudo eliminar el riesgo de la subcategoría');
+            }
+
+            const collectionName = this._getCollectionName(orgId);
+            const categoriaRef = doc(db, collectionName, categoriaId);
+
+            await consumo.registrarFirestoreActualizacion(collectionName, categoriaId);
+            await updateDoc(categoriaRef, {
+                subcategorias: categoria.subcategorias,
+                fechaActualizacion: serverTimestamp()
+            });
+
+            // Actualizar caché
+            const categoriaIndex = this.categorias.findIndex(c => c.id === categoriaId);
+            if (categoriaIndex !== -1) {
+                this.categorias[categoriaIndex].subcategorias = categoria.subcategorias;
+                this.categorias[categoriaIndex].fechaActualizacion = new Date();
+            }
+
+            // Registrar en historial
+            if (usuarioActual) {
+                const historial = await this._getHistorialManager();
+                if (historial) {
+                    await historial.registrarActividad({
+                        usuario: usuarioActual,
+                        tipo: 'editar',
+                        modulo: 'categorias',
+                        descripcion: `Eliminó nivel de riesgo de subcategoría "${nombreSubcategoria}" de categoría "${nombreCategoria}"`,
+                        detalles: {
+                            categoriaId,
+                            categoriaNombre: nombreCategoria,
+                            subcategoriaId,
+                            subcategoriaNombre: nombreSubcategoria,
+                            riesgoIdAnterior
+                        }
+                    });
+                }
+            }
+
+            return true;
+
+        } catch (error) {
+            console.error('Error eliminando riesgo de subcategoría:', error);
+            throw error;
+        }
+    }
+
+    // ==================== MÉTODO: ACTUALIZAR SUBCATEGORÍA COMPLETA ====================
+    async actualizarSubcategoria(categoriaId, subcategoriaId, datosActualizacion, usuarioActual = null, organizacionOverride = null) {
+        try {
+            const orgId = organizacionOverride || this.organizacionCamelCase;
+
+            if (!orgId) {
+                throw new Error('Se requiere ID de organización');
+            }
+
+            const categoria = await this.obtenerCategoriaPorId(categoriaId, orgId);
+
+            if (!categoria) {
+                throw new Error('Categoría no encontrada');
+            }
+
+            if (!categoria.subcategorias[subcategoriaId]) {
+                throw new Error('Subcategoría no encontrada');
+            }
+
+            const nombreSubcategoria = categoria.subcategorias[subcategoriaId].nombre || subcategoriaId;
+            const nombreCategoria = categoria.nombre;
+
+            // Actualizar datos
+            categoria.subcategorias[subcategoriaId] = {
+                ...categoria.subcategorias[subcategoriaId],
+                ...datosActualizacion,
+                fechaActualizacion: new Date().toISOString()
+            };
+
+            const collectionName = this._getCollectionName(orgId);
+            const categoriaRef = doc(db, collectionName, categoriaId);
+
+            await consumo.registrarFirestoreActualizacion(collectionName, categoriaId);
+            await updateDoc(categoriaRef, {
+                subcategorias: categoria.subcategorias,
+                fechaActualizacion: serverTimestamp()
+            });
+
+            // Actualizar caché
+            const categoriaIndex = this.categorias.findIndex(c => c.id === categoriaId);
+            if (categoriaIndex !== -1) {
+                this.categorias[categoriaIndex].subcategorias = categoria.subcategorias;
+                this.categorias[categoriaIndex].fechaActualizacion = new Date();
+            }
+
+            // Registrar en historial
+            if (usuarioActual) {
+                const historial = await this._getHistorialManager();
+                if (historial) {
+                    await historial.registrarActividad({
+                        usuario: usuarioActual,
+                        tipo: 'editar',
+                        modulo: 'categorias',
+                        descripcion: `Actualizó subcategoría "${nombreSubcategoria}" de categoría "${nombreCategoria}"`,
+                        detalles: {
+                            categoriaId,
+                            categoriaNombre: nombreCategoria,
+                            subcategoriaId,
+                            subcategoriaNombre: nombreSubcategoria,
+                            cambios: Object.keys(datosActualizacion)
+                        }
+                    });
+                }
+            }
+
+            return true;
+
+        } catch (error) {
+            console.error('Error actualizando subcategoría:', error);
+            throw error;
+        }
+    }
+
     async crearCategoria(data, usuarioActual = null) {
         try {
             if (!data.nombre || data.nombre.trim() === '') {
@@ -305,7 +630,6 @@ class CategoriaManager {
 
             const collectionName = this._getCollectionName();
 
-            // [MODIFICACIÓN 2]: Registrar LECTURA antes de verificar existencia
             await consumo.registrarFirestoreLectura(collectionName, 'verificar nombre');
 
             const existe = await this.verificarCategoriaExistente(data.nombre.trim());
@@ -327,7 +651,8 @@ class CategoriaManager {
                             fechaCreacion: new Date().toISOString(),
                             fechaActualizacion: new Date().toISOString(),
                             heredaColor: subcat.heredaColor !== undefined ? subcat.heredaColor : true,
-                            color: subcat.color || null
+                            color: subcat.color || null,
+                            riesgoNivelId: subcat.riesgoNivelId || null
                         };
                         subcategoriasArray.push(subcat.nombre || '');
                     });
@@ -350,7 +675,6 @@ class CategoriaManager {
 
             const categoriasCollection = collection(db, collectionName);
 
-            // [MODIFICACIÓN 3]: Registrar ESCRITURA antes de addDoc
             await consumo.registrarFirestoreEscritura(collectionName, 'nueva categoría');
 
             const docRef = await addDoc(categoriasCollection, categoriaFirestoreData);
@@ -366,7 +690,6 @@ class CategoriaManager {
 
             this.categorias.unshift(nuevaCategoria);
 
-            // REGISTRO EN HISTORIAL
             if (usuarioActual) {
                 const historial = await this._getHistorialManager();
                 if (historial) {
@@ -408,7 +731,6 @@ class CategoriaManager {
             const collectionName = this._getCollectionName(orgId);
             const categoriasCollection = collection(db, collectionName);
 
-            // [MODIFICACIÓN 4]: Registrar LECTURA antes de getDocs
             await consumo.registrarFirestoreLectura(collectionName, 'lista categorías');
 
             const categoriasSnapshot = await getDocs(categoriasCollection);
@@ -432,7 +754,6 @@ class CategoriaManager {
             categorias.sort((a, b) => b.fechaCreacion - a.fechaCreacion);
             this.categorias = categorias;
 
-            // REGISTRO EN HISTORIAL (solo lectura)
             if (usuarioActual) {
                 const historial = await this._getHistorialManager();
                 if (historial) {
@@ -468,7 +789,6 @@ class CategoriaManager {
             const collectionName = this._getCollectionName(orgId);
             const categoriaRef = doc(db, collectionName, categoriaId);
 
-            // [MODIFICACIÓN 5]: Registrar LECTURA antes de getDoc
             await consumo.registrarFirestoreLectura(collectionName, categoriaId);
 
             const categoriaSnap = await getDoc(categoriaRef);
@@ -504,7 +824,6 @@ class CategoriaManager {
             const collectionName = this._getCollectionName(orgId);
             const categoriaRef = doc(db, collectionName, categoriaId);
 
-            // [MODIFICACIÓN 6]: Registrar LECTURA antes de getDoc
             await consumo.registrarFirestoreLectura(collectionName, categoriaId);
 
             const categoriaSnap = await getDoc(categoriaRef);
@@ -516,7 +835,6 @@ class CategoriaManager {
             const datosActuales = categoriaSnap.data();
 
             if (nuevosDatos.nombre && nuevosDatos.nombre !== datosActuales.nombre) {
-                // [MODIFICACIÓN 7]: Registrar LECTURA para verificar nombre
                 await consumo.registrarFirestoreLectura(collectionName, 'verificar nombre');
 
                 const existe = await this.verificarCategoriaExistente(nuevosDatos.nombre, orgId, categoriaId);
@@ -534,7 +852,6 @@ class CategoriaManager {
             delete datosActualizados.organizacionCamelCase;
             delete datosActualizados.organizacionNombre;
 
-            // [MODIFICACIÓN 8]: Registrar ACTUALIZACIÓN antes de updateDoc
             await consumo.registrarFirestoreActualizacion(collectionName, categoriaId);
 
             await updateDoc(categoriaRef, datosActualizados);
@@ -550,7 +867,6 @@ class CategoriaManager {
                 categoriaActual.fechaActualizacion = new Date();
             }
 
-            // REGISTRO EN HISTORIAL
             if (usuarioActual) {
                 const historial = await this._getHistorialManager();
                 if (historial) {
@@ -613,7 +929,6 @@ class CategoriaManager {
             const collectionName = this._getCollectionName(orgId);
             const categoriaRef = doc(db, collectionName, categoriaId);
 
-            // [MODIFICACIÓN 9]: Registrar ELIMINACIÓN antes de deleteDoc
             await consumo.registrarFirestoreEliminacion(collectionName, categoriaId);
 
             await deleteDoc(categoriaRef);
@@ -623,7 +938,6 @@ class CategoriaManager {
                 this.categorias.splice(categoriaIndex, 1);
             }
 
-            // REGISTRO EN HISTORIAL
             if (usuarioActual) {
                 const historial = await this._getHistorialManager();
                 if (historial) {
@@ -664,7 +978,6 @@ class CategoriaManager {
                 where("nombre", "==", nombre)
             );
 
-            // [MODIFICACIÓN 10]: Registrar LECTURA antes de getDocs
             await consumo.registrarFirestoreLectura(collectionName, 'verificar nombre');
 
             const querySnapshot = await getDocs(q);
@@ -681,7 +994,7 @@ class CategoriaManager {
         }
     }
 
-    async agregarSubcategoria(categoriaId, nombreSubcategoria, descripcion = '', heredaColor = true, colorPersonalizado = null, usuarioActual = null, organizacionOverride = null) {
+    async agregarSubcategoria(categoriaId, nombreSubcategoria, descripcion = '', heredaColor = true, colorPersonalizado = null, riesgoId = null, usuarioActual = null, organizacionOverride = null) {
         try {
             const orgId = organizacionOverride || this.organizacionCamelCase;
 
@@ -699,22 +1012,11 @@ class CategoriaManager {
                 throw new Error(`Ya existe una subcategoría con el nombre "${nombreSubcategoria}"`);
             }
 
-            const subcatId = `temp_${Date.now()}_${Math.random().toString(36).substr(2, 8)}`;
-
-            categoria.subcategorias[subcatId] = {
-                id: subcatId,
-                nombre: nombreSubcategoria.trim(),
-                descripcion: descripcion.trim() || '',
-                fechaCreacion: new Date().toISOString(),
-                fechaActualizacion: new Date().toISOString(),
-                heredaColor: heredaColor,
-                color: !heredaColor ? colorPersonalizado : null
-            };
+            const subcatId = categoria.agregarSubcategoria(nombreSubcategoria, descripcion, heredaColor, colorPersonalizado, riesgoId);
 
             const collectionName = this._getCollectionName(orgId);
             const categoriaRef = doc(db, collectionName, categoriaId);
 
-            // [MODIFICACIÓN 11]: Registrar ACTUALIZACIÓN antes de updateDoc
             await consumo.registrarFirestoreActualizacion(collectionName, categoriaId);
 
             await updateDoc(categoriaRef, {
@@ -722,7 +1024,6 @@ class CategoriaManager {
                 fechaActualizacion: serverTimestamp()
             });
 
-            // REGISTRO EN HISTORIAL
             if (usuarioActual) {
                 const historial = await this._getHistorialManager();
                 if (historial) {
@@ -737,7 +1038,8 @@ class CategoriaManager {
                             subcategoriaId: subcatId,
                             subcategoriaNombre: nombreSubcategoria,
                             heredaColor,
-                            color: !heredaColor ? colorPersonalizado : null
+                            color: !heredaColor ? colorPersonalizado : null,
+                            riesgoId: riesgoId || null
                         }
                     });
                 }
@@ -772,12 +1074,11 @@ class CategoriaManager {
 
             const nombreSubcategoria = subcategoria.nombre || subcategoriaId;
 
-            delete categoria.subcategorias[subcategoriaId];
+            categoria.eliminarSubcategoria(subcategoriaId);
 
             const collectionName = this._getCollectionName(orgId);
             const categoriaRef = doc(db, collectionName, categoriaId);
 
-            // [MODIFICACIÓN 12]: Registrar ACTUALIZACIÓN antes de updateDoc
             await consumo.registrarFirestoreActualizacion(collectionName, categoriaId);
 
             await updateDoc(categoriaRef, {
@@ -785,7 +1086,6 @@ class CategoriaManager {
                 fechaActualizacion: serverTimestamp()
             });
 
-            // REGISTRO EN HISTORIAL
             if (usuarioActual) {
                 const historial = await this._getHistorialManager();
                 if (historial) {

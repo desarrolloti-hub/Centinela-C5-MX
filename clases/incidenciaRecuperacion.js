@@ -44,11 +44,11 @@ class MercanciaPerdida {
         this.reportadoPorId = data.reportadoPorId || '';
         this.reportadoPorNombre = data.reportadoPorNombre || '';
         this.estado = data.estado || 'activo'; // activo, recuperado, cerrado
-        this.tipoEvento = data.tipoEvento || 'robo'; // robo, extravio, accidente, otro
+        this.tipoEvento = data.tipoEvento || 'robo'; // robo, extravio, incidencia, otro
         this.ubicacion = data.ubicacion || '';
         this.responsableAsignado = data.responsableAsignado || '';
         this.responsableAsignadoNombre = data.responsableAsignadoNombre || '';
-        
+
         // ========== NUEVOS CAMPOS PARA PDF OPTIMIZADO ==========
         this.pdfUrl = data.pdfUrl || null;
         this.pdfGenerado = data.pdfGenerado || false;
@@ -56,7 +56,7 @@ class MercanciaPerdida {
         this.estadoGeneracion = data.estadoGeneracion || 'pendiente'; // pendiente, generando, completado, error
         this.intentosGeneracion = data.intentosGeneracion || 0;
         // =======================================================
-        
+
         // Campos de auditoría
         this.organizacionCamelCase = data.organizacionCamelCase || '';
         this.creadoPor = data.creadoPor || '';
@@ -128,7 +128,7 @@ class MercanciaPerdida {
         const tipos = {
             'robo': 'Robo',
             'extravio': 'Extravío',
-            'accidente': 'Accidente',
+            'incidencia': 'Incidencia',
             'otro': 'Otro'
         };
         return tipos[this.tipoEvento] || 'Robo';
@@ -163,7 +163,7 @@ class MercanciaPerdida {
     tienePDF() {
         return this.pdfGenerado === true && this.pdfUrl !== null;
     }
-    
+
     getEstadoGeneracionTexto() {
         const estados = {
             'pendiente': 'Pendiente',
@@ -173,7 +173,7 @@ class MercanciaPerdida {
         };
         return estados[this.estadoGeneracion] || 'Pendiente';
     }
-    
+
     getEstadoGeneracionColor() {
         const colores = {
             'pendiente': '#ffc107',
@@ -187,18 +187,18 @@ class MercanciaPerdida {
 
     agregarEvidencia(url, comentario = '') {
         const evidenciaId = `EVD${Date.now()}`;
-        
+
         if (!this.evidencias) {
             this.evidencias = [];
         }
-        
+
         this.evidencias.push({
             id: evidenciaId,
             url: url,
             comentario: comentario,
             fechaAgregada: new Date()
         });
-        
+
         return evidenciaId;
     }
 
@@ -224,15 +224,15 @@ class MercanciaPerdida {
     registrarRecuperacion(montoRecuperadoAdicional, comentario = '', usuarioId = '', usuarioNombre = '') {
         const nuevoTotalRecuperado = (this.montoRecuperado || 0) + montoRecuperadoAdicional;
         this.montoRecuperado = nuevoTotalRecuperado;
-        
+
         if (nuevoTotalRecuperado >= this.montoPerdido && this.estado === 'activo') {
             this.estado = 'recuperado';
         }
-        
+
         if (!this.historialRecuperaciones) {
             this.historialRecuperaciones = [];
         }
-        
+
         this.historialRecuperaciones.push({
             monto: montoRecuperadoAdicional,
             comentario: comentario,
@@ -240,7 +240,7 @@ class MercanciaPerdida {
             usuarioId: usuarioId,
             usuarioNombre: usuarioNombre
         });
-        
+
         return true;
     }
 
@@ -348,25 +348,25 @@ class MercanciaPerdidaManager {
 
     _construirConstraints(filtros = {}) {
         const constraints = [];
-        
+
         constraints.push(orderBy("fecha", "desc"));
-        
+
         if (filtros.estado && filtros.estado !== 'todos') {
             constraints.push(where("estado", "==", filtros.estado));
         }
-        
+
         if (filtros.tipoEvento && filtros.tipoEvento !== 'todos') {
             constraints.push(where("tipoEvento", "==", filtros.tipoEvento));
         }
-        
+
         if (filtros.nombreEmpresaCC && filtros.nombreEmpresaCC !== 'todos') {
             constraints.push(where("nombreEmpresaCC", "==", filtros.nombreEmpresaCC));
         }
-        
+
         if (filtros.reportadoPorId && filtros.reportadoPorId !== 'todos') {
             constraints.push(where("reportadoPorId", "==", filtros.reportadoPorId));
         }
-        
+
         return constraints;
     }
 
@@ -374,15 +374,15 @@ class MercanciaPerdidaManager {
         try {
             const collectionName = this._getCollectionName(organizacionCamelCase);
             const collectionRef = collection(db, collectionName);
-            
+
             const constraints = this._construirConstraints(filtros);
             const constraintsSinOrder = constraints.filter(c => c.type !== 'orderBy');
-            
+
             const q = query(collectionRef, ...constraintsSinOrder);
-            
+
             await consumo.registrarFirestoreLectura(collectionName, 'conteo mercancia perdida');
             const snapshot = await getCountFromServer(q);
-            
+
             return snapshot.data().count;
         } catch (error) {
             console.error('Error contando registros:', error);
@@ -398,28 +398,28 @@ class MercanciaPerdidaManager {
 
             const collectionName = this._getCollectionName(organizacionCamelCase);
             const collectionRef = collection(db, collectionName);
-            
+
             let constraints = this._construirConstraints(filtros);
-            
+
             if (pagina > 1 && cursores?.ultimoDocumento) {
                 constraints.push(startAfter(cursores.ultimoDocumento));
             }
-            
+
             constraints.push(limit(itemsPorPagina));
-            
+
             const q = query(collectionRef, ...constraints);
-            
+
             await consumo.registrarFirestoreLectura(collectionName, `página ${pagina}`);
             const snapshot = await getDocs(q);
-            
+
             const registros = [];
             let ultimoDoc = null;
             let primerDoc = null;
-            
+
             if (!snapshot.empty) {
                 ultimoDoc = snapshot.docs[snapshot.docs.length - 1];
                 primerDoc = snapshot.docs[0];
-                
+
                 snapshot.forEach(doc => {
                     try {
                         const data = doc.data();
@@ -437,9 +437,9 @@ class MercanciaPerdidaManager {
                     }
                 });
             }
-            
+
             const total = await this.contarTotalRegistros(organizacionCamelCase, filtros);
-            
+
             return {
                 registros,
                 total,
@@ -449,7 +449,7 @@ class MercanciaPerdidaManager {
                 primerDocumento: primerDoc,
                 tieneMas: snapshot.docs.length === itemsPorPagina
             };
-            
+
         } catch (error) {
             console.error('Error obteniendo registros paginados:', error);
             return {
@@ -662,14 +662,14 @@ class MercanciaPerdidaManager {
         try {
             const collectionName = this._getCollectionName(organizacionCamelCase);
             const registroRef = doc(db, collectionName, registroId);
-            
+
             await consumo.registrarFirestoreLectura(collectionName, registroId);
             const registroSnap = await getDoc(registroRef);
 
             if (registroSnap.exists()) {
                 const data = registroSnap.data();
-                const registro = new MercanciaPerdida(registroId, { 
-                    ...data, 
+                const registro = new MercanciaPerdida(registroId, {
+                    ...data,
                     id: registroId,
                     pdfGeneradoEn: data.pdfGeneradoEn?.toDate?.() || data.pdfGeneradoEn
                 });
@@ -685,48 +685,48 @@ class MercanciaPerdidaManager {
     }
     // Agregar este método después de getRegistroById
 
-async actualizarEstadoPDF(registroId, estado, pdfUrl = null, organizacionCamelCase, usuarioActual = null) {
-    try {
-        const collectionName = this._getCollectionName(organizacionCamelCase);
-        const registroRef = doc(db, collectionName, registroId);
-        
-        const updateData = {
-            estadoGeneracion: estado,
-            fechaActualizacion: serverTimestamp(),
-            actualizadoPor: usuarioActual?.id || 'sistema',
-            actualizadoPorNombre: usuarioActual?.nombreCompleto || 'Sistema'
-        };
-        
-        if (estado === 'completado' && pdfUrl) {
-            updateData.pdfUrl = pdfUrl;
-            updateData.pdfGenerado = true;
-            updateData.pdfGeneradoEn = serverTimestamp();
-        }
-        
-        if (estado === 'error') {
-            updateData.intentosGeneracion = (await this.getRegistroById(registroId, organizacionCamelCase))?.intentosGeneracion + 1 || 1;
-        }
-        
-        await consumo.registrarFirestoreActualizacion(collectionName, registroId);
-        await updateDoc(registroRef, updateData);
-        
-        // Actualizar caché
-        const registroIndex = this.registros.findIndex(r => r.id === registroId);
-        if (registroIndex !== -1) {
+    async actualizarEstadoPDF(registroId, estado, pdfUrl = null, organizacionCamelCase, usuarioActual = null) {
+        try {
+            const collectionName = this._getCollectionName(organizacionCamelCase);
+            const registroRef = doc(db, collectionName, registroId);
+
+            const updateData = {
+                estadoGeneracion: estado,
+                fechaActualizacion: serverTimestamp(),
+                actualizadoPor: usuarioActual?.id || 'sistema',
+                actualizadoPorNombre: usuarioActual?.nombreCompleto || 'Sistema'
+            };
+
             if (estado === 'completado' && pdfUrl) {
-                this.registros[registroIndex].pdfUrl = pdfUrl;
-                this.registros[registroIndex].pdfGenerado = true;
-                this.registros[registroIndex].pdfGeneradoEn = new Date();
+                updateData.pdfUrl = pdfUrl;
+                updateData.pdfGenerado = true;
+                updateData.pdfGeneradoEn = serverTimestamp();
             }
-            this.registros[registroIndex].estadoGeneracion = estado;
+
+            if (estado === 'error') {
+                updateData.intentosGeneracion = (await this.getRegistroById(registroId, organizacionCamelCase))?.intentosGeneracion + 1 || 1;
+            }
+
+            await consumo.registrarFirestoreActualizacion(collectionName, registroId);
+            await updateDoc(registroRef, updateData);
+
+            // Actualizar caché
+            const registroIndex = this.registros.findIndex(r => r.id === registroId);
+            if (registroIndex !== -1) {
+                if (estado === 'completado' && pdfUrl) {
+                    this.registros[registroIndex].pdfUrl = pdfUrl;
+                    this.registros[registroIndex].pdfGenerado = true;
+                    this.registros[registroIndex].pdfGeneradoEn = new Date();
+                }
+                this.registros[registroIndex].estadoGeneracion = estado;
+            }
+
+            return true;
+        } catch (error) {
+            console.error('Error actualizando estado PDF:', error);
+            return false;
         }
-        
-        return true;
-    } catch (error) {
-        console.error('Error actualizando estado PDF:', error);
-        return false;
     }
-}
 
     async getRegistrosByOrganizacion(organizacionCamelCase, filtros = {}, usuarioActual = null) {
         try {
@@ -748,7 +748,7 @@ async actualizarEstadoPDF(registroId, estado, pdfUrl = null, organizacionCamelCa
             }
 
             const registrosQuery = query(collectionRef, ...constraints);
-            
+
             await consumo.registrarFirestoreLectura(collectionName, 'lista mercancia perdida');
             const snapshot = await getDocs(registrosQuery);
 
@@ -793,27 +793,27 @@ async actualizarEstadoPDF(registroId, estado, pdfUrl = null, organizacionCamelCa
         try {
             const collectionName = this._getCollectionName(organizacionCamelCase);
             const registroRef = doc(db, collectionName, registroId);
-            
+
             const updateData = {
                 estadoGeneracion: estado,
                 fechaActualizacion: serverTimestamp(),
                 actualizadoPor: usuarioActual?.id || 'sistema',
                 actualizadoPorNombre: usuarioActual?.nombreCompleto || 'Sistema'
             };
-            
+
             if (estado === 'completado' && pdfUrl) {
                 updateData.pdfUrl = pdfUrl;
                 updateData.pdfGenerado = true;
                 updateData.pdfGeneradoEn = serverTimestamp();
             }
-            
+
             if (estado === 'error') {
                 updateData.intentosGeneracion = (await this.getRegistroById(registroId, organizacionCamelCase))?.intentosGeneracion + 1 || 1;
             }
-            
+
             await consumo.registrarFirestoreActualizacion(collectionName, registroId);
             await updateDoc(registroRef, updateData);
-            
+
             // Actualizar caché
             const registroIndex = this.registros.findIndex(r => r.id === registroId);
             if (registroIndex !== -1) {
@@ -824,7 +824,7 @@ async actualizarEstadoPDF(registroId, estado, pdfUrl = null, organizacionCamelCa
                 }
                 this.registros[registroIndex].estadoGeneracion = estado;
             }
-            
+
             return true;
         } catch (error) {
             console.error('Error actualizando estado PDF:', error);
@@ -840,7 +840,7 @@ async actualizarEstadoPDF(registroId, estado, pdfUrl = null, organizacionCamelCa
 
             const collectionName = this._getCollectionName(organizacionCamelCase);
             const registroRef = doc(db, collectionName, registroId);
-            
+
             await consumo.registrarFirestoreLectura(collectionName, registroId);
             const registroSnap = await getDoc(registroRef);
 
@@ -1052,7 +1052,7 @@ async actualizarEstadoPDF(registroId, estado, pdfUrl = null, organizacionCamelCa
 
             const collectionName = this._getCollectionName(organizacionCamelCase);
             const registroRef = doc(db, collectionName, registroId);
-            
+
             await consumo.registrarFirestoreEliminacion(collectionName, registroId);
             await deleteDoc(registroRef);
 
@@ -1100,7 +1100,7 @@ async actualizarEstadoPDF(registroId, estado, pdfUrl = null, organizacionCamelCa
                 porTipoEvento: {
                     robo: registros.filter(r => r.tipoEvento === 'robo').length,
                     extravio: registros.filter(r => r.tipoEvento === 'extravio').length,
-                    accidente: registros.filter(r => r.tipoEvento === 'accidente').length,
+                    incidencia: registros.filter(r => r.tipoEvento === 'incidencia').length,
                     otro: registros.filter(r => r.tipoEvento === 'otro').length
                 },
                 totalPerdido: totalPerdido,
