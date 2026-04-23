@@ -189,7 +189,7 @@ class CrearIncidenciaController {
 
             this.nivelesRiesgoOptions.push({
                 id: '__otro__',
-                nombre: '➕ Crear nuevo nivel de riesgo',
+                nombre: 'Crear nuevo nivel de riesgo',
                 color: null
             });
 
@@ -218,7 +218,7 @@ class CrearIncidenciaController {
         const riesgoSelect = document.getElementById('nivelRiesgo');
         if (!riesgoSelect) return;
 
-        riesgoSelect.innerHTML = `<option value="${riesgoId}" selected>${this._escapeHTML(riesgoNombre)}</option>`;
+        riesgoSelect.innerHTML = `<option value="${riesgoId}" selected>${this._escapeHTML(riesgoNombre)} (Asignado Automáticamente)</option>`;
         riesgoSelect.disabled = true;
         riesgoSelect.classList.add('field-disabled');
 
@@ -284,73 +284,75 @@ class CrearIncidenciaController {
             if (riesgoInfo && riesgoInfo.id) {
                 this._mostrarRiesgoAsignadoUnico(riesgoInfo.id, riesgoInfo.nombre);
                 this.riesgoSeleccionadoId = riesgoInfo.id;
-                this._agregarHintRiesgoAutomatico(riesgoInfo.nombre);
                 return;
             }
         }
 
         this._mostrarListaCompletaRiesgos();
         this.riesgoSeleccionadoId = null;
-        this._removerHintRiesgoAutomatico();
+
     }
 
-    _agregarHintRiesgoAutomatico(riesgoNombre) {
-        this._removerHintRiesgoAutomatico();
 
-        const riesgoSelect = document.getElementById('nivelRiesgo');
-        const parent = riesgoSelect?.closest('.full-width');
-        if (!parent) return;
-
-        const hint = document.createElement('div');
-        hint.id = 'riesgoAutomaticoHint';
-        hint.className = 'field-required-hint';
-        hint.style.color = 'var(--color-success)';
-        hint.style.backgroundColor = 'rgba(40, 167, 69, 0.1)';
-        hint.style.borderLeft = `3px solid var(--color-success)`;
-        hint.style.marginTop = '8px';
-        hint.style.padding = '6px 10px';
-        hint.style.borderRadius = 'var(--border-radius-small)';
-        hint.style.display = 'flex';
-        hint.style.alignItems = 'center';
-        hint.style.gap = '8px';
-        hint.innerHTML = `<i class="fas fa-magic"></i> Riesgo asignado automáticamente: <strong>${this._escapeHTML(riesgoNombre)}</strong> (desde subcategoría)`;
-
-        parent.appendChild(hint);
-    }
-
-    _removerHintRiesgoAutomatico() {
-        const hintExistente = document.getElementById('riesgoAutomaticoHint');
-        if (hintExistente) hintExistente.remove();
-    }
 
     // ==================== CREAR NUEVO NIVEL DE RIESGO ====================
     async _crearNuevoNivelRiesgo() {
         const { value: formValues } = await Swal.fire({
             title: 'Crear nuevo nivel de riesgo',
             html: `
-                <div style="text-align: left;">
-                    <label style="display: block; margin-bottom: 5px; color: var(--color-text-primary);">Nombre del nivel *</label>
-                    <input type="text" id="nuevoRiesgoNombre" class="swal2-input" placeholder="Ej: Crítico, Alto, Medio, Bajo" style="width: 100%; margin-bottom: 15px;">
-                    <label style="display: block; margin-bottom: 5px; color: var(--color-text-primary);">Color *</label>
-                    <input type="color" id="nuevoRiesgoColor" class="swal2-input" value="#ff0000" style="width: 100%; height: 50px;">
+            <div class="riesgo-modal-contenido">
+                <div class="riesgo-campo">
+                    <label class="riesgo-label">
+                        <i class="fas fa-tag"></i> Nombre del nivel *
+                    </label>
+                    <input type="text" id="nuevoRiesgoNombre" class="riesgo-input" 
+                        placeholder="Ej: Crítico, Alto, Medio, Bajo">
                 </div>
-            `,
+                
+                <div class="riesgo-campo">
+                    <label class="riesgo-label">
+                        <i class="fas fa-palette"></i> Color *
+                    </label>
+                    <input type="color" id="nuevoRiesgoColor" class="riesgo-color-input" value="#ff0000">
+                </div>
+            </div>
+        `,
             focusConfirm: false,
+            width: '450px',
+            background: 'var(--color-bg-secondary)',
+            showCancelButton: true,
+            showConfirmButton: true,
+            confirmButtonText: '<i class="fas fa-save"></i> Crear riesgo',
+            cancelButtonText: '<i class="fas fa-times"></i> Cancelar',
+            confirmButtonColor: '#28a745',
+            cancelButtonColor: '#6c757d',
+            reverseButtons: false,
+            customClass: {
+                popup: 'riesgo-modal-popup',
+                confirmButton: 'riesgo-btn-confirmar',
+                cancelButton: 'riesgo-btn-cancelar'
+            },
             preConfirm: () => {
-                const nombre = document.getElementById('nuevoRiesgoNombre').value.trim();
-                const color = document.getElementById('nuevoRiesgoColor').value;
+                const nombre = document.getElementById('nuevoRiesgoNombre')?.value.trim();
+                const color = document.getElementById('nuevoRiesgoColor')?.value;
 
                 if (!nombre) {
-                    Swal.showValidationMessage('El nombre del nivel de riesgo es obligatorio');
+                    Swal.showValidationMessage('❌ El nombre del nivel de riesgo es obligatorio');
+                    return false;
+                }
+
+                if (nombre.length < 2) {
+                    Swal.showValidationMessage('❌ El nombre debe tener al menos 2 caracteres');
+                    return false;
+                }
+
+                if (nombre.length > 30) {
+                    Swal.showValidationMessage('❌ El nombre no puede exceder 30 caracteres');
                     return false;
                 }
 
                 return { nombre, color };
-            },
-            showCancelButton: true,
-            confirmButtonText: 'Crear riesgo',
-            cancelButtonText: 'Cancelar',
-            confirmButtonColor: '#28a745'
+            }
         });
 
         if (!formValues) return null;
@@ -373,8 +375,8 @@ class CrearIncidenciaController {
 
             Swal.fire({
                 icon: 'success',
-                title: 'Nivel creado',
-                text: `Se creó el nivel "${formValues.nombre}"`,
+                title: '✓ Nivel creado',
+                html: `Se creó el nivel <strong style="color: ${formValues.color};">${this._escapeHTML(formValues.nombre)}</strong>`,
                 timer: 2000,
                 showConfirmButton: false
             });
@@ -386,12 +388,12 @@ class CrearIncidenciaController {
             Swal.fire({
                 icon: 'error',
                 title: 'Error',
-                text: error.message || 'No se pudo crear el nivel de riesgo'
+                text: error.message || 'No se pudo crear el nivel de riesgo',
+                confirmButtonColor: '#dc3545'
             });
             return null;
         }
     }
-
     // ==================== ASOCIAR RIESGO A SUBCATEGORÍA ====================
     async _asociarRiesgoASubcategoria(categoriaId, subcategoriaId, riesgoId) {
         try {
@@ -920,7 +922,7 @@ class CrearIncidenciaController {
             }
 
             this.categoriaSeleccionada = null;
-            this._removerHintRiesgoAutomatico();
+
         }
     }
 
@@ -1366,7 +1368,7 @@ class CrearIncidenciaController {
 
             let options = '<option value="">-- Selecciona una subcategoría (opcional) --</option>';
             subcategoriasArray.forEach(sub => {
-                const tieneRiesgo = sub.riesgoNivelId ? ' ✓ (riesgo asignado)' : '';
+                const tieneRiesgo = sub.riesgoNivelId ? ' ' : '';
                 options += `<option value="${sub.id}" data-riesgo-id="${sub.riesgoNivelId || ''}">${sub.nombre || sub.id}${tieneRiesgo}</option>`;
             });
 
@@ -1621,7 +1623,7 @@ class CrearIncidenciaController {
                     <p><strong>Tipo Evento:</strong> ${tipoEvento === 'tiempo_real' ? 'Tiempo Real' : 'Histórico'}</p>
                     <p><strong>Sucursal:</strong> ${this._escapeHTML(sucursalNombre)}</p>
                     <p><strong>Categoría:</strong> ${this._escapeHTML(categoriaNombre)}</p>
-                    ${subcategoriaId ? `<p><strong>Subcategoría:</strong> ${this._escapeHTML(subcategoriaSelect.options[subcategoriaSelect.selectedIndex]?.text.replace(' ✓ (riesgo asignado)', '').replace(' ✓', ''))}</p>` : ''}
+                    ${subcategoriaId ? `<p><strong>Subcategoría:</strong> ${this._escapeHTML(subcategoriaSelect.options[subcategoriaSelect.selectedIndex]?.text.replace(' ', '').replace(' ✓', ''))}</p>` : ''}
                     <p><strong>Riesgo:</strong> ${this._getRiesgoTexto(nivelRiesgo)}</p>
                     <p><strong>Estado:</strong> ${estado === 'pendiente' ? 'Pendiente' : 'Finalizada'}</p>
                     <p><strong>Fecha:</strong> ${fechaSeleccionada.toLocaleString('es-MX')}</p>
