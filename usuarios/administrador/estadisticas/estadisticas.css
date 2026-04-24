@@ -313,7 +313,7 @@ body {
 }
 
 .metric-card .metric-subtitle::after {
-    content: ' 🔍';
+    content: ' ';
     font-size: 0.6rem;
     opacity: 0;
     transition: opacity 0.2s ease;
@@ -2211,4 +2211,343 @@ p, h1, h2, h3, h4, h5, h6, span, div {
     .riesgo-tabla th {
         padding: 6px 4px;
     }
+}
+/* =============================================
+   TABLAS DE DATOS PARA GRÁFICAS - ESTILO MONITO
+   ============================================= */
+
+/* Contenedor de la tabla debajo de cada gráfica */
+.grafica-con-tabla {
+    display: flex;
+    flex-direction: column;
+}
+
+.tabla-datos-container {
+    margin-top: 12px;
+    padding: 12px 16px;
+    background: rgba(0, 0, 0, 0.3);
+    border-top: 1px solid var(--color-border-light);
+    border-radius: 0 0 var(--border-radius-large, 16px) var(--border-radius-large, 16px);
+}
+
+.tabla-datos-container h6 {
+    font-family: var(--font-family-primary, 'Orbitron', sans-serif);
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin: 0 0 10px 0;
+    color: var(--color-accent-primary);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.tabla-datos-container h6 i {
+    font-size: 0.7rem;
+}
+
+.table-responsive-mini {
+    overflow-x: auto;
+    border-radius: var(--border-radius-medium, 8px);
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.table-responsive-mini::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+}
+
+.table-responsive-mini::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 10px;
+}
+
+.table-responsive-mini::-webkit-scrollbar-thumb {
+    background: var(--color-accent-primary);
+    border-radius: 10px;
+}
+
+/* Tablas de datos estilo monito */
+.tabla-datos-grafica {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.7rem;
+    font-family: var(--font-family-secondary, 'Rajdhani', sans-serif);
+}
+
+.tabla-datos-grafica thead th {
+    background: rgba(0, 0, 0, 0.6);
+    color: var(--color-text-primary);
+    font-family: var(--font-family-primary, 'Orbitron', sans-serif);
+    font-size: 0.6rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 8px 12px;
+    text-align: left;
+    border-bottom: 1px solid var(--color-border-light);
+    position: sticky;
+    top: 0;
+    z-index: 5;
+}
+
+.tabla-datos-grafica tbody td {
+    padding: 8px 12px;
+    color: var(--color-text-secondary);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    transition: all 0.2s ease;
+}
+
+.tabla-datos-grafica tbody tr:hover td {
+    background: rgba(255, 255, 255, 0.05);
+    color: white;
+}
+
+/* Estilos específicos para celdas de colores */
+.tabla-datos-grafica td .color-badge {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    margin-right: 6px;
+    vertical-align: middle;
+    box-shadow: 0 0 3px currentColor;
+}
+
+/* Badges para porcentajes y valores */
+.tabla-datos-grafica .badge-pct {
+    background: rgba(59, 130, 246, 0.2);
+    padding: 2px 8px;
+    border-radius: 20px;
+    font-size: 0.65rem;
+    font-weight: 500;
+    display: inline-block;
+}
+
+.tabla-datos-grafica .text-success {
+    color: #10b981;
+}
+
+.tabla-datos-grafica .text-danger {
+    color: #ef4444;
+}
+
+.tabla-datos-grafica .text-warning {
+    color: #f59e0b;
+}
+
+.tabla-datos-grafica .text-info {
+    color: #3b82f6;
+}
+
+/* Animación suave al cargar */
+.tabla-datos-container {
+    animation: fadeInUp 0.3s ease;
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* =============================================
+   RESPONSIVE PARA TABLAS DE GRÁFICAS
+   ============================================= */
+
+@media (max-width: 1024px) {
+    .tabla-datos-container {
+        padding: 10px 12px;
+    }
+    
+    .tabla-datos-grafica {
+        font-size: 0.65rem;
+    }
+    
+    .tabla-datos-grafica thead th,
+    .tabla-datos-grafica tbody td {
+        padding: 6px 10px;
+    }
+}
+
+@media (max-width: 768px) {
+    .tabla-datos-container h6 {
+        font-size: 0.6rem;
+    }
+    
+    .tabla-datos-grafica {
+        font-size: 0.6rem;
+        min-width: 400px;
+    }
+    
+    .table-responsive-mini {
+        max-height: 180px;
+    }
+}
+
+@media (max-width: 550px) {
+    .tabla-datos-container {
+        padding: 8px 10px;
+    }
+    
+    .tabla-datos-container h6 {
+        font-size: 0.55rem;
+        margin-bottom: 8px;
+    }
+    
+    .tabla-datos-grafica thead th,
+    .tabla-datos-grafica tbody td {
+        padding: 5px 8px;
+    }
+    
+    .tabla-datos-grafica {
+        font-size: 0.55rem;
+        min-width: 350px;
+    }
+}
+
+/* =============================================
+   ESTILOS ADICIONALES PARA PDF - TEXTO NEGRO EN TABLAS
+   ============================================= */
+
+@media print {
+    .tabla-datos-container {
+        background: #f0f0f0;
+        border: 1px solid #ddd;
+    }
+    
+    .tabla-datos-container h6 {
+        color: #000;
+    }
+    
+    .tabla-datos-grafica thead th {
+        background: #e0e0e0;
+        color: #000;
+        border-bottom: 1px solid #ccc;
+    }
+    
+    .tabla-datos-grafica tbody td {
+        color: #333;
+        border-bottom: 1px solid #ddd;
+    }
+    
+    .tabla-datos-grafica tbody tr:hover td {
+        background: transparent;
+        color: #333;
+    }
+}
+
+/* =============================================
+   GRÁFICAS Y TABLAS COMO CARDS INDEPENDIENTES
+   ============================================= */
+
+/* Grids para tablas independientes */
+.tablas-grid-3col {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+    margin-top: 15px;
+    margin-bottom: 25px;
+}
+
+.tablas-grid-2col {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+    margin-top: 15px;
+    margin-bottom: 25px;
+}
+
+/* Estilos para las cards de tablas independientes */
+.card.tabla-independiente {
+    background: var(--color-bg-secondary);
+    border: 1px solid var(--color-border-light);
+    border-radius: var(--border-radius-large, 16px);
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+.card.tabla-independiente:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-normal, 0 8px 20px rgba(0, 0, 0, 0.2));
+}
+
+.card.tabla-independiente .card-header {
+    background: linear-gradient(135deg, rgba(20, 20, 20, 0.98), rgba(30, 30, 30, 0.95));
+    border-bottom: 1px solid var(--color-border-light);
+    padding: 10px 15px;
+}
+
+.card.tabla-independiente .card-header h5 {
+    color: var(--color-text-primary);
+    font-family: var(--font-family-primary, 'Orbitron', sans-serif);
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin: 0;
+}
+
+.card.tabla-independiente .card-header h5 i {
+    color: var(--color-accent-primary);
+}
+
+.card.tabla-independiente .tabla-body {
+    padding: 0;
+    min-height: auto;
+    display: block;
+}
+
+.card.tabla-independiente .table-responsive-mini {
+    max-height: 250px;
+    overflow-y: auto;
+    border-radius: 0 0 var(--border-radius-large, 16px) var(--border-radius-large, 16px);
+}
+
+.card.tabla-independiente .tabla-datos-grafica {
+    margin-bottom: 0;
+}
+
+.card.tabla-independiente .tabla-datos-grafica thead th {
+    background: rgba(0, 0, 0, 0.8);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+/* Espaciado entre gráfica y su tabla */
+.grafica-principal {
+    margin-bottom: 0;
+}
+
+/* Ajustes responsive */
+@media (max-width: 1024px) {
+    .tablas-grid-3col {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 15px;
+    }
+}
+
+@media (max-width: 768px) {
+    .tablas-grid-3col {
+        grid-template-columns: 1fr;
+        gap: 15px;
+    }
+    
+    .tablas-grid-2col {
+        grid-template-columns: 1fr;
+        gap: 15px;
+    }
+}
+
+/* Margen superior para la primera tabla después de gráficas */
+.charts-grid-3col + .tablas-grid-3col,
+.charts-grid-2col + .tablas-grid-2col,
+.charts-grid-1col + .charts-grid-1col,
+.graficas-row + .tablas-grid-2col {
+    margin-top: 15px;
 }

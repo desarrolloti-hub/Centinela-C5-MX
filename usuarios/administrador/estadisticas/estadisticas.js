@@ -24,7 +24,41 @@ let authToken = null;
 let historialManager = null;
 let accesoVistaRegistrado = false;
 
+// =============================================
+// FUNCIÓN DE DIAGNÓSTICO PARA RECUPERACIÓN
+// =============================================
 
+async function diagnosticarRecuperacion() {
+    console.log('=== DIAGNÓSTICO DE RECUPERACIÓN ===');
+    console.log('organizacionActual:', organizacionActual);
+    console.log('mercanciaManager:', !!mercanciaManager);
+    console.log('registrosRecuperacionCache.length:', registrosRecuperacionCache.length);
+    
+    if (!organizacionActual?.camelCase) {
+        console.error('❌ No hay organización camelCase');
+        return false;
+    }
+    
+    if (!mercanciaManager) {
+        console.error('❌ mercanciaManager no está inicializado');
+        return false;
+    }
+    
+    try {
+        // Intentar cargar datos directamente
+        const testRegistros = await mercanciaManager.getRegistrosByOrganizacion(organizacionActual.camelCase);
+        console.log('✅ Registros encontrados:', testRegistros?.length || 0);
+        if (testRegistros && testRegistros.length > 0) {
+            console.log('Primer registro ejemplo:', testRegistros[0]);
+        } else {
+            console.warn('⚠️ No hay registros de recuperación en la BD para esta organización');
+        }
+        return testRegistros?.length > 0;
+    } catch (error) {
+        console.error('❌ Error cargando registros:', error);
+        return false;
+    }
+}
 
 
 // Datos para clics de incidencias
@@ -889,6 +923,276 @@ function renderizarTodasLasGraficas(datos) {
     crearGraficoSucursales(datos.sucursalesData);
     crearGraficoTiempoResolucion(datos.tiemposPromedio);
     agregarEventosClickCanvas();
+    
+    // ===== NUEVO: Actualizar todas las tablas de datos =====
+    actualizarTablaActualizadores(datos.topActualizadores);
+    actualizarTablaReportadores(datos.topReportadores);
+    actualizarTablaSeguimientos(datos.topSeguimientos);
+    actualizarTablaEstado(datos.estadoData);
+    actualizarTablaRiesgoDesdeDatos(datos.riesgoData);
+    actualizarTablaCategoriasDesdeDatos(datos.categoriasData);
+    actualizarTablaSucursalesDesdeDatos(datos.sucursalesData);
+    actualizarTablaTiempoResolucion(datos.tiemposPromedio);
+}
+
+// =============================================
+// FUNCIONES PARA ACTUALIZAR TABLAS DE DATOS
+// =============================================
+
+function actualizarTablaActualizadores(actualizadores) {
+    const tbody = document.querySelector('#tablaActualizadores tbody');
+    if (!tbody) return;
+    
+    if (!actualizadores || actualizadores.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="2" style="text-align:center; color: #9ca3af;">Sin datos</td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = actualizadores.map(a => `
+        <tr>
+            <td><i class="fas fa-user-circle" style="color: #3b82f6; margin-right: 8px;"></i>${escapeHTML(a.nombre)}</td>
+            <td><span class="badge-value" style="background: rgba(59,130,246,0.2); color: #3b82f6;">${a.cantidad}</span></td>
+        </tr>
+    `).join('');
+}
+
+function actualizarTablaReportadores(reportadores) {
+    const tbody = document.querySelector('#tablaReportadores tbody');
+    if (!tbody) return;
+    
+    if (!reportadores || reportadores.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="2" style="text-align:center; color: #9ca3af;">Sin datos</td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = reportadores.map(r => `
+        <tr>
+            <td><i class="fas fa-user-circle" style="color: #10b981; margin-right: 8px;"></i>${escapeHTML(r.nombre)}</td>
+            <td><span class="badge-value" style="background: rgba(16,185,129,0.2); color: #10b981;">${r.cantidad}</span></td>
+        </tr>
+    `).join('');
+}
+
+function actualizarTablaSeguimientos(seguimientos) {
+    const tbody = document.querySelector('#tablaSeguimientos tbody');
+    if (!tbody) return;
+    
+    if (!seguimientos || seguimientos.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="2" style="text-align:center; color: #9ca3af;">Sin datos</td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = seguimientos.map(s => `
+        <tr>
+            <td><i class="fas fa-user-circle" style="color: #f97316; margin-right: 8px;"></i>${escapeHTML(s.nombre)}</td>
+            <td><span class="badge-value" style="background: rgba(249,115,22,0.2); color: #f97316;">${s.cantidad}</span></td>
+        </tr>
+    `).join('');
+}
+
+function actualizarTablaEstado(estadoData) {
+    const tbody = document.querySelector('#tablaEstado tbody');
+    if (!tbody) return;
+    
+    const total = (estadoData.pendientes || 0) + (estadoData.finalizadas || 0);
+    const pendientesPorc = total > 0 ? ((estadoData.pendientes || 0) / total * 100).toFixed(1) : 0;
+    const finalizadasPorc = total > 0 ? ((estadoData.finalizadas || 0) / total * 100).toFixed(1) : 0;
+    
+    if (total === 0) {
+        tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; color: #9ca3af;">Sin datos</td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = `
+        <tr>
+            <td><i class="fas fa-clock" style="color: #f59e0b; margin-right: 8px;"></i>Pendientes</td>
+            <td><span class="badge-value" style="background: rgba(245,158,11,0.2); color: #f59e0b;">${estadoData.pendientes || 0}</span></td>
+            <td><span class="badge-pct">${pendientesPorc}%</span></td>
+        </tr>
+        <tr>
+            <td><i class="fas fa-check-circle" style="color: #10b981; margin-right: 8px;"></i>Finalizadas</td>
+            <td><span class="badge-value" style="background: rgba(16,185,129,0.2); color: #10b981;">${estadoData.finalizadas || 0}</span></td>
+            <td><span class="badge-pct">${finalizadasPorc}%</span></td>
+        </tr>
+    `;
+}
+
+function actualizarTablaRiesgoDesdeDatos(riesgoData) {
+    const tbody = document.querySelector('#tablaRiesgo tbody');
+    if (!tbody) return;
+    
+    const tieneDatos = Object.values(riesgoData).some(v => v > 0);
+    
+    if (!tieneDatos) {
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color: #9ca3af;">Sin datos</td></tr>';
+        return;
+    }
+    
+    let nivelesData = [];
+    let totalIncidencias = 0;
+    
+    if (window.nivelesRiesgoEstaticos && window.nivelesRiesgoEstaticos.length > 0) {
+        window.nivelesRiesgoEstaticos.forEach(nivel => {
+            const cantidad = riesgoData[nivel.id] || 0;
+            if (cantidad > 0) {
+                totalIncidencias += cantidad;
+                nivelesData.push({
+                    nombre: nivel.nombre,
+                    cantidad: cantidad,
+                    color: nivel.color || '#6c757d'
+                });
+            }
+        });
+        
+        Object.keys(riesgoData).forEach(key => {
+            if (riesgoData[key] > 0 && !window.nivelesRiesgoEstaticos.some(n => n.id === key)) {
+                totalIncidencias += riesgoData[key];
+                nivelesData.push({
+                    nombre: key,
+                    cantidad: riesgoData[key],
+                    color: '#6c757d'
+                });
+            }
+        });
+    } else {
+        const nivelesMap = [
+            { id: 'critico', nombre: 'Crítico', color: '#ef4444' },
+            { id: 'alto', nombre: 'Alto', color: '#f97316' },
+            { id: 'medio', nombre: 'Medio', color: '#eab308' },
+            { id: 'bajo', nombre: 'Bajo', color: '#10b981' }
+        ];
+        nivelesMap.forEach(nivel => {
+            const cantidad = riesgoData[nivel.id] || 0;
+            if (cantidad > 0) {
+                totalIncidencias += cantidad;
+                nivelesData.push({
+                    nombre: nivel.nombre,
+                    cantidad: cantidad,
+                    color: nivel.color
+                });
+            }
+        });
+    }
+    
+    if (nivelesData.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color: #9ca3af;">Sin datos</td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = nivelesData.map(n => {
+        const porcentaje = totalIncidencias > 0 ? ((n.cantidad / totalIncidencias) * 100).toFixed(1) : 0;
+        return `
+            <tr>
+                <td>
+                    <span class="color-badge" style="background: ${n.color};"></span>
+                    ${escapeHTML(n.nombre)}
+                </td>
+                <td><span class="badge-value" style="background: ${n.color}20; color: ${n.color};">${n.cantidad}</span></td>
+                <td><span class="badge-pct">${porcentaje}%</span></td>
+                <td><span style="display: inline-block; width: 16px; height: 16px; background: ${n.color}; border-radius: 4px;"></span></td>
+            </tr>
+        `;
+    }).join('');
+}
+
+function actualizarTablaCategoriasDesdeDatos(categoriasData) {
+    const tbody = document.querySelector('#tablaCategoriasGrafica tbody');
+    if (!tbody) return;
+    
+    if (!categoriasData || categoriasData.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; color: #9ca3af;">Sin datos</td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = categoriasData.map(c => `
+        <tr>
+            <td>
+                <span class="color-badge" style="background: ${c.color || '#2f8cff'};"></span>
+                ${escapeHTML(c.nombre)}
+            </td>
+            <td><span class="badge-value" style="background: ${c.color || '#2f8cff'}20; color: ${c.color || '#2f8cff'};">${c.cantidad}</span></td>
+            <td><span style="display: inline-block; width: 16px; height: 16px; background: ${c.color || '#2f8cff'}; border-radius: 4px;"></span></td>
+        </tr>
+    `).join('');
+}
+
+function actualizarTablaSucursalesDesdeDatos(sucursalesData) {
+    const tbody = document.querySelector('#tablaSucursalesGrafica tbody');
+    if (!tbody) return;
+    
+    if (!sucursalesData || sucursalesData.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; color: #9ca3af;">Sin datos</td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = sucursalesData.map(s => {
+        // Buscar el ID de la sucursal para la redirección
+        const sucursalObj = sucursalesCache.find(suc => suc.nombre === s.nombre);
+        const sucursalId = sucursalObj ? sucursalObj.id : '';
+        
+        return `
+            <tr>
+                <td class="sucursal-clickable" data-sucursal-id="${sucursalId}" data-sucursal-nombre="${escapeHTML(s.nombre)}" style="cursor: pointer;">
+                    <span class="color-badge" style="background: ${s.color || '#6c757d'};"></span>
+                    ${escapeHTML(s.nombre)}
+                </td>
+                <td><span class="badge-value" style="background: ${s.color || '#6c757d'}20; color: ${s.color || '#6c757d'};">${s.cantidad}</span></td>
+                <td><span style="display: inline-block; width: 16px; height: 16px; background: ${s.color || '#6c757d'}; border-radius: 4px;"></span></td>
+            </tr>
+        `;
+    }).join('');
+    
+    // Agregar eventos de clic a las filas de sucursales
+    document.querySelectorAll('.sucursal-clickable').forEach(el => {
+        el.addEventListener('click', (e) => {
+            const sucursalId = el.dataset.sucursalId;
+            const sucursalNombre = el.dataset.sucursalNombre;
+            
+            if (!sucursalId) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'No disponible',
+                    text: `No se pudo obtener el ID de la sucursal "${sucursalNombre}"`,
+                    background: 'var(--color-bg-primary)',
+                    color: 'white'
+                });
+                return;
+            }
+            
+            // Redirigir a la vista detalle
+            window.location.href = `/usuarios/administrador/estadisticasSucursales/estadisticasSucursales.html?id=${sucursalId}`;
+        });
+    });
+}
+
+function actualizarTablaTiempoResolucion(tiemposPromedio) {
+    const tbody = document.querySelector('#tablaTiempoResolucion tbody');
+    if (!tbody) return;
+    
+    if (!tiemposPromedio || tiemposPromedio.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; color: #9ca3af;">Sin datos</td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = tiemposPromedio.map(t => {
+        let tiempoColor = '#10b981';
+        if (t.promedio > 72) tiempoColor = '#ef4444';
+        else if (t.promedio > 24) tiempoColor = '#f97316';
+        else if (t.promedio > 0) tiempoColor = '#eab308';
+        
+        const dias = Math.floor(t.promedio / 24);
+        const horasResto = t.promedio % 24;
+        let tiempoTexto = `${t.promedio}h`;
+        if (dias > 0) tiempoTexto = `${dias}d ${horasResto}h`;
+        
+        return `
+            <tr>
+                <td><i class="fas fa-user-circle" style="color: #8b5cf6; margin-right: 8px;"></i>${escapeHTML(t.nombre)}</td>
+                <td><span class="badge-value" style="background: ${tiempoColor}20; color: ${tiempoColor};">${tiempoTexto}</span></td>
+                <td><span class="badge-value" style="background: rgba(139,92,246,0.2); color: #8b5cf6;">${t.incidenciasResueltas || 0}</span></td>
+            </tr>
+        `;
+    }).join('');
 }
 
 function agregarEventosClickCanvas() {
@@ -1767,24 +2071,60 @@ window.verRegistrosBajoPromedioRecuperacion = function() {
 function actualizarGraficasRecuperacion(registros, estadisticas) {
     if (!registros || registros.length === 0) {
         actualizarGraficaVaciaRecuperacion();
+        // Limpiar tablas de recuperación
+        actualizarTablaTipoEvento([]);
+        actualizarTablaEvolucionMensual([]);
+        actualizarTablaTopSucursales([]);
+        actualizarTablaComparativa(estadisticas);
         return;
     }
     actualizarGraficoTipoEvento(registros);
     actualizarGraficoEvolucionMensual(registros);
     actualizarGraficoTopSucursales(registros);
     actualizarGraficoComparativaRecuperacion(estadisticas);
+    
+    // ===== NUEVO: Actualizar tablas de recuperación =====
+    actualizarTablaTipoEvento(registros);
+    actualizarTablaEvolucionMensual(registros);
+    actualizarTablaTopSucursales(registros);
+    actualizarTablaComparativa(estadisticas);
 }
 
 function actualizarGraficoTipoEvento(registros) {
-    const tipos = { 'robo': 0, 'extravio': 0, 'accidente': 0, 'otro': 0 };
-    window.registrosPorTipo = { 'robo': [], 'extravio': [], 'accidente': [], 'otro': [] };
-    const nombresTipos = { 'robo': 'Robo', 'extravio': 'Extravío', 'accidente': 'Accidente', 'otro': 'Otro' };
-    const colores = { 'robo': COLORS_REC.rojo, 'extravio': COLORS_REC.naranja, 'accidente': COLORS_REC.azul, 'otro': COLORS_REC.morado };
+    const tipos = { 
+        'robo': 0, 
+        'recuperacion': 0,     // CAMBIADO: antes era 'extravio'
+        'incidencias': 0,       // CAMBIADO: antes era 'accidente'
+        'otro': 0 
+    };
+    window.registrosPorTipo = { 
+        'robo': [], 
+        'recuperacion': [],     // CAMBIADO
+        'incidencias': [],       // CAMBIADO
+        'otro': [] 
+    };
+    const nombresTipos = { 
+        'robo': 'Robo', 
+        'recuperacion': 'Recuperación',  // CAMBIADO
+        'incidencias': 'Incidencias',    // CAMBIADO
+        'otro': 'Otro' 
+    };
+    const colores = { 
+        'robo': COLORS_REC.rojo, 
+        'recuperacion': COLORS_REC.naranja,   // CAMBIADO
+        'incidencias': COLORS_REC.azul,        // CAMBIADO
+        'otro': COLORS_REC.morado 
+    };
 
     registros.forEach(r => {
         const tipo = r.tipoEvento || 'otro';
-        tipos[tipo] = (tipos[tipo] || 0) + (r.montoPerdido || 0);
-        window.registrosPorTipo[tipo].push(r);
+        // Mapear los valores de la BD a las nuevas categorías
+        let tipoMapeado = tipo;
+        if (tipo === 'extravio') tipoMapeado = 'recuperacion';
+        if (tipo === 'accidente') tipoMapeado = 'incidencias';
+        
+        tipos[tipoMapeado] = (tipos[tipoMapeado] || 0) + (r.montoPerdido || 0);
+        window.registrosPorTipo[tipoMapeado].push(r);
     });
 
     const canvas = document.getElementById('graficoTipoEvento');
@@ -2070,6 +2410,167 @@ function actualizarGraficaVaciaRecuperacion() {
     });
 }
 
+// =============================================
+// FUNCIONES PARA TABLAS DE RECUPERACIÓN
+// =============================================
+
+function actualizarTablaTipoEvento(registros) {
+    const tbody = document.querySelector('#tablaTipoEvento tbody');
+    if (!tbody) return;
+    
+    if (!registros || registros.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; color: #9ca3af;">Sin datos</td></tr>';
+        return;
+    }
+    
+    const tipos = { 'robo': 0, 'recuperacion': 0, 'incidencias': 0, 'otro': 0 };
+    const nombresTipos = { 'robo': 'Robo', 'recuperacion': 'Recuperación', 'incidencias': 'Incidencias', 'otro': 'Otro' };
+    const coloresTipos = { 'robo': '#ef4444', 'recuperacion': '#f59e0b', 'incidencias': '#3b82f6', 'otro': '#8b5cf6' };
+    const iconosTipos = { 'robo': 'fa-mask', 'recuperacion': 'fa-undo-alt', 'incidencias': 'fa-circle-exclamation', 'otro': 'fa-tag' };
+    
+    let totalPerdido = 0;
+    registros.forEach(r => {
+        let tipo = r.tipoEvento || 'otro';
+        if (tipo === 'extravio') tipo = 'recuperacion';
+        if (tipo === 'accidente') tipo = 'incidencias';
+        tipos[tipo] = (tipos[tipo] || 0) + (r.montoPerdido || 0);
+        totalPerdido += (r.montoPerdido || 0);
+    });
+    
+    const formatter = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' });
+    
+    tbody.innerHTML = Object.keys(tipos).filter(k => tipos[k] > 0).map(k => {
+        const porcentaje = totalPerdido > 0 ? ((tipos[k] / totalPerdido) * 100).toFixed(1) : 0;
+        return `
+            <tr>
+                <td><i class="fas ${iconosTipos[k]}" style="color: ${coloresTipos[k]}; margin-right: 8px;"></i>${nombresTipos[k]}</td>
+                <td style="color: ${coloresTipos[k]};">${formatter.format(tipos[k])}</td>
+                <td><span class="badge-pct">${porcentaje}%</span></td>
+            </tr>
+        `;
+    }).join('');
+}
+function actualizarTablaEvolucionMensual(registros) {
+    const tbody = document.querySelector('#tablaEvolucionMensual tbody');
+    if (!tbody) return;
+    
+    if (!registros || registros.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color: #9ca3af;">Sin datos</td></tr>';
+        return;
+    }
+    
+    const meses = {};
+    const mesesNombres = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+    const formatter = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' });
+    
+    registros.forEach(r => {
+        if (r.fecha) {
+            const fecha = new Date(r.fecha);
+            const mesKey = `${fecha.getFullYear()}-${fecha.getMonth() + 1}`;
+            const mesNombre = `${mesesNombres[fecha.getMonth()]} ${fecha.getFullYear()}`;
+            if (!meses[mesKey]) {
+                meses[mesKey] = { nombre: mesNombre, perdido: 0, recuperado: 0 };
+            }
+            meses[mesKey].perdido += r.montoPerdido || 0;
+            meses[mesKey].recuperado += r.montoRecuperado || 0;
+        }
+    });
+    
+    const mesesOrdenados = Object.keys(meses).sort();
+    
+    if (mesesOrdenados.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color: #9ca3af;">Sin datos</td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = mesesOrdenados.map(m => {
+        const mes = meses[m];
+        const tasa = mes.perdido > 0 ? ((mes.recuperado / mes.perdido) * 100).toFixed(1) : 0;
+        let tasaColor = '#ef4444';
+        if (tasa > 50) tasaColor = '#10b981';
+        else if (tasa > 25) tasaColor = '#f59e0b';
+        
+        return `
+            <tr>
+                <td><i class="fas fa-calendar-alt" style="color: #3b82f6; margin-right: 8px;"></i>${mes.nombre}</td>
+                <td style="color: #ef4444;">${formatter.format(mes.perdido)}</td>
+                <td style="color: #10b981;">${formatter.format(mes.recuperado)}</td>
+                <td><span class="badge-value" style="background: ${tasaColor}20; color: ${tasaColor};">${tasa}%</span></td>
+            </tr>
+        `;
+    }).join('');
+}
+
+function actualizarTablaTopSucursales(registros) {
+    const tbody = document.querySelector('#tablaTopSucursales tbody');
+    if (!tbody) return;
+    
+    if (!registros || registros.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; color: #9ca3af;">Sin datos</td></tr>';
+        return;
+    }
+    
+    const sucursalesMap = {};
+    const formatter = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', notation: 'compact' });
+    
+    registros.forEach(r => {
+        const sucursal = r.nombreEmpresaCC || 'Sin asignar';
+        if (!sucursalesMap[sucursal]) {
+            sucursalesMap[sucursal] = { perdido: 0, eventos: 0 };
+        }
+        sucursalesMap[sucursal].perdido += r.montoPerdido || 0;
+        sucursalesMap[sucursal].eventos += 1;
+    });
+    
+    const sucursalesArray = Object.entries(sucursalesMap)
+        .map(([nombre, datos]) => ({ nombre, ...datos }))
+        .sort((a, b) => b.perdido - a.perdido)
+        .slice(0, 10);
+    
+    if (sucursalesArray.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; color: #9ca3af;">Sin datos</td></tr>';
+        return;
+    }
+    
+    const coloresSucursales = ['#ef4444', '#f97316', '#f59e0b', '#eab308', '#10b981', '#3b82f6', '#8b5cf6', '#ec4899', '#06b6d4', '#6366f1'];
+    
+    tbody.innerHTML = sucursalesArray.map((s, idx) => {
+        const color = coloresSucursales[idx % coloresSucursales.length];
+        return `
+            <tr>
+                <td><i class="fas fa-store" style="color: ${color}; margin-right: 8px;"></i>${escapeHTML(s.nombre.length > 30 ? s.nombre.substring(0, 27) + '...' : s.nombre)}</td>
+                <td style="color: ${color}; font-weight: 600;">${formatter.format(s.perdido)}</td>
+                <td><span class="badge-value" style="background: ${color}20; color: ${color};">${s.eventos}</span></td>
+            </tr>
+        `;
+    }).join('');
+}
+
+function actualizarTablaComparativa(estadisticas) {
+    const tbody = document.querySelector('#tablaComparativa tbody');
+    if (!tbody) return;
+    
+    const formatter = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' });
+    const total = estadisticas?.totalPerdido || 0;
+    const recuperado = estadisticas?.totalRecuperado || 0;
+    const porcentajeRec = total > 0 ? ((recuperado / total) * 100).toFixed(1) : 0;
+    const porcentajePerd = 100 - parseFloat(porcentajeRec);
+    
+    tbody.innerHTML = `
+        <tr>
+            <td><i class="fas fa-arrow-down" style="color: #ef4444; margin-right: 8px;"></i>Pérdidas</td>
+            <td style="color: #ef4444; font-weight: 600;">${formatter.format(total)}</td>
+            <td><span class="badge-value" style="background: rgba(239,68,68,0.2); color: #ef4444;">${porcentajePerd.toFixed(1)}%</span></td>
+        </tr>
+        <tr>
+            <td><i class="fas fa-arrow-up" style="color: #10b981; margin-right: 8px;"></i>Recuperaciones</td>
+            <td style="color: #10b981; font-weight: 600;">${formatter.format(recuperado)}</td>
+            <td><span class="badge-value" style="background: rgba(16,185,129,0.2); color: #10b981;">${porcentajeRec}%</span></td>
+        </tr>
+    `;
+}
+
+
 function mostrarRegistrosRecuperacionEnSweet(registros, titulo, icono = '<i class="fas fa-chart-simple"></i>') {
     if (!registros || registros.length === 0) {
         Swal.fire({ icon: 'info', title: 'Sin registros', text: 'No hay registros para mostrar', background: 'var(--color-bg-primary)', color: 'white', customClass: { popup: 'swal2-popup-custom' } });
@@ -2130,56 +2631,131 @@ function mostrarRegistrosRecuperacionEnSweet(registros, titulo, icono = '<i clas
 }
 
 async function cargarRegistrosRecuperacionConFiltros() {
-    if (!organizacionActual?.camelCase || !mercanciaManager) {
-        console.log('No se pudo inicializar el módulo de recuperación');
+    console.log('=== CARGANDO REGISTROS DE RECUPERACIÓN ===');
+    
+    if (!organizacionActual?.camelCase) {
+        console.error('❌ No se pudo inicializar el módulo de recuperación: falta organización');
+        mostrarMensajeSinDatosRecuperacion();
+        return;
+    }
+    
+    if (!mercanciaManager) {
+        console.error('❌ mercanciaManager no está inicializado');
+        mostrarMensajeSinDatosRecuperacion();
         return;
     }
 
     try {
+        // Cargar datos si no están en caché
         if (registrosRecuperacionCache.length === 0) {
+            console.log('📡 Cargando registros de recuperación desde la BD...');
             registrosRecuperacionCache = await mercanciaManager.getRegistrosByOrganizacion(organizacionActual.camelCase);
+            console.log(`📊 Registros cargados: ${registrosRecuperacionCache.length}`);
+            
+            if (registrosRecuperacionCache.length > 0) {
+                console.log('📋 Ejemplo de registro:', registrosRecuperacionCache[0]);
+            } else {
+                console.warn('⚠️ No hay registros de recuperación en la base de datos');
+            }
+        } else {
+            console.log(`📦 Usando caché: ${registrosRecuperacionCache.length} registros`);
         }
 
-        let registrosFiltrados = registrosRecuperacionCache;
+        // Aplicar filtros
+        let registrosFiltrados = [...registrosRecuperacionCache];
+        console.log('🎯 Filtros activos:', filtrosActivos);
 
-        const sucursal = document.getElementById('filtroSucursal')?.value || 'todas';
-        if (sucursal !== 'todas') {
-            registrosFiltrados = registrosFiltrados.filter(r => r.nombreEmpresaCC === sucursal);
+        // Filtro por sucursal
+        const sucursalId = document.getElementById('filtroSucursal')?.value || 'todas';
+        if (sucursalId !== 'todas') {
+            const sucursalSeleccionada = sucursalesCache.find(s => s.id === sucursalId);
+            if (sucursalSeleccionada) {
+                registrosFiltrados = registrosFiltrados.filter(r => r.nombreEmpresaCC === sucursalSeleccionada.nombre);
+                console.log(`🔍 Filtrado por sucursal "${sucursalSeleccionada.nombre}": ${registrosFiltrados.length} registros`);
+            }
         }
 
+        // Filtro por fechas
         if (filtrosActivos.fechaInicio) {
             const fechaInicioObj = new Date(filtrosActivos.fechaInicio);
             fechaInicioObj.setHours(0, 0, 0, 0);
+            const antes = registrosFiltrados.length;
             registrosFiltrados = registrosFiltrados.filter(r => {
                 const fechaRegistro = r.fecha ? new Date(r.fecha) : null;
                 return fechaRegistro && fechaRegistro >= fechaInicioObj;
             });
+            console.log(`📅 Filtro fecha inicio (${filtrosActivos.fechaInicio}): ${antes} → ${registrosFiltrados.length}`);
         }
 
         if (filtrosActivos.fechaFin) {
             const fechaFinObj = new Date(filtrosActivos.fechaFin);
             fechaFinObj.setHours(23, 59, 59, 999);
+            const antes = registrosFiltrados.length;
             registrosFiltrados = registrosFiltrados.filter(r => {
                 const fechaRegistro = r.fecha ? new Date(r.fecha) : null;
                 return fechaRegistro && fechaRegistro <= fechaFinObj;
             });
+            console.log(`📅 Filtro fecha fin (${filtrosActivos.fechaFin}): ${antes} → ${registrosFiltrados.length}`);
         }
 
+        // Filtro por tipo de evento
         if (filtrosActivos.tipoEvento !== 'todos') {
+            const antes = registrosFiltrados.length;
             registrosFiltrados = registrosFiltrados.filter(r => r.tipoEvento === filtrosActivos.tipoEvento);
+            console.log(`🏷️ Filtro tipo evento "${filtrosActivos.tipoEvento}": ${antes} → ${registrosFiltrados.length}`);
         }
 
         registrosRecuperacionFiltrados = registrosFiltrados;
         datosActualesRecuperacion.registros = registrosFiltrados;
+        
+        console.log(`📈 Total registros después de filtros: ${registrosFiltrados.length}`);
+        
         const estadisticas = calcularEstadisticasRecuperacion(registrosFiltrados);
         datosActualesRecuperacion.estadisticas = estadisticas;
+        
+        console.log('💰 Estadísticas calculadas:', estadisticas);
 
+        // Mostrar KPIs (siempre mostrar, aunque sea en cero)
         mostrarKPIsRecuperacion(estadisticas);
-        actualizarGraficasRecuperacion(registrosFiltrados, estadisticas);
-        actualizarTablaResumenRecuperacion(registrosFiltrados);
+        
+        // Actualizar gráficas y tablas
+        if (registrosFiltrados.length === 0) {
+            console.warn('⚠️ No hay registros para mostrar después de los filtros');
+            mostrarMensajeSinDatosRecuperacion();
+            actualizarGraficaVaciaRecuperacion();
+            actualizarTablaResumenRecuperacion([]);
+            // Limpiar tablas específicas de recuperación
+            if (typeof actualizarTablaTipoEvento === 'function') actualizarTablaTipoEvento([]);
+            if (typeof actualizarTablaEvolucionMensual === 'function') actualizarTablaEvolucionMensual([]);
+            if (typeof actualizarTablaTopSucursales === 'function') actualizarTablaTopSucursales([]);
+            if (typeof actualizarTablaComparativa === 'function') actualizarTablaComparativa(estadisticas);
+        } else {
+            actualizarGraficasRecuperacion(registrosFiltrados, estadisticas);
+            actualizarTablaResumenRecuperacion(registrosFiltrados);
+        }
 
     } catch (error) {
-        console.error('Error al cargar registros de recuperación:', error);
+        console.error('❌ Error al cargar registros de recuperación:', error);
+        mostrarMensajeSinDatosRecuperacion();
+    }
+}
+
+function mostrarMensajeSinDatosRecuperacion() {
+    const formatter = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' });
+    setElementText('totalPerdidas', formatter.format(0));
+    setElementText('totalRecuperado', formatter.format(0));
+    setElementText('totalNeto', formatter.format(0));
+    setElementText('porcentajeRecuperacion', '0%');
+    setElementText('totalEventosRecuperacion', '0');
+    setElementText('promedioPerdida', formatter.format(0));
+    
+    // Mostrar mensaje en la tabla de resumen
+    const tablaBody = document.getElementById('tablaResumenBody');
+    if (tablaBody) {
+        tablaBody.innerHTML = `<table><td colspan="6" class="text-center">
+            <i class="fas fa-database" style="font-size: 32px; opacity: 0.3; margin-bottom: 10px; display: block;"></i>
+            No hay registros de recuperación para mostrar con los filtros actuales
+        </td></tr>`;
     }
 }
 
@@ -2396,9 +2972,12 @@ async function inicializarDashboardUnificado() {
         await inicializarEstadisticasManager();
         await obtenerTokenAuth();
         configurarFiltros();
-        await Promise.all([cargarSucursales(), cargarCategorias(), cargarSucursalesRecuperacion(), cargarRegiones()]); // Agregar cargarRegiones aquí
+        await Promise.all([cargarSucursales(), cargarCategorias(), cargarSucursalesRecuperacion(), cargarRegiones()]);
         establecerFechasPorDefecto();
         await registrarAccesoVistaEstadisticas();
+        
+        // ===== DIAGNÓSTICO DE RECUPERACIÓN =====
+        await diagnosticarRecuperacion();
         
         // Sincronizar filtros con el mapa de calor
         sincronizarFiltrosConMapa();
@@ -2415,6 +2994,9 @@ async function inicializarDashboardUnificado() {
         if (window.mapaCalorComponente) {
             window.mapaCalorComponente.mostrarMensajeInicialMapa();
         }
+        
+        // Mostrar estado inicial de recuperación
+        mostrarMensajeSinDatosRecuperacion();
         
     } catch (error) {
         console.error('Error al inicializar estadísticas unificadas:', error);
