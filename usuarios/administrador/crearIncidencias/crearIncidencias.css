@@ -16,6 +16,8 @@ body {
     padding: 20px;
     padding-top: 80px;
     line-height: 1.5;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
 }
 
 /* =============================================
@@ -28,6 +30,7 @@ body {
     background: transparent;
     border-radius: var(--border-radius-large);
     animation: fadeInUp 0.5s ease;
+    overflow: visible !important;
 }
 
 /* =============================================
@@ -133,7 +136,6 @@ body {
     box-shadow: var(--shadow-normal) !important;
     margin-bottom: 20px !important;
     overflow: visible !important;
-    /* ← CAMBIADO */
 }
 
 .card-header {
@@ -168,7 +170,6 @@ body {
 .card-body {
     padding: 30px !important;
     overflow: visible !important;
-    /* ← CAMBIADO */
 }
 
 /* =============================================
@@ -207,14 +208,12 @@ body {
     grid-template-columns: 1fr;
     gap: 20px;
     overflow: visible !important;
-    /* ← CAMBIADO */
 }
 
 .full-width {
     grid-column: 1 / -1;
     width: 100%;
     overflow: visible !important;
-    /* ← CAMBIADO */
     position: relative;
 }
 
@@ -1091,6 +1090,12 @@ body {
         gap: 15px !important;
         align-items: flex-start !important;
     }
+
+    .card-body,
+    .form-grid,
+    .full-width {
+        overflow: visible !important;
+    }
 }
 
 @media (max-width: 768px) {
@@ -1454,17 +1459,275 @@ body {
     z-index: 99999;
 }
 
-/* Responsive para sugerencias en móvil */
-@media (max-width: 768px) {
+/* =============================================
+   RESPONSIVE - FIX PARA LISTAS DESPLEGABLES
+   En móvil, las sugerencias se posicionan correctamente
+   debajo del campo gracias a position: absolute
+   ============================================= */
+@media (max-width: 767px) {
+
+    /* Asegurar que el contenedor tenga posición relativa */
+    .sugerencias-container {
+        position: relative !important;
+        display: block !important;
+        width: 100% !important;
+    }
+
+    /* La lista mantiene position: absolute pero mejoramos su visibilidad */
     .sugerencias-lista {
-        position: fixed;
-        top: auto;
-        left: 20px;
-        right: 20px;
-        max-height: 200px;
-        width: auto;
+        position: absolute !important;
+        top: 100% !important;
+        left: 0 !important;
+        right: 0 !important;
+        width: 100% !important;
+        max-height: 40vh !important;
+        z-index: 999999 !important;
+        border: 1px solid var(--color-accent-primary) !important;
+        margin-top: 5px !important;
+        border-radius: var(--border-radius-medium) !important;
+        background: var(--color-bg-tertiary) !important;
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4) !important;
+    }
+
+    /* Elementos más grandes para mejor touch */
+    .sugerencia-item {
+        padding: 14px 16px !important;
+        min-height: 54px !important;
+    }
+
+    .sugerencia-icono {
+        width: 38px !important;
+        height: 38px !important;
+        min-width: 38px !important;
+        font-size: 18px !important;
+    }
+
+    .sugerencia-nombre {
+        font-size: 15px !important;
+        font-weight: 600 !important;
+    }
+
+    .sugerencia-detalle {
+        font-size: 12px !important;
+    }
+
+    .sugerencia-vacia {
+        padding: 40px 20px !important;
+    }
+
+    .sugerencia-vacia i {
+        font-size: 48px !important;
+    }
+
+    .sugerencia-vacia p {
+        font-size: 14px !important;
+    }
+}
+
+@media (max-width: 480px) {
+    .sugerencias-lista {
+        max-height: 45vh !important;
+    }
+
+    .sugerencia-item {
+        padding: 12px 14px !important;
+        gap: 10px !important;
+    }
+
+    .sugerencia-icono {
+        width: 32px !important;
+        height: 32px !important;
+        min-width: 32px !important;
+        font-size: 16px !important;
+    }
+
+    .sugerencia-nombre {
+        font-size: 14px !important;
+    }
+
+    .sugerencia-detalle {
+        font-size: 11px !important;
+        gap: 6px !important;
+    }
+}
+
+/* =============================================
+   FIX PARA SELECT2 EN RESPONSIVE
+   ============================================= */
+@media (max-width: 767px) {
+    .select2-dropdown {
+        position: fixed !important;
+        top: auto !important;
+        bottom: auto !important;
+        left: 16px !important;
+        right: 16px !important;
+        width: calc(100% - 32px) !important;
+        max-height: 60vh !important;
+        z-index: 999999 !important;
+        border-radius: var(--border-radius-medium) !important;
+        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4) !important;
+    }
+
+    .select2-container--open .select2-dropdown--below {
+        top: auto !important;
+        margin-top: 5px !important;
+    }
+
+    .select2-container--open .select2-dropdown--above {
+        bottom: auto !important;
+        margin-bottom: 5px !important;
+    }
+
+    .select2-results__option {
+        padding: 14px 16px !important;
+        font-size: 15px !important;
+    }
+
+    .select2-search__field {
+        font-size: 16px !important;
+        padding: 12px !important;
+        min-height: 44px !important;
+    }
+
+    .select2-search--dropdown {
+        padding: 12px !important;
+    }
+}
+
+/* =============================================
+   FIX PARA FLATPICKR EN RESPONSIVE
+   ============================================= */
+@media (max-width: 767px) {
+    .flatpickr-calendar {
+        position: fixed !important;
+        top: 50% !important;
+        left: 50% !important;
+        transform: translate(-50%, -50%) !important;
+        width: 95% !important;
+        max-width: 380px !important;
+        margin: 0 !important;
+        border-radius: var(--border-radius-large) !important;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5) !important;
         z-index: 999999 !important;
     }
+
+    .flatpickr-calendar.open {
+        display: block !important;
+    }
+
+    .flatpickr-months {
+        padding: 8px 0 !important;
+    }
+
+    .flatpickr-month {
+        height: 48px !important;
+    }
+
+    .flatpickr-current-month {
+        padding: 8px 0 0 0 !important;
+        font-size: 18px !important;
+    }
+
+    .flatpickr-day {
+        width: 42px !important;
+        line-height: 42px !important;
+        font-size: 14px !important;
+        margin: 3px !important;
+    }
+
+    .flatpickr-weekday {
+        font-size: 13px !important;
+    }
+
+    .flatpickr-time {
+        border-radius: 0 0 var(--border-radius-large) var(--border-radius-large) !important;
+    }
+
+    .flatpickr-time input {
+        font-size: 16px !important;
+        padding: 12px !important;
+    }
+
+    .flatpickr-time .flatpickr-time-separator {
+        font-size: 16px !important;
+    }
+
+    .flatpickr-time .flatpickr-am-pm {
+        font-size: 14px !important;
+    }
+}
+
+@media (max-width: 360px) {
+    .flatpickr-day {
+        width: 36px !important;
+        line-height: 36px !important;
+        font-size: 13px !important;
+        margin: 2px !important;
+    }
+}
+
+/* =============================================
+   FIX PARA MODALES DE SWEETALERT2 SELECT
+   ============================================= */
+@media (max-width: 767px) {
+    .swal2-popup {
+        width: 95% !important;
+        max-width: 95% !important;
+        margin: 0 auto !important;
+        border-radius: var(--border-radius-large) !important;
+    }
+
+    .swal2-select {
+        font-size: 16px !important;
+        padding: 14px !important;
+        min-height: 48px !important;
+    }
+
+    .swal2-select option {
+        font-size: 15px !important;
+        padding: 12px !important;
+    }
+
+    .swal2-textarea {
+        font-size: 16px !important;
+    }
+
+    .swal2-confirm,
+    .swal2-cancel {
+        padding: 12px 20px !important;
+        font-size: 14px !important;
+        min-width: 120px !important;
+    }
+}
+
+/* =============================================
+   FIX PARA MODAL DE RIESGO (color picker)
+   ============================================= */
+@media (max-width: 767px) {
+    .riesgo-modal-popup {
+        width: 95% !important;
+        max-width: 95% !important;
+    }
+
+    .riesgo-input {
+        font-size: 16px !important;
+        padding: 12px !important;
+    }
+
+    .riesgo-color-input {
+        height: 50px !important;
+    }
+}
+
+/* =============================================
+   GARANTIZAR QUE NADA CORTE EL CONTENIDO
+   ============================================= */
+.card,
+.card-body,
+.form-grid,
+.full-width,
+#formIncidenciaPrincipal {
+    overflow: visible !important;
 }
 
 /* =============================================
@@ -1632,9 +1895,7 @@ select:not(.field-disabled):focus {
     color: var(--color-danger);
 }
 
-/* Badde de campo obligatorio para el dropzone */
-
-
+/* Badge de campo obligatorio para el dropzone */
 .drop-zone .required-badge {
     position: absolute;
     top: -12px;
@@ -2017,7 +2278,7 @@ select:not(.field-disabled):focus {
     text-shadow: 0 0 4px var(--color-accent-primary);
 }
 
-/* Responsive */
+/* Responsive para botones tipo evento */
 @media (max-width: 768px) {
     .tipo-evento-buttons {
         flex-direction: column;
