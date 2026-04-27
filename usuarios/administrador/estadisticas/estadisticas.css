@@ -313,7 +313,7 @@ body {
 }
 
 .metric-card .metric-subtitle::after {
-    content: ' 🔍';
+    content: ' ';
     font-size: 0.6rem;
     opacity: 0;
     transition: opacity 0.2s ease;
@@ -382,6 +382,7 @@ body {
     color: white;
     pointer-events: none;
 }
+
 
 /* =============================================
    GRÁFICAS - VERSIÓN SUPER RESPONSIVE
@@ -469,13 +470,12 @@ body {
     flex: 1;
     position: relative;
     width: 100%;
-    aspect-ratio: 16 / 9;
-    max-height: 400px;
 }
 
-/* Para gráficas circulares (doughnut) */
+/* ===== ESTO SOLO PARA LAS GRÁFICAS CIRCULARES (NO SE TOCAN) ===== */
 .card:has(#graficoEstado) .card-body,
-.card:has(#graficoRiesgo) .card-body {
+.card:has(#graficoRiesgo) .card-body,
+.card:has(#graficoTipoEvento) .card-body {
     aspect-ratio: 1 / 1;
     max-height: 350px;
     min-height: auto;
@@ -533,11 +533,11 @@ canvas {
 }
 
 .table th {
-    background: linear-gradient(135deg, rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.3));
+    background: var(--color-bg-secondary);
     color: var(--color-text-primary);
     font-family: var(--font-family-primary, 'Orbitron', sans-serif);
     font-weight: 600;
-    font-size: 0.7rem;
+    font-size: 0.6rem;
     text-transform: uppercase;
     letter-spacing: 0.5px;
 }
@@ -1450,4 +1450,1104 @@ p, h1, h2, h3, h4, h5, h6, span, div {
     .btn-pdf {
         min-height: 44px;
     }
+}
+/* =============================================
+   TABLAS - VERSIÓN VERTICAL (UNA DEBAJO DE OTRA)
+   ============================================= */
+
+/* Cambiar de grid de 2 columnas a 1 columna (vertical) */
+.tables-grid-2col {
+    display: flex;
+    flex-direction: column;
+    gap: 25px;
+    margin-bottom: 25px;
+}
+
+/* Cada card ocupará todo el ancho disponible - MÁS DINÁMICO */
+.tables-grid-2col .card {
+    width: 100%;
+    margin: 0;
+    /* Eliminar altura fija y dejar que el contenido determine la altura */
+    min-height: auto;
+    height: auto;
+}
+
+/* Hacer que el card body de las tablas sea más compacto */
+.tables-grid-2col .card .card-body {
+    padding: 0;  /* Eliminar padding del card-body */
+    min-height: auto;
+    aspect-ratio: auto;  /* Eliminar aspect-ratio fijo */
+    max-height: none;
+    display: block;
+}
+
+/* Contenedor de la tabla con scroll vertical y horizontal - MÁS COMPACTO */
+.tables-grid-2col .card .table-responsive {
+    overflow-y: auto;
+    overflow-x: auto;
+    max-height: 350px;  /* Reducido de 400px a 350px */
+    min-height: 200px;  /* Altura mínima cuando hay pocos datos */
+    scrollbar-width: thin;
+    position: relative;
+}
+
+/* Cuando la tabla tiene pocas filas, que no sea tan alta */
+.tables-grid-2col .card .table-responsive:has(table tbody tr:only-child) {
+    max-height: none;
+    min-height: auto;
+}
+
+/* ESTILOS PERSONALIZADOS PARA LA BARRA DE SCROLL */
+.tables-grid-2col .card .table-responsive::-webkit-scrollbar {
+    width: 8px;
+    height: 10px;
+}
+
+.tables-grid-2col .card .table-responsive::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 10px;
+}
+
+.tables-grid-2col .card .table-responsive::-webkit-scrollbar-thumb {
+    background: var(--color-accent-primary);
+    border-radius: 10px;
+    transition: all 0.2s ease;
+}
+
+.tables-grid-2col .card .table-responsive::-webkit-scrollbar-thumb:hover {
+    background: var(--color-text-primary);
+    cursor: pointer;
+}
+
+/* Scrollbar para Firefox */
+.tables-grid-2col .card .table-responsive {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-accent-primary) rgba(255, 255, 255, 0.05);
+}
+
+/* Para que el header de la tabla se mantenga fijo al hacer scroll */
+.tables-grid-2col .card .table {
+    position: relative;
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    min-width: 700px;
+    margin-bottom: 0;
+}
+
+/* Hacer las celdas más compactas */
+.tables-grid-2col .card .table th,
+.tables-grid-2col .card .table td {
+    padding: 8px 12px;  /* Reducido de 12px a 8px */
+}
+
+/* Fijar el encabezado de la tabla */
+.tables-grid-2col .card .table thead th {
+    position: sticky;
+    top: 0;
+    background: var(--color-bg-tertiary);
+    backdrop-filter: blur(8px);
+    z-index: 10;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+/* Fijar la primera columna (Colaborador / Categoría) */
+.tables-grid-2col .card .table th:first-child,
+.tables-grid-2col .card .table td:first-child {
+    position: sticky;
+    left: 0;
+    background: inherit;
+    z-index: 5;
+}
+
+/* Para la primera columna del header */
+.tables-grid-2col .card .table thead th:first-child {
+    z-index: 15;
+}
+
+/* Fondo para las celdas fijas al hacer scroll horizontal */
+.tables-grid-2col .card .table td:first-child {
+    background: var(--color-bg-secondary);
+    box-shadow: 2px 0 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Efecto hover manteniendo el fondo de la celda fija */
+.tables-grid-2col .card .table tr:hover td:first-child {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+/* =============================================
+   TABLA DE CATEGORÍAS - VERSIÓN MÁS COMPACTA
+   ============================================= */
+
+/* La segunda card (tabla de categorías) aún más compacta */
+.tables-grid-2col .card:last-child .table-responsive {
+    max-height: 300px;  /* Más pequeño que la tabla de colaboradores */
+    min-height: 150px;
+}
+
+.tables-grid-2col .card:last-child .table {
+    min-width: 350px;
+}
+
+/* Hacer las celdas aún más compactas */
+.tables-grid-2col .card:last-child .table th,
+.tables-grid-2col .card:last-child .table td {
+    padding: 6px 12px;
+}
+
+/* Limitar ancho de la columna de categoría */
+.tables-grid-2col .card:last-child .table td:first-child,
+.tables-grid-2col .card:last-child .table th:first-child {
+    max-width: 280px;
+    white-space: normal;
+    word-break: break-word;
+    min-width: 160px;
+}
+
+/* Columna de cantidad más compacta y centrada */
+.tables-grid-2col .card:last-child .table td:last-child,
+.tables-grid-2col .card:last-child .table th:last-child {
+    width: 300px;
+    text-align: center;
+}
+
+/* Badge centrado */
+.tables-grid-2col .card:last-child .table td:last-child .badge-value {
+    display: inline-block;
+    min-width: 50px;
+    text-align: center;
+}
+
+/* =============================================
+   RESPONSIVE - AJUSTES PARA TABLAS
+   ============================================= */
+
+@media (max-width: 768px) {
+    .tables-grid-2col {
+        gap: 20px;
+    }
+    
+    .tables-grid-2col .card .table-responsive {
+        max-height: 300px;
+        min-height: 180px;
+    }
+    
+    .tables-grid-2col .card .table {
+        min-width: 600px;
+    }
+    
+    .tables-grid-2col .card .table th,
+    .tables-grid-2col .card .table td {
+        padding: 6px 10px;
+    }
+    
+    /* Tabla de categorías en tablet */
+    .tables-grid-2col .card:last-child .table-responsive {
+        max-height: 250px;
+    }
+    
+    .tables-grid-2col .card:last-child .table {
+        min-width: 320px;
+    }
+    
+    .tables-grid-2col .card:last-child .table td:first-child {
+        max-width: 200px;
+        font-size: 0.75rem;
+        min-width: 140px;
+    }
+}
+
+@media (max-width: 550px) {
+    .tables-grid-2col {
+        gap: 15px;
+    }
+    
+    .tables-grid-2col .card .table-responsive {
+        max-height: 280px;
+        min-height: 150px;
+    }
+    
+    .tables-grid-2col .card .table {
+        min-width: 500px;
+        font-size: 0.7rem;
+    }
+    
+    .tables-grid-2col .card .table th,
+    .tables-grid-2col .card .table td {
+        padding: 5px 8px;
+    }
+    
+    /* Tabla de categorías en móvil */
+    .tables-grid-2col .card:last-child .table-responsive {
+        max-height: 220px;
+    }
+    
+    .tables-grid-2col .card:last-child .table {
+        min-width: 280px;
+    }
+    
+    .tables-grid-2col .card:last-child .table td:first-child {
+        max-width: 160px;
+        font-size: 0.7rem;
+        min-width: 110px;
+    }
+    
+    .tables-grid-2col .card:last-child .table td:last-child {
+        width: 80px;
+    }
+}
+
+@media (max-width: 380px) {
+    .tables-grid-2col .card .table {
+        min-width: 450px;
+        font-size: 0.65rem;
+    }
+    
+    .tables-grid-2col .card .table th,
+    .tables-grid-2col .card .table td {
+        padding: 4px 6px;
+    }
+    
+    /* Tabla de categorías en móvil pequeño */
+    .tables-grid-2col .card:last-child .table {
+        min-width: 260px;
+    }
+    
+    .tables-grid-2col .card:last-child .table td:first-child {
+        max-width: 140px;
+        font-size: 0.65rem;
+        min-width: 90px;
+    }
+    
+    .tables-grid-2col .card:last-child .table td:last-child {
+        width: 70px;
+    }
+}
+
+/* =============================================
+   OPTIMIZACIÓN PARA CUANDO HAY POCAS FILAS
+   ============================================= */
+
+/* Si la tabla de colaboradores tiene menos de 5 filas, reducir altura máxima */
+.tables-grid-2col .card .table-responsive:has(table tbody tr:only-child),
+.tables-grid-2col .card .table-responsive:has(table tbody tr:nth-child(2):last-child),
+.tables-grid-2col .card .table-responsive:has(table tbody tr:nth-child(3):last-child),
+.tables-grid-2col .card .table-responsive:has(table tbody tr:nth-child(4):last-child),
+.tables-grid-2col .card .table-responsive:has(table tbody tr:nth-child(5):last-child) {
+    max-height: none;
+    min-height: auto;
+}
+
+/* Ajuste específico para tabla de categorías con pocas filas */
+.tables-grid-2col .card:last-child .table-responsive:has(table tbody tr:only-child),
+.tables-grid-2col .card:last-child .table-responsive:has(table tbody tr:nth-child(2):last-child),
+.tables-grid-2col .card:last-child .table-responsive:has(table tbody tr:nth-child(3):last-child) {
+    max-height: none;
+    min-height: auto;
+}
+/* =============================================
+   SECCIONES - TÍTULOS
+   ============================================= */
+.seccion-titulo {
+    margin: 40px 0 20px 0;
+    padding-bottom: 15px;
+    border-bottom: 2px solid var(--color-accent-primary);
+    text-align: left;
+}
+
+.seccion-titulo h2 {
+    font-family: var(--font-family-primary, 'Orbitron', sans-serif);
+    font-size: 1.5rem;
+    color: var(--color-text-primary);
+    margin-bottom: 5px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.seccion-titulo h2 i {
+    color: var(--color-accent-primary);
+    font-size: 1.3rem;
+}
+
+.seccion-titulo p {
+    color: var(--color-text-secondary);
+    font-size: 0.8rem;
+    margin: 0;
+}
+
+.seccion-recuperacion {
+    margin-top: 50px;
+}
+
+.seccion-desempeno {
+    margin-top: 30px;
+}
+
+/* =============================================
+   KPIs DE RECUPERACIÓN
+   ============================================= */
+.kpis-container {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 15px;
+    margin-bottom: 25px;
+}
+
+.kpi-card {
+    background: var(--color-bg-secondary);
+    border: 1px solid var(--color-border-light);
+    border-radius: var(--border-radius-large, 16px);
+    padding: 0.9rem;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(10px);
+    background: linear-gradient(135deg, rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.3));
+    cursor: pointer;
+}
+
+.kpi-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-normal, 0 8px 20px rgba(0, 0, 0, 0.2));
+    border-color: var(--color-accent-primary);
+}
+
+.kpi-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.4rem;
+    transition: transform 0.3s ease;
+    flex-shrink: 0;
+}
+
+.kpi-icon.perdida-icon {
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.25), rgba(239, 68, 68, 0.1));
+    color: #ef4444;
+    box-shadow: 0 0 15px rgba(239, 68, 68, 0.3);
+}
+
+.kpi-icon.recuperado-icon {
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.25), rgba(16, 185, 129, 0.1));
+    color: #10b981;
+    box-shadow: 0 0 15px rgba(16, 185, 129, 0.3);
+}
+
+.kpi-icon.neto-icon {
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.25), rgba(245, 158, 11, 0.1));
+    color: #f59e0b;
+    box-shadow: 0 0 15px rgba(245, 158, 11, 0.3);
+}
+
+.kpi-icon.porcentaje-icon {
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.25), rgba(59, 130, 246, 0.1));
+    color: #3b82f6;
+    box-shadow: 0 0 15px rgba(59, 130, 246, 0.3);
+}
+
+.kpi-icon.eventos-icon {
+    background: linear-gradient(135deg, rgba(139, 92, 246, 0.25), rgba(139, 92, 246, 0.1));
+    color: #8b5cf6;
+    box-shadow: 0 0 15px rgba(139, 92, 246, 0.3);
+}
+
+.kpi-icon.promedio-icon {
+    background: linear-gradient(135deg, rgba(236, 72, 153, 0.25), rgba(236, 72, 153, 0.1));
+    color: #ec4899;
+    box-shadow: 0 0 15px rgba(236, 72, 153, 0.3);
+}
+
+.kpi-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.kpi-info h3 {
+    font-size: 1.4rem;
+    font-weight: 800;
+    color: white;
+    margin: 0 0 4px 0;
+    font-family: var(--font-family-primary, 'Orbitron', sans-serif);
+    word-break: break-word;
+    line-height: 1.2;
+}
+
+.kpi-info p {
+    font-size: 0.7rem;
+    color: var(--color-text-secondary);
+    margin: 0;
+    font-family: var(--font-family-secondary, 'Rajdhani', sans-serif);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* =============================================
+   GRÁFICAS DE RECUPERACIÓN
+   ============================================= */
+.graficas-container {
+    width: 100%;
+}
+
+.graficas-row {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+    margin-bottom: 25px;
+}
+
+.card-grafica {
+    background: var(--color-bg-secondary);
+    border: 1px solid var(--color-border-light);
+    border-radius: var(--border-radius-large, 16px);
+    overflow: hidden;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(5px);
+    display: flex;
+    flex-direction: column;
+}
+
+.card-grafica:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-normal, 0 8px 20px rgba(0, 0, 0, 0.2));
+}
+
+.card-grafica.full-width {
+    grid-column: 1 / -1;
+}
+
+.card-grafica .card-header {
+    background: linear-gradient(135deg, rgba(20, 20, 20, 0.98), rgba(30, 30, 30, 0.95));
+    border-bottom: 1px solid var(--color-border-light);
+    padding: 10px 15px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+    flex-shrink: 0;
+}
+
+.card-grafica .card-header h5 {
+    color: var(--color-text-primary);
+    font-family: var(--font-family-primary, 'Orbitron', sans-serif);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    letter-spacing: 0.5px;
+}
+
+.card-grafica .card-header h5 i {
+    color: var(--color-accent-primary);
+    font-size: 0.8rem;
+}
+
+.card-grafica .card-body {
+    padding: 20px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 320px;
+    flex: 1;
+    position: relative;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    max-height: 400px;
+}
+
+.card-grafica:first-child .card-body {
+    aspect-ratio: 1 / 1;
+    max-height: 450px;
+    min-height: auto;
+    padding: 15px;
+}
+
+/* Tabla resumen */
+.resumen-tabla {
+    width: 100%;
+    border-collapse: collapse;
+    color: var(--color-text-secondary);
+    font-size: 0.75rem;
+    min-width: 700px;
+}
+
+.resumen-tabla th,
+.resumen-tabla td {
+    padding: 12px 12px;
+    text-align: left;
+    border-bottom: 1px solid var(--color-border-light);
+}
+
+.resumen-tabla th {
+    background: linear-gradient(135deg, rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.3));
+    color: var(--color-text-primary);
+    font-family: var(--font-family-primary, 'Orbitron', sans-serif);
+    font-weight: 600;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.resumen-tabla tr:hover {
+    background: rgba(255, 255, 255, 0.03);
+}
+
+.resumen-tabla .text-center {
+    text-align: center;
+}
+
+/* =============================================
+   RESPONSIVE PARA SECCIONES
+   ============================================= */
+@media (max-width: 1024px) {
+    .kpis-container {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 12px;
+    }
+    .graficas-row {
+        grid-template-columns: 1fr;
+        gap: 20px;
+    }
+    .kpi-info h3 {
+        font-size: 1.2rem;
+    }
+    .kpi-icon {
+        width: 44px;
+        height: 44px;
+        font-size: 1.2rem;
+    }
+    .card-grafica .card-body {
+        min-height: 300px;
+        aspect-ratio: 16 / 9;
+    }
+    .card-grafica:first-child .card-body {
+        aspect-ratio: 1 / 1;
+        max-height: 400px;
+    }
+}
+
+@media (max-width: 768px) {
+    .kpis-container {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+    }
+    .kpi-card {
+        padding: 0.7rem;
+        gap: 10px;
+    }
+    .kpi-info h3 {
+        font-size: 1rem;
+    }
+    .kpi-icon {
+        width: 38px;
+        height: 38px;
+        font-size: 1rem;
+    }
+    .kpi-info p {
+        font-size: 0.6rem;
+    }
+    .seccion-titulo h2 {
+        font-size: 1.2rem;
+    }
+    .card-grafica .card-body {
+        padding: 15px;
+        min-height: 280px;
+        aspect-ratio: 16 / 9;
+    }
+    .resumen-tabla {
+        font-size: 0.7rem;
+        min-width: 600px;
+    }
+}
+
+@media (max-width: 550px) {
+    .kpis-container {
+        grid-template-columns: 1fr;
+    }
+    .seccion-titulo h2 {
+        font-size: 1rem;
+    }
+    .kpi-card {
+        padding: 0.6rem;
+    }
+    .kpi-info h3 {
+        font-size: 0.9rem;
+    }
+    .kpi-icon {
+        width: 34px;
+        height: 34px;
+        font-size: 0.9rem;
+    }
+    .card-grafica .card-header h5 {
+        font-size: 0.65rem;
+    }
+    .card-grafica .card-body {
+        padding: 12px;
+        min-height: 260px;
+        aspect-ratio: 16 / 9;
+    }
+}
+/* =============================================
+   FIX SOLO PARA LAS 3 GRÁFICAS DE COLABORADORES
+   (NO AFECTA LAS CIRCULARES NI LAS DEMÁS)
+   ============================================= */
+
+/* En desktop */
+@media (min-width: 1025px) {
+    .charts-grid-3col .card .card-body {
+        min-height: 350px;
+        padding: 15px;
+    }
+    
+    .charts-grid-3col canvas {
+        width: 100% !important;
+        height: auto !important;
+        max-height: 300px;
+    }
+}
+
+/* En tablet: 2 columnas */
+@media (max-width: 1024px) {
+    .charts-grid-3col {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 15px;
+    }
+    
+    .charts-grid-3col .card .card-body {
+        min-height: 300px;
+        padding: 12px;
+    }
+    
+    .charts-grid-3col canvas {
+        width: 100% !important;
+        height: auto !important;
+        max-height: 260px;
+    }
+}
+
+/* En móvil: 1 columna (vertical) */
+@media (max-width: 768px) {
+    .charts-grid-3col {
+        grid-template-columns: 1fr;
+        gap: 20px;
+    }
+    
+    .charts-grid-3col .card .card-body {
+        min-height: 320px;
+        padding: 15px;
+    }
+    
+    .charts-grid-3col canvas {
+        width: 100% !important;
+        height: auto !important;
+        max-height: 280px;
+    }
+}
+
+/* En móvil pequeño */
+@media (max-width: 550px) {
+    .charts-grid-3col .card .card-body {
+        min-height: 280px;
+        padding: 12px;
+    }
+    
+    .charts-grid-3col canvas {
+        width: 100% !important;
+        height: auto !important;
+        max-height: 240px;
+    }
+}
+
+/* Landscape en móviles */
+@media (max-height: 500px) and (orientation: landscape) {
+    .charts-grid-3col {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 10px;
+    }
+    
+    .charts-grid-3col .card .card-body {
+        min-height: 200px;
+        padding: 8px;
+    }
+    
+    .charts-grid-3col canvas {
+        width: 100% !important;
+        height: auto !important;
+        max-height: 180px;
+    }
+}
+/* Tabla de riesgos */
+.riesgo-tabla-container {
+    animation: fadeIn 0.3s ease;
+}
+
+.riesgo-tabla tbody tr:hover {
+    background: rgba(255, 255, 255, 0.05);
+    transition: background 0.2s ease;
+}
+
+.riesgo-tabla td:first-child,
+.riesgo-tabla th:first-child {
+    position: sticky;
+    left: 0;
+    background: inherit;
+}
+
+/* Responsive para tabla de riesgos */
+@media (max-width: 550px) {
+    .riesgo-tabla {
+        font-size: 0.7rem;
+    }
+    
+    .riesgo-tabla td,
+    .riesgo-tabla th {
+        padding: 6px 4px;
+    }
+}
+/* =============================================
+   TABLAS DE DATOS PARA GRÁFICAS - ESTILO MONITO
+   ============================================= */
+
+/* Contenedor de la tabla debajo de cada gráfica */
+.grafica-con-tabla {
+    display: flex;
+    flex-direction: column;
+}
+
+.tabla-datos-container {
+    margin-top: 12px;
+    padding: 12px 16px;
+    background: rgba(0, 0, 0, 0.3);
+    border-top: 1px solid var(--color-border-light);
+    border-radius: 0 0 var(--border-radius-large, 16px) var(--border-radius-large, 16px);
+}
+
+.tabla-datos-container h6 {
+    font-family: var(--font-family-primary, 'Orbitron', sans-serif);
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin: 0 0 10px 0;
+    color: var(--color-accent-primary);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.tabla-datos-container h6 i {
+    font-size: 0.7rem;
+}
+
+.table-responsive-mini {
+    overflow-x: auto;
+    border-radius: var(--border-radius-medium, 8px);
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.table-responsive-mini::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+}
+
+.table-responsive-mini::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 10px;
+}
+
+.table-responsive-mini::-webkit-scrollbar-thumb {
+    background: var(--color-accent-primary);
+    border-radius: 10px;
+}
+
+/* Tablas de datos estilo monito */
+.tabla-datos-grafica {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.7rem;
+    font-family: var(--font-family-secondary, 'Rajdhani', sans-serif);
+}
+
+.tabla-datos-grafica thead th {
+    background: rgba(0, 0, 0, 0.6);
+    color: var(--color-text-primary);
+    font-family: var(--font-family-primary, 'Orbitron', sans-serif);
+    font-size: 0.6rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 8px 12px;
+    text-align: left;
+    border-bottom: 1px solid var(--color-border-light);
+    position: sticky;
+    top: 0;
+    z-index: 5;
+}
+
+.tabla-datos-grafica tbody td {
+    padding: 8px 12px;
+    color: var(--color-text-secondary);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    transition: all 0.2s ease;
+}
+
+.tabla-datos-grafica tbody tr:hover td {
+    background: rgba(255, 255, 255, 0.05);
+    color: white;
+}
+
+/* Estilos específicos para celdas de colores */
+.tabla-datos-grafica td .color-badge {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    margin-right: 6px;
+    vertical-align: middle;
+    box-shadow: 0 0 3px currentColor;
+}
+
+/* Badges para porcentajes y valores */
+.tabla-datos-grafica .badge-pct {
+    background: rgba(59, 130, 246, 0.2);
+    padding: 2px 8px;
+    border-radius: 20px;
+    font-size: 0.65rem;
+    font-weight: 500;
+    display: inline-block;
+}
+
+.tabla-datos-grafica .text-success {
+    color: #10b981;
+}
+
+.tabla-datos-grafica .text-danger {
+    color: #ef4444;
+}
+
+.tabla-datos-grafica .text-warning {
+    color: #f59e0b;
+}
+
+.tabla-datos-grafica .text-info {
+    color: #3b82f6;
+}
+
+/* Animación suave al cargar */
+.tabla-datos-container {
+    animation: fadeInUp 0.3s ease;
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* =============================================
+   RESPONSIVE PARA TABLAS DE GRÁFICAS
+   ============================================= */
+
+@media (max-width: 1024px) {
+    .tabla-datos-container {
+        padding: 10px 12px;
+    }
+    
+    .tabla-datos-grafica {
+        font-size: 0.65rem;
+    }
+    
+    .tabla-datos-grafica thead th,
+    .tabla-datos-grafica tbody td {
+        padding: 6px 10px;
+    }
+}
+
+@media (max-width: 768px) {
+    .tabla-datos-container h6 {
+        font-size: 0.6rem;
+    }
+    
+    .tabla-datos-grafica {
+        font-size: 0.6rem;
+        min-width: 400px;
+    }
+    
+    .table-responsive-mini {
+        max-height: 180px;
+    }
+}
+
+@media (max-width: 550px) {
+    .tabla-datos-container {
+        padding: 8px 10px;
+    }
+    
+    .tabla-datos-container h6 {
+        font-size: 0.55rem;
+        margin-bottom: 8px;
+    }
+    
+    .tabla-datos-grafica thead th,
+    .tabla-datos-grafica tbody td {
+        padding: 5px 8px;
+    }
+    
+    .tabla-datos-grafica {
+        font-size: 0.55rem;
+        min-width: 350px;
+    }
+}
+
+/* =============================================
+   ESTILOS ADICIONALES PARA PDF - TEXTO NEGRO EN TABLAS
+   ============================================= */
+
+@media print {
+    .tabla-datos-container {
+        background: #f0f0f0;
+        border: 1px solid #ddd;
+    }
+    
+    .tabla-datos-container h6 {
+        color: #000;
+    }
+    
+    .tabla-datos-grafica thead th {
+        background: #e0e0e0;
+        color: #000;
+        border-bottom: 1px solid #ccc;
+    }
+    
+    .tabla-datos-grafica tbody td {
+        color: #333;
+        border-bottom: 1px solid #ddd;
+    }
+    
+    .tabla-datos-grafica tbody tr:hover td {
+        background: transparent;
+        color: #333;
+    }
+}
+
+/* =============================================
+   GRÁFICAS Y TABLAS COMO CARDS INDEPENDIENTES
+   ============================================= */
+
+/* Grids para tablas independientes */
+.tablas-grid-3col {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+    margin-top: 15px;
+    margin-bottom: 25px;
+}
+
+.tablas-grid-2col {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+    margin-top: 15px;
+    margin-bottom: 25px;
+}
+
+/* Estilos para las cards de tablas independientes */
+.card.tabla-independiente {
+    background: var(--color-bg-secondary);
+    border: 1px solid var(--color-border-light);
+    border-radius: var(--border-radius-large, 16px);
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+.card.tabla-independiente:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-normal, 0 8px 20px rgba(0, 0, 0, 0.2));
+}
+
+.card.tabla-independiente .card-header {
+    background: linear-gradient(135deg, rgba(20, 20, 20, 0.98), rgba(30, 30, 30, 0.95));
+    border-bottom: 1px solid var(--color-border-light);
+    padding: 10px 15px;
+}
+
+.card.tabla-independiente .card-header h5 {
+    color: var(--color-text-primary);
+    font-family: var(--font-family-primary, 'Orbitron', sans-serif);
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin: 0;
+}
+
+.card.tabla-independiente .card-header h5 i {
+    color: var(--color-accent-primary);
+}
+
+.card.tabla-independiente .tabla-body {
+    padding: 0;
+    min-height: auto;
+    display: block;
+}
+
+.card.tabla-independiente .table-responsive-mini {
+    max-height: 250px;
+    overflow-y: auto;
+    border-radius: 0 0 var(--border-radius-large, 16px) var(--border-radius-large, 16px);
+}
+
+.card.tabla-independiente .tabla-datos-grafica {
+    margin-bottom: 0;
+}
+
+.card.tabla-independiente .tabla-datos-grafica thead th {
+    background: rgba(0, 0, 0, 0.8);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+/* Espaciado entre gráfica y su tabla */
+.grafica-principal {
+    margin-bottom: 0;
+}
+
+/* Ajustes responsive */
+@media (max-width: 1024px) {
+    .tablas-grid-3col {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 15px;
+    }
+}
+
+@media (max-width: 768px) {
+    .tablas-grid-3col {
+        grid-template-columns: 1fr;
+        gap: 15px;
+    }
+    
+    .tablas-grid-2col {
+        grid-template-columns: 1fr;
+        gap: 15px;
+    }
+}
+
+/* Margen superior para la primera tabla después de gráficas */
+.charts-grid-3col + .tablas-grid-3col,
+.charts-grid-2col + .tablas-grid-2col,
+.charts-grid-1col + .charts-grid-1col,
+.graficas-row + .tablas-grid-2col {
+    margin-top: 15px;
 }

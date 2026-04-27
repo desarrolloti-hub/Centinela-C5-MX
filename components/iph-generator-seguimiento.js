@@ -905,18 +905,23 @@ async dibujarSeguimiento(pdf, seguimiento, x, y, ancho, numero) {
             this.totalPaginas = 1;
             this.paginaActualReal = 1;
             
-            await this.generarPaginaOficial(pdf, incidencia, actualizarProgreso);
-            
-            actualizarProgreso(95, 'Finalizando...');
-            
-            if (mostrarAlerta) {
-                Swal.close();
-            }
-            
-            actualizarProgreso(100, 'Completado');
-            
-            if (returnBlob) return pdf.output('blob');
-            return pdf;
+      await this.generarPaginaOficial(pdf, incidencia, actualizarProgreso);
+
+// 🔥 CORREGIR PAGINACIÓN - NÚMEROS REALES
+actualizarProgreso(92, 'Corrigiendo numeración de páginas...');
+const totalPaginas = await this.corregirNumeracionPaginas(pdf);
+console.log(`✅ PDF de seguimiento generado con ${totalPaginas} página(s) real(es)`);
+
+actualizarProgreso(95, 'Finalizando...');
+
+if (mostrarAlerta) {
+    Swal.close();
+}
+
+actualizarProgreso(100, 'Completado');
+
+if (returnBlob) return pdf.output('blob');
+return pdf;
             
         } catch (error) {
             console.error('Error generando informe:', error);
@@ -936,7 +941,7 @@ async dibujarSeguimiento(pdf, seguimiento, x, y, ancho, numero) {
         
         let yPos = this.alturaEncabezado + 4;
         
-        this.dibujarEncabezadoBase(pdf, 'INFORME DE SEGUIMIENTO', incidencia.id || 'Nueva Incidencia');
+        this.dibujarEncabezadoBase(pdf, 'INFORME DE INCIDENCIA', incidencia.id || 'Nueva Incidencia');
         
         // 1. IDENTIFICACIÓN DE LA UNIDAD
         pdf.saveGraphicsState();
@@ -972,8 +977,7 @@ if (codigoReportante && codigoReportante.trim() !== '') {
         pdf.setTextColor(0, 0, 0);
         pdf.text("2. DATOS", margen + 4, yPos + 3);
         pdf.setDrawColor(180, 180, 180);
-        pdf.line(margen + 4, yPos + 8, margen + anchoContenido - 4, yPos + 8);
-        pdf.setFont('helvetica', 'normal');
+                pdf.setFont('helvetica', 'normal');
         pdf.setFontSize(this.fonts.small - 0.5);
         pdf.setTextColor(60, 60, 60);
         const fechaReporte = incidencia.fechaCreacion ? new Date(incidencia.fechaCreacion) : new Date();
@@ -989,8 +993,7 @@ if (codigoReportante && codigoReportante.trim() !== '') {
         pdf.setTextColor(0, 0, 0);
         pdf.text("3. CLASIFICACIÓN", margen + 4, yPos + 3);
         pdf.setDrawColor(180, 180, 180);
-        pdf.line(margen + 4, yPos + 8, margen + anchoContenido - 4, yPos + 8);
-        pdf.setFont('helvetica', 'normal');
+                pdf.setFont('helvetica', 'normal');
         pdf.setFontSize(this.fonts.small - 0.5);
         const categoriaNombre = incidencia.categoriaNombre || this.obtenerNombreCategoria(incidencia.categoriaId);
         pdf.text(`Cat: ${categoriaNombre}`, margen + 4, yPos + 15);
@@ -1032,8 +1035,7 @@ if (codigoReportante && codigoReportante.trim() !== '') {
             pdf.setTextColor(0, 0, 0);
             pdf.text("4. DESCRIPCIÓN", margen + 4, yPos + 3);
             pdf.setDrawColor(180, 180, 180);
-            pdf.line(margen + 4, yPos + 8, margen + anchoContenido - 4, yPos + 8);
-            pdf.setFont('helvetica', 'normal');
+                        pdf.setFont('helvetica', 'normal');
             pdf.setFontSize(this.fonts.small - 0.5);
             pdf.setTextColor(60, 60, 60);
             let yTexto = yPos + ALTURA_PADDING_SUPERIOR + 6;
@@ -1052,8 +1054,7 @@ if (codigoReportante && codigoReportante.trim() !== '') {
             pdf.setTextColor(0, 0, 0);
             pdf.text("4. DESCRIPCIÓN", margen + 4, yPos + 3);
             pdf.setDrawColor(180, 180, 180);
-            pdf.line(margen + 4, yPos + 8, margen + anchoContenido - 4, yPos + 8);
-            pdf.setFont('helvetica', 'normal');
+                        pdf.setFont('helvetica', 'normal');
             pdf.setFontSize(this.fonts.small - 0.5);
             pdf.setTextColor(60, 60, 60);
             let yTexto = yPos + ALTURA_PADDING_SUPERIOR + 6;
@@ -1124,7 +1125,7 @@ if (codigoReportante && codigoReportante.trim() !== '') {
                 this.dibujarPiePagina(pdf);
                 pdf.addPage();
                 this.paginaActualReal++;
-                this.dibujarEncabezadoBase(pdf, 'INFORME DE SEGUIMIENTO', `${incidencia.id} (Cont.)`);
+                this.dibujarEncabezadoBase(pdf, 'INFORME DE INCIDENCIA', `${incidencia.id} (Cont.)`);
                 yPos = this.alturaEncabezado + 12;
                 
                 pdf.setFont('helvetica', 'bold');
@@ -1253,20 +1254,25 @@ for (let i = 0; i < seguimientos.length; i++) {
                 yPosSeg += 25;
             }
             
-            const alturaAviso = 22;
-            pdf.saveGraphicsState();
-            pdf.setFillColor(248, 248, 248);
-            pdf.rect(margen, altoPagina - alturaAviso - 5, anchoContenido, alturaAviso, 'F');
-            pdf.setFont('helvetica', 'bold');
-            pdf.setFontSize(this.fonts.mini - 1);
-            pdf.setTextColor(80, 80, 80);
-            pdf.text("AVISO DE PRIVACIDAD", margen + 4, altoPagina - alturaAviso - 1);
-            pdf.setFont('helvetica', 'normal');
-            pdf.setFontSize(this.fonts.mini - 1);
-            pdf.setTextColor(100, 100, 100);
-            pdf.text("Documento informativo del Sistema Centinela.", margen + 4, altoPagina - alturaAviso + 4);
-            pdf.text("La información aquí contenida es responsabilidad del usuario que realizó el seguimiento.", margen + 4, altoPagina - alturaAviso + 9);
-            pdf.restoreGraphicsState();
+    const alturaAviso = 36;
+pdf.saveGraphicsState();
+pdf.setFillColor(248, 248, 248);
+pdf.rect(margen, altoPagina - alturaAviso - 8, anchoContenido, alturaAviso, 'F');
+pdf.setFont('helvetica', 'bold');
+pdf.setFontSize(this.fonts.mini);
+pdf.setTextColor(80, 80, 80);
+pdf.text("AVISO DE PRIVACIDAD", margen + 6, altoPagina - alturaAviso - 2);
+pdf.setFont('helvetica', 'normal');
+pdf.setFontSize(this.fonts.mini - 0.5);
+pdf.setTextColor(100, 100, 100);
+
+const aviso = "La información contenida en este documento es responsabilidad exclusiva de quien utiliza el Sistema Centinela y de la persona que ingresó los datos. ";
+const lineasAviso = this.dividirTextoEnLineas(pdf, aviso, anchoContenido - 20);
+let yAviso = altoPagina - alturaAviso + 4;
+for (let i = 0; i < Math.min(lineasAviso.length, 3); i++) {
+    pdf.text(lineasAviso[i], margen + 6, yAviso + (i * 4));
+}
+pdf.restoreGraphicsState();
             
             this.dibujarPiePagina(pdf);
         }
@@ -1297,7 +1303,7 @@ for (let i = 0; i < seguimientos.length; i++) {
                 this.dibujarPiePagina(pdf);
                 pdf.addPage();
                 this.paginaActualReal++;
-                this.dibujarEncabezadoBase(pdf, 'INFORME DE SEGUIMIENTO', `${this.incidenciaActual?.id || 'Incidencia'} (Cont.)`);
+                this.dibujarEncabezadoBase(pdf, 'INFORME DE INCIDENCIA', `${this.incidenciaActual?.id || 'Incidencia'} (Cont.)`);
                 yPosActual = this.alturaEncabezado + 12;
                 
                 pdf.setFont('helvetica', 'bold');
@@ -1391,6 +1397,66 @@ for (let i = 0; i < seguimientos.length; i++) {
         
         return yPosActual + 10;
     }
+    // =============================================
+// PAGINACIÓN CORREGIDA
+// =============================================
+
+/**
+ * Corrige la numeración de páginas después de generar todo el PDF
+ * @param {Object} pdf - Objeto jsPDF
+ */
+async corregirNumeracionPaginas(pdf) {
+    const totalPaginasReales = pdf.internal.getNumberOfPages();
+    
+    if (totalPaginasReales <= 1) return totalPaginasReales;
+    
+    // Guardar el estado actual
+    const currentPage = pdf.internal.getCurrentPageInfo().pageNumber;
+    
+    // Recorrer todas las páginas y re-dibujar el pie de página
+    for (let i = 1; i <= totalPaginasReales; i++) {
+        pdf.setPage(i);
+        
+        // Obtener dimensiones
+        const margen = 15;
+        const anchoPagina = pdf.internal.pageSize.getWidth();
+        const altoPagina = pdf.internal.pageSize.getHeight();
+        const alturaPie = 15;
+        const yPos = altoPagina - alturaPie - 2;
+        
+        // Limpiar el área del pie de página
+        pdf.setFillColor(255, 255, 255);
+        pdf.rect(0, yPos - 2, anchoPagina, alturaPie + 4, 'F');
+        
+        // Redibujar la línea
+        pdf.setDrawColor('#dddddd');
+        pdf.setLineWidth(0.5);
+        pdf.line(margen, yPos, anchoPagina - margen, yPos);
+        
+        // Texto izquierdo
+        pdf.setFont('helvetica', 'italic');
+        pdf.setFontSize(7);
+        pdf.setTextColor(102, 102, 102);
+        pdf.text('Reporte Generado con Sistema Centinela', margen, yPos + 5);
+        
+        // Texto derecho con número de página CORRECTO
+        pdf.setFont('helvetica', 'normal');
+        pdf.setFontSize(7);
+        pdf.setTextColor(102, 102, 102);
+        pdf.text(`Página ${i} de ${totalPaginasReales}`, anchoPagina - margen, yPos + 5, { align: 'right' });
+        
+        // Barra inferior
+        pdf.setDrawColor('#0033A0');
+        pdf.setFillColor('#0033A0');
+        pdf.rect(0, altoPagina - 3, anchoPagina, 3, 'F');
+    }
+    
+    // Volver a la página original
+    pdf.setPage(currentPage);
+    
+    return totalPaginasReales;
+}
+
 }
 
 export const generadorIPHSeguimiento = new IPHGeneratorSeguimiento();

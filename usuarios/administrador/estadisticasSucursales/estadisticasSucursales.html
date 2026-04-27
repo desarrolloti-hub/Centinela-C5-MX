@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes, viewport-fit=cover">
+    <title>Detalle de Sucursal | Centinela C5</title>
+
+    <!-- Estilos -->
+    <link rel="stylesheet" href="/components/personalization/personalization.css">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="icon" href="/assets/images/logo.png" type="image/png">
+    <link rel="stylesheet" href="/usuarios/administrador/estadisticasSucursales/estadisticasSucursales.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+
+<body>
+    <canvas id="particle-canvas"></canvas>
+
+    <div class="detalle-container">
+ 
+
+
+
+
+
+        <!--  selector de sucursales (para no tener que volver a la vista de estadisticas)-->
+          <!-- Botón volver y selector de sucursal -->
+                <div class="header-actions">
+                    <button id="btnVolver" class="btn-volver">
+                        <i class="fas fa-arrow-left"></i> Volver a Estadísticas
+                    </button>
+                    
+                    <div class="sucursal-selector">
+                        <label for="selectorSucursal">
+                            <i class="fas fa-store"></i> Cambiar sucursal              :                 
+                        </label>
+                        <select id="selectorSucursal" class="filtro-select">
+                            <option value="">Cargando sucursales...</option>
+                        </select>
+                    </div>
+                </div>
+
+        <!-- Header de la sucursal -->
+        <div class="sucursal-header" id="sucursalHeader">
+            <div class="sucursal-icon">
+                <i class="fas fa-store"></i>
+            </div>
+            <div class="sucursal-info">
+                <h1 id="sucursalNombre">Cargando...</h1>
+                <div class="sucursal-meta">
+                    <span id="sucursalUbicacion"><i class="fas fa-map-marker-alt"></i> -</span>
+                    <span id="sucursalContacto"><i class="fas fa-phone"></i> -</span>
+                    <span id="sucursalRegion" class="region-badge"><i class="fas fa-layer-group"></i> -</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- KPIs de la sucursal -->
+        <div class="kpis-grid">
+            <div class="kpi-card sucursal-total">
+                <div class="kpi-icon"><i class="fas fa-chart-bar"></i></div>
+                <div class="kpi-info">
+                    <h3 id="totalIncidencias">0</h3>
+                    <p>Total incidencias</p>
+                </div>
+            </div>
+            <div class="kpi-card sucursal-criticas">
+                <div class="kpi-icon"><i class="fas fa-exclamation-triangle"></i></div>
+                <div class="kpi-info">
+                    <h3 id="totalCriticasAltas">0</h3>
+                    <p>Críticas + Altas</p>
+                </div>
+            </div>
+            <div class="kpi-card sucursal-pendientes">
+                <div class="kpi-icon"><i class="fas fa-clock"></i></div>
+                <div class="kpi-info">
+                    <h3 id="totalPendientes">0</h3>
+                    <p>Incidencias pendientes</p>
+                </div>
+            </div>
+            <div class="kpi-card sucursal-recuperacion">
+                <div class="kpi-icon"><i class="fas fa-percent"></i></div>
+                <div class="kpi-info">
+                    <h3 id="tasaRecuperacion">0%</h3>
+                    <p>Tasa de recuperación</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Gráficas y tablas -->
+        <div class="charts-row">
+            <!-- Niveles de riesgo -->
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="fas fa-chart-pie"></i> Niveles de riesgo</h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="graficoRiesgoSucursal"></canvas>
+                </div>
+            </div>
+
+            <!-- Categorías más reportadas -->
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="fas fa-tags"></i> Categorías más reportadas</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive-mini">
+                        <table class="tabla-datos" id="tablaCategoriasSucursal">
+                            <thead>
+                                <tr><th>Categoría</th><th>Cantidad</th><th>%</th></tr>
+                            </thead>
+                            <tbody>
+                                <tr><td colspan="3">Cargando...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="charts-row">
+            <!-- Tiempo promedio de resolución -->
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="fas fa-clock"></i> Tiempo promedio de resolución</h5>
+                </div>
+                <div class="card-body">
+                    <div class="tiempo-promedio-container">
+                        <div class="tiempo-valor" id="tiempoPromedio">0</div>
+                        <div class="tiempo-unidad">horas</div>
+                        <div class="tiempo-bar">
+                            <div class="tiempo-fill" id="tiempoBarFill" style="width: 0%;"></div>
+                        </div>
+                        <div class="tiempo-leyenda">
+                            <span><i class="fas fa-circle" style="color: #10b981;"></i> Rápido (&lt;24h)</span>
+                            <span><i class="fas fa-circle" style="color: #f59e0b;"></i> Medio (24-72h)</span>
+                            <span><i class="fas fa-circle" style="color: #ef4444;"></i> Lento (&gt;72h)</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Total pérdidas vs recuperaciones -->
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="fas fa-chart-line"></i> Pérdidas vs Recuperaciones</h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="graficoPerdidasRecuperacion"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Incidencias recientes -->
+        <div class="card full-width">
+            <div class="card-header">
+                <h5><i class="fas fa-list"></i> Incidencias recientes</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="tabla-incidencias" id="tablaIncidenciasRecientes">
+                        <thead>
+                            <tr><th>ID</th><th>Fecha</th><th>Riesgo</th><th>Estado</th><th>Detalles</th><th>PDF</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr><td colspan="5">Cargando...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer-datetime">
+            <i class="fas fa-sync-alt"></i>
+            Última actualización: <span id="fechaActualizacion">-</span>
+        </div>
+    </div>
+
+    <script type="module" src="/components/autenticador.js"></script>
+    <script type="module" src="/components/cargadorTemas.js"></script>
+    <script type="module" src="/components/particulas.js"></script>
+    <script type="module" src="/components/navbarAdministrador.js"></script>
+    <script src="/components/footerAdministrador.js"></script>
+    <script type="module" src="/usuarios/administrador/estadisticasSucursales/estadisticasSucursales.js"></script>
+</body>
+
+</html>

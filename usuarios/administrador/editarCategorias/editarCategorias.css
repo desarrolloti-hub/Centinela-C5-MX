@@ -986,3 +986,226 @@ body {
         font-size: 0.9rem !important;
     }
 }
+
+
+
+/* =============================================
+   NIVEL DE RIESGO - estilo compacto y alineado
+   ============================================= */
+
+/* Grupo de controles de color + riesgo en una línea */
+.subcategoria-color-control {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 15px;
+    margin-top: 10px;
+    padding-top: 8px;
+    border-top: 1px solid var(--color-border-light);
+}
+
+.herencia-color {
+    flex: 0 0 auto;
+}
+
+.color-personalizado {
+    flex: 1 1 auto;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* Selector de riesgo - se integra a la derecha */
+.riesgo-select-wrapper {
+    flex: 1 1 auto;
+    min-width: 160px;
+}
+
+.subcategoria-select-riesgo {
+    width: 100%;
+    padding: 6px 10px;
+    background: var(--color-bg-tertiary);
+    border: 1px solid var(--color-border-light);
+    border-radius: var(--border-radius-small);
+    color: var(--color-text-primary);
+    font-size: 0.8rem;
+    font-family: var(--font-family-secondary);
+    cursor: pointer;
+}
+
+.subcategoria-select-riesgo:hover {
+    border-color: var(--color-accent-primary);
+}
+
+/* Contenedor nuevo riesgo - debajo del select, pero sin romper */
+.nuevo-riesgo-container {
+    background: var(--color-bg-secondary);
+    border: 1px solid var(--color-border-light);
+    border-radius: var(--border-radius-small);
+    padding: 8px 12px;
+    margin-top: 8px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+}
+
+.nuevo-riesgo-container .form-control {
+    flex: 2;
+    min-width: 120px;
+    background: var(--color-bg-tertiary);
+    border: 1px solid var(--color-border-light);
+    color: var(--color-text-primary);
+    border-radius: var(--border-radius-small);
+    padding: 5px 8px;
+    font-size: 0.8rem;
+}
+
+.nuevo-riesgo-container input[type="color"] {
+    width: 32px;
+    height: 32px;
+    border: 1px solid var(--color-border-light);
+    border-radius: var(--border-radius-small);
+    background: var(--color-bg-tertiary);
+    cursor: pointer;
+    padding: 2px;
+}
+
+.btn-crear-riesgo {
+    background: linear-gradient(145deg, #0f0f0f, #1a1a1a);
+    border: 1px solid var(--color-accent-primary);
+    color: var(--color-text-primary);
+    padding: 5px 12px;
+    border-radius: var(--border-radius-small);
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: 0.2s;
+    white-space: nowrap;
+}
+
+.btn-crear-riesgo:hover {
+    background: linear-gradient(145deg, #1a1a1a, #0f0f0f);
+    border-color: var(--color-accent-secondary);
+}
+
+/* Color actual - más discreto */
+.color-actual {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.7rem;
+    color: var(--color-text-secondary);
+    margin-left: auto;
+}
+
+.color-muestra {
+    width: 16px;
+    height: 16px;
+    border-radius: 3px;
+    border: 1px solid var(--color-border-light);
+}
+
+/* Responsive: en móvil todo en columna */
+@media (max-width: 768px) {
+    .subcategoria-color-control {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .riesgo-select-wrapper {
+        width: 100%;
+    }
+    .nuevo-riesgo-container {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .btn-crear-riesgo {
+        width: 100%;
+        text-align: center;
+        justify-content: center;
+    }
+    .color-actual {
+        margin-left: 0;
+        justify-content: flex-start;
+    }
+}
+/* Layout de dos columnas */
+.subcategoria-row-2cols {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+    margin-bottom: 15px;
+}
+.subcategoria-campo-full {
+    grid-column: span 2;
+    margin-bottom: 15px;
+}
+.riesgo-select-wrapper {
+    width: 100%;
+}
+/* Controles de tonalidad */
+.tonalidad-control {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-top: 8px;
+    padding: 8px;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: var(--border-radius-small);
+}
+.tonalidad-label {
+    font-size: 0.75rem;
+    color: var(--color-text-secondary);
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+.tonalidad-slider {
+    flex: 2;
+    min-width: 120px;
+    height: 6px;
+    -webkit-appearance: none;
+    border-radius: 3px;
+    outline: none;
+    cursor: pointer;
+}
+.tonalidad-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: white;
+    border: 2px solid var(--color-accent-primary);
+    cursor: pointer;
+    box-shadow: 0 0 4px rgba(0,0,0,0.5);
+}
+.tonalidad-valor {
+    font-size: 0.7rem;
+    min-width: 40px;
+    color: var(--color-text-primary);
+}
+.color-hex-mini {
+    font-family: monospace;
+    font-size: 0.7rem;
+    background: rgba(0,0,0,0.5);
+    padding: 2px 6px;
+    border-radius: 4px;
+}
+@media (max-width: 768px) {
+    .subcategoria-row-2cols {
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+    .subcategoria-campo-full {
+        grid-column: span 1;
+    }
+    .tonalidad-control {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .tonalidad-slider {
+        width: 100%;
+    }
+}

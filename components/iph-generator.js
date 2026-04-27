@@ -1,13 +1,12 @@
-// iph-generator.js - VERSIÓN 10.0 - IMÁGENES MÁS GRANDES (100x100) - 4 POR PÁGINA
+// iph-generator.js - VERSIÓN 11.0 - DISEÑO OPTIMIZADO COMO SEGUIMIENTO
 
 /**
  * IPH GENERATOR - Sistema Centinela
- * VERSIÓN: 10.0 - IMÁGENES 100x100 - 4 POR PÁGINA
+ * VERSIÓN: 11.0 - DISEÑO OPTIMIZADO (mismo que seguimiento)
  * 
- * - Imágenes más grandes (100mm x 100mm)
- * - 4 imágenes por página (2x2)
- * - Límite de caracteres en descripciones para garantizar 4 por página
- * - Sin saltos de página innecesarios
+ * - Ajuste dinámico de altura según aspect ratio de imágenes
+ * - Elimina espacios desperdiciados en imágenes horizontales
+ * - Primera hoja con 2 imágenes optimizadas
  */
 
 import { PDFBaseGenerator, coloresBase } from './pdf-base-generator.js';
@@ -21,46 +20,34 @@ export const coloresIPH = {
 };
 
 const CONFIG = {
-    // NUEVAS DIMENSIONES: 100x100 para imágenes
-    ANCHO_IMAGEN: 95,
-    ALTO_IMAGEN: 85,
-    // 4 imágenes por página en grid 2x2
-    IMAGENES_POR_FILA: 2,
-    IMAGENES_POR_COLUMNA: 2,
-    IMAGENES_POR_PAGINA: 4,
-    // Espaciados
-    ESPACIADO_COLUMNAS: 5,
-    ESPACIADO_FILAS: 20,
+    // TAMAÑOS BASE para imágenes (optimizados como seguimiento)
+    ANCHO_IMAGEN: 88,
+    ALTO_IMAGEN: 75,
+    ESPACIADO_COLUMNAS: 12,
+    ESPACIADO_FILAS: 15,
     MARGEN: 20,
-    // Comentarios
-    ALTURA_COMENTARIO: 18,
+    ALTURA_COMENTARIO: 24,
     ESPACIADO_COMENTARIO: 4,
     ALTURA_LINEA: 4.5,
-    // Máximo de caracteres para descripción de imagen (garantiza que quepan 4 por página)
-    MAX_CARACTERES_COMENTARIO: 50,
-    MAX_LINEAS_COMENTARIO: 3,
-    // Configuración general
-    MARGEN_IMAGEN: 0,
-    PADDING_DESCRIPCION: 3,
-    MARGEN_PIE_PAGINA: 20,
-    MAX_CARACTERES_POR_LINEA: 84,
-    // Seguimientos
+    MARGEN_IMAGEN: 2,
+    MARGEN_PIE_PAGINA: 12,
+    MAX_CARACTERES_POR_LINEA: 88,
+    MAX_CARACTERES_COMENTARIO: 100,
     ALTURA_SEGUIMIENTO_BASE: 28,
     ALTURA_EVIDENCIA_SEGUIMIENTO: 45,
-    // Carga de imágenes
-    MAX_PARALLEL_IMAGES: 3,
-    IMAGE_TIMEOUT: 10000,
-    MAX_IMAGE_SIZE: 10 * 1024 * 1024,
-    // Espacios entre bloques
     ESPACIO_ENTRE_BLOQUES: 2,
     ESPACIO_ENTRE_BLOQUES_TITULO: 1,
-    // Altura mínima cuando no hay comentario
+    MAX_PARALLEL_IMAGES: 4,
+    IMAGE_TIMEOUT: 10000,
+    MAX_IMAGE_SIZE: 10 * 1024 * 1024,
+    // AJUSTE DINÁMICO
+    AJUSTE_DINAMICO_ALTURA: true,
+    ESPACIO_COMPACTO: 4,
+    // Para comentarios
+    MAX_LINEAS_COMENTARIO: 9,
+    ALTURA_POR_LINEA_COMENTARIO: 4.5,
     ALTURA_SIN_COMENTARIO: 10,
-    ESPACIADO_IMAGEN_SIN_COMENTARIO: 3,
-    // Altura del título de la sección de imágenes
-    ALTURA_TITULO_SECCION_IMAGENES: 20,
-    // Altura por línea de comentario
-    ALTURA_POR_LINEA_COMENTARIO: 4.5
+    ESPACIADO_IMAGEN_SIN_COMENTARIO: 3
 };
 
 class IPHGenerator extends PDFBaseGenerator {
@@ -73,14 +60,19 @@ class IPHGenerator extends PDFBaseGenerator {
         this.incidenciaActual = null;
         this.imagenesCache = new Map();
         this.pendingImages = new Map();
+        this.dimensionesImagenesCache = new Map(); // Cache para dimensiones
         
         this.configuracionCarta = {
             ancho: 215.9,
             alto: 279.4,
             margen: 20,
-            alturaEncabezado: 42,
-            alturaPie: 18
+            alturaEncabezado: 38,
+            alturaPie: 12
         };
+    }
+
+    async initStorage() {
+        // Inicialización si es necesaria
     }
 
     configurar(config) {
@@ -129,88 +121,7 @@ class IPHGenerator extends PDFBaseGenerator {
         }
         return 'No especificado';
     }
-    async obtenerUsuarioConCodigo(usuarioId) {
-    if (!usuarioId) return null;
-    
-    // Verificar cache
-    if (this.usuariosCodigoCache && this.usuariosCodigoCache[usuarioId]) {
-        return this.usuariosCodigoCache[usuarioId];
-    }
-    
-    try {
-        // Importar UserManager dinámicamente
-        const { UserManager } = await import('/clases/user.js');
-        const userManager = new UserManager();
-        const user = await userManager.getUserById(usuarioId);
-        
-        // Guardar en cache
-        if (!this.usuariosCodigoCache) this.usuariosCodigoCache = {};
-        this.usuariosCodigoCache[usuarioId] = user;
-        
-        return user;
-    } catch (error) {
-        console.error('Error obteniendo usuario con código:', error);
-        return null;
-    }
-}
 
-    /**
-     * Limita el texto del comentario a un máximo de caracteres y líneas
-     * @param {string} comentario - Texto original
-     * @returns {string} Texto truncado
-     */
-    limitarComentario(comentario) {
-        if (!comentario) return '';
-        
-        let texto = comentario.trim();
-        
-        // Limitar por caracteres
-        if (texto.length > CONFIG.MAX_CARACTERES_COMENTARIO) {
-            texto = texto.substring(0, CONFIG.MAX_CARACTERES_COMENTARIO - 3) + '...';
-        }
-        
-        return texto;
-    }
-
-    /**
-     * Calcula la altura total que ocupará una imagen incluyendo su comentario
-     * @param {Object} imagenObj - Objeto de imagen
-     * @returns {number} Altura total en mm
-     */
-    calcularAlturaImagenConComentario(imagenObj) {
-        const comentario = this.extraerComentario(imagenObj);
-        const tieneComentario = comentario && comentario.trim() !== '';
-        
-        if (tieneComentario) {
-            const comentarioLimitado = this.limitarComentario(comentario);
-            const lineasComentario = this.dividirTextoPorCaracteres(comentarioLimitado, CONFIG.MAX_CARACTERES_COMENTARIO);
-            const lineasAMostrar = Math.min(lineasComentario.length, CONFIG.MAX_LINEAS_COMENTARIO);
-            // Altura: título "Descripción:" + líneas de texto + padding
-            const alturaComentario = 8 + (lineasAMostrar * CONFIG.ALTURA_POR_LINEA_COMENTARIO);
-            return CONFIG.ALTO_IMAGEN + CONFIG.ESPACIADO_COMENTARIO + alturaComentario;
-        } else {
-            return CONFIG.ALTO_IMAGEN + CONFIG.ESPACIADO_IMAGEN_SIN_COMENTARIO + CONFIG.ALTURA_SIN_COMENTARIO;
-        }
-    }
-    
-    /**
-     * Calcula la altura máxima de una fila de imágenes
-     * @param {Array} imagenesFila - Array de imágenes en la fila
-     * @returns {number} Altura máxima de la fila en mm
-     */
-    calcularAlturaFila(imagenesFila) {
-        let alturaMax = 0;
-        for (const img of imagenesFila) {
-            const altura = this.calcularAlturaImagenConComentario(img);
-            alturaMax = Math.max(alturaMax, altura);
-        }
-        return alturaMax;
-    }
-
-    // =============================================
-    // EXTRACCIÓN DE URL Y COMENTARIO
-    // =============================================
-    
     extraerUrlImagen(item) {
         if (!item) return null;
         
@@ -267,10 +178,6 @@ class IPHGenerator extends PDFBaseGenerator {
         return '';
     }
 
-    // =============================================
-    // CARGA DE IMÁGENES
-    // =============================================
-    
     esUrlValida(url) {
         if (!url || typeof url !== 'string') return false;
         const trimmed = url.trim();
@@ -344,6 +251,33 @@ class IPHGenerator extends PDFBaseGenerator {
         });
     }
     
+    async obtenerDimensionesImagen(url) {
+        if (this.dimensionesImagenesCache.has(url)) {
+            return this.dimensionesImagenesCache.get(url);
+        }
+        
+        return new Promise((resolve) => {
+            const img = new Image();
+            const timeoutId = setTimeout(() => {
+                resolve(null);
+            }, 5000);
+            
+            img.onload = () => {
+                clearTimeout(timeoutId);
+                const dimensiones = { width: img.width, height: img.height, aspectRatio: img.width / img.height };
+                this.dimensionesImagenesCache.set(url, dimensiones);
+                resolve(dimensiones);
+            };
+            
+            img.onerror = () => {
+                clearTimeout(timeoutId);
+                resolve(null);
+            };
+            
+            img.src = url;
+        });
+    }
+    
     async cargarImagenMultiEstrategia(url) {
         const urlNormalizada = this.normalizarUrl(url);
         
@@ -399,7 +333,6 @@ class IPHGenerator extends PDFBaseGenerator {
             return;
         }
         
-        
         let completadas = 0;
         
         const procesarImagen = async (item) => {
@@ -434,7 +367,6 @@ class IPHGenerator extends PDFBaseGenerator {
         for (const lote of lotes) {
             await Promise.all(lote.map(item => procesarImagen(item)));
         }
-        
     }
     
     async obtenerImagen(item) {
@@ -443,31 +375,27 @@ class IPHGenerator extends PDFBaseGenerator {
         return await this.cargarImagenMultiEstrategia(url);
     }
 
-    // =============================================
-    // DIBUJAR IMAGEN EN PDF
-    // =============================================
-    
+    /**
+     * DIBUJA IMAGEN CON AJUSTE DINÁMICO DE ALTURA
+     * Elimina espacios muertos calculando la altura REAL que ocupa la imagen según su aspect ratio
+     */
     async dibujarImagen(pdf, imagenObj, x, y, ancho, alto, numero, anchoDisponible = null) {
         try {
             const imgData = await this.obtenerImagen(imagenObj);
-            let comentario = this.extraerComentario(imagenObj);
-            comentario = this.limitarComentario(comentario);
+            const comentario = this.extraerComentario(imagenObj);
             const tieneComentario = comentario && comentario.trim() !== '';
             
             pdf.saveGraphicsState();
             
             const margenImagen = CONFIG.MARGEN_IMAGEN;
             const anchoConMargen = ancho - (margenImagen * 2);
-            const altoConMargen = alto - (margenImagen * 2);
             
-            pdf.setDrawColor(80, 80, 80);
-            pdf.setLineWidth(0.3);
-            pdf.rect(x, y, ancho, alto, 'S');
+            // Calcular altura REAL que ocupará la imagen
+            let alturaRealImagen = alto;
+            let drawHeight = alto - (margenImagen * 2);
+            let drawWidth = anchoConMargen;
             
             if (imgData) {
-                pdf.setFillColor(255, 255, 255);
-                pdf.rect(x, y, ancho, alto, 'F');
-                
                 try {
                     const tempImg = new Image();
                     await new Promise((resolve, reject) => {
@@ -477,139 +405,93 @@ class IPHGenerator extends PDFBaseGenerator {
                     });
                     
                     const aspectRatio = tempImg.width / tempImg.height;
-                    let drawWidth = anchoConMargen;
-                    let drawHeight = altoConMargen;
                     
                     if (aspectRatio > 1) {
+                        // Imagen horizontal: ajustar altura proporcionalmente
                         drawHeight = drawWidth / aspectRatio;
+                        alturaRealImagen = drawHeight + (margenImagen * 2);
                     } else {
+                        // Imagen vertical o cuadrada
                         drawWidth = drawHeight * aspectRatio;
+                        alturaRealImagen = alto;
                     }
                     
                     const xOffset = (ancho - drawWidth) / 2;
                     const yOffset = (alto - drawHeight) / 2;
                     
+                    pdf.setFillColor(255, 255, 255);
+                    pdf.rect(x, y, ancho, alturaRealImagen, 'F');
+                    
                     pdf.addImage(imgData, 'JPEG', x + xOffset, y + yOffset, drawWidth, drawHeight, undefined, 'FAST');
                     
                 } catch (imgError) {
-                    pdf.addImage(imgData, 'JPEG', x + margenImagen, y + margenImagen, anchoConMargen, altoConMargen, undefined, 'FAST');
+                    pdf.addImage(imgData, 'JPEG', x + margenImagen, y + margenImagen, anchoConMargen, alto - (margenImagen * 2), undefined, 'FAST');
+                    alturaRealImagen = alto;
                 }
             } else {
                 this.dibujarPlaceholder(pdf, x, y, ancho, alto, numero);
+                alturaRealImagen = alto;
             }
+            
+            // Dibujar borde ajustado a la altura real
+            pdf.setDrawColor(80, 80, 80);
+            pdf.setLineWidth(0.3);
+            pdf.rect(x, y, ancho, alturaRealImagen, 'S');
             
             pdf.restoreGraphicsState();
             
+            // Calcular altura del comentario
             const anchoTexto = anchoDisponible || ancho;
             const xComentario = x;
-            const yComentario = y + alto + CONFIG.ESPACIADO_COMENTARIO;
-            
-            let alturaRetornada;
+            const yComentario = y + alturaRealImagen + CONFIG.ESPACIADO_COMENTARIO;
+            let alturaComentarioTotal = 0;
             
             if (tieneComentario) {
                 const lineasComentario = this.dividirTextoPorCaracteres(comentario, CONFIG.MAX_CARACTERES_COMENTARIO);
                 const lineasAMostrar = Math.min(lineasComentario.length, CONFIG.MAX_LINEAS_COMENTARIO);
-                const alturaComentario = 8 + (lineasAMostrar * CONFIG.ALTURA_POR_LINEA_COMENTARIO);
+                alturaComentarioTotal = 12 + (lineasAMostrar * CONFIG.ALTURA_POR_LINEA_COMENTARIO);
                 
                 pdf.setFillColor(248, 248, 248);
-                pdf.rect(xComentario, yComentario - 1, anchoTexto, alturaComentario + 2, 'F');
+                pdf.rect(xComentario, yComentario - 1, anchoTexto, alturaComentarioTotal + 1, 'F');
                 
                 pdf.setFont('helvetica', 'bold');
-                pdf.setFontSize(this.fonts.mini);
+                pdf.setFontSize(this.fonts.mini - 0.5);
                 pdf.setTextColor(80, 80, 80);
-                pdf.text("Descripción:", xComentario + 3, yComentario + 4);
+                pdf.text("Descripción:", xComentario + 2, yComentario + 2);
                 
                 pdf.setFont('helvetica', 'normal');
-                pdf.setFontSize(this.fonts.mini);
+                pdf.setFontSize(this.fonts.mini - 0.5);
                 pdf.setTextColor(80, 80, 80);
                 
-                let yTexto = yComentario + 4;
+                let yTexto = yComentario + 2;
                 for (let i = 0; i < lineasAMostrar; i++) {
-                    pdf.text(lineasComentario[i], xComentario + 3, yTexto + (i * CONFIG.ALTURA_POR_LINEA_COMENTARIO) + 4);
+                    pdf.text(lineasComentario[i], xComentario + 2, yTexto + (i * CONFIG.ALTURA_POR_LINEA_COMENTARIO) + 2);
                 }
                 
-                alturaRetornada = alto + CONFIG.ESPACIADO_COMENTARIO + alturaComentario + 4;
+                if (lineasComentario.length > CONFIG.MAX_LINEAS_COMENTARIO) {
+                    pdf.setFont('helvetica', 'italic');
+                    pdf.text("(...)", xComentario + 2, yTexto + 15);
+                }
             } else {
-                pdf.setFillColor(252, 252, 252);
-                pdf.rect(xComentario, yComentario - 1, anchoTexto, CONFIG.ALTURA_SIN_COMENTARIO, 'F');
+                alturaComentarioTotal = CONFIG.ALTURA_SIN_COMENTARIO;
+                pdf.setFillColor(250, 250, 250);
+                pdf.rect(xComentario, yComentario - 1, anchoTexto, alturaComentarioTotal, 'F');
                 
                 pdf.setFont('helvetica', 'italic');
                 pdf.setFontSize(this.fonts.mini - 1);
-                pdf.setTextColor(180, 180, 180);
-                pdf.text("Sin descripción", xComentario + 3, yComentario + 3);
-                
-                alturaRetornada = alto + CONFIG.ESPACIADO_IMAGEN_SIN_COMENTARIO + CONFIG.ALTURA_SIN_COMENTARIO;
+                pdf.setTextColor(150, 150, 150);
+                pdf.text("Sin descripción", xComentario + 2, yComentario + 2);
             }
             
+            // RETORNAR la altura TOTAL REAL que ocupó este elemento
             return {
-                alturaUtilizada: alturaRetornada
+                alturaUtilizada: alturaRealImagen + CONFIG.ESPACIADO_COMENTARIO + alturaComentarioTotal + 2
             };
             
         } catch (error) {
             console.error(`Error dibujando imagen ${numero}:`, error);
             this.dibujarPlaceholder(pdf, x, y, ancho, alto, numero);
-            return { alturaUtilizada: alto + CONFIG.ESPACIADO_IMAGEN_SIN_COMENTARIO + CONFIG.ALTURA_SIN_COMENTARIO };
-        }
-    }
-    // Agregar este método a la clase IPHGenerator (después de dibujarImagen)
-
-    /**
-     * Versión optimizada para imágenes SIN descripción
-     * Dibuja solo la imagen, sin el área de comentario
-     */
-    async dibujarImagenSinDescripcion(pdf, imagenObj, x, y, ancho, alto, numero) {
-        try {
-            const imgData = await this.obtenerImagen(imagenObj);
-            
-            pdf.saveGraphicsState();
-            
-            const margenImagen = CONFIG.MARGEN_IMAGEN;
-            const anchoConMargen = ancho - (margenImagen * 2);
-            const altoConMargen = alto - (margenImagen * 2);
-            
-            pdf.setDrawColor(80, 80, 80);
-            pdf.setLineWidth(0.3);
-            pdf.rect(x, y, ancho, alto, 'S');
-            
-            if (imgData) {
-                pdf.setFillColor(255, 255, 255);
-                pdf.rect(x, y, ancho, alto, 'F');
-                
-                try {
-                    const tempImg = new Image();
-                    await new Promise((resolve, reject) => {
-                        tempImg.onload = resolve;
-                        tempImg.onerror = reject;
-                        tempImg.src = imgData;
-                    });
-                    
-                    const aspectRatio = tempImg.width / tempImg.height;
-                    let drawWidth = anchoConMargen;
-                    let drawHeight = altoConMargen;
-                    
-                    if (aspectRatio > 1) {
-                        drawHeight = drawWidth / aspectRatio;
-                    } else {
-                        drawWidth = drawHeight * aspectRatio;
-                    }
-                    
-                    const xOffset = (ancho - drawWidth) / 2;
-                    const yOffset = (alto - drawHeight) / 2;
-                    
-                    pdf.addImage(imgData, 'JPEG', x + xOffset, y + yOffset, drawWidth, drawHeight, undefined, 'FAST');
-                    
-                } catch (imgError) {
-                    pdf.addImage(imgData, 'JPEG', x + margenImagen, y + margenImagen, anchoConMargen, altoConMargen, undefined, 'FAST');
-                }
-            } else {
-                this.dibujarPlaceholder(pdf, x, y, ancho, alto, numero);
-            }
-            
-            pdf.restoreGraphicsState();
-            
-        } catch (error) {
-            console.error(`Error dibujando imagen ${numero}:`, error);
-            this.dibujarPlaceholder(pdf, x, y, ancho, alto, numero);
+            return { alturaUtilizada: alto + CONFIG.ESPACIADO_COMENTARIO + 8 };
         }
     }
 
@@ -622,15 +504,23 @@ class IPHGenerator extends PDFBaseGenerator {
         pdf.rect(x, y, ancho, alto, 'S');
         
         pdf.setFont('helvetica', 'normal');
-        pdf.setFontSize(this.fonts.small);
+        pdf.setFontSize(this.fonts.small - 1);
         pdf.setTextColor(150, 150, 150);
-        pdf.text(`[ Imagen ${numero} no disponible ]`, x + (ancho / 2), y + (alto / 2), { align: 'center' });
+        pdf.text(`[${numero}]`, x + (ancho / 2), y + (alto / 2), { align: 'center' });
     }
 
-    // =============================================
-    // DIVIDIR TEXTO
-    // =============================================
-    
+    dibujarMiniaturaPlaceholder(pdf, x, y, ancho, alto, numero) {
+        pdf.setFillColor(240, 240, 240);
+        pdf.rect(x, y, ancho, alto, 'F');
+        pdf.setDrawColor(200, 200, 200);
+        pdf.setLineWidth(0.3);
+        pdf.rect(x, y, ancho, alto, 'S');
+        pdf.setFont('helvetica', 'normal');
+        pdf.setFontSize(8);
+        pdf.setTextColor(150, 150, 150);
+        pdf.text(`📷 ${numero}`, x + ancho / 2, y + alto / 2, { align: 'center' });
+    }
+
     dividirTextoPorCaracteres(texto, maxChars = CONFIG.MAX_CARACTERES_POR_LINEA) {
         if (!texto) return [''];
         
@@ -667,15 +557,14 @@ class IPHGenerator extends PDFBaseGenerator {
         return lineas;
     }
 
-    // =============================================
-    // DIBUJAR SEGUIMIENTO
-    // =============================================
-    
-async dibujarSeguimiento(pdf, seguimiento, x, y, ancho, numero) {
-    const fecha = seguimiento.fecha ? this.formatearFechaVisualizacion(seguimiento.fecha) : 'Fecha no disponible';
-    const usuario = seguimiento.usuarioCodigo || seguimiento.usuarioNombre || 'Usuario';  // ← CORREGIDO
-    const descripcion = seguimiento.descripcion || 'Sin descripción';
-    const evidencias = seguimiento.evidencias || [];
+    /**
+     * DIBUJA SEGUIMIENTO CON ALTURA DINÁMICA
+     */
+    async dibujarSeguimiento(pdf, seguimiento, x, y, ancho, numero) {
+        const fecha = seguimiento.fecha ? this.formatearFechaVisualizacion(seguimiento.fecha) : 'Fecha no disponible';
+        const usuario = seguimiento.usuarioCodigo || seguimiento.usuarioNombre || 'Usuario';
+        const descripcion = seguimiento.descripcion || 'Sin descripción';
+        const evidencias = seguimiento.evidencias || [];
         
         let alturaTotal = CONFIG.ALTURA_SEGUIMIENTO_BASE;
         
@@ -683,14 +572,36 @@ async dibujarSeguimiento(pdf, seguimiento, x, y, ancho, numero) {
         const alturaDescripcion = Math.min(lineasDescripcion.length, 4) * CONFIG.ALTURA_LINEA;
         alturaTotal += alturaDescripcion;
         
-        let alturaEvidencias = 0;
-        if (evidencias.length > 0) {
-            alturaEvidencias = CONFIG.ALTURA_EVIDENCIA_SEGUIMIENTO;
-            alturaTotal += alturaEvidencias + 8;
+        let alturaImagenesGrid = 0;
+        const hayEvidencias = evidencias.length > 0;
+        
+        if (hayEvidencias) {
+            const imgWidth = 88;
+            const espaciadoVertical = 15;
+            const imagenesPorFila = 2;
+            const numeroFilas = Math.ceil(evidencias.length / imagenesPorFila);
+            
+            let alturaPorFila = 75 + 30;
+            
+            for (const evidencia of evidencias.slice(0, 4)) {
+                const url = this.extraerUrlImagen(evidencia);
+                if (url) {
+                    const dimensiones = await this.obtenerDimensionesImagen(url);
+                    if (dimensiones && dimensiones.aspectRatio > 1) {
+                        const alturaReal = imgWidth / dimensiones.aspectRatio;
+                        const alturaConComentario = alturaReal + 30;
+                        if (alturaConComentario < alturaPorFila) {
+                            alturaPorFila = Math.min(alturaPorFila, alturaConComentario);
+                        }
+                    }
+                }
+            }
+            
+            alturaImagenesGrid = (numeroFilas * alturaPorFila) + (numeroFilas > 1 ? (numeroFilas - 1) * espaciadoVertical : 0) + 15;
+            alturaTotal += alturaImagenesGrid;
         }
         
         pdf.saveGraphicsState();
-        
         pdf.setFillColor(248, 248, 248);
         pdf.rect(x, y, ancho, alturaTotal, 'F');
         
@@ -724,68 +635,256 @@ async dibujarSeguimiento(pdf, seguimiento, x, y, ancho, numero) {
             yTexto += CONFIG.ALTURA_LINEA;
         }
         
-        if (evidencias.length > 0) {
-            pdf.setFont('helvetica', 'bold');
-            pdf.setFontSize(this.fonts.mini - 0.5);
-            pdf.setTextColor(100, 100, 100);
-            
-            const anchoMiniatura = 30;
-            const altoMiniatura = 25;
-            const espaciadoMiniatura = 8;
-            let xMiniatura = x + 6;
-            const yMiniatura = yTexto + 10;
-            
-            for (let i = 0; i < Math.min(evidencias.length, 3); i++) {
-                const evidencia = evidencias[i];
-                const url = typeof evidencia === 'string' ? evidencia : evidencia.url;
-                
-                if (url) {
-                    try {
-                        const imgData = await this.obtenerImagen(url);
-                        if (imgData) {
-                            pdf.addImage(imgData, 'JPEG', xMiniatura, yMiniatura, anchoMiniatura, altoMiniatura, undefined, 'FAST');
-                            pdf.setDrawColor(150, 150, 150);
-                            pdf.setLineWidth(0.2);
-                            pdf.rect(xMiniatura, yMiniatura, anchoMiniatura, altoMiniatura, 'S');
-                        } else {
-                            this.dibujarMiniaturaPlaceholder(pdf, xMiniatura, yMiniatura, anchoMiniatura, altoMiniatura, i + 1);
-                        }
-                    } catch (e) {
-                        this.dibujarMiniaturaPlaceholder(pdf, xMiniatura, yMiniatura, anchoMiniatura, altoMiniatura, i + 1);
-                    }
-                } else {
-                    this.dibujarMiniaturaPlaceholder(pdf, xMiniatura, yMiniatura, anchoMiniatura, altoMiniatura, i + 1);
-                }
-                
-                xMiniatura += anchoMiniatura + espaciadoMiniatura;
-            }
-            
-            if (evidencias.length > 3) {
-                pdf.setFont('helvetica', 'italic');
-                pdf.setFontSize(this.fonts.mini - 1);
-                pdf.setTextColor(120, 120, 120);
-                pdf.text(`+${evidencias.length - 3} más`, xMiniatura + 5, yMiniatura + altoMiniatura / 2);
-            }
-        }
-        
         pdf.restoreGraphicsState();
-        
         return alturaTotal;
     }
     
-    dibujarMiniaturaPlaceholder(pdf, x, y, ancho, alto, numero) {
-        pdf.setFillColor(230, 230, 230);
-        pdf.rect(x, y, ancho, alto, 'F');
-        pdf.setDrawColor(180, 180, 180);
+    /**
+     * Dibuja una imagen de seguimiento con ajuste dinámico de altura
+     */
+    async dibujarImagenSeguimiento(pdf, evidencia, x, y, ancho, alto, numero) {
+        try {
+            let imgData = null;
+            let comentario = '';
+            
+            if (typeof evidencia === 'string') {
+                imgData = await this.obtenerImagen(evidencia);
+                comentario = '';
+            } else if (typeof evidencia === 'object') {
+                const url = this.extraerUrlImagen(evidencia);
+                if (url) imgData = await this.obtenerImagen(url);
+                comentario = this.extraerComentario(evidencia) || '';
+            }
+            
+            if (comentario && comentario.length > 50) {
+                comentario = comentario.substring(0, 47) + '...';
+            }
+            
+            const tieneComentario = comentario && comentario.trim() !== '';
+            
+            pdf.saveGraphicsState();
+            
+            const margenImagen = 1;
+            const anchoConMargen = ancho - (margenImagen * 2);
+            
+            let alturaRealImagen = alto;
+            let drawHeight = alto - (margenImagen * 2);
+            let drawWidth = anchoConMargen;
+            
+            if (imgData) {
+                try {
+                    const tempImg = new Image();
+                    await new Promise((resolve, reject) => {
+                        tempImg.onload = resolve;
+                        tempImg.onerror = reject;
+                        tempImg.src = imgData;
+                    });
+                    
+                    const aspectRatio = tempImg.width / tempImg.height;
+                    
+                    if (aspectRatio > 1) {
+                        drawHeight = drawWidth / aspectRatio;
+                        alturaRealImagen = drawHeight + (margenImagen * 2);
+                    } else {
+                        drawWidth = drawHeight * aspectRatio;
+                        alturaRealImagen = alto;
+                    }
+                    
+                    const xOffset = (ancho - drawWidth) / 2;
+                    const yOffset = (alto - drawHeight) / 2;
+                    
+                    pdf.setFillColor(255, 255, 255);
+                    pdf.rect(x, y, ancho, alturaRealImagen, 'F');
+                    
+                    pdf.addImage(imgData, 'JPEG', x + xOffset, y + yOffset, drawWidth, drawHeight, undefined, 'FAST');
+                } catch (imgError) {
+                    pdf.addImage(imgData, 'JPEG', x + margenImagen, y + margenImagen, anchoConMargen, alto - (margenImagen * 2), undefined, 'FAST');
+                    alturaRealImagen = alto;
+                }
+            } else {
+                this.dibujarPlaceholderSeguimiento(pdf, x, y, ancho, alto, numero);
+                alturaRealImagen = alto;
+            }
+            
+            pdf.setDrawColor(80, 80, 80);
+            pdf.setLineWidth(0.3);
+            pdf.rect(x, y, ancho, alturaRealImagen, 'S');
+            
+            pdf.restoreGraphicsState();
+            
+            const xComentario = x;
+            const yComentario = y + alturaRealImagen + 3;
+            const anchoTexto = ancho;
+            
+            if (tieneComentario) {
+                const lineasComentario = this.dividirTextoPorCaracteres(comentario, 45);
+                const lineasAMostrar = Math.min(lineasComentario.length, 3);
+                const alturaComentario = 8 + (lineasAMostrar * 4.5);
+                
+                pdf.setFillColor(248, 248, 248);
+                pdf.rect(xComentario, yComentario - 1, anchoTexto, alturaComentario + 2, 'F');
+                
+                pdf.setFont('helvetica', 'bold');
+                pdf.setFontSize(this.fonts.mini);
+                pdf.setTextColor(80, 80, 80);
+                pdf.text("Descripción:", xComentario + 3, yComentario + 4);
+                
+                pdf.setFont('helvetica', 'normal');
+                pdf.setFontSize(this.fonts.mini);
+                pdf.setTextColor(80, 80, 80);
+                
+                let yTextoCom = yComentario + 4;
+                for (let i = 0; i < lineasAMostrar; i++) {
+                    pdf.text(lineasComentario[i], xComentario + 3, yTextoCom + (i * 4.5) + 4);
+                }
+            } else {
+                pdf.setFillColor(252, 252, 252);
+                pdf.rect(xComentario, yComentario - 1, anchoTexto, 10, 'F');
+                
+                pdf.setFont('helvetica', 'italic');
+                pdf.setFontSize(this.fonts.mini - 1);
+                pdf.setTextColor(180, 180, 180);
+                pdf.text("Sin descripción", xComentario + 3, yComentario + 4);
+            }
+            
+        } catch (error) {
+            console.error(`Error dibujando imagen de seguimiento ${numero}:`, error);
+            this.dibujarPlaceholderSeguimiento(pdf, x, y, ancho, alto, numero);
+        }
+    }
+
+    dibujarPlaceholderSeguimiento(pdf, x, y, ancho, alto, numero) {
+        pdf.setFillColor(245, 245, 245);
+        pdf.rect(x + 1, y + 1, ancho - 2, alto - 2, 'F');
+        pdf.setDrawColor(200, 200, 200);
+        pdf.setLineWidth(0.3);
         pdf.rect(x, y, ancho, alto, 'S');
         pdf.setFont('helvetica', 'normal');
-        pdf.setFontSize(6);
-        pdf.setTextColor(120, 120, 120);
-        pdf.text(`[${numero}]`, x + ancho / 2, y + alto / 2, { align: 'center' });
+        pdf.setFontSize(this.fonts.small);
+        pdf.setTextColor(150, 150, 150);
+        pdf.text(`[ Imagen ${numero} no disponible ]`, x + (ancho / 2), y + (alto / 2), { align: 'center' });
+    }
+
+    /**
+     * Dibuja grid de imágenes con ajuste dinámico de altura
+     */
+    async dibujarGridImagenes(pdf, imagenes, margen, anchoContenido, yPos, altoPagina, offsetNumeracion = 0, tamanioReducido = true) {
+        if (!imagenes || imagenes.length === 0) return yPos;
+        
+        const imgWidth = tamanioReducido ? CONFIG.ANCHO_IMAGEN : 88;
+        const espaciadoHorizontal = CONFIG.ESPACIADO_COLUMNAS;
+        const espaciadoVertical = CONFIG.ESPACIADO_FILAS;
+        const imagenesPorFila = 2;
+        
+        let imagenIndex = 0;
+        let yPosActual = yPos;
+        let numeroPaginaActual = 0;
+        
+        while (imagenIndex < imagenes.length) {
+            const imagenesRestantes = imagenes.length - imagenIndex;
+            const imagenesEnEstaPagina = Math.min(4, imagenesRestantes);
+            
+            if (numeroPaginaActual > 0) {
+                this.dibujarPiePagina(pdf);
+                pdf.addPage();
+                this.paginaActualReal++;
+                this.dibujarEncabezadoBase(pdf, 'INFORME DE INCIDENCIA', `${this.incidenciaActual?.id || 'Incidencia'} (Cont.)`);
+                yPosActual = this.alturaEncabezado + 12;
+                
+                pdf.setFont('helvetica', 'bold');
+                pdf.setFontSize(this.fonts.normal - 1);
+                pdf.setTextColor(0, 0, 0);
+                pdf.text("EVIDENCIAS (Continuación)", margen + 4, yPosActual + 3);
+                yPosActual += 15;
+            }
+            
+            const anchoTotalFilas = (imgWidth * imagenesPorFila) + espaciadoHorizontal;
+            const inicioX = margen + 4 + ((anchoContenido - 8 - anchoTotalFilas) / 2);
+            const col1X = inicioX;
+            const col2X = inicioX + imgWidth + espaciadoHorizontal;
+            
+            // PRIMERA FILA
+            const imagenesFila1 = Math.min(2, imagenesEnEstaPagina);
+            
+            // Calcular altura máxima para primera fila
+            let alturaMaxFila1 = tamanioReducido ? CONFIG.ALTO_IMAGEN : 75;
+            for (let col = 0; col < imagenesFila1; col++) {
+                const imagen = imagenes[imagenIndex + col];
+                const url = this.extraerUrlImagen(imagen);
+                if (url) {
+                    const dimensiones = await this.obtenerDimensionesImagen(url);
+                    if (dimensiones && dimensiones.aspectRatio > 1) {
+                        const alturaReal = imgWidth / dimensiones.aspectRatio;
+                        alturaMaxFila1 = Math.min(alturaMaxFila1, alturaReal);
+                    }
+                }
+            }
+            
+            for (let col = 0; col < imagenesFila1; col++) {
+                let xPos = col === 0 ? col1X : col2X;
+                const imagen = imagenes[imagenIndex + col];
+                const numeroImagen = offsetNumeracion + imagenIndex + col + 1;
+                
+                pdf.setFont('helvetica', 'bold');
+                pdf.setFontSize(this.fonts.mini);
+                pdf.setTextColor(80, 80, 80);
+                pdf.text(`Imagen ${numeroImagen}`, xPos + 2, yPosActual - 2);
+                
+                await this.dibujarImagenSeguimiento(pdf, imagen, xPos, yPosActual, imgWidth, alturaMaxFila1, numeroImagen);
+            }
+            
+            const alturaFila1 = alturaMaxFila1 + 28;
+            yPosActual += alturaFila1 + 5;
+            let imagenesProcesadas = imagenesFila1;
+            
+            // SEGUNDA FILA
+            if (imagenesEnEstaPagina > 2) {
+                const imagenesFila2 = Math.min(2, imagenesEnEstaPagina - 2);
+                
+                let alturaMaxFila2 = tamanioReducido ? CONFIG.ALTO_IMAGEN : 75;
+                for (let col = 0; col < imagenesFila2; col++) {
+                    const imagen = imagenes[imagenIndex + 2 + col];
+                    const url = this.extraerUrlImagen(imagen);
+                    if (url) {
+                        const dimensiones = await this.obtenerDimensionesImagen(url);
+                        if (dimensiones && dimensiones.aspectRatio > 1) {
+                            const alturaReal = imgWidth / dimensiones.aspectRatio;
+                            alturaMaxFila2 = Math.min(alturaMaxFila2, alturaReal);
+                        }
+                    }
+                }
+                
+                for (let col = 0; col < imagenesFila2; col++) {
+                    let xPos = col === 0 ? col1X : col2X;
+                    const imagen = imagenes[imagenIndex + 2 + col];
+                    const numeroImagen = offsetNumeracion + imagenIndex + 2 + col + 1;
+                    
+                    pdf.setFont('helvetica', 'bold');
+                    pdf.setFontSize(this.fonts.mini);
+                    pdf.setTextColor(80, 80, 80);
+                    pdf.text(`Imagen ${numeroImagen}`, xPos + 2, yPosActual - 2);
+                    
+                    await this.dibujarImagenSeguimiento(pdf, imagen, xPos, yPosActual, imgWidth, alturaMaxFila2, numeroImagen);
+                }
+                
+                const alturaFila2 = alturaMaxFila2 + 28;
+                yPosActual += alturaFila2 + espaciadoVertical;
+                imagenesProcesadas += imagenesFila2;
+            }
+            
+            imagenIndex += imagenesProcesadas;
+            numeroPaginaActual++;
+            
+            if (imagenIndex < imagenes.length) {
+                yPosActual += 5;
+            }
+        }
+        
+        return yPosActual + 10;
     }
 
     // =============================================
-    // MÉTODO PRINCIPAL
+    // MÉTODO PRINCIPAL - PÁGINA OFICIAL CON DISEÑO OPTIMIZADO
     // =============================================
     
     async generarIPH(incidencia, opciones = {}) {
@@ -798,7 +897,6 @@ async dibujarSeguimiento(pdf, seguimiento, x, y, ancho, numero) {
                 diagnosticar = false
             } = opciones;
     
-            
             if (mostrarAlerta) {
                 Swal.fire({
                     title: tituloAlerta,
@@ -842,7 +940,6 @@ async dibujarSeguimiento(pdf, seguimiento, x, y, ancho, numero) {
                 });
             } else {
                 actualizarProgreso(15, 'No hay imágenes para procesar...');
-                // Pequeña pausa para que el usuario vea el mensaje
                 await new Promise(resolve => setTimeout(resolve, 500));
             }
             
@@ -853,18 +950,23 @@ async dibujarSeguimiento(pdf, seguimiento, x, y, ancho, numero) {
             this.paginaActualReal = 1;
             
             await this.generarPaginaOficial(pdf, incidencia, actualizarProgreso);
-            
+
+            // CORREGIR PAGINACIÓN - NÚMEROS REALES
+            actualizarProgreso(92, 'Corrigiendo numeración de páginas...');
+            const totalPaginas = await this.corregirNumeracionPaginas(pdf);
+          
+
             const folioId = incidencia.id ? incidencia.id.substring(0, 8).toUpperCase() : 'INC00000';
             const nombreArchivo = `INFORME_${folioId}_${this.formatearFechaArchivo()}.pdf`;
-            
+
             actualizarProgreso(95, 'Finalizando...');
-            
+
             if (mostrarAlerta) {
                 Swal.close();
             }
-            
+
             actualizarProgreso(100, 'Completado');
-            
+
             if (returnBlob) return pdf.output('blob');
             return pdf;
             
@@ -883,564 +985,421 @@ async dibujarSeguimiento(pdf, seguimiento, x, y, ancho, numero) {
         const anchoPagina = this.configuracionCarta.ancho;
         const altoPagina = this.configuracionCarta.alto;
         const anchoContenido = anchoPagina - (margen * 2);
-        let yPos = this.alturaEncabezado + 8;
+        
+        let yPos = this.alturaEncabezado + 4;
         
         this.dibujarEncabezadoBase(pdf, 'INFORME DE INCIDENCIA', incidencia.id || 'Nueva Incidencia');
         
-        // =============================================
         // 1. IDENTIFICACIÓN DE LA UNIDAD
-        // =============================================
-        const alturaIdentificacion = 48;
         pdf.saveGraphicsState();
-        
         pdf.setFont('helvetica', 'bold');
-        pdf.setFontSize(this.fonts.normal);
+        pdf.setFontSize(this.fonts.normal - 1);
         pdf.setTextColor(0, 0, 0);
-        pdf.text("1. IDENTIFICACIÓN DE LA UNIDAD", margen + 6, yPos + 6);
+        pdf.text("1. IDENTIFICACIÓN", margen + 4, yPos + 3);
         pdf.setDrawColor(180, 180, 180);
-        pdf.line(margen + 4, yPos + 9, margen + anchoContenido - 4, yPos + 9);
-
         pdf.setFont('helvetica', 'normal');
-        pdf.setFontSize(this.fonts.small);
+        pdf.setFontSize(this.fonts.small - 0.5);
         pdf.setTextColor(60, 60, 60);
-
-            const organizacion = 'Chedraui'; // Forzado estáticamente
-        pdf.text(`Organización: ${organizacion}`, margen + 6, yPos + 16);
-
+        
+        const organizacion = this.organizacionActual?.nombre || incidencia.organizacion || 'Chedraui';
+        pdf.text(`Organización: ${organizacion}`, margen + 4, yPos + 11);
+        
         const sucursalNombre = incidencia.sucursalNombre || this.obtenerNombreSucursal(incidencia.sucursalId);
-        pdf.text(`Sucursal: ${sucursalNombre}`, margen + 6, yPos + 24);
-
-
-
-
-
-// Obtener código del colaborador desde incidencia
-// 🔥 CAMBIO: Mostrar código de colaborador
-let codigoReportante = incidencia.reportadoPorCodigo || '';
-if (codigoReportante && codigoReportante.trim() !== '') {
-    pdf.text(`Reportado por operador: ${codigoReportante}`, margen + 6, yPos + 32);
-} else {
-    const nombreReportante = incidencia.reportadoPorNombre || this.obtenerNombreUsuario(incidencia.reportadoPorId) || incidencia.creadoPorNombre || 'No especificado';
-    pdf.text(`Reportado por operador: ${nombreReportante}`, margen + 6, yPos + 32);
-}
-
-// Primero intentar usar reportadoPorCodigo (si viene en la incidencia)
-if (incidencia.reportadoPorCodigo && incidencia.reportadoPorCodigo.trim() !== '') {
-    codigoReportante = incidencia.reportadoPorCodigo;
-} 
-// Si no tiene código, usar el nombre
-else if (incidencia.reportadoPorNombre) {
-    codigoReportante = incidencia.reportadoPorNombre;
-}
-// Último recurso: buscar por ID
-else if (incidencia.reportadoPorId) {
-    codigoReportante = this.obtenerNombreUsuario(incidencia.reportadoPorId);
-} 
-else {
-    codigoReportante = 'No especificado';
-}
-
-pdf.text(`Reportado por operador: ${codigoReportante}`, margen + 6, yPos + 32);
-
-
-
-
-
-        pdf.restoreGraphicsState();
-        yPos += alturaIdentificacion + CONFIG.ESPACIO_ENTRE_BLOQUES;
+        pdf.text(`Sucursal: ${sucursalNombre}`, margen + 4, yPos + 16);
         
-        // =============================================
+        let codigoReportante = incidencia.reportadoPorCodigo || '';
+        if (codigoReportante && codigoReportante.trim() !== '') {
+            pdf.text(`Reportado por operador: ${codigoReportante}`, margen + 4, yPos + 21);
+        } else {
+            const nombreReportante = incidencia.reportadoPorNombre || this.obtenerNombreUsuario(incidencia.reportadoPorId) || incidencia.creadoPorNombre || 'No especificado';
+            pdf.text(`Reportado por operador: ${nombreReportante}`, margen + 4, yPos + 21);
+        }
+        pdf.restoreGraphicsState();
+        yPos += 26;
+        
         // 2. DATOS GENERALES
-        // =============================================
-        const alturaGenerales = 32;
         pdf.saveGraphicsState();
-        
         pdf.setFont('helvetica', 'bold');
-        pdf.setFontSize(this.fonts.normal);
+        pdf.setFontSize(this.fonts.normal - 1);
         pdf.setTextColor(0, 0, 0);
-        pdf.text("2. DATOS GENERALES", margen + 6, yPos + 6);
+        pdf.text("2. DATOS", margen + 4, yPos + 3);
         pdf.setDrawColor(180, 180, 180);
-        pdf.line(margen + 4, yPos + 12, margen + anchoContenido - 4, yPos + 12);
-        
-        pdf.setFont('helvetica', 'normal');
-        pdf.setFontSize(this.fonts.small);
+                pdf.setFont('helvetica', 'normal');
+        pdf.setFontSize(this.fonts.small - 0.5);
         pdf.setTextColor(60, 60, 60);
-        
         const fechaReporte = incidencia.fechaCreacion ? new Date(incidencia.fechaCreacion) : new Date();
-        pdf.text(`Fecha de reporte: ${this.formatearFechaVisualizacion(fechaReporte)}`, margen + 6, yPos + 22);
-        pdf.text(`Hora de reporte: ${this.formatearHoraVisualizacion(fechaReporte)}`, margen + 105, yPos + 22);
-        
+        pdf.text(`Fecha: ${this.formatearFechaVisualizacion(fechaReporte)}`, margen + 4, yPos + 15);
+        pdf.text(`Hora: ${this.formatearHoraVisualizacion(fechaReporte)}`, margen + 100, yPos + 15);
         pdf.restoreGraphicsState();
-        yPos += alturaGenerales + CONFIG.ESPACIO_ENTRE_BLOQUES;
+        yPos += 22;
         
-        // =============================================
-        // 3. CLASIFICACIÓN DE LA INCIDENCIA
-        // =============================================
-        const alturaClasificacion = 72;
+        // 3. CLASIFICACIÓN
         pdf.saveGraphicsState();
-        
         pdf.setFont('helvetica', 'bold');
-        pdf.setFontSize(this.fonts.normal);
+        pdf.setFontSize(this.fonts.normal - 1);
         pdf.setTextColor(0, 0, 0);
-        pdf.text("3. CLASIFICACIÓN DE LA INCIDENCIA", margen + 6, yPos + 6);
+        pdf.text("3. CLASIFICACIÓN", margen + 4, yPos + 3);
         pdf.setDrawColor(180, 180, 180);
-        pdf.line(margen + 4, yPos + 12, margen + anchoContenido - 4, yPos + 12);
-        
-        pdf.setFont('helvetica', 'normal');
-        pdf.setFontSize(this.fonts.small);
-        
+                pdf.setFont('helvetica', 'normal');
+        pdf.setFontSize(this.fonts.small - 0.5);
         const categoriaNombre = incidencia.categoriaNombre || this.obtenerNombreCategoria(incidencia.categoriaId);
-        pdf.text(`Categoría: ${categoriaNombre}`, margen + 6, yPos + 22);
-        
+        pdf.text(`Categoría: ${categoriaNombre}`, margen + 4, yPos + 15);
         const subcategoriaNombre = incidencia.subcategoriaNombre || this.obtenerNombreSubcategoria(incidencia.subcategoriaId, incidencia.categoriaId);
-        pdf.text(`Subcategoría: ${subcategoriaNombre}`, margen + 6, yPos + 30);
-        
+        pdf.text(`Subcategoría: ${subcategoriaNombre}`, margen + 4, yPos + 20);
         const nivelRiesgo = incidencia.nivelRiesgo || 'No especificado';
         const riesgoTexto = typeof nivelRiesgo === 'string' ? nivelRiesgo.toUpperCase() : String(nivelRiesgo);
-        
         let riesgoColor = [60, 60, 60];
         if (nivelRiesgo === 'critico') riesgoColor = [192, 57, 43];
         else if (nivelRiesgo === 'alto') riesgoColor = [230, 126, 34];
         else if (nivelRiesgo === 'medio') riesgoColor = [243, 156, 18];
         else if (nivelRiesgo === 'bajo') riesgoColor = [39, 174, 96];
-        
         pdf.setTextColor(riesgoColor[0], riesgoColor[1], riesgoColor[2]);
-        pdf.text(`Nivel de riesgo: ${riesgoTexto}`, margen + 6, yPos + 38);
-        
+        pdf.text(`Riesgo: ${riesgoTexto}`, margen + 4, yPos + 25);
         pdf.setTextColor(60, 60, 60);
         const estado = incidencia.estado || 'No especificado';
-        pdf.text(`Estado: ${estado === 'pendiente' ? 'Pendiente de atención' : 'Finalizada'}`, margen + 6, yPos + 46);
-        
+        pdf.text(`Estado: ${estado === 'pendiente' ? 'Pendiente' : 'Finalizada'}`, margen + 4, yPos + 30);
         const fechaInicio = incidencia.fechaInicio ? new Date(incidencia.fechaInicio) : new Date();
-        pdf.text(`Fecha del incidente: ${this.formatearFechaVisualizacion(fechaInicio)}`, margen + 6, yPos + 54);
-        pdf.text(`Hora del incidente: ${this.formatearHoraVisualizacion(fechaInicio)}`, margen + 105, yPos + 54);
-        
+        pdf.text(`Fecha del incidente: ${this.formatearFechaVisualizacion(fechaInicio)}`, margen + 4, yPos + 35);
+        pdf.text(`Hora: ${this.formatearHoraVisualizacion(fechaInicio)}`, margen + 100, yPos + 35);
         pdf.restoreGraphicsState();
-        yPos += alturaClasificacion + CONFIG.ESPACIO_ENTRE_BLOQUES;
+        yPos += 42;
         
-        // =============================================
         // 4. DESCRIPCIÓN DE LOS HECHOS
-        // =============================================
         const detalles = incidencia.detalles || 'No se proporcionó descripción.';
         const lineasDescripcion = this.dividirTextoPorCaracteres(detalles, CONFIG.MAX_CARACTERES_POR_LINEA);
         
-        const ALTURA_TITULO = 16;
-        const ALTURA_PADDING_SUPERIOR = 8;
-        const ALTURA_PADDING_INFERIOR = 5;
+        const ALTURA_TITULO = 10;
+        const ALTURA_PADDING_SUPERIOR = 4;
+        const ALTURA_PADDING_INFERIOR = 2;
         const ALTURA_POR_LINEA = CONFIG.ALTURA_LINEA;
-        
         const alturaTextoNecesaria = lineasDescripcion.length * ALTURA_POR_LINEA;
         const alturaTotalNecesaria = ALTURA_TITULO + ALTURA_PADDING_SUPERIOR + alturaTextoNecesaria + ALTURA_PADDING_INFERIOR;
-        
         const espacioDisponibleEnPagina = altoPagina - yPos - CONFIG.MARGEN_PIE_PAGINA;
         
         if (alturaTotalNecesaria <= espacioDisponibleEnPagina) {
             pdf.saveGraphicsState();
-            
             pdf.setFont('helvetica', 'bold');
-            pdf.setFontSize(this.fonts.normal);
+            pdf.setFontSize(this.fonts.normal - 1);
             pdf.setTextColor(0, 0, 0);
-            pdf.text("4. DESCRIPCIÓN DE LOS HECHOS", margen + 6, yPos + 6);
+            pdf.text("4. DESCRIPCIÓN", margen + 4, yPos + 3);
             pdf.setDrawColor(180, 180, 180);
-            pdf.line(margen + 4, yPos + 12, margen + anchoContenido - 4, yPos + 12);
-            
-            pdf.setFont('helvetica', 'normal');
-            pdf.setFontSize(this.fonts.small);
+                        pdf.setFont('helvetica', 'normal');
+            pdf.setFontSize(this.fonts.small - 0.5);
             pdf.setTextColor(60, 60, 60);
-            
-            let yTexto = yPos + ALTURA_PADDING_SUPERIOR + 8;
+            let yTexto = yPos + ALTURA_PADDING_SUPERIOR + 6;
             for (let i = 0; i < lineasDescripcion.length; i++) {
-                pdf.text(lineasDescripcion[i], margen + CONFIG.PADDING_DESCRIPCION, yTexto);
+                pdf.text(lineasDescripcion[i], margen + 4, yTexto);
                 yTexto += ALTURA_POR_LINEA;
             }
-            
             pdf.restoreGraphicsState();
             yPos += alturaTotalNecesaria + CONFIG.ESPACIO_ENTRE_BLOQUES;
         } else {
-            // Lógica de paginación para descripción larga
-            const espacioParaTextoPrimera = espacioDisponibleEnPagina - ALTURA_TITULO - ALTURA_PADDING_SUPERIOR - ALTURA_PADDING_INFERIOR;
-            const lineasQueCabenPrimera = Math.floor(espacioParaTextoPrimera / ALTURA_POR_LINEA);
-            const lineasEnPrimeraPagina = Math.max(1, Math.min(lineasQueCabenPrimera, lineasDescripcion.length));
-            
-            const alturaTextoPrimera = lineasEnPrimeraPagina * ALTURA_POR_LINEA;
-            const alturaRealPrimera = ALTURA_TITULO + ALTURA_PADDING_SUPERIOR + alturaTextoPrimera + ALTURA_PADDING_INFERIOR;
-            
+            const lineasQueCaben = Math.floor((espacioDisponibleEnPagina - ALTURA_TITULO - ALTURA_PADDING_SUPERIOR - ALTURA_PADDING_INFERIOR) / ALTURA_POR_LINEA);
+            const lineasEnPagina = Math.max(1, Math.min(lineasQueCaben, lineasDescripcion.length));
             pdf.saveGraphicsState();
-            
             pdf.setFont('helvetica', 'bold');
-            pdf.setFontSize(this.fonts.normal);
+            pdf.setFontSize(this.fonts.normal - 1);
             pdf.setTextColor(0, 0, 0);
-            pdf.text("4. DESCRIPCIÓN DE LOS HECHOS", margen + 6, yPos + 6);
+            pdf.text("4. DESCRIPCIÓN", margen + 4, yPos + 3);
             pdf.setDrawColor(180, 180, 180);
-            pdf.line(margen + 4, yPos + 12, margen + anchoContenido - 4, yPos + 12);
-            
-            pdf.setFont('helvetica', 'normal');
-            pdf.setFontSize(this.fonts.small);
+                        pdf.setFont('helvetica', 'normal');
+            pdf.setFontSize(this.fonts.small - 0.5);
             pdf.setTextColor(60, 60, 60);
-            
-            let yTextoPrimera = yPos + ALTURA_PADDING_SUPERIOR + 8;
-            for (let i = 0; i < lineasEnPrimeraPagina; i++) {
-                pdf.text(lineasDescripcion[i], margen + CONFIG.PADDING_DESCRIPCION, yTextoPrimera);
-                yTextoPrimera += ALTURA_POR_LINEA;
+            let yTexto = yPos + ALTURA_PADDING_SUPERIOR + 6;
+            for (let i = 0; i < lineasEnPagina; i++) {
+                pdf.text(lineasDescripcion[i], margen + 4, yTexto);
+                yTexto += ALTURA_POR_LINEA;
             }
-            
-            pdf.setFont('helvetica', 'italic');
-            pdf.setFontSize(this.fonts.mini);
-            pdf.setTextColor(150, 150, 150);
-            const lineasRestantes = lineasDescripcion.length - lineasEnPrimeraPagina;
-            pdf.text(`(Continúa en la siguiente página... ${lineasRestantes} líneas restantes)`,
-                     margen + 6, yPos + alturaRealPrimera - 5);
+            if (lineasDescripcion.length > lineasEnPagina) {
+                pdf.setFont('helvetica', 'italic');
+                pdf.setFontSize(this.fonts.mini - 1);
+                pdf.setTextColor(150, 150, 150);
+                pdf.text(`(+${lineasDescripcion.length - lineasEnPagina} líneas más)`, margen + 4, yTexto + 2);
+            }
             pdf.restoreGraphicsState();
-            
-            yPos += alturaRealPrimera + CONFIG.ESPACIO_ENTRE_BLOQUES;
-            this.dibujarPiePagina(pdf);
-            pdf.addPage();
-            this.paginaActualReal++;
-            this.dibujarEncabezadoBase(pdf, 'INFORME DE INCIDENCIA', `${incidencia.id} (Continuación)`);
-            yPos = this.alturaEncabezado + 8;
-            
-            let indiceActual = lineasEnPrimeraPagina;
-            
-            while (indiceActual < lineasDescripcion.length) {
-                const espacioNueva = altoPagina - yPos - CONFIG.MARGEN_PIE_PAGINA;
-                const lineasQueCabenNueva = Math.floor((espacioNueva - ALTURA_TITULO - ALTURA_PADDING_SUPERIOR - ALTURA_PADDING_INFERIOR) / ALTURA_POR_LINEA);
-                const lineasEnPaginaActual = Math.max(1, Math.min(lineasQueCabenNueva, lineasDescripcion.length - indiceActual));
-                
-                const alturaTextoActual = lineasEnPaginaActual * ALTURA_POR_LINEA;
-                const alturaRealActual = ALTURA_TITULO + ALTURA_PADDING_SUPERIOR + alturaTextoActual + ALTURA_PADDING_INFERIOR;
-                
-                pdf.saveGraphicsState();
-                
-                pdf.setFont('helvetica', 'bold');
-                pdf.setFontSize(this.fonts.normal);
-                pdf.setTextColor(0, 0, 0);
-                pdf.text("4. DESCRIPCIÓN DE LOS HECHOS (Continuación)", margen + 6, yPos + 6);
-                pdf.setDrawColor(180, 180, 180);
-                pdf.line(margen + 4, yPos + 12, margen + anchoContenido - 4, yPos + 12);
-                
-                pdf.setFont('helvetica', 'normal');
-                pdf.setFontSize(this.fonts.small);
-                pdf.setTextColor(60, 60, 60);
-                
-                let yTextoActual = yPos + ALTURA_PADDING_SUPERIOR + 8;
-                for (let i = 0; i < lineasEnPaginaActual; i++) {
-                    pdf.text(lineasDescripcion[indiceActual + i], margen + CONFIG.PADDING_DESCRIPCION, yTextoActual);
-                    yTextoActual += ALTURA_POR_LINEA;
-                }
-                
-                if (indiceActual + lineasEnPaginaActual < lineasDescripcion.length) {
-                    const restantes = lineasDescripcion.length - (indiceActual + lineasEnPaginaActual);
-                    pdf.setFont('helvetica', 'italic');
-                    pdf.setFontSize(this.fonts.mini);
-                    pdf.setTextColor(150, 150, 150);
-                    pdf.text(`(Continúa en la siguiente página... ${restantes} líneas restantes)`,
-                             margen + 6, yPos + alturaRealActual - 5);
-                }
-                pdf.restoreGraphicsState();
-                
-                yPos += alturaRealActual + CONFIG.ESPACIO_ENTRE_BLOQUES;
-                indiceActual += lineasEnPaginaActual;
-                
-                if (indiceActual < lineasDescripcion.length) {
-                    this.dibujarPiePagina(pdf);
-                    pdf.addPage();
-                    this.paginaActualReal++;
-                    this.dibujarEncabezadoBase(pdf, 'INFORME DE INCIDENCIA', `${incidencia.id} (Continuación)`);
-                    yPos = this.alturaEncabezado + 8;
-                }
-            }
+            yPos += ALTURA_TITULO + ALTURA_PADDING_SUPERIOR + (lineasEnPagina * ALTURA_POR_LINEA) + ALTURA_PADDING_INFERIOR + 5;
         }
-
-        // =============================================
-        // 5. ANEXOS - EVIDENCIAS FOTOGRÁFICAS
-        // NUEVO: Grid 2x2 con imágenes de 100x100
-        // =============================================
-
+        
+        // 5. EVIDENCIAS FOTOGRÁFICAS - PRIMERAS 2 IMÁGENES (optimizado como seguimiento)
         const imagenesPrincipales = incidencia.imagenes || [];
-
+        
         if (imagenesPrincipales.length > 0) {
-            // SEPARAR IMÁGENES POR SI TIENEN DESCRIPCIÓN O NO
-            const imagenesSinDescripcion = [];
-            const imagenesConDescripcion = [];
+            pdf.setFont('helvetica', 'bold');
+            pdf.setFontSize(this.fonts.normal - 1);
+            pdf.setTextColor(0, 0, 0);
+            pdf.text("5. EVIDENCIAS FOTOGRÁFICAS", margen + 4, yPos + 3);
+            yPos += 10;
             
-            for (const img of imagenesPrincipales) {
-                const comentario = this.extraerComentario(img);
-                const tieneComentario = comentario && comentario.trim() !== '';
-                if (tieneComentario) {
-                    imagenesConDescripcion.push(img);
-                } else {
-                    imagenesSinDescripcion.push(img);
+            const primerasImagenes = imagenesPrincipales.slice(0, 2);
+            const imgWidth = CONFIG.ANCHO_IMAGEN;
+            const espaciadoHorizontal = CONFIG.ESPACIADO_COLUMNAS;
+            const anchoTotalFilas = (imgWidth * 2) + espaciadoHorizontal;
+            const inicioX = margen + 4 + ((anchoContenido - 8 - anchoTotalFilas) / 2);
+            const col1X = inicioX;
+            const col2X = inicioX + imgWidth + espaciadoHorizontal;
+            
+            // Calcular altura máxima para estas 2 imágenes
+            let alturaMaxFila = CONFIG.ALTO_IMAGEN;
+            for (const imagen of primerasImagenes) {
+                const url = this.extraerUrlImagen(imagen);
+                if (url) {
+                    const dimensiones = await this.obtenerDimensionesImagen(url);
+                    if (dimensiones && dimensiones.aspectRatio > 1) {
+                        const alturaReal = imgWidth / dimensiones.aspectRatio;
+                        alturaMaxFila = Math.min(alturaMaxFila, alturaReal);
+                    }
                 }
             }
             
-            
-            // CONFIGURACIÓN DE MÁRGENES CENTRADOS
-            const margenContenido = margen + 6;
-            const anchoUtilizable = anchoContenido - 12;
-            
-            // SECCIÓN 5A: IMÁGENES SIN DESCRIPCIÓN (4 POR PÁGINA - 2x2)
-            if (imagenesSinDescripcion.length > 0) {
-                const imgWidth = 88;
-                const imgHeight = 75;
-                const espaciadoHorizontal = 12;
-                const espaciadoVertical = 15;
-                
-                const anchoTotalFilas = (imgWidth * 2) + espaciadoHorizontal;
-                const inicioX = margenContenido + ((anchoUtilizable - anchoTotalFilas) / 2);
-                
-                const col1X = inicioX;
-                const col2X = inicioX + imgWidth + espaciadoHorizontal;
-                
-                let imagenIndex = 0;
-                
-                const alturaTitulo = 18;
-                const alturaFila = imgHeight + CONFIG.ESPACIADO_IMAGEN_SIN_COMENTARIO + CONFIG.ALTURA_SIN_COMENTARIO + 8;
+            for (let i = 0; i < primerasImagenes.length; i++) {
+                let xPos = i === 0 ? col1X : col2X;
+                const imagen = primerasImagenes[i];
+                const numeroImagen = i + 1;
                 
                 pdf.setFont('helvetica', 'bold');
-                pdf.setFontSize(this.fonts.normal);
-                pdf.setTextColor(0, 0, 0);
-                pdf.text("5. EVIDENCIAS FOTOGRÁFICAS", margenContenido, yPos + 6);
-                pdf.setFont('helvetica', 'normal');
                 pdf.setFontSize(this.fonts.mini);
-                pdf.setTextColor(100, 100, 100);
-                pdf.text(`${imagenesSinDescripcion.length} imagen(es)`, anchoPagina - margenContenido - 30, yPos + 6);
-                yPos += 18;
+                pdf.setTextColor(80, 80, 80);
+                pdf.text(`Imagen ${numeroImagen}`, xPos + 2, yPos - 2);
                 
-                while (imagenIndex < imagenesSinDescripcion.length) {
-                    if (imagenIndex % 2 === 0 && !this.verificarEspacio(pdf, yPos, (alturaFila * 2) + espaciadoVertical + 10)) {
-                        this.dibujarPiePagina(pdf);
-                        pdf.addPage();
-                        this.paginaActualReal++;
-                        this.dibujarEncabezadoBase(pdf, 'INFORME DE INCIDENCIA', `${incidencia.id} (Continuación)`);
-                        yPos = this.alturaEncabezado + 5;
-                        
-                        pdf.setFont('helvetica', 'bold');
-                        pdf.setFontSize(this.fonts.normal);
-                        pdf.setTextColor(0, 0, 0);
-                        pdf.text("5. EVIDENCIAS FOTOGRÁFICAS (Continuación)", margenContenido, yPos + 6);
-                        yPos += 18;
-                    }
-                    
-                    // PRIMERA FILA
-                    const imagenesFila1 = Math.min(2, imagenesSinDescripcion.length - imagenIndex);
-                    for (let col = 0; col < imagenesFila1; col++) {
-                        let xPos = col === 0 ? col1X : col2X;
-                        const imagen = imagenesSinDescripcion[imagenIndex + col];
-                        const numeroImagen = imagenIndex + col + 1;
-                        
-                        pdf.setFont('helvetica', 'bold');
-                        pdf.setFontSize(this.fonts.mini);
-                        pdf.setTextColor(100, 100, 100);
-                        pdf.text(`Imagen ${numeroImagen}`, xPos + 2, yPos - 3);
-                        
-                        await this.dibujarImagen(pdf, imagen, xPos, yPos, imgWidth, imgHeight, numeroImagen, imgWidth);
-                    }
-                    
-                    yPos += alturaFila;
-                    imagenIndex += imagenesFila1;
-                    
-                    // SEGUNDA FILA
-                    if (imagenIndex < imagenesSinDescripcion.length) {
-                        const imagenesFila2 = Math.min(2, imagenesSinDescripcion.length - imagenIndex);
-                        
-                        for (let col = 0; col < imagenesFila2; col++) {
-                            let xPos = col === 0 ? col1X : col2X;
-                            const imagen = imagenesSinDescripcion[imagenIndex + col];
-                            const numeroImagen = imagenIndex + col + 1;
-                            
-                            pdf.setFont('helvetica', 'bold');
-                            pdf.setFontSize(this.fonts.mini);
-                            pdf.setTextColor(100, 100, 100);
-                            pdf.text(`Imagen ${numeroImagen}`, xPos + 2, yPos - 3);
-                            
-                            await this.dibujarImagen(pdf, imagen, xPos, yPos, imgWidth, imgHeight, numeroImagen, imgWidth);
-                        }
-                        
-                        yPos += alturaFila + espaciadoVertical;
-                        imagenIndex += imagenesFila2;
-                    }
-                }
-                yPos += 10;
+                await this.dibujarImagenSeguimiento(pdf, imagen, xPos, yPos, imgWidth, alturaMaxFila, numeroImagen);
             }
             
-            // SECCIÓN 5B: IMÁGENES CON DESCRIPCIÓN (2 POR PÁGINA)
-            if (imagenesConDescripcion.length > 0) {
-                const imgWidth = 92;
-                const imgHeight = 85;
-                const espaciadoHorizontal = 14;
-                
-                const anchoTotalFilas = (imgWidth * 2) + espaciadoHorizontal;
-                const inicioX = margenContenido + ((anchoUtilizable - anchoTotalFilas) / 2);
-                
-                const col1X = inicioX;
-                const col2X = inicioX + imgWidth + espaciadoHorizontal;
-                
-                let imagenIndex = 0;
-                let numeroBase = imagenesSinDescripcion.length;
-                
-                pdf.setFont('helvetica', 'bold');
-                pdf.setFontSize(this.fonts.normal);
-                pdf.setTextColor(0, 0, 0);
-                pdf.text("6. EVIDENCIAS CON DESCRIPCIÓN", margenContenido, yPos + 6);
-                pdf.setFont('helvetica', 'normal');
-                pdf.setFontSize(this.fonts.mini);
-                pdf.setTextColor(100, 100, 100);
-                pdf.text(`${imagenesConDescripcion.length} imagen(es) con comentario`, anchoPagina - margenContenido - 60, yPos + 6);
-                yPos += 18;
-                
-                while (imagenIndex < imagenesConDescripcion.length) {
-                    const imagenesEnFila = Math.min(2, imagenesConDescripcion.length - imagenIndex);
-                    
-                    let alturaFila = 0;
-                    for (let i = 0; i < imagenesEnFila; i++) {
-                        const img = imagenesConDescripcion[imagenIndex + i];
-                        const comentario = this.extraerComentario(img);
-                        const lineasCom = this.dividirTextoPorCaracteres(comentario, CONFIG.MAX_CARACTERES_COMENTARIO);
-                        const lineas = Math.min(lineasCom.length, 4);
-                        const alturaExtra = CONFIG.ESPACIADO_COMENTARIO + 12 + Math.min(lineas * CONFIG.ALTURA_LINEA, 24);
-                        alturaFila = Math.max(alturaFila, imgHeight + alturaExtra);
-                    }
-                    
-                    if (!this.verificarEspacio(pdf, yPos, alturaFila + 15)) {
-                        this.dibujarPiePagina(pdf);
-                        pdf.addPage();
-                        this.paginaActualReal++;
-                        this.dibujarEncabezadoBase(pdf, 'INFORME DE INCIDENCIA', `${incidencia.id} (Continuación)`);
-                        yPos = this.alturaEncabezado + 5;
-                        
-                        pdf.setFont('helvetica', 'bold');
-                        pdf.setFontSize(this.fonts.normal);
-                        pdf.setTextColor(0, 0, 0);
-                        pdf.text("6. EVIDENCIAS CON DESCRIPCIÓN (Continuación)", margenContenido, yPos + 6);
-                        yPos += 18;
-                    }
-                    
-                    for (let col = 0; col < imagenesEnFila; col++) {
-                        let xPos = col === 0 ? col1X : col2X;
-                        const imagen = imagenesConDescripcion[imagenIndex + col];
-                        const numeroImagen = numeroBase + imagenIndex + col + 1;
-                        
-                        pdf.setFont('helvetica', 'bold');
-                        pdf.setFontSize(this.fonts.mini);
-                        pdf.setTextColor(100, 100, 100);
-                        pdf.text(`Imagen ${numeroImagen}`, xPos + 2, yPos - 3);
-                        
-                        await this.dibujarImagen(pdf, imagen, xPos, yPos, imgWidth, imgHeight, numeroImagen, imgWidth);
-                    }
-                    
-                    yPos += alturaFila + 12;
-                    imagenIndex += imagenesEnFila;
-                }
-                yPos += 5;
-            }
+            const alturaFilaImagenes = alturaMaxFila + 35;
+            yPos += alturaFilaImagenes + 15;
             
-        } else {
-            // SIN IMÁGENES - Mostrar mensaje amigable
-            const alturaSinImagenes = 32;
+            const imagenesRestantes = imagenesPrincipales.slice(2);
             
-            // Verificar espacio en la página
-            if (!this.verificarEspacio(pdf, yPos, alturaSinImagenes + 10)) {
+            if (imagenesRestantes.length > 0) {
                 this.dibujarPiePagina(pdf);
                 pdf.addPage();
                 this.paginaActualReal++;
-                this.dibujarEncabezadoBase(pdf, 'INFORME DE INCIDENCIA', `${incidencia.id} (Continuación)`);
-                yPos = this.alturaEncabezado + 5;
+                this.dibujarEncabezadoBase(pdf, 'INFORME DE INCIDENCIA', `${incidencia.id} (Cont.)`);
+                yPos = this.alturaEncabezado + 12;
+                
+                pdf.setFont('helvetica', 'bold');
+                pdf.setFontSize(this.fonts.normal - 1);
+                pdf.setTextColor(0, 0, 0);
+                pdf.text("5. EVIDENCIAS FOTOGRÁFICAS (Continuación)", margen + 4, yPos + 3);
+                pdf.setFont('helvetica', 'normal');
+                pdf.setFontSize(this.fonts.mini - 1);
+                pdf.setTextColor(100, 100, 100);
+                pdf.text(`${imagenesRestantes.length} imagen(es) restantes`, anchoPagina - margen - 35, yPos + 3);
+                yPos += 15;
+                
+                yPos = await this.dibujarGridImagenes(pdf, imagenesRestantes, margen, anchoContenido, yPos, altoPagina, 2, true);
             }
-            
+        } else {
             pdf.saveGraphicsState();
-            pdf.setFont('helvetica', 'bold');
-            pdf.setFontSize(this.fonts.normal);
-            pdf.setTextColor(0, 0, 0);
-            pdf.text("5. EVIDENCIAS FOTOGRÁFICAS", margen + 6, yPos + 6);
-            pdf.setDrawColor(180, 180, 180);
-            pdf.line(margen + 4, yPos + 12, margen + anchoContenido - 4, yPos + 12);
             pdf.setFont('helvetica', 'italic');
             pdf.setFontSize(this.fonts.small);
             pdf.setTextColor(120, 120, 120);
-            pdf.text("No se adjuntaron evidencias fotográficas en este reporte.", margen + 6, yPos + 22);
+            pdf.text("No se adjuntaron evidencias fotográficas.", margen + 4, yPos + 12);
             pdf.restoreGraphicsState();
-            yPos += alturaSinImagenes + 8;
+            yPos += 25;
         }
-        // =============================================
-        // 6. HISTORIAL DE SEGUIMIENTOS
-        // =============================================
-        const seguimientos = incidencia.getSeguimientosArray ? incidencia.getSeguimientosArray() : [];
         
-        if (seguimientos.length > 0) {
-            if (!this.verificarEspacio(pdf, yPos, 20)) {
-                this.dibujarPiePagina(pdf);
-                pdf.addPage();
-                this.paginaActualReal++;
-                this.dibujarEncabezadoBase(pdf, 'INFORME DE INCIDENCIA', `${incidencia.id} (Continuación)`);
-                yPos = this.alturaEncabezado + 5;
-            }
-            
-            pdf.setFont('helvetica', 'bold');
-            pdf.setFontSize(this.fonts.normal);
-            pdf.setTextColor(0, 0, 0);
-            pdf.text("6. HISTORIAL DE SEGUIMIENTOS", margen + 6, yPos + 6);
-            pdf.setFont('helvetica', 'normal');
-            pdf.setFontSize(this.fonts.mini);
-            pdf.setTextColor(100, 100, 100);
-            pdf.text(`${seguimientos.length} seguimiento(s) registrado(s)`, anchoPagina - margen - 50, yPos + 6);
-            yPos += 18;
-            
-         for (let i = 0; i < seguimientos.length; i++) {
+        this.dibujarPiePagina(pdf);
+        
+   
+
+        
+        // PÁGINAS PARA CADA SEGUIMIENTO
+const seguimientos = incidencia.getSeguimientosArray ? incidencia.getSeguimientosArray() : [];
+
+for (let i = 0; i < seguimientos.length; i++) {
     const seguimiento = seguimientos[i];
     
-    const alturaEstimada = CONFIG.ALTURA_SEGUIMIENTO_BASE + 20;
-    if (!this.verificarEspacio(pdf, yPos, alturaEstimada + 10)) {
-        this.dibujarPiePagina(pdf);
-        pdf.addPage();
-        this.paginaActualReal++;
-        this.dibujarEncabezadoBase(pdf, 'INFORME DE INCIDENCIA', `${incidencia.id} (Continuación)`);
-        yPos = this.alturaEncabezado + 5;
+    pdf.addPage();
+    this.paginaActualReal++;
+    this.dibujarEncabezadoBase(pdf, `SEGUIMIENTO ${i + 1} de ${seguimientos.length}`, `${incidencia.id}`);
+    
+    let yPosSeg = this.alturaEncabezado + 8;
+    
+    const fecha = seguimiento.fecha ? this.formatearFechaVisualizacion(seguimiento.fecha) : 'Fecha no disponible';
+    const usuario = seguimiento.usuarioCodigo || seguimiento.usuarioNombre || 'Usuario';
+    
+    pdf.saveGraphicsState();
+    pdf.setFillColor(245, 248, 250);
+    pdf.roundedRect(margen + 4, yPosSeg, anchoContenido - 8, 22, 4, 4, 'F');
+    
+    pdf.setFont('helvetica', 'bold');
+    pdf.setFontSize(this.fonts.small);
+    pdf.setTextColor(0, 0, 0);
+    pdf.text(`SEGUIMIENTO POR: ${usuario}`, margen + 10, yPosSeg + 6);
+    
+    pdf.setFont('helvetica', 'normal');
+    pdf.setFontSize(this.fonts.mini);
+    pdf.setTextColor(100, 100, 100);
+    pdf.text(`${fecha}`, margen + 10, yPosSeg + 14);
+    
+    pdf.restoreGraphicsState();
+    yPosSeg += 28;
+    
+    const descripcion = seguimiento.descripcion || 'Sin descripción';
+    const lineasDescSeg = this.dividirTextoPorCaracteres(descripcion, CONFIG.MAX_CARACTERES_POR_LINEA - 10);
+    const ALTURA_TITULO_DESC = 12;
+    const PADDING_DESC = 8;
+    const lineasAMostrar = Math.min(lineasDescSeg.length, 10);
+    const alturaDescripcionReal = ALTURA_TITULO_DESC + (lineasAMostrar * CONFIG.ALTURA_LINEA) + PADDING_DESC;
+    
+    if (descripcion.trim() !== '' && descripcion !== 'Sin descripción') {
+        pdf.saveGraphicsState();
         
         pdf.setFont('helvetica', 'bold');
-        pdf.setFontSize(this.fonts.normal);
+        pdf.setFontSize(this.fonts.normal - 1);
         pdf.setTextColor(0, 0, 0);
-        pdf.text("6. HISTORIAL DE SEGUIMIENTOS (Continuación)", margen + 6, yPos + 6);
-        yPos += 18;
+        pdf.text("DESCRIPCIÓN DEL SEGUIMIENTO", margen + 6, yPosSeg + 3);
+        pdf.setDrawColor(180, 180, 180);
+        pdf.line(margen + 4, yPosSeg + 8, margen + anchoContenido - 4, yPosSeg + 8);
+        
+        pdf.setFont('helvetica', 'normal');
+        pdf.setFontSize(this.fonts.small);
+        pdf.setTextColor(60, 60, 60);
+        
+        let yTextoDesc = yPosSeg + 16;
+        for (let j = 0; j < lineasAMostrar; j++) {
+            pdf.text(lineasDescSeg[j], margen + 6, yTextoDesc);
+            yTextoDesc += CONFIG.ALTURA_LINEA;
+        }
+        
+        if (lineasDescSeg.length > 10) {
+            pdf.setFont('helvetica', 'italic');
+            pdf.setFontSize(this.fonts.mini);
+            pdf.setTextColor(120, 120, 120);
+            pdf.text(`(+${lineasDescSeg.length - 10} líneas más)`, margen + 6, yTextoDesc + 2);
+        }
+        
+        pdf.restoreGraphicsState();
+        yPosSeg += alturaDescripcionReal + 5;
+    } else {
+        pdf.saveGraphicsState();
+        pdf.setFont('helvetica', 'italic');
+        pdf.setFontSize(this.fonts.small);
+        pdf.setTextColor(120, 120, 120);
+        pdf.text("Sin descripción en este seguimiento", margen + 6, yPosSeg + 12);
+        pdf.restoreGraphicsState();
+        yPosSeg += 20;
     }
     
-    const alturaSeguimiento = await this.dibujarSeguimiento(pdf, seguimiento, margen, yPos, anchoContenido, i + 1);
-    yPos += alturaSeguimiento + 8;
-}
-            
-            yPos += 5;
-        }
-        
-        // AVISO DE PRIVACIDAD
-        const alturaAviso = 36;
-        if (yPos > altoPagina - alturaAviso - 15) {
-            this.dibujarPiePagina(pdf);
-            pdf.addPage();
-            this.paginaActualReal++;
-            this.dibujarEncabezadoBase(pdf, 'INFORME DE INCIDENCIA', `${incidencia.id} (Continuación)`);
-            yPos = this.alturaEncabezado + 5;
-        }
-        
-        pdf.saveGraphicsState();
-        pdf.setFillColor(248, 248, 248);
-        pdf.rect(margen, altoPagina - alturaAviso - 8, anchoContenido, alturaAviso, 'F');
+    const evidencias = seguimiento.evidencias || [];
+    
+    if (evidencias.length > 0) {
         pdf.setFont('helvetica', 'bold');
-        pdf.setFontSize(this.fonts.mini);
-        pdf.setTextColor(80, 80, 80);
-        pdf.text("AVISO DE PRIVACIDAD", margen + 6, altoPagina - alturaAviso - 2);
-        pdf.setFont('helvetica', 'normal');
-        pdf.setFontSize(this.fonts.mini - 0.5);
-        pdf.setTextColor(100, 100, 100);
+        pdf.setFontSize(this.fonts.normal - 1);
+        pdf.setTextColor(0, 0, 0);
+        pdf.text(`EVIDENCIAS (${evidencias.length} imagen${evidencias.length !== 1 ? 'es' : ''})`, margen + 6, yPosSeg + 3);
+        pdf.setDrawColor(180, 180, 180);
+        pdf.line(margen + 4, yPosSeg + 8, margen + anchoContenido - 4, yPosSeg + 8);
+        yPosSeg += 18;
         
-        const aviso = "La información contenida en este documento es responsabilidad exclusiva de quien utiliza el Sistema Centinela y de la persona que ingresó los datos. Este reporte tiene carácter informativo y puede ser utilizado como medio de prueba ante las autoridades correspondientes.";
-        const lineasAviso = this.dividirTextoEnLineas(pdf, aviso, anchoContenido - 20);
-        let yAviso = altoPagina - alturaAviso + 4;
-        for (let i = 0; i < Math.min(lineasAviso.length, 3); i++) {
-            pdf.text(lineasAviso[i], margen + 6, yAviso + (i * 4));
-        }
+        yPosSeg = await this.dibujarGridImagenes(pdf, evidencias, margen, anchoContenido, yPosSeg, altoPagina, 0, true);
+    } else {
+        pdf.saveGraphicsState();
+        pdf.setFont('helvetica', 'italic');
+        pdf.setFontSize(this.fonts.small);
+        pdf.setTextColor(120, 120, 120);
+        pdf.text("No se adjuntaron evidencias en este seguimiento", margen + 6, yPosSeg + 12);
         pdf.restoreGraphicsState();
-        
-        this.dibujarPiePagina(pdf);
+        yPosSeg += 25;
     }
+    
+    // 👇 SOLO el pie de página, SIN el aviso de privacidad (porque ya se dibujará en la última página globalmente)
+    this.dibujarPiePagina(pdf);
+}
+
+// Al final, después de todo, llamar a corregirNumeracionPaginas() que dibujará el aviso en la última página
+    }
+
+
+// =============================================
+// PAGINACIÓN CORREGIDA (COPIA EXACTA DE SEGUIMIENTO)
+// =============================================
+
+/**
+ * Corrige la numeración de páginas después de generar todo el PDF
+ * @param {Object} pdf - Objeto jsPDF
+ */
+async corregirNumeracionPaginas(pdf) {
+    const totalPaginasReales = pdf.internal.getNumberOfPages();
+    
+    if (totalPaginasReales <= 1) return totalPaginasReales;
+    
+    // Guardar el estado actual
+    const currentPage = pdf.internal.getCurrentPageInfo().pageNumber;
+    
+    // Recorrer todas las páginas y re-dibujar el pie de página
+    for (let i = 1; i <= totalPaginasReales; i++) {
+        pdf.setPage(i);
+        
+        // Obtener dimensiones
+        const margen = 15;
+        const anchoPagina = pdf.internal.pageSize.getWidth();
+        const altoPagina = pdf.internal.pageSize.getHeight();
+        const alturaPie = 15;
+        const yPos = altoPagina - alturaPie - 2;
+        
+        // Limpiar el área del pie de página
+        pdf.setFillColor(255, 255, 255);
+        pdf.rect(0, yPos - 2, anchoPagina, alturaPie + 4, 'F');
+        
+        // Redibujar la línea
+        pdf.setDrawColor('#dddddd');
+        pdf.setLineWidth(0.5);
+        pdf.line(margen, yPos, anchoPagina - margen, yPos);
+        
+        // Texto izquierdo
+        pdf.setFont('helvetica', 'italic');
+        pdf.setFontSize(7);
+        pdf.setTextColor(102, 102, 102);
+        pdf.text('Reporte Generado con Sistema Centinela', margen, yPos + 5);
+        
+        // Texto derecho con número de página CORRECTO
+        pdf.setFont('helvetica', 'normal');
+        pdf.setFontSize(7);
+        pdf.setTextColor(102, 102, 102);
+        pdf.text(`Página ${i} de ${totalPaginasReales}`, anchoPagina - margen, yPos + 5, { align: 'right' });
+        
+        // 👇👇👇 AVISO DE PRIVACIDAD SOLO EN LA ÚLTIMA PÁGINA 👇👇👇
+        // EXACTAMENTE IGUAL QUE EN iph-generator-seguimiento.js
+        if (i === totalPaginasReales) {
+            const alturaAviso = 36;
+            const margenAviso = 20;
+            const anchoContenidoAviso = anchoPagina - (margenAviso * 2);
+            
+            pdf.saveGraphicsState();
+            pdf.setFillColor(248, 248, 248);
+            pdf.rect(margenAviso, altoPagina - alturaAviso - 18, anchoContenidoAviso, alturaAviso, 'F');
+            pdf.setFont('helvetica', 'bold');
+            pdf.setFontSize(this.fonts.mini || 8);
+            pdf.setTextColor(80, 80, 80);
+            pdf.text("AVISO DE PRIVACIDAD", margenAviso + 6, altoPagina - alturaAviso - 12);      
+                  pdf.setFont('helvetica', 'normal');
+            pdf.setFontSize(this.fonts.mini - 0.5 || 7);
+            pdf.setTextColor(100, 100, 100);
+            
+            const aviso = "La información contenida en este documento es responsabilidad exclusiva de quien utiliza el Sistema Centinela y de la persona que ingresó los datos. Este reporte tiene carácter informativo y puede ser utilizado como medio de prueba ante las autoridades correspondientes.";
+            const lineasAviso = this.dividirTextoEnLineas(pdf, aviso, anchoContenidoAviso - 20);
+           let yAviso = altoPagina - alturaAviso - 6;
+            for (let j = 0; j < Math.min(lineasAviso.length, 3); j++) {
+                pdf.text(lineasAviso[j], margenAviso + 6, yAviso + (j * 4));
+            }
+            pdf.restoreGraphicsState();
+        }
+        
+        // Barra inferior
+        pdf.setDrawColor('#0033A0');
+        pdf.setFillColor('#0033A0');
+        pdf.rect(0, altoPagina - 3, anchoPagina, 3, 'F');
+    }
+    
+    // Volver a la página original
+    pdf.setPage(currentPage);
+    
+    return totalPaginasReales;
+}
+
+
+
 }
 
 export const generadorIPH = new IPHGenerator();

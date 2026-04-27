@@ -1,13 +1,7 @@
-// crearCategorias.js - VERSIÓN CON VALIDACIONES DE CARACTERES Y REGISTRO DE BITÁCORA
-// SIN empresaId/estado, con herencia de color configurable
+// crearCategorias.js - COMPLETO CON SLIDER ARRASTRABLE Y GRADIENTE
+import { CategoriaManager } from '/clases/categoria.js';
+import { RiesgoNivelManager } from '/clases/riesgoNivel.js';
 
-// Variable global para debugging
-window.crearCategoriaDebug = {
-    estado: 'iniciando',
-    controller: null
-};
-
-// LÍMITES DE CARACTERES (basados en crearAreas.js)
 const LIMITES = {
     NOMBRE_CATEGORIA: 50,
     DESCRIPCION_CATEGORIA: 500,
@@ -15,197 +9,71 @@ const LIMITES = {
     DESCRIPCION_SUBCATEGORIA: 200
 };
 
-// =============================================
-// CLASE PRINCIPAL - CrearCategoriaController
-// =============================================
 class CrearCategoriaController {
     constructor() {
         this.categoriaManager = null;
+        this.riesgoNivelManager = null;
         this.usuarioActual = null;
-        this.categoriaEnProceso = null;
-        this.categoriaCreadaReciente = null;
-        this.loadingOverlay = null;
-        this.notificacionActual = null;
-        this.historialManager = null; // ✅ NUEVO: Para registrar actividades
-
-        // Array para almacenar subcategorías
         this.subcategorias = [];
-
-        // Inicializar
+        this.nivelesRiesgo = [];
         this._init();
     }
 
-    // ========== INICIALIZACIÓN ==========
-
     async _init() {
         try {
-            // 1. Cargar usuario
             this._cargarUsuario();
+            if (!this.usuarioActual) throw new Error('No se pudo cargar el usuario');
 
-            if (!this.usuarioActual) {
-                throw new Error('No se pudo cargar información del usuario');
-            }
-
-            // 2. Inicializar historialManager
-            await this._initHistorialManager();
-
-            // 3. Cargar CategoriaManager
             await this._cargarCategoriaManager();
+            await this._inicializarRiesgoNivelManager();
+            await this._cargarNivelesRiesgo();
 
-            // 4. Configurar eventos
             this._configurarEventos();
-
-            // 5. Configurar organización automática
             this._configurarOrganizacion();
-
-            // 6. Inicializar validaciones
             this._inicializarValidaciones();
-
-            // 7. Inicializar gestión de subcategorías
             this._inicializarGestionSubcategorias();
-
-            // 8. Aplicar límites de caracteres
             this._aplicarLimitesCaracteres();
-
-            // 9. Actualizar UI con información de la organización (en el header)
             this._actualizarInfoOrganizacion();
 
-            window.crearCategoriaDebug.controller = this;
-
+            window.crearCategoriaDebug = { controller: this };
         } catch (error) {
             console.error('Error inicializando:', error);
             this._mostrarError('Error al inicializar: ' + error.message);
         }
     }
 
-    // ✅ NUEVO: Inicializar historialManager
-    async _initHistorialManager() {
-        try {
-            const { HistorialUsuarioManager } = await import('/clases/historialUsuario.js');
-            this.historialManager = new HistorialUsuarioManager();
-
-        } catch (error) {
-            console.error('Error inicializando historialManager:', error);
-        }
-    }
-
-    // ✅ NUEVO: Registrar creación de categoría
-    async _registrarCreacionCategoria(categoria) {
-        if (!this.historialManager) return;
-
-        try {
-            const numSubcategorias = categoria.subcategorias ?
-                (categoria.subcategorias.size || Object.keys(categoria.subcategorias).length) : 0;
-
-            await this.historialManager.registrarActividad({
-                usuario: this.usuarioActual,
-                tipo: 'crear',
-                modulo: 'categorias',
-                descripcion: `Creó categoría: ${categoria.nombre}`,
-                detalles: {
-                    categoriaId: categoria.id,
-                    categoriaNombre: categoria.nombre,
-                    categoriaColor: categoria.color,
-                    numeroSubcategorias: numSubcategorias,
-                    subcategorias: this._getSubcategoriasNombres(categoria.subcategorias)
-                }
-            });
-
-        } catch (error) {
-            console.error('Error registrando creación de categoría:', error);
-        }
-    }
-
-    // ✅ NUEVO: Obtener nombres de subcategorías para detalles
-    _getSubcategoriasNombres(subcategorias) {
-        if (!subcategorias) return [];
-
-        const nombres = [];
-        try {
-            if (subcategorias.forEach) {
-                subcategorias.forEach((value, key) => {
-                    if (value && typeof value === 'object') {
-                        nombres.push({
-                            id: key,
-                            nombre: value.nombre || 'Sin nombre'
-                        });
-                    }
-                });
-            } else {
-                Object.keys(subcategorias).forEach(key => {
-                    if (subcategorias[key] && subcategorias[key].nombre) {
-                        nombres.push({
-                            id: key,
-                            nombre: subcategorias[key].nombre
-                        });
-                    }
-                });
-            }
-        } catch (e) {
-            console.error('Error obteniendo nombres de subcategorías:', e);
-        }
-        return nombres;
-    }
-
-    // ========== CARGA DE DEPENDENCIAS ==========
-
-    async _cargarCategoriaManager() {
-        try {
-            const { CategoriaManager } = await import('/clases/categoria.js');
-            this.categoriaManager = new CategoriaManager();
-        } catch (error) {
-            console.error('Error cargando CategoriaManager:', error);
-            throw error;
-        }
-    }
-
-    // ========== CARGA DE USUARIO ==========
-
     _cargarUsuario() {
         try {
-            // PRIMERO: Intentar adminInfo (para administradores)
             const adminInfo = localStorage.getItem('adminInfo');
             if (adminInfo) {
-                const adminData = JSON.parse(adminInfo);
-
+                const data = JSON.parse(adminInfo);
                 this.usuarioActual = {
-                    id: adminData.id || `admin_${Date.now()}`,
-                    uid: adminData.uid || adminData.id,
-                    nombreCompleto: adminData.nombreCompleto || 'Administrador',
-                    organizacion: adminData.organizacion || 'Sin organización',
-                    organizacionCamelCase: adminData.organizacionCamelCase ||
-                        this._generarCamelCase(adminData.organizacion),
-                    correo: adminData.correoElectronico || ''
+                    id: data.id || data.uid,
+                    nombreCompleto: data.nombreCompleto || 'Administrador',
+                    organizacion: data.organizacion,
+                    organizacionCamelCase: data.organizacionCamelCase || this._generarCamelCase(data.organizacion),
+                    correo: data.correoElectronico || ''
                 };
                 return;
             }
-
-            // SEGUNDO: Intentar userData
             const userData = JSON.parse(localStorage.getItem('userData') || '{}');
-            if (userData && Object.keys(userData).length > 0) {
-
+            if (userData && Object.keys(userData).length) {
                 this.usuarioActual = {
-                    id: userData.uid || userData.id || `user_${Date.now()}`,
-                    uid: userData.uid || userData.id,
+                    id: userData.uid || userData.id,
                     nombreCompleto: userData.nombreCompleto || userData.nombre || 'Usuario',
-                    organizacion: userData.organizacion || userData.empresa || 'Sin organización',
-                    organizacionCamelCase: userData.organizacionCamelCase ||
-                        this._generarCamelCase(userData.organizacion || userData.empresa),
+                    organizacion: userData.organizacion || userData.empresa,
+                    organizacionCamelCase: userData.organizacionCamelCase || this._generarCamelCase(userData.organizacion),
                     correo: userData.correo || userData.email || ''
                 };
                 return;
             }
-
-            // TERCERO: Datos por defecto (para desarrollo)
             this.usuarioActual = {
                 id: `admin_${Date.now()}`,
-                uid: `admin_${Date.now()}`,
                 nombreCompleto: 'Administrador',
-                organizacion: 'pollos Ray',
-                organizacionCamelCase: 'pollosRay',
+                organizacion: 'Mi Empresa',
+                organizacionCamelCase: 'miEmpresa',
                 correo: 'admin@centinela.com'
             };
-
         } catch (error) {
             console.error('Error cargando usuario:', error);
             throw error;
@@ -213,220 +81,103 @@ class CrearCategoriaController {
     }
 
     _generarCamelCase(texto) {
-        if (!texto || typeof texto !== 'string') return 'sinOrganizacion';
-        return texto
-            .toLowerCase()
-            .normalize("NFD")
-            .replace(/[\u0300-\u036f]/g, "")
-            .replace(/[^a-zA-Z0-9]+(.)/g, (match, chr) => chr.toUpperCase())
+        if (!texto) return 'sinOrganizacion';
+        return texto.toLowerCase()
+            .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+            .replace(/[^a-zA-Z0-9]+(.)/g, (_, chr) => chr.toUpperCase())
             .replace(/[^a-zA-Z0-9]/g, '');
     }
 
-    // ========== CONFIGURACIÓN DE ORGANIZACIÓN ==========
+    async _cargarCategoriaManager() {
+        const { CategoriaManager } = await import('/clases/categoria.js');
+        this.categoriaManager = new CategoriaManager();
+    }
 
-    _configurarOrganizacion() {
-        // Estos inputs pueden no existir en el HTML, verificamos antes de usar
-        const orgCamelCaseInput = document.getElementById('organizacionCamelCase');
-        const orgNombreInput = document.getElementById('organizacionNombre');
-
-        if (orgCamelCaseInput) {
-            orgCamelCaseInput.value = this.usuarioActual.organizacionCamelCase;
-        }
-
-        if (orgNombreInput) {
-            orgNombreInput.value = this.usuarioActual.organizacion;
+    async _inicializarRiesgoNivelManager() {
+        try {
+            this.riesgoNivelManager = new RiesgoNivelManager();
+        } catch (error) {
+            console.error('Error cargando RiesgoNivelManager:', error);
         }
     }
 
-    _actualizarInfoOrganizacion() {
-        const container = document.getElementById('headerDescription');
-        if (!container) return;
-
-        const coleccion = `categorias_${this.usuarioActual.organizacionCamelCase}`;
-
-        container.innerHTML = `
-            <div style="margin-bottom: 8px;">
-                <strong>Organización:</strong> ${this.usuarioActual.organizacion}
-            </div>
-            <div style="font-size: 0.9rem; opacity: 0.8;">
-                <i class="fas fa-database"></i> Colección: ${coleccion}
-            </div>
-        `;
+    async _cargarNivelesRiesgo() {
+        if (!this.riesgoNivelManager) return;
+        try {
+            this.nivelesRiesgo = await this.riesgoNivelManager.obtenerTodosNiveles(this.usuarioActual.organizacionCamelCase);
+        } catch (error) {
+            console.error('Error cargando niveles:', error);
+            this.nivelesRiesgo = [];
+        }
     }
 
-    // ========== APLICAR LÍMITES DE CARACTERES ==========
+    _configurarEventos() {
+        document.getElementById('btnVolverLista')?.addEventListener('click', () => this._volverALista());
+        document.getElementById('btnCancelar')?.addEventListener('click', () => this._cancelarCreacion());
+        document.getElementById('btnCrearCategoria')?.addEventListener('click', (e) => { e.preventDefault(); this._validarYGuardar(); });
+        document.getElementById('formCategoriaPrincipal')?.addEventListener('submit', (e) => { e.preventDefault(); this._validarYGuardar(); });
 
-    _aplicarLimitesCaracteres() {
-        // Campo nombre categoría
-        const nombreCategoria = document.getElementById('nombreCategoria');
-        if (nombreCategoria) {
-            nombreCategoria.maxLength = LIMITES.NOMBRE_CATEGORIA;
-            nombreCategoria.addEventListener('input', () => this._validarLongitudCampo(
-                nombreCategoria,
-                LIMITES.NOMBRE_CATEGORIA,
-                'El nombre de la categoría'
-            ));
-        }
-
-        // Campo descripción categoría
-        const descripcionCategoria = document.getElementById('descripcionCategoria');
-        if (descripcionCategoria) {
-            descripcionCategoria.maxLength = LIMITES.DESCRIPCION_CATEGORIA;
-            descripcionCategoria.addEventListener('input', () => {
-                this._validarLongitudCampo(
-                    descripcionCategoria,
-                    LIMITES.DESCRIPCION_CATEGORIA,
-                    'La descripción'
-                );
-                this._actualizarContadorCaracteres();
+        const colorPreview = document.getElementById('colorPreviewCard');
+        const colorPicker = document.getElementById('colorPickerNative');
+        if (colorPreview && colorPicker) {
+            colorPreview.addEventListener('click', () => colorPicker.click());
+            colorPicker.addEventListener('input', (e) => {
+                document.getElementById('colorDisplay').style.backgroundColor = e.target.value;
+                document.getElementById('colorHex').textContent = e.target.value;
+                this._renderizarSubcategorias(); // actualizar todas las subcategorías que heredan
             });
         }
     }
 
-    _validarLongitudCampo(campo, limite, nombreCampo) {
-        const longitud = campo.value.length;
-        if (longitud > limite) {
-            campo.value = campo.value.substring(0, limite);
-            this._mostrarNotificacion(`${nombreCampo} no puede exceder ${limite} caracteres`, 'warning', 3000);
-        }
-    }
-
-    _validarLongitudSubcategoria(nombre, descripcion) {
-        if (nombre && nombre.length > LIMITES.NOMBRE_SUBCATEGORIA) {
-            this._mostrarNotificacion(`El nombre de la subcategoría no puede exceder ${LIMITES.NOMBRE_SUBCATEGORIA} caracteres`, 'warning', 3000);
-            return false;
-        }
-        if (descripcion && descripcion.length > LIMITES.DESCRIPCION_SUBCATEGORIA) {
-            this._mostrarNotificacion(`La descripción de la subcategoría no puede exceder ${LIMITES.DESCRIPCION_SUBCATEGORIA} caracteres`, 'warning', 3000);
-            return false;
-        }
-        return true;
-    }
-
-    // ========== CONFIGURACIÓN DE EVENTOS ==========
-
-    _configurarEventos() {
-        try {
-            // Botón Volver a la lista
-            const btnVolverLista = document.getElementById('btnVolverLista');
-            if (btnVolverLista) {
-                btnVolverLista.addEventListener('click', () => this._volverALista());
-            }
-
-            // Botón Cancelar
-            const btnCancelar = document.getElementById('btnCancelar');
-            if (btnCancelar) {
-                btnCancelar.addEventListener('click', () => this._cancelarCreacion());
-            }
-
-            // Botón Crear Categoría
-            const btnCrearCategoria = document.getElementById('btnCrearCategoria');
-            if (btnCrearCategoria) {
-                btnCrearCategoria.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    this._validarYGuardar();
-                });
-            }
-
-            // Formulario Submit
-            const form = document.getElementById('formCategoriaPrincipal');
-            if (form) {
-                form.addEventListener('submit', (e) => {
-                    e.preventDefault();
-                    this._validarYGuardar();
-                });
-            }
-
-            // Color Preview
-            const colorPreviewCard = document.getElementById('colorPreviewCard');
-            const colorPickerNative = document.getElementById('colorPickerNative');
-
-            if (colorPreviewCard && colorPickerNative) {
-                colorPreviewCard.addEventListener('click', () => {
-                    colorPickerNative.click();
-                });
-
-                colorPickerNative.addEventListener('input', (e) => {
-                    const color = e.target.value;
-                    const colorDisplay = document.getElementById('colorDisplay');
-                    const colorHex = document.getElementById('colorHex');
-
-                    if (colorDisplay) {
-                        colorDisplay.style.backgroundColor = color;
-                    }
-                    if (colorHex) {
-                        colorHex.textContent = color;
-                    }
-
-                    // Actualizar previsualización de colores en subcategorías
-                    this._renderizarSubcategorias();
-                });
-            }
-
-            // Contador de caracteres
-            const descripcionInput = document.getElementById('descripcionCategoria');
-            if (descripcionInput) {
-                descripcionInput.addEventListener('input', () => this._actualizarContadorCaracteres());
-            }
-
-        } catch (error) {
-            console.error('Error configurando eventos:', error);
-        }
-    }
+    _configurarOrganizacion() {}
 
     _inicializarValidaciones() {
+        const descripcion = document.getElementById('descripcionCategoria');
+        if (descripcion) descripcion.addEventListener('input', () => this._actualizarContadorCaracteres());
         this._actualizarContadorCaracteres();
     }
 
     _actualizarContadorCaracteres() {
-        const descripcion = document.getElementById('descripcionCategoria');
+        const desc = document.getElementById('descripcionCategoria');
         const contador = document.getElementById('contadorCaracteres');
-
-        if (descripcion && contador) {
-            const longitud = descripcion.value.length;
-            contador.textContent = `${longitud}/${LIMITES.DESCRIPCION_CATEGORIA}`;
-
-            // Cambiar color si se acerca al límite
-            if (longitud > LIMITES.DESCRIPCION_CATEGORIA * 0.9) {
-                contador.style.color = 'var(--color-warning)';
-            } else if (longitud > LIMITES.DESCRIPCION_CATEGORIA * 0.95) {
-                contador.style.color = 'var(--color-danger)';
-            } else {
-                contador.style.color = 'var(--color-accent-primary)';
-            }
+        if (desc && contador) {
+            const len = desc.value.length;
+            contador.textContent = `${len}/${LIMITES.DESCRIPCION_CATEGORIA}`;
+            contador.style.color = len > LIMITES.DESCRIPCION_CATEGORIA * 0.9 ? 'var(--color-warning)' : 'var(--color-accent-primary)';
         }
     }
 
-    // ========== GESTIÓN DE SUBCATEGORÍAS ==========
+    _aplicarLimitesCaracteres() {
+        const nombreCat = document.getElementById('nombreCategoria');
+        if (nombreCat) nombreCat.maxLength = LIMITES.NOMBRE_CATEGORIA;
+        const descCat = document.getElementById('descripcionCategoria');
+        if (descCat) descCat.maxLength = LIMITES.DESCRIPCION_CATEGORIA;
+    }
+
+    _actualizarInfoOrganizacion() {
+        const header = document.getElementById('headerDescription');
+        if (header) header.innerHTML = `<strong>Organización:</strong> ${this.usuarioActual.organizacion}`;
+    }
 
     _inicializarGestionSubcategorias() {
-        const btnAgregar = document.getElementById('btnAgregarSubcategoria');
-        if (btnAgregar) {
-            btnAgregar.addEventListener('click', () => this._agregarSubcategoria());
-        }
+        document.getElementById('btnAgregarSubcategoria')?.addEventListener('click', () => this._agregarSubcategoria());
     }
 
     _agregarSubcategoria() {
         const subcatId = `temp_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
-
         this.subcategorias.push({
             id: subcatId,
             nombre: '',
             descripcion: '',
             heredaColor: true,
-            colorPersonalizado: '#ff5733'
+            brightnessFactor: 1.0,
+            colorPersonalizado: null,
+            riesgoNivelId: ''
         });
-
         this._renderizarSubcategorias();
-        this._actualizarContadorSubcategorias();
-
-        // Enfocar en el nombre
         setTimeout(() => {
             const input = document.getElementById(`subcat_nombre_${subcatId}`);
-            if (input) {
-                input.focus();
-                input.maxLength = LIMITES.NOMBRE_SUBCATEGORIA;
-            }
+            if (input) input.focus();
         }, 100);
     }
 
@@ -436,158 +187,241 @@ class CrearCategoriaController {
             text: 'Esta acción no se puede deshacer',
             icon: 'warning',
             showCancelButton: true,
-            confirmButtonText: 'Sí, eliminar',
-            cancelButtonText: 'Cancelar'
-        }).then((result) => {
+            confirmButtonText: 'Sí, eliminar'
+        }).then(result => {
             if (result.isConfirmed) {
                 this.subcategorias = this.subcategorias.filter(s => s.id !== subcatId);
                 this._renderizarSubcategorias();
-                this._actualizarContadorSubcategorias();
-                this._mostrarNotificacion('Subcategoría eliminada', 'success');
             }
         });
     }
 
     _actualizarSubcategoria(subcatId, campo, valor) {
-        const subcategoria = this.subcategorias.find(s => s.id === subcatId);
-        if (subcategoria) {
-            // Validar límites de caracteres
-            if (campo === 'nombre' && valor.length > LIMITES.NOMBRE_SUBCATEGORIA) {
-                valor = valor.substring(0, LIMITES.NOMBRE_SUBCATEGORIA);
-                this._mostrarNotificacion(`El nombre no puede exceder ${LIMITES.NOMBRE_SUBCATEGORIA} caracteres`, 'warning', 3000);
-            }
-            if (campo === 'descripcion' && valor.length > LIMITES.DESCRIPCION_SUBCATEGORIA) {
-                valor = valor.substring(0, LIMITES.DESCRIPCION_SUBCATEGORIA);
-                this._mostrarNotificacion(`La descripción no puede exceder ${LIMITES.DESCRIPCION_SUBCATEGORIA} caracteres`, 'warning', 3000);
-            }
-            subcategoria[campo] = valor;
-
-            // Actualizar contador si existe
-            this._actualizarContadorSubcategoria(subcatId, campo, valor);
+        const subcat = this.subcategorias.find(s => s.id === subcatId);
+        if (subcat) {
+            if (campo === 'nombre' && valor.length > LIMITES.NOMBRE_SUBCATEGORIA) valor = valor.slice(0, LIMITES.NOMBRE_SUBCATEGORIA);
+            if (campo === 'descripcion' && valor.length > LIMITES.DESCRIPCION_SUBCATEGORIA) valor = valor.slice(0, LIMITES.DESCRIPCION_SUBCATEGORIA);
+            subcat[campo] = valor;
+            this._actualizarContadorSubcampo(subcatId, campo, valor);
         }
     }
 
-    _actualizarContadorSubcategoria(subcatId, campo, valor) {
+    _actualizarContadorSubcampo(subcatId, campo, valor) {
         const input = document.getElementById(`subcat_${campo}_${subcatId}`);
         if (input) {
-            const counter = input.closest('.subcategoria-campo')?.querySelector('.char-counter');
+            const parent = input.closest('.subcategoria-campo') || input.closest('.subcategoria-campo-full');
+            const counter = parent?.querySelector('.char-counter');
             if (counter) {
                 const limite = campo === 'nombre' ? LIMITES.NOMBRE_SUBCATEGORIA : LIMITES.DESCRIPCION_SUBCATEGORIA;
-                counter.textContent = `${valor?.length || 0}/${limite}`;
+                counter.textContent = `${(valor || '').length}/${limite}`;
             }
         }
     }
 
-    _cambiarHerenciaColor(subcatId, heredaColor) {
-        const subcategoria = this.subcategorias.find(s => s.id === subcatId);
-        if (subcategoria) {
-            subcategoria.heredaColor = heredaColor;
+    _cambiarHerenciaColor(subcatId, hereda) {
+        const subcat = this.subcategorias.find(s => s.id === subcatId);
+        if (subcat) {
+            subcat.heredaColor = hereda;
+            if (hereda) {
+                subcat.brightnessFactor = 1.0;
+                subcat.colorPersonalizado = null;
+            } else {
+                if (!subcat.colorPersonalizado) {
+                    const catColor = document.getElementById('colorPickerNative')?.value || '#2f8cff';
+                    subcat.colorPersonalizado = catColor;
+                }
+            }
             this._renderizarSubcategorias();
         }
     }
 
-    _actualizarColorPersonalizado(subcatId, color) {
-        const subcategoria = this.subcategorias.find(s => s.id === subcatId);
-        if (subcategoria) {
-            subcategoria.colorPersonalizado = color;
+    // Actualiza el factor de brillo en tiempo real (usando input)
+    _actualizarBrightnessFactor(subcatId, percentValue) {
+        const subcat = this.subcategorias.find(s => s.id === subcatId);
+        if (subcat && subcat.heredaColor) {
+            const factor = 0.5 + (percentValue / 100);
+            subcat.brightnessFactor = Math.min(1.5, Math.max(0.5, factor));
+            // Actualizar solo la vista previa del color sin re-renderizar todo
+            this._actualizarVistaPreviaColorSubcategoria(subcatId);
         }
     }
 
+    // Método para actualizar dinámicamente el color efectivo y los elementos visuales
+    _actualizarVistaPreviaColorSubcategoria(subcatId) {
+        const subcat = this.subcategorias.find(s => s.id === subcatId);
+        if (!subcat) return;
+        const colorCategoria = document.getElementById('colorPickerNative')?.value || '#2f8cff';
+        const colorEfectivo = this._calcularColorEfectivo(subcat, colorCategoria);
+        
+        const itemDiv = document.getElementById(`subcategoria_${subcatId}`);
+        if (itemDiv) {
+            // Borde izquierdo
+            itemDiv.style.borderLeftColor = colorEfectivo;
+            // Badge de color
+            const badge = itemDiv.querySelector('.color-badge');
+            if (badge) badge.style.backgroundColor = colorEfectivo;
+            // Muestra de color efectivo
+            const muestra = itemDiv.querySelector('.color-muestra');
+            if (muestra) muestra.style.backgroundColor = colorEfectivo;
+            // Texto hexadecimal
+            const hexSpan = itemDiv.querySelector('.color-actual span:last-child');
+            if (hexSpan) hexSpan.textContent = colorEfectivo;
+            // Mini hex en el control de tonalidad
+            const hexMini = itemDiv.querySelector('.color-hex-mini');
+            if (hexMini) hexMini.textContent = colorEfectivo;
+            // Actualizar el valor porcentual del slider
+            const percentSpan = itemDiv.querySelector('.tonalidad-valor');
+            if (percentSpan) {
+                const percent = Math.round((subcat.brightnessFactor - 0.5) * 100);
+                percentSpan.textContent = `${percent}%`;
+            }
+            // Si el slider existe, no es necesario actualizar su posición porque el evento input ya lo maneja
+        }
+    }
+
+    _actualizarColorPersonalizado(subcatId, color) {
+        const subcat = this.subcategorias.find(s => s.id === subcatId);
+        if (subcat && !subcat.heredaColor) {
+            subcat.colorPersonalizado = color;
+            this._renderizarSubcategorias();
+        }
+    }
+
+    _hexToRgb(hex) {
+        const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+        return result ? {
+            r: parseInt(result[1], 16),
+            g: parseInt(result[2], 16),
+            b: parseInt(result[3], 16)
+        } : null;
+    }
+
+    _adjustBrightness(rgb, factor) {
+        let r = Math.min(255, Math.max(0, Math.round(rgb.r * factor)));
+        let g = Math.min(255, Math.max(0, Math.round(rgb.g * factor)));
+        let b = Math.min(255, Math.max(0, Math.round(rgb.b * factor)));
+        return `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)}`;
+    }
+
+    _calcularColorEfectivo(subcat, colorCategoria) {
+        if (!subcat.heredaColor) {
+            return subcat.colorPersonalizado || colorCategoria;
+        }
+        const rgb = this._hexToRgb(colorCategoria);
+        if (!rgb) return colorCategoria;
+        let factor = subcat.brightnessFactor;
+        factor = Math.min(1.5, Math.max(0.5, factor));
+        return this._adjustBrightness(rgb, factor);
+    }
+
+    // ========== RENDERIZADO PRINCIPAL CON SLIDER MEJORADO ==========
     _renderizarSubcategorias() {
         const container = document.getElementById('subcategoriasList');
         if (!container) return;
 
         if (this.subcategorias.length === 0) {
-            container.innerHTML = `
-                <div class="empty-state">
-                    <i class="fas fa-sitemap"></i>
-                    <p>No hay subcategorías agregadas</p>
-                    <small>Haga clic en "Agregar Subcategoría" para añadir una</small>
-                </div>
-            `;
+            container.innerHTML = `<div class="empty-state"><i class="fas fa-sitemap"></i><p>No hay subcategorías agregadas</p><small>Haga clic en "Agregar Subcategoría"</small></div>`;
             return;
         }
 
-        let html = '';
         const colorCategoria = document.getElementById('colorPickerNative')?.value || '#2f8cff';
+        let html = '';
 
-        this.subcategorias.forEach((subcat, index) => {
-            const colorEfectivo = subcat.heredaColor ? colorCategoria : (subcat.colorPersonalizado || '#ff5733');
+        this.subcategorias.forEach((subcat, idx) => {
+            const colorEfectivo = this._calcularColorEfectivo(subcat, colorCategoria);
+            const sliderValue = subcat.heredaColor ? Math.round((subcat.brightnessFactor - 0.5) * 100) : 50;
+            
+            // Generar gradiente para el slider (desde oscuro hasta claro)
+            const rgbBase = this._hexToRgb(colorCategoria);
+            const darkColor = rgbBase ? this._adjustBrightness(rgbBase, 0.5) : '#2f8cff';
+            const lightColor = rgbBase ? this._adjustBrightness(rgbBase, 1.5) : '#2f8cff';
+            const sliderGradient = `linear-gradient(90deg, ${darkColor} 0%, ${colorCategoria} 50%, ${lightColor} 100%)`;
+
+            // Opciones del select de niveles de riesgo
+            let riesgoOptions = '<option value="">-- Seleccionar --</option>';
+            this.nivelesRiesgo.forEach(nivel => {
+                const selected = (subcat.riesgoNivelId === nivel.id) ? 'selected' : '';
+                riesgoOptions += `<option value="${nivel.id}" ${selected}>${this._escapeHTML(nivel.nombre)} (${nivel.color})</option>`;
+            });
+            riesgoOptions += '<option value="__otro__" ' + (subcat.riesgoNivelId === '__otro__' ? 'selected' : '') + '>Crear nuevo nivel</option>';
+            const showNuevoRiesgo = (subcat.riesgoNivelId === '__otro__') ? 'block' : 'none';
 
             html += `
-                <div class="subcategoria-item" id="subcategoria_${subcat.id}" style="border-left: 4px solid ${colorEfectivo};">
+                <div class="subcategoria-item" style="border-left: 4px solid ${colorEfectivo}; transition: border-left-color 0.1s ease;" id="subcategoria_${subcat.id}">
                     <div class="subcategoria-header">
                         <div class="subcategoria-titulo">
-                            <i class="fas fa-folder"></i>
-                            Subcategoría #${index + 1}
-                            <span class="color-badge" style="background: ${colorEfectivo}; width: 16px; height: 16px; border-radius: 4px; display: inline-block; margin-left: 8px;"></span>
+                            <i class="fas fa-folder"></i> Subcategoría #${idx + 1}
+                            <span class="color-badge" style="background:${colorEfectivo}; width:16px; height:16px; border-radius:4px; display:inline-block; margin-left:8px; transition: background 0.1s ease;"></span>
                         </div>
-                        <button type="button" class="btn-eliminar-subcategoria" 
-                                onclick="window.crearCategoriaDebug.controller._eliminarSubcategoria('${subcat.id}')">
-                            <i class="fas fa-trash-alt"></i>
-                            Eliminar
+                        <button type="button" class="btn-eliminar-subcategoria" onclick="window.crearCategoriaDebug.controller._eliminarSubcategoria('${subcat.id}')">
+                            <i class="fas fa-trash-alt"></i> Eliminar
                         </button>
                     </div>
-                    
-                    <div class="subcategoria-grid">
+                    <!-- Primera fila: Nombre + Nivel de Riesgo -->
+                    <div class="subcategoria-row-2cols">
                         <div class="subcategoria-campo">
-                            <label class="subcategoria-label">
-                                <i class="fas fa-tag"></i>
-                                Nombre *
-                            </label>
-                            <input type="text" class="subcategoria-input" 
-                                   id="subcat_nombre_${subcat.id}"
-                                   value="${this._escapeHTML(subcat.nombre)}"
-                                   placeholder="Ej: Procesadores, Ventas, Redes"
-                                   maxlength="${LIMITES.NOMBRE_SUBCATEGORIA}"
-                                   oninput="window.crearCategoriaDebug.controller._actualizarSubcategoria('${subcat.id}', 'nombre', this.value)">
-                            <div class="char-limit-info">
-                                <span class="char-counter">${subcat.nombre?.length || 0}/${LIMITES.NOMBRE_SUBCATEGORIA}</span>
-                            </div>
+                            <label><i class="fas fa-tag"></i> Nombre *</label>
+                            <input type="text" class="subcategoria-input" id="subcat_nombre_${subcat.id}"
+                                value="${this._escapeHTML(subcat.nombre)}" maxlength="${LIMITES.NOMBRE_SUBCATEGORIA}"
+                                oninput="window.crearCategoriaDebug.controller._actualizarSubcategoria('${subcat.id}', 'nombre', this.value)">
+                            <div class="char-limit-info"><span class="char-counter">${subcat.nombre.length}/${LIMITES.NOMBRE_SUBCATEGORIA}</span></div>
                         </div>
                         <div class="subcategoria-campo">
-                            <label class="subcategoria-label">
-                                <i class="fas fa-align-left"></i>
-                                Descripción
-                            </label>
-                            <input type="text" class="subcategoria-input" 
-                                   id="subcat_descripcion_${subcat.id}"
-                                   value="${this._escapeHTML(subcat.descripcion)}"
-                                   placeholder="Descripción opcional"
-                                   maxlength="${LIMITES.DESCRIPCION_SUBCATEGORIA}"
-                                   oninput="window.crearCategoriaDebug.controller._actualizarSubcategoria('${subcat.id}', 'descripcion', this.value)">
-                            <div class="char-limit-info">
-                                <span class="char-counter">${subcat.descripcion?.length || 0}/${LIMITES.DESCRIPCION_SUBCATEGORIA}</span>
+                            <label><i class="fas fa-chart-line"></i> Nivel de Riesgo</label>
+                            <div class="riesgo-select-wrapper">
+                                <select class="subcategoria-select-riesgo" data-subcat-id="${subcat.id}"
+                                    onchange="window.crearCategoriaDebug.controller._cambiarRiesgoSeleccionado('${subcat.id}', this.value)">
+                                    ${riesgoOptions}
+                                </select>
+                                <div id="nuevoRiesgoContainer_${subcat.id}" class="nuevo-riesgo-container" style="display: ${showNuevoRiesgo}; margin-top: 8px;">
+                                    <input type="text" class="form-control" placeholder="Nombre del nuevo nivel" id="nuevoRiesgoNombre_${subcat.id}" maxlength="50">
+                                    <div style="display: flex; gap: 8px; margin-top: 5px; align-items: center;">
+                                        <input type="color" id="nuevoRiesgoColor_${subcat.id}" value="#2f8cff" style="width: 36px; height: 36px;">
+                                        <span style="flex:1;">Color</span>
+                                        <button type="button" class="btn-crear-riesgo" data-subcat-id="${subcat.id}">Crear y asignar</button>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
-                    
+                    <!-- Segunda fila: Descripción (ancho completo) -->
+                    <div class="subcategoria-campo-full">
+                        <label><i class="fas fa-align-left"></i> Descripción</label>
+                        <input type="text" class="subcategoria-input" id="subcat_descripcion_${subcat.id}"
+                            value="${this._escapeHTML(subcat.descripcion)}" maxlength="${LIMITES.DESCRIPCION_SUBCATEGORIA}"
+                            oninput="window.crearCategoriaDebug.controller._actualizarSubcategoria('${subcat.id}', 'descripcion', this.value)">
+                        <div class="char-limit-info"><span class="char-counter">${subcat.descripcion.length}/${LIMITES.DESCRIPCION_SUBCATEGORIA}</span></div>
+                    </div>
+                    <!-- Tercera fila: controles de color -->
                     <div class="subcategoria-color-control">
                         <div class="herencia-color">
                             <label class="herencia-checkbox">
-                                <input type="checkbox" 
-                                       ${subcat.heredaColor ? 'checked' : ''}
-                                       onchange="window.crearCategoriaDebug.controller._cambiarHerenciaColor('${subcat.id}', this.checked)">
-                                <span> color de categoría</span>
+                                <input type="checkbox" ${subcat.heredaColor ? 'checked' : ''}
+                                    onchange="window.crearCategoriaDebug.controller._cambiarHerenciaColor('${subcat.id}', this.checked)">
+                                <span> Heredar color de categoría</span>
                             </label>
                         </div>
-                        
-                        <div class="color-personalizado" style="${subcat.heredaColor ? 'opacity: 0.5; pointer-events: none;' : ''}">
-                            <span class="color-personalizado-label">
-                                <i class="fas fa-palette"></i>
-                                Color:
-                            </span>
-                            <input type="color" class="color-personalizado-input" 
-                                   id="subcat_color_${subcat.id}"
-                                   value="${subcat.colorPersonalizado || '#ff5733'}"
-                                   ${subcat.heredaColor ? 'disabled' : ''}
-                                   onchange="window.crearCategoriaDebug.controller._actualizarColorPersonalizado('${subcat.id}', this.value);
-                                            window.crearCategoriaDebug.controller._renderizarSubcategorias();">
+                        ${subcat.heredaColor ? `
+                        <div class="tonalidad-control">
+                            <span class="tonalidad-label"><i class="fas fa-adjust"></i> Brillo:</span>
+                            <input type="range" class="tonalidad-slider" min="0" max="100" value="${sliderValue}"
+                                style="background: ${sliderGradient};"
+                                oninput="window.crearCategoriaDebug.controller._actualizarBrightnessFactor('${subcat.id}', this.value)">
+                            <span class="tonalidad-valor">${sliderValue}%</span>
+                            <span class="color-hex-mini">${colorEfectivo}</span>
                         </div>
-                        
+                        ` : `
+                        <div class="color-personalizado">
+                            <span><i class="fas fa-palette"></i> Color:</span>
+                            <input type="color" class="color-personalizado-input" id="subcat_color_${subcat.id}"
+                                value="${subcat.colorPersonalizado || '#ff5733'}"
+                                onchange="window.crearCategoriaDebug.controller._actualizarColorPersonalizado('${subcat.id}', this.value);
+                                         window.crearCategoriaDebug.controller._renderizarSubcategorias();">
+                        </div>
+                        `}
                         <div class="color-actual">
                             <span>Color efectivo:</span>
-                            <span class="color-muestra" style="background: ${colorEfectivo};"></span>
+                            <span class="color-muestra" style="background:${colorEfectivo};"></span>
                             <span>${colorEfectivo}</span>
                         </div>
                     </div>
@@ -596,175 +430,142 @@ class CrearCategoriaController {
         });
 
         container.innerHTML = html;
+
+        // Agregar event listeners a los botones "Crear y asignar"
+        document.querySelectorAll('.btn-crear-riesgo').forEach(btn => {
+            btn.removeEventListener('click', this._handler);
+            const handler = async () => {
+                const subcatId = btn.dataset.subcatId;
+                await this._crearNuevoRiesgoYAsignar(subcatId);
+            };
+            btn.addEventListener('click', handler);
+            btn._handler = handler;
+        });
     }
 
-    _actualizarContadorSubcategorias() {
-        const counter = document.getElementById('subcategoriasCounter');
-        if (counter) {
-            const cantidad = this.subcategorias.length;
-            counter.textContent = `(${cantidad} subcategoría${cantidad !== 1 ? 's' : ''})`;
+    // ========== LÓGICA DE NIVELES DE RIESGO ==========
+    _cambiarRiesgoSeleccionado(subcatId, valor) {
+        const subcat = this.subcategorias.find(s => s.id === subcatId);
+        if (!subcat) return;
+
+        const container = document.getElementById(`nuevoRiesgoContainer_${subcatId}`);
+        if (valor === '__otro__') {
+            if (container) container.style.display = 'block';
+            subcat.riesgoNivelId = '__otro__';
+        } else {
+            if (container) container.style.display = 'none';
+            subcat.riesgoNivelId = valor;
         }
     }
 
-    _escapeHTML(text) {
-        if (!text) return '';
-        return String(text)
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;')
-            .replace(/'/g, '&#039;');
+    async _crearNuevoRiesgoYAsignar(subcatId) {
+        const subcat = this.subcategorias.find(s => s.id === subcatId);
+        if (!subcat) return;
+
+        const nombreInput = document.getElementById(`nuevoRiesgoNombre_${subcatId}`);
+        const colorInput = document.getElementById(`nuevoRiesgoColor_${subcatId}`);
+        const nombre = nombreInput?.value.trim();
+        const color = colorInput?.value || '#2f8cff';
+
+        if (!nombre) {
+            this._mostrarError('Debes escribir un nombre para el nuevo nivel de riesgo');
+            return;
+        }
+
+        const btn = document.querySelector(`.btn-crear-riesgo[data-subcat-id="${subcatId}"]`);
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+        btn.disabled = true;
+
+        try {
+            const nuevoNivel = await this.riesgoNivelManager.crearNivel({ nombre, color }, this.usuarioActual);
+            this.nivelesRiesgo.push(nuevoNivel);
+            subcat.riesgoNivelId = nuevoNivel.id;
+            this._renderizarSubcategorias();
+            this._mostrarNotificacion(`Nivel "${nombre}" creado y asignado`, 'success');
+        } catch (error) {
+            this._mostrarError(error.message || 'Error al crear el nivel');
+        } finally {
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+        }
     }
 
     // ========== VALIDACIÓN Y GUARDADO ==========
-
     _validarYGuardar() {
-        // Validar nombre
-        const nombreInput = document.getElementById('nombreCategoria');
-        const nombre = nombreInput.value.trim();
+        const nombre = document.getElementById('nombreCategoria').value.trim();
+        if (!nombre) return this._mostrarError('El nombre de la categoría es obligatorio');
+        if (nombre.length < 3) return this._mostrarError('El nombre debe tener al menos 3 caracteres');
+        if (nombre.length > LIMITES.NOMBRE_CATEGORIA) return this._mostrarError(`Máximo ${LIMITES.NOMBRE_CATEGORIA} caracteres`);
 
-        if (!nombre) {
-            nombreInput.classList.add('is-invalid');
-            this._mostrarError('El nombre de la categoría es obligatorio');
-            return;
-        }
+        const descripcion = document.getElementById('descripcionCategoria').value.trim();
+        if (descripcion.length > LIMITES.DESCRIPCION_CATEGORIA) return this._mostrarError(`Descripción excede ${LIMITES.DESCRIPCION_CATEGORIA} caracteres`);
 
-        if (nombre.length < 3) {
-            nombreInput.classList.add('is-invalid');
-            this._mostrarError('El nombre debe tener al menos 3 caracteres');
-            return;
-        }
+        const subcatsValidas = this.subcategorias.filter(s => s.nombre.trim() !== '');
+        if (this.subcategorias.length > 0 && subcatsValidas.length === 0) return this._mostrarError('Las subcategorías deben tener nombre');
 
-        if (nombre.length > LIMITES.NOMBRE_CATEGORIA) {
-            nombreInput.classList.add('is-invalid');
-            this._mostrarError(`El nombre no puede exceder ${LIMITES.NOMBRE_CATEGORIA} caracteres`);
-            return;
-        }
+        const nombres = subcatsValidas.map(s => s.nombre.trim().toLowerCase());
+        if (new Set(nombres).size !== nombres.length) return this._mostrarError('No pueden haber subcategorías con el mismo nombre');
 
-        nombreInput.classList.remove('is-invalid');
-
-        // Validar descripción
-        const descripcionInput = document.getElementById('descripcionCategoria');
-        const descripcion = descripcionInput.value.trim();
-
-        if (descripcion.length > LIMITES.DESCRIPCION_CATEGORIA) {
-            descripcionInput.classList.add('is-invalid');
-            this._mostrarError(`La descripción no puede exceder ${LIMITES.DESCRIPCION_CATEGORIA} caracteres`);
-            return;
-        }
-        descripcionInput.classList.remove('is-invalid');
-
-        // Validar subcategorías
-        const subcategoriasValidas = this.subcategorias.filter(s => s.nombre && s.nombre.trim() !== '');
-        if (this.subcategorias.length > 0 && subcategoriasValidas.length === 0) {
-            this._mostrarError('Las subcategorías agregadas deben tener nombre');
-            return;
-        }
-
-        // Validar nombres duplicados en subcategorías
-        const nombres = subcategoriasValidas.map(s => s.nombre.trim().toLowerCase());
-        const duplicados = nombres.filter((nombre, index) => nombres.indexOf(nombre) !== index);
-        if (duplicados.length > 0) {
-            this._mostrarError('No puede haber subcategorías con el mismo nombre');
-            return;
-        }
-
-        // Validar límites de caracteres en subcategorías
-        for (const subcat of subcategoriasValidas) {
-            if (!this._validarLongitudSubcategoria(subcat.nombre, subcat.descripcion)) {
-                return;
-            }
-        }
-
-        // Obtener datos
-        const datos = this._obtenerDatosFormulario(subcategoriasValidas);
-
-        // Guardar
+        const datos = this._obtenerDatosFormulario(subcatsValidas);
         this._guardarCategoria(datos);
     }
 
-    _obtenerDatosFormulario(subcategoriasValidas) {
-        const nombre = document.getElementById('nombreCategoria').value.trim();
-        const descripcion = document.getElementById('descripcionCategoria').value.trim();
-        const color = document.getElementById('colorPickerNative')?.value || '#2f8cff';
-
-        // Procesar subcategorías - SOLO IDs TEMPORALES
+    _obtenerDatosFormulario(subcatsValidas) {
+        const colorCategoria = document.getElementById('colorPickerNative').value;
         const subcategorias = {};
-
-        subcategoriasValidas.forEach(subcat => {
-            const tempId = subcat.id;
-            subcategorias[tempId] = {
-                id: tempId, // Temporal, se mantiene para referencia
+        subcatsValidas.forEach(subcat => {
+            const id = subcat.id.startsWith('temp_') ? `sub_${Date.now()}_${Math.random().toString(36).substr(2, 4)}` : subcat.id;
+            let colorFinal;
+            if (subcat.heredaColor) {
+                colorFinal = this._calcularColorEfectivo(subcat, colorCategoria);
+            } else {
+                colorFinal = subcat.colorPersonalizado || colorCategoria;
+            }
+            subcategorias[id] = {
+                id: id,
                 nombre: subcat.nombre.trim(),
                 descripcion: subcat.descripcion?.trim() || '',
-                fechaCreacion: new Date().toISOString(),
-                fechaActualizacion: new Date().toISOString(),
-                heredaColor: subcat.heredaColor !== undefined ? subcat.heredaColor : true,
-                color: !subcat.heredaColor ? (subcat.colorPersonalizado || null) : null
+                heredaColor: subcat.heredaColor,
+                color: colorFinal,
+                brightnessFactor: subcat.heredaColor ? subcat.brightnessFactor : null,
+                riesgoNivelId: (subcat.riesgoNivelId && subcat.riesgoNivelId !== '__otro__') ? subcat.riesgoNivelId : null
             };
         });
-
         return {
-            nombre: nombre,
-            descripcion: descripcion,
-            color: color,
+            nombre: document.getElementById('nombreCategoria').value.trim(),
+            descripcion: document.getElementById('descripcionCategoria').value.trim(),
+            color: colorCategoria,
             subcategorias: subcategorias,
-            organizacionCamelCase: this.usuarioActual.organizacionCamelCase,
-            organizacionNombre: this.usuarioActual.organizacion
+            organizacionCamelCase: this.usuarioActual.organizacionCamelCase
         };
     }
 
     async _guardarCategoria(datos) {
-        const btnCrear = document.getElementById('btnCrearCategoria');
-        const originalHTML = btnCrear ? btnCrear.innerHTML : '<i class="fas fa-check me-2"></i>Crear Categoría';
+        const btn = document.getElementById('btnCrearCategoria');
+        const original = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Guardando...';
+        btn.disabled = true;
 
         try {
-            if (btnCrear) {
-                btnCrear.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> Guardando...';
-                btnCrear.disabled = true;
-            }
+            const existe = await this.categoriaManager.verificarCategoriaExistente(datos.nombre, this.usuarioActual.organizacionCamelCase);
+            if (existe) throw new Error(`Ya existe una categoría con el nombre "${datos.nombre}"`);
 
-            // Verificar si ya existe
-            const existe = await this.categoriaManager.verificarCategoriaExistente(
-                datos.nombre,
-                this.usuarioActual.organizacionCamelCase
-            );
-
-            if (existe) {
-                this._mostrarError(`Ya existe una categoría con el nombre "${datos.nombre}"`);
-                return;
-            }
-
-            // Crear categoría
-            const nuevaCategoria = await this.categoriaManager.crearCategoria(datos);
-
-            this.categoriaCreadaReciente = nuevaCategoria;
-
-            // ✅ NUEVO: Registrar creación en bitácora
-            await this._registrarCreacionCategoria(nuevaCategoria);
-
-            // Mostrar éxito
+            const nuevaCategoria = await this.categoriaManager.crearCategoria(datos, this.usuarioActual);
             await Swal.fire({
                 icon: 'success',
                 title: '¡Categoría creada!',
-                text: 'La categoría se ha guardado correctamente.',
+                text: `La categoría "${nuevaCategoria.nombre}" se guardó correctamente.`,
                 confirmButtonText: 'Ver categorías'
             });
-
             this._volverALista();
-
         } catch (error) {
-            console.error('Error guardando categoría:', error);
-            this._mostrarError(error.message || 'No se pudo crear la categoría');
+            this._mostrarError(error.message);
         } finally {
-            if (btnCrear) {
-                btnCrear.innerHTML = originalHTML;
-                btnCrear.disabled = false;
-            }
+            btn.innerHTML = original;
+            btn.disabled = false;
         }
     }
-
-    // ========== NAVEGACIÓN ==========
 
     _volverALista() {
         window.location.href = '../categorias/categorias.html';
@@ -776,61 +577,26 @@ class CrearCategoriaController {
             text: 'Los cambios no guardados se perderán',
             icon: 'warning',
             showCancelButton: true,
-            confirmButtonText: 'Sí, cancelar',
-            cancelButtonText: 'No, continuar'
-        }).then((result) => {
-            if (result.isConfirmed) {
-                this._volverALista();
-            }
+            confirmButtonText: 'Sí, cancelar'
+        }).then(result => {
+            if (result.isConfirmed) this._volverALista();
         });
     }
-
-    // ========== UTILIDADES ==========
 
     _mostrarError(mensaje) {
-        this._mostrarNotificacion(mensaje, 'error');
+        Swal.fire({ icon: 'error', title: 'Error', text: mensaje });
     }
 
-    _mostrarNotificacion(mensaje, tipo = 'info', duracion = 5000) {
-        Swal.fire({
-            title: tipo === 'success' ? 'Éxito' :
-                tipo === 'error' ? 'Error' :
-                    tipo === 'warning' ? 'Advertencia' : 'Información',
-            text: mensaje,
-            icon: tipo,
-            timer: duracion,
-            timerProgressBar: true,
-            showConfirmButton: false
-        });
+    _mostrarNotificacion(mensaje, tipo = 'info') {
+        Swal.fire({ icon: tipo, title: tipo === 'success' ? 'Éxito' : 'Información', text: mensaje, timer: 2000, showConfirmButton: false });
     }
 
-    _mostrarCargando(mensaje = 'Guardando...') {
-        if (this.loadingOverlay) {
-            this.loadingOverlay.remove();
-        }
-
-        const overlay = document.createElement('div');
-        overlay.className = 'loading-overlay';
-        overlay.innerHTML = `
-            <div class="spinner"></div>
-            <div class="loading-text">${mensaje}</div>
-        `;
-
-        document.body.appendChild(overlay);
-        this.loadingOverlay = overlay;
-    }
-
-    _ocultarCargando() {
-        if (this.loadingOverlay) {
-            this.loadingOverlay.remove();
-            this.loadingOverlay = null;
-        }
+    _escapeHTML(str) {
+        if (!str) return '';
+        return str.replace(/[&<>]/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[m]));
     }
 }
 
-// =============================================
-// INICIALIZACIÓN
-// =============================================
 document.addEventListener('DOMContentLoaded', () => {
-    window.crearCategoriaDebug.controller = new CrearCategoriaController();
+    new CrearCategoriaController();
 });

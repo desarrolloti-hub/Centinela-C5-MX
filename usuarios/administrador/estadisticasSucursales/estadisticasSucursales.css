@@ -1,0 +1,502 @@
+/* =============================================
+   sucursalDetalle.css - Detalle de Sucursal
+   ============================================= */
+
+*, *::before, *::after {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    background: var(--color-bg-primary);
+    font-family: var(--font-family-secondary, 'Rajdhani', sans-serif);
+    color: var(--color-text-secondary);
+    min-height: 100vh;
+}
+
+#particle-canvas {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 0;
+    pointer-events: none;
+}
+
+.detalle-container {
+    position: relative;
+    z-index: 1;
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 30px;
+}
+
+/* Botón volver */
+.back-button {
+    margin-bottom: 25px;
+}
+
+.btn-volver {
+    background: linear-gradient(145deg, #0f0f0f, #1a1a1a);
+    border: 1px solid var(--color-accent-primary);
+    border-radius: 8px;
+    padding: 10px 20px;
+    color: var(--color-text-primary);
+    font-family: var(--font-family-primary, 'Orbitron', sans-serif);
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.3s ease;
+}
+
+.btn-volver:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 0 20px rgba(192, 192, 192, 0.3);
+    border-color: #ffffff;
+}
+
+/* Header sucursal */
+.sucursal-header {
+    background: var(--color-bg-secondary);
+    border: 1px solid var(--color-border-light);
+    border-radius: 20px;
+    padding: 25px;
+    margin-bottom: 30px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    backdrop-filter: blur(10px);
+    flex-wrap: wrap;
+}
+
+.sucursal-icon {
+    width: 70px;
+    height: 70px;
+    background: linear-gradient(135deg, rgba(59,130,246,0.2), rgba(59,130,246,0.05));
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+    color: var(--color-accent-primary);
+}
+
+.sucursal-info h1 {
+    font-family: var(--font-family-primary, 'Orbitron', sans-serif);
+    font-size: 1.8rem;
+    color: var(--color-text-primary);
+    margin-bottom: 8px;
+}
+
+.sucursal-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    font-size: 0.8rem;
+    color: var(--color-text-secondary);
+}
+
+.sucursal-meta i {
+    margin-right: 5px;
+    color: var(--color-accent-primary);
+}
+
+.region-badge {
+    background: rgba(59,130,246,0.2);
+    padding: 4px 12px;
+    border-radius: 20px;
+}
+
+/* KPIs grid */
+.kpis-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 15px;
+    margin-bottom: 30px;
+}
+
+.kpi-card {
+    background: var(--color-bg-secondary);
+    border: 1px solid var(--color-border-light);
+    border-radius: 16px;
+    padding: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    backdrop-filter: blur(10px);
+    transition: all 0.3s ease;
+}
+
+.kpi-card:hover {
+    transform: translateY(-2px);
+    border-color: var(--color-accent-primary);
+}
+
+.kpi-icon {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.3rem;
+}
+
+.sucursal-total .kpi-icon {
+    background: rgba(59,130,246,0.2);
+    color: #3b82f6;
+}
+.sucursal-criticas .kpi-icon {
+    background: rgba(239,68,68,0.2);
+    color: #ef4444;
+}
+.sucursal-pendientes .kpi-icon {
+    background: rgba(245,158,11,0.2);
+    color: #f59e0b;
+}
+.sucursal-recuperacion .kpi-icon {
+    background: rgba(16,185,129,0.2);
+    color: #10b981;
+}
+
+.kpi-info h3 {
+    font-size: 1.6rem;
+    font-weight: 800;
+    color: white;
+    font-family: var(--font-family-primary, 'Orbitron', sans-serif);
+    line-height: 1.2;
+}
+
+.kpi-info p {
+    font-size: 0.65rem;
+    color: var(--color-text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Grids */
+.charts-row {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+    margin-bottom: 25px;
+}
+
+.card {
+    background: var(--color-bg-secondary);
+    border: 1px solid var(--color-border-light);
+    border-radius: 16px;
+    overflow: hidden;
+    backdrop-filter: blur(5px);
+}
+
+.card.full-width {
+    grid-column: 1 / -1;
+}
+
+.card-header {
+    background: linear-gradient(135deg, rgba(20,20,20,0.98), rgba(30,30,30,0.95));
+    border-bottom: 1px solid var(--color-border-light);
+    padding: 12px 18px;
+}
+
+.card-header h5 {
+    color: var(--color-text-primary);
+    font-family: var(--font-family-primary, 'Orbitron', sans-serif);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.card-header h5 i {
+    color: var(--color-accent-primary);
+}
+
+.card-body {
+    padding: 20px;
+}
+
+/* Tablas */
+.table-responsive, .table-responsive-mini {
+    overflow-x: auto;
+}
+
+.table-responsive-mini {
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.tabla-datos, .tabla-incidencias {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.75rem;
+}
+
+.tabla-datos th, .tabla-incidencias th,
+.tabla-datos td, .tabla-incidencias td {
+    padding: 10px 12px;
+    text-align: left;
+    border-bottom: 1px solid var(--color-border-light);
+}
+
+.tabla-datos th, .tabla-incidencias th {
+    background: rgba(0,0,0,0.5);
+    color: var(--color-text-primary);
+    font-family: var(--font-family-primary, 'Orbitron', sans-serif);
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    position: sticky;
+    top: 0;
+}
+
+.tabla-incidencias td {
+    font-size: 0.7rem;
+}
+
+/* Tiempo promedio */
+.tiempo-promedio-container {
+    text-align: center;
+}
+
+.tiempo-valor {
+    font-size: 3rem;
+    font-weight: 800;
+    color: white;
+    font-family: var(--font-family-primary, 'Orbitron', sans-serif);
+}
+
+.tiempo-unidad {
+    font-size: 0.9rem;
+    color: var(--color-text-secondary);
+    margin-bottom: 20px;
+}
+
+.tiempo-bar {
+    background: rgba(255,255,255,0.1);
+    border-radius: 10px;
+    height: 10px;
+    overflow: hidden;
+    margin: 15px 0;
+}
+
+.tiempo-fill {
+    height: 100%;
+    border-radius: 10px;
+    transition: width 0.5s ease;
+}
+
+.tiempo-leyenda {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    font-size: 0.7rem;
+    margin-top: 15px;
+    flex-wrap: wrap;
+}
+
+/* Badges */
+.badge-riesgo, .badge-estado {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 0.7rem;
+    font-weight: 500;
+}
+
+/* Footer */
+.footer-datetime {
+    text-align: right;
+    margin-top: 25px;
+    padding: 10px;
+    color: var(--color-text-muted);
+    border-top: 1px solid rgba(255,255,255,0.08);
+    font-size: 0.7rem;
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+    .kpis-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    .charts-row {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 768px) {
+    .detalle-container {
+        padding: 15px;
+    }
+    .sucursal-info h1 {
+        font-size: 1.3rem;
+    }
+    .kpi-info h3 {
+        font-size: 1.2rem;
+    }
+    .kpi-icon {
+        width: 40px;
+        height: 40px;
+        font-size: 1rem;
+    }
+}
+
+@media (max-width: 550px) {
+    .kpis-grid {
+        grid-template-columns: 1fr;
+    }
+    .sucursal-meta {
+        flex-direction: column;
+        gap: 8px;
+    }
+}
+/* =============================================
+   BOTÓN PDF MINI
+   ============================================= */
+.btn-pdf-mini {
+    background: linear-gradient(145deg, #0f0f0f, #1a1a1a);
+    border: 1px solid #c0392b;
+    border-radius: 6px;
+    padding: 6px 12px;
+    color: #c0392b;
+    font-family: var(--font-family-primary, 'Orbitron', sans-serif);
+    font-size: 0.65rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.3s ease;
+}
+
+.btn-pdf-mini:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 0 15px rgba(192, 57, 43, 0.3);
+    border-color: #e74c3c;
+    color: #e74c3c;
+}
+
+.btn-pdf-mini.disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.btn-pdf-mini.disabled:hover {
+    transform: none;
+    box-shadow: none;
+}
+
+/* Ajuste para la tabla - columna de acciones */
+.tabla-incidencias td:last-child {
+    text-align: center;
+    white-space: nowrap;
+}
+
+/* ID completo - permitir wrap si es necesario */
+.tabla-incidencias td:first-child {
+    word-break: break-all;
+    max-width: 200px;
+    font-family: monospace;
+    font-size: 0.7rem;
+}
+/* =============================================
+   HEADER ACTIONS - BOTÓN VOLVER + SELECTOR
+   ============================================= */
+.header-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 15px;
+    margin-bottom: 25px;
+}
+
+/* Selector de sucursal */
+.sucursal-selector {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: var(--color-bg-secondary);
+    border: 1px solid var(--color-border-light);
+    border-radius: 12px;
+    padding: 8px 16px;
+    backdrop-filter: blur(10px);
+}
+
+.sucursal-selector label {
+    font-family: var(--font-family-primary, 'Orbitron', sans-serif);
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--color-text-primary);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.sucursal-selector label i {
+    color: var(--color-accent-primary);
+}
+
+.sucursal-selector .filtro-select {
+    background: var(--color-bg-tertiary, rgba(0, 0, 0, 0.3));
+    border: 1px solid var(--color-border-light);
+    border-radius: 8px;
+    padding: 8px 12px;
+    color: var(--color-text-primary);
+    font-family: var(--font-family-secondary, 'Rajdhani', sans-serif);
+    font-size: 0.85rem;
+    cursor: pointer;
+    min-width: 200px;
+    transition: all 0.2s ease;
+}
+
+.sucursal-selector .filtro-select:hover {
+    border-color: var(--color-accent-primary);
+}
+
+.sucursal-selector .filtro-select:focus {
+    outline: none;
+    border-color: var(--color-accent-primary);
+    box-shadow: 0 0 0 3px rgba(192, 192, 192, 0.15);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .header-actions {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .sucursal-selector {
+        justify-content: space-between;
+        flex-wrap: wrap;
+    }
+    
+    .sucursal-selector .filtro-select {
+        flex: 1;
+        min-width: 150px;
+    }
+}
+
+@media (max-width: 550px) {
+    .sucursal-selector {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 8px;
+    }
+    
+    .sucursal-selector .filtro-select {
+        width: 100%;
+    }
+}

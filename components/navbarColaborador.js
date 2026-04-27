@@ -1777,10 +1777,7 @@ class NavbarComplete {
                             <i class="fa-solid fa-plus-circle"></i>
                             <span>Crear Incidencia de Recuperación</span>
                         </a>
-                        <a href="../estadisticasIncidenciasRecuperacion/estadisticasIncidenciasRecuperacion.html" class="incidencias-dropdown-option" id="estadisticasIncidenciasRecuperacionBtn">
-                            <i class="fa-solid fa-chart-line"></i>
-                            <span>Estadísticas de Recuperación</span>
-                        </a>
+                      
                     </div>
                 </div>
 

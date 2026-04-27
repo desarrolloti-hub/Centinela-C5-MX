@@ -1,6 +1,5 @@
-// mapaAlertas.js - VERSIÓN COMPLETA CON MODAL FULLSCREEN, VISOR DE PDF, ID EN NOTIFICACIONES, PANEL CERRADO Y HEATMAP
-// CON REGISTRO DE BITÁCORA - VERSIÓN CON CONSOLA LIMPIA
-// CORREGIDO: Error 404 de subcategoria.js silenciado completamente
+// mapaAlertas.js - VERSIÓN COMPLETA SIN MAPA DE CALOR
+// Con fullscreen, canvas icons, rendimiento optimizado Y CENTRADO AUTOMÁTICO
 
 import { SucursalManager } from '/clases/sucursal.js';
 import { RegionManager } from '/clases/region.js';
@@ -35,18 +34,6 @@ const CONFIG = {
         'alto': { color: '#ff8844', icono: 'fa-exclamation-triangle', texto: 'ALTO', peso: 3 },
         'medio': { color: '#ffbb33', icono: 'fa-exclamation-circle', texto: 'MEDIO', peso: 2 },
         'bajo': { color: '#00C851', icono: 'fa-info-circle', texto: 'BAJO', peso: 1 }
-    },
-    heatmapConfig: {
-        radius: 25,
-        blur: 15,
-        maxZoom: 17,
-        minOpacity: 0.3,
-        gradient: {
-            0.0: '#00C851',
-            0.33: '#ffbb33',
-            0.66: '#ff8844',
-            1.0: '#ff4444'
-        }
     }
 };
 
@@ -72,11 +59,6 @@ let usuarioActual = null;
 let unsubscribeIncidencias = null;
 let isFirstSnapshot = true;
 
-// Variables para Heatmap
-let heatmapLayer = null;
-let heatmapVisible = false;
-let puntosHeatmap = [];
-
 // Cache de datos para el generador IPH
 let organizacionActual = null;
 let sucursalesCache = [];
@@ -84,9 +66,6 @@ let categoriasCache = [];
 let subcategoriasCache = [];
 let usuariosCache = [];
 let authToken = null;
-
-// Variable para el modal de PDF
-let pdfModal = null;
 
 // =============================================
 // INICIALIZACIÓN
@@ -107,10 +86,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         await cargarRegionesEnSelector();
         await cargarRegionesEnLista();
         await iniciarListenerIncidenciasReales();
-        configurarEventos();
         configurarPaneles();
         configurarSelectorRegion();
-        agregarBotonHeatmap();
+        inicializarBotonesPanel();
 
         await registrarAccesoMapaAlertas();
 
@@ -120,13 +98,37 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 });
 
+// =============================================
+// INICIALIZAR BOTONES DEL PANEL (UNIFICADO)
+// =============================================
+function inicializarBotonesPanel() {
+    const controlPanel = document.querySelector('.control-panel');
+    if (!controlPanel) return;
+
+    const existingBtns = controlPanel.querySelectorAll('.control-btn');
+    existingBtns.forEach(btn => btn.remove());
+
+    const botones = [
+        { id: 'btnCentrarMapa', icon: 'fa-crosshairs', text: 'Centrar', onClick: centrarMapa },
+        { id: 'btnRefrescarRegiones', icon: 'fa-sync-alt', text: 'Actualizar', onClick: refrescarRegiones },
+        { id: 'btnFullscreen', icon: 'fa-expand', text: 'Pantalla Completa', onClick: toggleFullscreen }
+    ];
+
+    botones.forEach(btn => {
+        const button = document.createElement('button');
+        button.id = btn.id;
+        button.className = 'control-btn';
+        button.innerHTML = `<i class="fas ${btn.icon}"></i><span>${btn.text}</span>`;
+        button.addEventListener('click', btn.onClick);
+        controlPanel.appendChild(button);
+    });
+}
+
 async function inicializarHistorial() {
     try {
         const { HistorialUsuarioManager } = await import('/clases/historialUsuario.js');
         historialManager = new HistorialUsuarioManager();
-    } catch (error) {
-        // Error silencioso
-    }
+    } catch (error) {}
 }
 
 function obtenerUsuarioActual() {
@@ -247,29 +249,6 @@ async function registrarGeneracionPDF(incidenciaId, tipo, incidencia) {
     }
 }
 
-async function registrarActivacionHeatmap(activado, puntos) {
-    if (!historialManager) return;
-
-    try {
-        const usuario = obtenerUsuarioActual();
-        if (!usuario) return;
-
-        await historialManager.registrarActividad({
-            usuario: usuario,
-            tipo: 'leer',
-            modulo: 'mapa',
-            descripcion: activado ? 'Activó el mapa de calor' : 'Desactivó el mapa de calor',
-            detalles: {
-                accion: activado ? 'activar' : 'desactivar',
-                puntosHeatmap: activado ? puntos.length : 0,
-                fecha: new Date().toISOString()
-            }
-        });
-    } catch (error) {
-        console.error('Error registrando heatmap:', error);
-    }
-}
-
 async function registrarFiltroRegion(regionId, regionNombre, sucursalesMostradas) {
     if (!historialManager) return;
 
@@ -295,176 +274,116 @@ async function registrarFiltroRegion(regionId, regionNombre, sucursalesMostradas
 }
 
 // =============================================
-// AGREGAR BOTÓN DE HEATMAP AL PANEL DE CONTROL
+// FULLSCREEN
 // =============================================
-function agregarBotonHeatmap() {
-    const controlPanel = document.querySelector('.control-panel');
-    if (!controlPanel) return;
-
-    if (document.getElementById('btnHeatmap')) return;
-
-    const btnHeatmap = document.createElement('button');
-    btnHeatmap.id = 'btnHeatmap';
-    btnHeatmap.className = 'control-btn';
-    btnHeatmap.innerHTML = '<i class="fas fa-fire"></i><span>Mapa de Calor</span>';
-    btnHeatmap.style.background = 'linear-gradient(135deg, #ff4444, #ff8844)';
-    btnHeatmap.style.border = 'none';
-    btnHeatmap.onclick = toggleHeatmap;
-
-    controlPanel.appendChild(btnHeatmap);
-}
-
-// =============================================
-// GENERAR PUNTOS PARA HEATMAP
-// =============================================
-function generarPuntosHeatmap() {
-    puntosHeatmap = [];
-
-    incidencias.forEach(inc => {
-        const sucursal = sucursalesMap.get(inc.sucursalId);
-        if (sucursal && sucursal.latitud && sucursal.longitud) {
-            const peso = CONFIG.nivelesRiesgo[inc.nivelRiesgo]?.peso || 1;
-            let pesoFinal = peso;
-            const fechaInc = new Date(inc.fecha);
-            const ahora = new Date();
-            const horasDiff = (ahora - fechaInc) / (1000 * 60 * 60);
-            if (horasDiff < 24) {
-                pesoFinal = peso * 1.5;
+async function toggleFullscreen() {
+    const mapContainer = document.querySelector('.map-fullscreen');
+    const btn = document.getElementById('btnFullscreen');
+    const icon = btn?.querySelector('i');
+    const span = btn?.querySelector('span');
+    
+    if (!mapContainer) return;
+    
+    try {
+        if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+            const requestFullscreen = mapContainer.requestFullscreen || 
+                                     mapContainer.webkitRequestFullscreen || 
+                                     mapContainer.mozRequestFullScreen || 
+                                     mapContainer.msRequestFullscreen;
+            
+            if (requestFullscreen) {
+                await requestFullscreen.call(mapContainer);
+                
+                if (icon) icon.className = 'fas fa-compress';
+                if (span) span.textContent = 'Salir Pantalla';
+                
+                setTimeout(() => {
+                    if (mapa) mapa.invalidateSize();
+                }, 100);
+                
+                if (historialManager) {
+                    const usuario = obtenerUsuarioActual();
+                    if (usuario) {
+                        await historialManager.registrarActividad({
+                            usuario: usuario,
+                            tipo: 'leer',
+                            modulo: 'mapa',
+                            descripcion: 'Activó pantalla completa en el mapa',
+                            detalles: { accion: 'fullscreen_activado' }
+                        });
+                    }
+                }
             }
-
-            puntosHeatmap.push({
-                lat: parseFloat(sucursal.latitud),
-                lng: parseFloat(sucursal.longitud),
-                intensity: pesoFinal
-            });
-        }
-    });
-}
-
-// =============================================
-// CREAR CAPA DE HEATMAP
-// =============================================
-function crearHeatmapLayer() {
-    if (typeof L.heatLayer === 'undefined') {
-        return new Promise((resolve, reject) => {
-            const script = document.createElement('script');
-            script.src = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet.heat/0.2.0/leaflet-heat.js';
-            script.onload = () => {
-                const layer = L.heatLayer(puntosHeatmap, CONFIG.heatmapConfig);
-                resolve(layer);
-            };
-            script.onerror = () => {
-                reject();
-            };
-            document.head.appendChild(script);
-        });
-    }
-
-    return L.heatLayer(puntosHeatmap, CONFIG.heatmapConfig);
-}
-
-// =============================================
-// ALTERNAR VISIBILIDAD DEL HEATMAP
-// =============================================
-async function toggleHeatmap() {
-    const btn = document.getElementById('btnHeatmap');
-
-    if (!heatmapVisible) {
-        if (puntosHeatmap.length === 0) {
-            generarPuntosHeatmap();
-        }
-
-        if (puntosHeatmap.length === 0) {
-            Swal.fire({
-                icon: 'info',
-                title: 'Sin datos',
-                text: 'No hay incidencias para mostrar en el mapa de calor',
-                toast: true,
-                position: 'top-end',
-                showConfirmButton: false,
-                timer: 3000,
-                background: 'var(--color-bg-secondary)',
-                color: 'var(--color-text-primary)'
-            });
-            return;
-        }
-
-        try {
-            if (!heatmapLayer) {
-                heatmapLayer = await crearHeatmapLayer();
+        } else {
+            const exitFullscreen = document.exitFullscreen || 
+                                  document.webkitExitFullscreen || 
+                                  document.mozCancelFullScreen || 
+                                  document.msExitFullscreen;
+            
+            if (exitFullscreen) {
+                await exitFullscreen.call(document);
+                
+                if (icon) icon.className = 'fas fa-expand';
+                if (span) span.textContent = 'Pantalla Completa';
+                
+                setTimeout(() => {
+                    if (mapa) mapa.invalidateSize();
+                }, 100);
+                
+                if (historialManager) {
+                    const usuario = obtenerUsuarioActual();
+                    if (usuario) {
+                        await historialManager.registrarActividad({
+                            usuario: usuario,
+                            tipo: 'leer',
+                            modulo: 'mapa',
+                            descripcion: 'Desactivó pantalla completa en el mapa',
+                            detalles: { accion: 'fullscreen_desactivado' }
+                        });
+                    }
+                }
             }
-
-            if (heatmapLayer) {
-                heatmapLayer.addTo(mapa);
-                heatmapVisible = true;
-                btn.style.background = 'linear-gradient(135deg, #ff8844, #ff4444)';
-                btn.style.boxShadow = '0 0 15px rgba(255, 68, 68, 0.5)';
-                btn.innerHTML = '<i class="fas fa-fire"></i><span>Ocultar Calor</span>';
-
-                await registrarActivacionHeatmap(true, puntosHeatmap);
-
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Mapa de Calor Activado',
-                    text: `Mostrando ${puntosHeatmap.length} zonas de calor`,
-                    toast: true,
-                    position: 'top-end',
-                    showConfirmButton: false,
-                    timer: 2000,
-                    background: 'var(--color-bg-secondary)',
-                    color: 'var(--color-text-primary)'
-                });
-            }
-        } catch (error) {
-            console.error('Error activando heatmap:', error);
-            Swal.fire({
-                icon: 'error',
-                title: 'Error',
-                text: 'No se pudo cargar el mapa de calor',
-                background: 'var(--color-bg-secondary)',
-                color: 'var(--color-text-primary)'
-            });
         }
-
-    } else {
-        if (heatmapLayer && mapa.hasLayer(heatmapLayer)) {
-            mapa.removeLayer(heatmapLayer);
-        }
-        heatmapVisible = false;
-        btn.style.background = 'linear-gradient(135deg, #ff4444, #ff8844)';
-        btn.style.boxShadow = 'none';
-        btn.innerHTML = '<i class="fas fa-fire"></i><span>Mapa de Calor</span>';
-
-        await registrarActivacionHeatmap(false, []);
-
+    } catch (error) {
+        console.error('Error al cambiar pantalla completa:', error);
         Swal.fire({
-            icon: 'info',
-            title: 'Mapa de Calor Oculto',
+            icon: 'error',
+            title: 'Error',
+            text: 'No se pudo cambiar a pantalla completa',
             toast: true,
             position: 'top-end',
             showConfirmButton: false,
-            timer: 1500,
+            timer: 2000,
             background: 'var(--color-bg-secondary)',
             color: 'var(--color-text-primary)'
         });
     }
 }
 
-// =============================================
-// ACTUALIZAR HEATMAP CUANDO CAMBIAN INCIDENCIAS
-// =============================================
-function actualizarHeatmap() {
-    if (!heatmapVisible) return;
+document.addEventListener('fullscreenchange', updateFullscreenButton);
+document.addEventListener('webkitfullscreenchange', updateFullscreenButton);
+document.addEventListener('mozfullscreenchange', updateFullscreenButton);
+document.addEventListener('MSFullscreenChange', updateFullscreenButton);
 
-    generarPuntosHeatmap();
-
-    if (heatmapLayer && mapa.hasLayer(heatmapLayer)) {
-        mapa.removeLayer(heatmapLayer);
-        if (typeof L.heatLayer !== 'undefined') {
-            heatmapLayer = L.heatLayer(puntosHeatmap, CONFIG.heatmapConfig);
-            heatmapLayer.addTo(mapa);
+function updateFullscreenButton() {
+    const btn = document.getElementById('btnFullscreen');
+    const icon = btn?.querySelector('i');
+    const span = btn?.querySelector('span');
+    const isFullscreen = document.fullscreenElement || document.webkitFullscreenElement;
+    
+    if (btn) {
+        if (isFullscreen) {
+            if (icon) icon.className = 'fas fa-compress';
+            if (span) span.textContent = 'Salir Pantalla';
+        } else {
+            if (icon) icon.className = 'fas fa-expand';
+            if (span) span.textContent = 'Pantalla Completa';
         }
     }
+    
+    setTimeout(() => {
+        if (mapa) mapa.invalidateSize();
+    }, 100);
 }
 
 // =============================================
@@ -569,13 +488,12 @@ async function obtenerTokenAuth() {
             }
         }
     } catch (error) {
-        // Error silencioso
         authToken = null;
     }
 }
 
 // =============================================
-// CARGAR DATOS PARA PDF (SIN ERROR DE SUBCATEGORIA)
+// CARGAR DATOS PARA PDF
 // =============================================
 async function cargarDatosParaPDF() {
     try {
@@ -589,12 +507,9 @@ async function cargarDatosParaPDF() {
             const categoriaManager = new CategoriaManager();
             categoriasCache = await categoriaManager.obtenerTodasCategorias();
         } catch (error) {
-            // Error silencioso - categorías no disponibles
             categoriasCache = [];
         }
 
-        // SUBCATEGORÍAS - MANEJO SILENCIOSO SIN ERROR EN CONSOLA
-        // Simplemente dejamos subcategoriasCache como array vacío
         subcategoriasCache = [];
 
         if (generadorIPH && typeof generadorIPH.configurar === 'function') {
@@ -665,6 +580,58 @@ async function cargarSucursales() {
 }
 
 // =============================================
+// ÍCONO CANVAS TECNOLÓGICO (HEXÁGONO)
+// =============================================
+function crearIconoChip(color, tamanio = 28) {
+    const canvas = document.createElement('canvas');
+    canvas.width = tamanio;
+    canvas.height = tamanio;
+    const ctx = canvas.getContext('2d');
+    
+    const centerX = tamanio / 2;
+    const centerY = tamanio / 2;
+    const radius = tamanio / 2 - 2;
+    
+    ctx.clearRect(0, 0, tamanio, tamanio);
+    
+    ctx.shadowColor = color;
+    ctx.shadowBlur = 6;
+    
+    ctx.beginPath();
+    for (let i = 0; i < 6; i++) {
+        const angle = (i * 60 - 30) * Math.PI / 180;
+        const x = centerX + radius * Math.cos(angle);
+        const y = centerY + radius * Math.sin(angle);
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+    }
+    ctx.closePath();
+    ctx.fillStyle = color;
+    ctx.fill();
+    
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    
+    ctx.beginPath();
+    ctx.moveTo(centerX - 6, centerY);
+    ctx.lineTo(centerX + 6, centerY);
+    ctx.moveTo(centerX, centerY - 6);
+    ctx.lineTo(centerX, centerY + 6);
+    ctx.strokeStyle = 'rgba(255,255,255,0.7)';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    
+    const iconUrl = canvas.toDataURL();
+    return L.icon({
+        iconUrl: iconUrl,
+        iconSize: [tamanio, tamanio],
+        iconAnchor: [tamanio / 2, tamanio / 2],
+        popupAnchor: [0, -tamanio / 2]
+    });
+}
+
+// =============================================
 // AGREGAR SUCURSAL AL MAPA
 // =============================================
 function agregarSucursalAlMapa(sucursal, region) {
@@ -678,13 +645,7 @@ function agregarSucursalAlMapa(sucursal, region) {
     sucursal.regionNombre = nombreRegion;
     sucursal.regionColor = colorRegion;
 
-    const icono = L.divIcon({
-        className: 'marcador-sucursal',
-        html: `<i class="fas fa-store" style="color: ${colorRegion}; font-size: 2rem; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));"></i>`,
-        iconSize: [32, 32],
-        iconAnchor: [16, 32],
-        popupAnchor: [0, -32]
-    });
+    const iconoCanvas = crearIconoChip(colorRegion, 28);
 
     const direccion = [sucursal.direccion, sucursal.ciudad, sucursal.estado].filter(Boolean).join(', ') || 'Dirección no disponible';
     const telefono = sucursal.contacto ? sucursal.contacto.replace(/\D/g, '').replace(/(\d{3})(\d{3})(\d{4})/, '$1 $2 $3') : 'No disponible';
@@ -704,7 +665,7 @@ function agregarSucursalAlMapa(sucursal, region) {
         </div>
     `;
 
-    const marcador = L.marker([sucursal.latitud, sucursal.longitud], { icon: icono })
+    const marcador = L.marker([sucursal.latitud, sucursal.longitud], { icon: iconoCanvas })
         .bindPopup(popupContent)
         .addTo(mapa);
 
@@ -712,7 +673,7 @@ function agregarSucursalAlMapa(sucursal, region) {
 }
 
 // =============================================
-// INICIAR LISTENER DE INCIDENCIAS REALES
+// INICIAR LISTENER DE INCIDENCIAS REALES (CON CENTRADO AUTOMÁTICO)
 // =============================================
 async function iniciarListenerIncidenciasReales() {
     try {
@@ -720,13 +681,8 @@ async function iniciarListenerIncidenciasReales() {
         const { db } = await import('/config/firebase-config.js');
 
         const collectionName = `incidencias_${usuarioActual.organizacionCamelCase}`;
-
         const incidenciasRef = collection(db, collectionName);
-        const q = query(
-            incidenciasRef,
-            orderBy("fechaCreacion", "desc"),
-            limit(20)
-        );
+        const q = query(incidenciasRef, orderBy("fechaCreacion", "desc"), limit(50));
 
         unsubscribeIncidencias = onSnapshot(q, async (snapshot) => {
             const nuevasIncidencias = [];
@@ -754,31 +710,25 @@ async function iniciarListenerIncidenciasReales() {
             const incidenciasAnteriores = [...incidencias];
             incidencias = nuevasIncidencias;
 
-            if (heatmapVisible) {
-                actualizarHeatmap();
-            }
-
             snapshot.docChanges().forEach((change) => {
                 if (change.type === 'added') {
-                    const data = change.doc.data();
-                    const fecha = data.fechaCreacion?.toDate?.() || new Date(data.fechaCreacion) || new Date();
-
-                    const nuevaIncidencia = {
-                        id: change.doc.id,
-                        sucursalId: data.sucursalId,
-                        titulo: data.detalles?.substring(0, 60) || 'Incidencia sin título',
-                        descripcion: data.detalles || '',
-                        nivelRiesgo: data.nivelRiesgo || 'bajo',
-                        estado: data.estado || 'pendiente',
-                        fecha: fecha
-                    };
-
                     const yaExiste = incidenciasAnteriores.some(inc => inc.id === change.doc.id);
-
                     if (!yaExiste && !isFirstSnapshot) {
+                        const data = change.doc.data();
+                        const nuevaIncidencia = {
+                            id: change.doc.id,
+                            sucursalId: data.sucursalId,
+                            titulo: data.detalles?.substring(0, 60) || 'Incidencia sin título',
+                            descripcion: data.detalles || '',
+                            nivelRiesgo: data.nivelRiesgo || 'bajo',
+                            estado: data.estado || 'pendiente',
+                            fecha: data.fechaCreacion?.toDate?.() || new Date(data.fechaCreacion) || new Date()
+                        };
                         const sucursal = sucursalesMap.get(nuevaIncidencia.sucursalId);
                         if (sucursal) {
                             mostrarNotificacionIncidencia(nuevaIncidencia, sucursal);
+                            
+                            // 🆕 CENTRAR MAPA AUTOMÁTICAMENTE EN LA NUEVA INCIDENCIA
                             centrarEnSucursal(sucursal.id);
                         }
                     }
@@ -787,7 +737,6 @@ async function iniciarListenerIncidenciasReales() {
 
             if (isFirstSnapshot) {
                 isFirstSnapshot = false;
-                generarPuntosHeatmap();
             }
 
             actualizarListaUltimasIncidencias();
@@ -803,7 +752,7 @@ async function iniciarListenerIncidenciasReales() {
 }
 
 // =============================================
-// ACTUALIZAR LISTA DE ÚLTIMAS 5 INCIDENCIAS
+// ACTUALIZAR LISTA DE ÚLTIMAS INCIDENCIAS
 // =============================================
 function actualizarListaUltimasIncidencias() {
     const container = document.getElementById('listaIncidencias');
@@ -883,7 +832,7 @@ function actualizarListaUltimasIncidencias() {
 }
 
 // =============================================
-// FUNCIÓN PARA VER PDF EN NUEVA PESTAÑA
+// FUNCIÓN PARA VER PDF
 // =============================================
 window.verPDFIncidencia = async function (incidenciaId) {
     try {
@@ -1008,9 +957,6 @@ window.verPDFIncidencia = async function (incidenciaId) {
     }
 };
 
-// =============================================
-// GENERAR PDF SIMPLE (FALLBACK)
-// =============================================
 async function generarPDFSimple(incidencia) {
     try {
         const { jsPDF } = window.jspdf || await import('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
@@ -1047,7 +993,7 @@ async function generarPDFSimple(incidencia) {
 }
 
 // =============================================
-// MOSTRAR NOTIFICACIÓN DE NUEVA INCIDENCIA CON ID
+// MOSTRAR NOTIFICACIÓN DE NUEVA INCIDENCIA (UNA SOLA VEZ)
 // =============================================
 function mostrarNotificacionIncidencia(incidencia, sucursal) {
     const nivel = CONFIG.nivelesRiesgo[incidencia.nivelRiesgo] || CONFIG.nivelesRiesgo.bajo;
@@ -1129,30 +1075,10 @@ function centrarEnSucursal(sucursalId) {
     if (sucursal && marcadores.sucursales[sucursalId]) {
         mapa.setView([sucursal.latitud, sucursal.longitud], 16);
         marcadores.sucursales[sucursalId].openPopup();
-
-        const marker = marcadores.sucursales[sucursalId];
-        const originalIcon = marker.getIcon();
-
-        const highlightIcon = L.divIcon({
-            className: 'marcador-sucursal highlight',
-            html: `<i class="fas fa-store" style="color: ${sucursal.regionColor}; font-size: 2.5rem; filter: drop-shadow(0 0 15px ${sucursal.regionColor});"></i>`,
-            iconSize: [32, 32],
-            iconAnchor: [16, 32],
-            popupAnchor: [0, -32]
-        });
-
-        marker.setIcon(highlightIcon);
-        setTimeout(() => {
-            marker.setIcon(originalIcon);
-        }, 2000);
-
-    } else {
-        // Silencioso
     }
 }
 
 window.centrarEnSucursal = centrarEnSucursal;
-window.verPDFIncidencia = window.verPDFIncidencia;
 
 // =============================================
 // ACTUALIZAR ESTADÍSTICAS
@@ -1217,9 +1143,6 @@ async function cargarRegionesEnSelector() {
     });
 }
 
-// =============================================
-// CARGAR REGIONES EN LISTA LATERAL
-// =============================================
 async function cargarRegionesEnLista() {
     const container = document.getElementById('regionesList');
     if (!container) return;
@@ -1357,9 +1280,6 @@ function ocultarBadgeRegionActiva() {
     if (badge) badge.style.display = 'none';
 }
 
-// =============================================
-// CONFIGURAR SELECTOR DE REGIÓN
-// =============================================
 function configurarSelectorRegion() {
     const btn = document.getElementById('btnSeleccionarRegion');
     const dropdown = document.getElementById('regionDropdown');
@@ -1401,7 +1321,7 @@ function cerrarDropdown() {
 // =============================================
 function centrarMapa() {
     if (!mapa) return;
-    const todos = [...Object.values(marcadores.sucursales)];
+    const todos = Object.values(marcadores.sucursales);
     if (todos.length) {
         mapa.fitBounds(L.featureGroup(todos).getBounds().pad(0.1));
     } else {
@@ -1455,7 +1375,7 @@ async function refrescarRegiones() {
 }
 
 // =============================================
-// CONFIGURAR PANELES (PANEL DE INCIDENCIAS INICIA CERRADO)
+// CONFIGURAR PANELES
 // =============================================
 function configurarPaneles() {
     const incidenciasHeader = document.getElementById('toggleIncidencias');
@@ -1472,34 +1392,6 @@ function configurarPaneles() {
         incidenciasList.style.display = 'none';
         incidenciasChevron.className = 'fas fa-chevron-up';
     }
-
-    const regionsHeader = document.getElementById('toggleRegions');
-    const regionsPanel = document.getElementById('regionsPanel');
-    const regionsList = document.querySelector('.regions-list');
-    const regionsChevron = document.getElementById('regionsChevron');
-
-    if (regionsHeader && regionsPanel && regionsList && regionsChevron) {
-        let regionsOpen = false;
-        regionsHeader.addEventListener('click', () => {
-            regionsOpen = !regionsOpen;
-            regionsList.style.display = regionsOpen ? 'block' : 'none';
-            regionsChevron.className = regionsOpen ? 'fas fa-chevron-down' : 'fas fa-chevron-up';
-            regionsPanel.style.transform = regionsOpen ? 'translateY(0)' : 'translateY(calc(100% - 45px))';
-        });
-        regionsList.style.display = 'none';
-        regionsPanel.style.transform = 'translateY(calc(100% - 45px))';
-    }
-}
-
-// =============================================
-// CONFIGURAR EVENTOS
-// =============================================
-function configurarEventos() {
-    const btnCentrar = document.getElementById('btnCentrarMapa');
-    if (btnCentrar) btnCentrar.addEventListener('click', centrarMapa);
-
-    const btnRefrescar = document.getElementById('btnRefrescarRegiones');
-    if (btnRefrescar) btnRefrescar.addEventListener('click', refrescarRegiones);
 }
 
 // =============================================
