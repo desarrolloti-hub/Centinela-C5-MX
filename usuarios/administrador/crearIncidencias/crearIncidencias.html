@@ -29,7 +29,7 @@
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/es.js"></script>
 
-    <!-- SEO Básico -->
+    <!-- SEO -->
     <meta name="description"
         content="Centinela es un sistema inteligente de seguridad para almacenamiento, monitoreo y predicción de incidencias. Plataforma confiable para prevención y análisis en tiempo real.">
     <meta name="keywords"
@@ -37,7 +37,7 @@
     <meta name="author" content="Centinela">
     <link rel="canonical" href="https://centinela-c5.web.app/" />
 
-    <!-- Open Graph / Facebook / WhatsApp / LinkedIn -->
+    <!-- Open Graph -->
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://centinela-c5.web.app">
     <meta property="og:title" content="Centinela-C5 | Sistema Inteligente de Seguridad y Predicción">
@@ -47,10 +47,6 @@
     <meta property="og:image:width" content="500">
     <meta property="og:image:height" content="500">
     <meta property="og:image:alt" content="Vista previa oficial de Centinela-C5">
-    <meta property="og:image" content="https://centinela-c5.web.app/assets/images/logo.png">
-    <meta property="og:image:width" content="500">
-    <meta property="og:image:height" content="500">
-    <meta property="og:image:alt" content="Logo oficial de Centinela">
     <meta property="og:site_name" content="Centinela">
 
     <!-- Twitter Card -->
@@ -60,9 +56,8 @@
     <meta name="twitter:description"
         content="Sistema de seguridad inteligente para monitoreo, almacenamiento y predicción de incidencias.">
     <meta name="twitter:image" content="https://centinela-c5.web.app/assets/images/logo.png">
-    <meta name="twitter:creator" content="">
 
-    <!-- Schema.org / JSON-LD -->
+    <!-- Schema.org -->
     <script type="application/ld+json">
     {
     "@context": "https://schema.org",
@@ -94,7 +89,6 @@
     <canvas id="particle-canvas"></canvas>
     <br>
 
-    <!-- Contenedor principal -->
     <div class="custom-container">
         <!-- Header -->
         <div class="header-section">
@@ -109,9 +103,7 @@
             </div>
         </div>
 
-        <!-- ============================================= -->
-        <!-- FORMULARIO ÚNICO: INFORMACIÓN DE LA INCIDENCIA -->
-        <!-- ============================================= -->
+        <!-- ========== FORMULARIO ========== -->
         <div class="form-row">
             <div class="full-width">
                 <div class="card">
@@ -128,7 +120,7 @@
                                     <h6 class="section-title"><i class="fas fa-info-circle"></i>Información Básica</h6>
                                 </div>
 
-                                <!-- Organización (siempre visible) -->
+                                <!-- Organización -->
                                 <div class="full-width">
                                     <label for="organization" class="form-label">Organización</label>
                                     <div class="input-group">
@@ -138,7 +130,7 @@
                                     <div class="form-help-text">Organización a la que pertenece la incidencia</div>
                                 </div>
 
-                                <!-- Tipo de Evento como botones -->
+                                <!-- Tipo de Evento -->
                                 <div class="full-width field-group-step" data-step="0">
                                     <label class="form-label">Tipo de Evento *</label>
                                     <div class="tipo-evento-buttons">
@@ -156,7 +148,7 @@
                                     <div class="form-help-text">Selecciona si el evento ocurrió ahora o en el pasado</div>
                                 </div>
 
-                                <!-- PASO 1: Sucursal -->
+                                <!-- Sucursal -->
                                 <div class="full-width field-group-step" data-step="1">
                                     <label for="sucursalIncidencia" class="form-label">Sucursal *</label>
                                     <div class="input-group">
@@ -168,7 +160,7 @@
                                     <div id="sugerenciasSucursal" class="sugerencias-container"></div>
                                 </div>
 
-                                <!-- PASO 2: Categoría -->
+                                <!-- Categoría -->
                                 <div class="full-width field-group-step" data-step="2">
                                     <label for="categoriaIncidencia" class="form-label">Categoría *</label>
                                     <div class="input-group">
@@ -180,7 +172,7 @@
                                     <div id="sugerenciasCategoria" class="sugerencias-container"></div>
                                 </div>
 
-                                <!-- PASO 3: Subcategoría (opcional) -->
+                                <!-- Subcategoría -->
                                 <div class="full-width field-group-step" data-step="3">
                                     <label for="subcategoriaIncidencia" class="form-label">Subcategoría</label>
                                     <div class="input-group">
@@ -192,7 +184,7 @@
                                     <div class="form-help-text">Puedes especificar una subcategoría (opcional)</div>
                                 </div>
 
-                                <!-- PASO 4: Nivel de Riesgo -->
+                                <!-- Nivel de Riesgo -->
                                 <div class="full-width field-group-step" data-step="4">
                                     <label for="nivelRiesgo" class="form-label">Nivel de Riesgo *</label>
                                     <div class="input-group">
@@ -208,7 +200,7 @@
                                     <div class="form-help-text">Define la criticidad de la incidencia</div>
                                 </div>
 
-                                <!-- PASO 5: Estado -->
+                                <!-- Estado -->
                                 <div class="full-width field-group-step" data-step="5">
                                     <label for="estadoIncidencia" class="form-label">Estado *</label>
                                     <div class="input-group">
@@ -222,7 +214,7 @@
                                     <div class="form-help-text">Define el estado actual de la incidencia</div>
                                 </div>
 
-                                <!-- PASO 6: Fecha y Hora -->
+                                <!-- Fecha y Hora -->
                                 <div class="full-width field-group-step" data-step="6">
                                     <label for="fechaHoraIncidencia" class="form-label">Fecha y Hora *</label>
                                     <div class="input-group">
@@ -233,17 +225,12 @@
                                     <div class="form-help-text">Fecha y hora en que ocurrió la incidencia (no puede ser futura)</div>
                                 </div>
 
-                                <!-- PASO 7: Descripción con AUTOCOMPLETADO -->
+                                <!-- ========== DESCRIPCIÓN CON AUTOCOMPLETADO (CORREGIDO) ========== -->
                                 <div class="full-width field-group-step" data-step="7">
                                     <label for="detallesIncidencia" class="form-label">Descripción de la Incidencia *</label>
                                     
-                                    <!-- COMPONENTE DE AUTOCOMPLETADO PREDICTIVO -->
-                                    <auto-descripcion 
-                                        id="detallesIncidencia"
-                                        umbral="0.25"
-                                        max="5">
-                                    </auto-descripcion>
-                                    
+                                    <!-- ✅ COMPONENTE AUTO-DESCRIPCION CORREGIDO: solo una etiqueta bien formada -->
+<textarea id="detallesIncidencia" rows="5" placeholder="Describe la incidencia..."></textarea>                                    
                                     <div class="form-help-text">Comienza a escribir y verás sugerencias basadas en incidentes anteriores</div>
                                     <div class="char-limit-info">
                                         <span class="char-counter" id="contadorCaracteres">0/1000</span>
@@ -256,9 +243,7 @@
             </div>
         </div>
 
-        <!-- ============================================= -->
-        <!-- SECCIÓN 2: IMÁGENES Y EVIDENCIAS -->
-        <!-- ============================================= -->
+        <!-- ========== IMÁGENES ========== -->
         <div class="form-row" style="margin-top: 20px;">
             <div class="full-width">
                 <div class="image-upload-section-wrapper" id="seccionImagenesWrapper">
@@ -299,7 +284,7 @@
             </div>
         </div>
 
-        <!-- BOTONES DE ACCIÓN AL FINAL -->
+        <!-- BOTONES -->
         <div class="action-buttons-container" id="originalButtons" style="display: none;">
             <button type="button" class="btn btn-success" id="btnCrearIncidencia">
                 <i class="fas fa-check"></i>Crear Incidencia
@@ -312,7 +297,7 @@
 
     <br>
 
-    <!-- Scripts -->
+    <!-- SCRIPTS -->
     <script type="module" src="/components/autenticador.js"></script>
     <script type="module" src="/components/cargadorTemas.js"></script>
     <script type="module" src="/components/particulas.js"></script>
@@ -322,8 +307,9 @@
     <script type="module" src="crearIncidencias.js"></script>
     <script src="/components/protector-admin.js"></script>
     
-    <!-- IMPORTACIÓN DEL COMPONENTE DE AUTOCOMPLETADO -->
+    <!-- ✅ COMPONENTE DE AUTOCOMPLETADO (asegurar ruta correcta) -->
     <script type="module" src="/components/autoDescripcion.js"></script>
+
 </body>
 
 </html>
