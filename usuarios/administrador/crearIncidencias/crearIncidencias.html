@@ -138,7 +138,7 @@
                                     <div class="form-help-text">Organización a la que pertenece la incidencia</div>
                                 </div>
 
-                                <!-- NUEVO: Tipo de Evento como botones (sin selección inicial) -->
+                                <!-- Tipo de Evento como botones -->
                                 <div class="full-width field-group-step" data-step="0">
                                     <label class="form-label">Tipo de Evento *</label>
                                     <div class="tipo-evento-buttons">
@@ -153,11 +153,10 @@
                                             <small>Seleccionar fecha y hora manualmente</small>
                                         </button>
                                     </div>
-                                    <div class="form-help-text">Selecciona si el evento ocurrió ahora o en el pasado
-                                    </div>
+                                    <div class="form-help-text">Selecciona si el evento ocurrió ahora o en el pasado</div>
                                 </div>
 
-                                <!-- ============ PASO 1: Sucursal ============ -->
+                                <!-- PASO 1: Sucursal -->
                                 <div class="full-width field-group-step" data-step="1">
                                     <label for="sucursalIncidencia" class="form-label">Sucursal *</label>
                                     <div class="input-group">
@@ -165,12 +164,11 @@
                                         <input type="text" class="form-control" id="sucursalIncidencia"
                                             placeholder="Escribe para buscar sucursal..." autocomplete="off" required>
                                     </div>
-                                    <div class="form-help-text">Escribe y selecciona la sucursal de las sugerencias
-                                    </div>
+                                    <div class="form-help-text">Escribe y selecciona la sucursal de las sugerencias</div>
                                     <div id="sugerenciasSucursal" class="sugerencias-container"></div>
                                 </div>
 
-                                <!-- ============ PASO 2: Categoría ============ -->
+                                <!-- PASO 2: Categoría -->
                                 <div class="full-width field-group-step" data-step="2">
                                     <label for="categoriaIncidencia" class="form-label">Categoría *</label>
                                     <div class="input-group">
@@ -178,12 +176,11 @@
                                         <input type="text" class="form-control" id="categoriaIncidencia"
                                             placeholder="Escribe para buscar categoría..." autocomplete="off" required>
                                     </div>
-                                    <div class="form-help-text">Escribe y selecciona la categoría de las sugerencias
-                                    </div>
+                                    <div class="form-help-text">Escribe y selecciona la categoría de las sugerencias</div>
                                     <div id="sugerenciasCategoria" class="sugerencias-container"></div>
                                 </div>
 
-                                <!-- ============ PASO 3: Subcategoría (opcional) ============ -->
+                                <!-- PASO 3: Subcategoría (opcional) -->
                                 <div class="full-width field-group-step" data-step="3">
                                     <label for="subcategoriaIncidencia" class="form-label">Subcategoría</label>
                                     <div class="input-group">
@@ -195,12 +192,11 @@
                                     <div class="form-help-text">Puedes especificar una subcategoría (opcional)</div>
                                 </div>
 
-                                <!-- ============ PASO 4: Nivel de Riesgo ============ -->
+                                <!-- PASO 4: Nivel de Riesgo -->
                                 <div class="full-width field-group-step" data-step="4">
                                     <label for="nivelRiesgo" class="form-label">Nivel de Riesgo *</label>
                                     <div class="input-group">
-                                        <span class="input-group-icon"><i
-                                                class="fas fa-exclamation-triangle"></i></span>
+                                        <span class="input-group-icon"><i class="fas fa-exclamation-triangle"></i></span>
                                         <select class="form-control" id="nivelRiesgo" required>
                                             <option value="">-- Selecciona el nivel de riesgo --</option>
                                             <option value="bajo">Bajo</option>
@@ -212,7 +208,7 @@
                                     <div class="form-help-text">Define la criticidad de la incidencia</div>
                                 </div>
 
-                                <!-- ============ PASO 5: Estado ============ -->
+                                <!-- PASO 5: Estado -->
                                 <div class="full-width field-group-step" data-step="5">
                                     <label for="estadoIncidencia" class="form-label">Estado *</label>
                                     <div class="input-group">
@@ -226,7 +222,7 @@
                                     <div class="form-help-text">Define el estado actual de la incidencia</div>
                                 </div>
 
-                                <!-- ============ PASO 6: Fecha y Hora ============ -->
+                                <!-- PASO 6: Fecha y Hora -->
                                 <div class="full-width field-group-step" data-step="6">
                                     <label for="fechaHoraIncidencia" class="form-label">Fecha y Hora *</label>
                                     <div class="input-group">
@@ -234,19 +230,21 @@
                                         <input type="text" class="form-control" id="fechaHoraIncidencia"
                                             placeholder="Selecciona fecha y hora" required>
                                     </div>
-                                    <div class="form-help-text">Fecha y hora en que ocurrió la incidencia (no puede ser
-                                        futura)</div>
+                                    <div class="form-help-text">Fecha y hora en que ocurrió la incidencia (no puede ser futura)</div>
                                 </div>
 
-                                <!-- ============ PASO 7: Descripción ============ -->
+                                <!-- PASO 7: Descripción con AUTOCOMPLETADO -->
                                 <div class="full-width field-group-step" data-step="7">
-                                    <label for="detallesIncidencia" class="form-label">Descripción de la Incidencia
-                                        *</label>
-                                    <textarea class="form-control" id="detallesIncidencia" rows="5"
-                                        placeholder="Describa detalladamente lo sucedido, incluyendo fechas, personas involucradas, y cualquier información relevante..."
-                                        required></textarea>
-                                    <div class="form-help-text">Proporcione una descripción detallada del incidente
-                                    </div>
+                                    <label for="detallesIncidencia" class="form-label">Descripción de la Incidencia *</label>
+                                    
+                                    <!-- COMPONENTE DE AUTOCOMPLETADO PREDICTIVO -->
+                                    <auto-descripcion 
+                                        id="detallesIncidencia"
+                                        umbral="0.25"
+                                        max="5">
+                                    </auto-descripcion>
+                                    
+                                    <div class="form-help-text">Comienza a escribir y verás sugerencias basadas en incidentes anteriores</div>
                                     <div class="char-limit-info">
                                         <span class="char-counter" id="contadorCaracteres">0/1000</span>
                                     </div>
@@ -280,11 +278,8 @@
                                 <p>Arrastra y suelta imágenes aquí</p>
                                 <p class="small">o haz clic para seleccionar archivos</p>
                                 <p class="small text-muted mt-2">También puedes pegar imágenes con Ctrl+V</p>
-                                <p class="small text-muted mt-2">Formatos: JPG, JPEG, PNG y WEBP. Máximo 5MB por imagen.
-                                </p>
+                                <p class="small text-muted mt-2">Formatos: JPG, JPEG, PNG y WEBP. Máximo 5MB por imagen.</p>
                             </div>
-
-
 
                             <div class="images-preview-container">
                                 <h6>
@@ -326,7 +321,9 @@
     <script src="/components/footerAdministrador.js"></script>
     <script type="module" src="crearIncidencias.js"></script>
     <script src="/components/protector-admin.js"></script>
-
+    
+    <!-- IMPORTACIÓN DEL COMPONENTE DE AUTOCOMPLETADO -->
+    <script type="module" src="/components/autoDescripcion.js"></script>
 </body>
 
 </html>

@@ -1,15 +1,13 @@
-// crearIncidencias.js - VERSIÓN COMPLETA CON TODOS LOS MÉTODOS
+// crearIncidencias.js - VERSIÓN COMPLETA (CORREGIDA Y CON AUTOCOMPLETADO)
 // ✅ Canalizaciones a áreas y sucursales
 // ✅ Notificaciones push
 // ✅ Compartir PDF (WhatsApp, Email, Link)
-// ✅ Riesgo automático desde subcategoría (riesgoNivelId)
+// ✅ Riesgo automático desde subcategoría
 // ✅ Drag & drop de imágenes
 // ✅ Fecha/Hora con flatpickr (Tiempo Real e Histórico)
-// ✅ Formulario ACUMULATIVO - Los campos se quedan visibles después de llenarse
-// ✅ Organización siempre visible (no forma parte del flujo)
-// ✅ Tiempo Real: al seleccionar Estado, muestra Fecha + Descripción JUNTOS
-// ✅ Histórico: Fecha con fecha actual preseleccionada y selector se abre automáticamente
-// ✅ Nivel de Riesgo aparece inmediatamente después de seleccionar Subcategoría
+// ✅ Formulario ACUMULATIVO
+// ✅ AUTOCOMPLETADO PREDICTIVO con <auto-descripcion>
+// ✅ Sin recursión infinita en niveles de riesgo
 
 const LIMITES = {
     DETALLES_INCIDENCIA: 1000
@@ -44,10 +42,15 @@ class CrearIncidenciaController {
         this.riesgoSeleccionadoId = null;
         this.fechaHoraTiempoRealFija = null;
         this.tipoEventoSeleccionado = null;
+        this.descripcionComponent = null;
+        
+        // BANDERA PARA EVITAR RECURSIÓN EN RIESGOS
+        this.actualizandoRiesgo = false;
 
         this._init();
     }
 
+    // ==================== INICIALIZACIÓN DE MANAGERS ====================
     async _initHistorialManager() {
         if (!this.historialManager) {
             try {
@@ -65,12 +68,10 @@ class CrearIncidenciaController {
             try {
                 const { RiesgoNivelManager } = await import('/clases/riesgoNivel.js');
                 this.riesgoManager = new RiesgoNivelManager();
-
                 if (this.usuarioActual && this.usuarioActual.organizacionCamelCase) {
                     this.nivelesRiesgo = await this.riesgoManager.obtenerTodosNiveles(
                         this.usuarioActual.organizacionCamelCase
                     );
-
                     this.nivelesRiesgoMap.clear();
                     this.nivelesRiesgo.forEach(nivel => {
                         this.nivelesRiesgoMap.set(nivel.id, {
@@ -139,6 +140,17 @@ class CrearIncidenciaController {
         return true;
     }
 
+    async _inicializarManager() {
+        try {
+            const { IncidenciaManager } = await import('/clases/incidencia.js');
+            this.incidenciaManager = new IncidenciaManager();
+        } catch (error) {
+            console.error('Error cargando IncidenciaManager:', error);
+            throw error;
+        }
+    }
+
+    // ==================== INICIO DEL INIT PRINCIPAL ====================
     async _init() {
         try {
             this._cargarUsuario();
@@ -164,6 +176,9 @@ class CrearIncidenciaController {
             this._inicializarFormularioAcumulativo();
             this._configurarDragAndDropYPaste();
             this._cargarNivelesRiesgoEnSelect();
+            
+            // INICIALIZAR AUTOCOMPLETADO
+            this._inicializarAutoCompletado();
 
             this.imageEditorModal = new window.ImageEditorModal();
 
@@ -173,24 +188,45 @@ class CrearIncidenciaController {
         }
     }
 
+    // ==================== AUTOCOMPLETADO (CORREGIDO) ====================
+    _inicializarAutoCompletado() {
+        this.descripcionComponent = document.getElementById('detallesIncidencia');
+        if (!this.descripcionComponent) {
+            console.warn('⚠️ Componente auto-descripcion no encontrado');
+            return;
+        }
+        const org = this.usuarioActual?.organizacionCamelCase || '';
+        this.descripcionComponent.setAttribute('organizacion', org);
+        
+        this.descripcionComponent.addEventListener('input', (e) => {
+            let texto = '';
+            if (e.detail?.texto) texto = e.detail.texto;
+            else if (this.descripcionComponent.value) texto = this.descripcionComponent.value;
+            else if (e.target?.value) texto = e.target.value;
+            console.log('📝 Texto cambiado:', texto);
+            this._validarLongitudCampoCompleto();
+            this._verificarBotonesFinales();
+        });
+        
+        const catInput = document.getElementById('categoriaIncidencia');
+        if (catInput) {
+            new MutationObserver(() => document.dispatchEvent(new Event('categoriaCambiada')))
+                .observe(catInput, { attributes: true });
+        }
+        console.log('✅ Autocompletado listo con org:', org);
+    }
+
     // ==================== FORMULARIO ACUMULATIVO ====================
     _inicializarFormularioAcumulativo() {
         const pasos = document.querySelectorAll('.field-group-step');
-
         pasos.forEach((paso) => {
             const step = parseInt(paso.dataset.step);
-            if (step === 0) {
-                paso.style.display = 'block';
-            } else {
-                paso.style.display = 'none';
-            }
+            paso.style.display = step === 0 ? 'block' : 'none';
         });
-
         this._configurarObservadorPasos();
     }
 
     _configurarObservadorPasos() {
-        // Paso 0: Tipo evento -> mostrar sucursal
         const tipoEventoBtns = document.querySelectorAll('.tipo-evento-btn');
         tipoEventoBtns.forEach(btn => {
             btn.addEventListener('click', () => {
@@ -204,7 +240,6 @@ class CrearIncidenciaController {
             });
         });
 
-        // Paso 1: Sucursal -> mostrar categoría
         const sucursalInput = document.getElementById('sucursalIncidencia');
         if (sucursalInput) {
             const observer = new MutationObserver((mutations) => {
@@ -221,7 +256,6 @@ class CrearIncidenciaController {
             observer.observe(sucursalInput, { attributes: true });
         }
 
-        // Paso 2: Categoría -> mostrar subcategoría
         const categoriaInput = document.getElementById('categoriaIncidencia');
         if (categoriaInput) {
             const observer = new MutationObserver((mutations) => {
@@ -237,7 +271,6 @@ class CrearIncidenciaController {
             observer.observe(categoriaInput, { attributes: true });
         }
 
-        // Paso 3: Subcategoría - al seleccionar, mostrar nivel riesgo INMEDIATAMENTE
         const subcategoriaSelect = document.getElementById('subcategoriaIncidencia');
         if (subcategoriaSelect) {
             subcategoriaSelect.addEventListener('change', () => {
@@ -246,7 +279,6 @@ class CrearIncidenciaController {
             });
         }
 
-        // Paso 4: Nivel riesgo -> mostrar estado
         const riesgoSelect = document.getElementById('nivelRiesgo');
         if (riesgoSelect) {
             riesgoSelect.addEventListener('change', () => {
@@ -256,7 +288,6 @@ class CrearIncidenciaController {
             });
         }
 
-        // Paso 5: Estado -> según el tipo de evento
         const estadoSelect = document.getElementById('estadoIncidencia');
         if (estadoSelect) {
             estadoSelect.addEventListener('change', () => {
@@ -316,7 +347,6 @@ class CrearIncidenciaController {
         });
 
         fechaInput.value = fechaLegible;
-
         const changeEvent = new Event('change', { bubbles: true });
         fechaInput.dispatchEvent(changeEvent);
     }
@@ -326,13 +356,11 @@ class CrearIncidenciaController {
         if (!fechaInput) return;
 
         this.fechaHoraTiempoRealFija = null;
-
         fechaInput.readOnly = false;
         fechaInput.style.backgroundColor = '';
         fechaInput.style.opacity = '1';
         fechaInput.style.borderColor = '';
 
-        // Fecha actual para preseleccionar
         const ahora = new Date();
         const day = String(ahora.getDate()).padStart(2, '0');
         const month = String(ahora.getMonth() + 1).padStart(2, '0');
@@ -340,7 +368,6 @@ class CrearIncidenciaController {
         const hours = String(ahora.getHours()).padStart(2, '0');
         const minutes = String(ahora.getMinutes()).padStart(2, '0');
         const fechaActualLegible = `${day}/${month}/${year} ${hours}:${minutes}`;
-
         fechaInput.value = fechaActualLegible;
 
         if (this.flatpickrInstance) {
@@ -369,11 +396,8 @@ class CrearIncidenciaController {
             }
         });
 
-        // Abrir el selector automáticamente después de un pequeño retraso
         setTimeout(() => {
-            if (this.flatpickrInstance) {
-                this.flatpickrInstance.open();
-            }
+            if (this.flatpickrInstance) this.flatpickrInstance.open();
         }, 100);
     }
 
@@ -383,9 +407,7 @@ class CrearIncidenciaController {
             paso.style.display = 'block';
             setTimeout(() => {
                 const primerInput = paso.querySelector('input:not([readonly]), select, textarea');
-                if (primerInput && !primerInput.disabled) {
-                    primerInput.focus();
-                }
+                if (primerInput && !primerInput.disabled) primerInput.focus();
             }, 100);
         }
     }
@@ -393,38 +415,12 @@ class CrearIncidenciaController {
     _mostrarPasosJuntos(pasosArray) {
         pasosArray.forEach(pasoIndex => {
             const paso = document.querySelector(`.field-group-step[data-step="${pasoIndex}"]`);
-            if (paso && paso.style.display !== 'block') {
-                paso.style.display = 'block';
-            }
+            if (paso && paso.style.display !== 'block') paso.style.display = 'block';
         });
-
         if (pasosArray.includes(7)) {
             setTimeout(() => {
-                const detallesInput = document.getElementById('detallesIncidencia');
-                if (detallesInput && !detallesInput.disabled) {
-                    detallesInput.focus();
-                }
+                if (this.descripcionComponent) this.descripcionComponent.focus();
             }, 150);
-        }
-    }
-
-    _mostrarSeccionImagenesYBotones() {
-        const seccionImagenes = document.getElementById('seccionImagenesWrapper');
-        const botonesContainer = document.getElementById('originalButtons');
-
-        if (seccionImagenes) {
-            seccionImagenes.style.display = 'block';
-            seccionImagenes.classList.add('visible');
-        }
-        if (botonesContainer) {
-            botonesContainer.style.display = 'flex';
-        }
-    }
-
-    _ocultarSeccionImagenesYBotones() {
-        const botonesContainer = document.getElementById('originalButtons');
-        if (botonesContainer) {
-            botonesContainer.style.display = 'none';
         }
     }
 
@@ -438,10 +434,16 @@ class CrearIncidenciaController {
             document.getElementById('nivelRiesgo')?.value !== '__otro__';
         const estadoValido = document.getElementById('estadoIncidencia')?.value !== '';
         const fechaValida = document.getElementById('fechaHoraIncidencia')?.value !== '';
-        const descripcionValida = (() => {
-            const texto = document.getElementById('detallesIncidencia')?.value.trim() || '';
-            return texto.length >= 10 && texto.length <= 1000;
-        })();
+
+        let descripcionValida = false;
+        if (this.descripcionComponent && this.descripcionComponent.value !== undefined) {
+            const texto = this.descripcionComponent.value?.trim() || '';
+            descripcionValida = texto.length >= 10 && texto.length <= LIMITES.DETALLES_INCIDENCIA;
+        } else {
+            const detallesTextarea = document.getElementById('detallesIncidenciaTextarea');
+            const texto = detallesTextarea?.value?.trim() || '';
+            descripcionValida = texto.length >= 10 && texto.length <= LIMITES.DETALLES_INCIDENCIA;
+        }
 
         const todoCompleto = tipoEventoValido && sucursalValida && categoriaValida &&
             riesgoValido && estadoValido && fechaValida && descripcionValida;
@@ -453,21 +455,21 @@ class CrearIncidenciaController {
             seccionImagenes.style.display = 'block';
             seccionImagenes.classList.add('visible');
             botonesContainer.style.display = 'flex';
-        } else if (botonesContainer && (!todoCompleto || !descripcionValida)) {
+        } else if (botonesContainer && !todoCompleto) {
             botonesContainer.style.display = 'none';
         }
     }
 
-    // ==================== CARGAR NIVELES DE RIESGO EN SELECT ====================
+    // ==================== NIVELES DE RIESGO (CORREGIDOS, SIN RECURSIÓN) ====================
     async _cargarNivelesRiesgoEnSelect() {
-        const riesgoSelect = document.getElementById('nivelRiesgo');
-        if (!riesgoSelect) return;
-
+        if (this.actualizandoRiesgo) return;
+        this.actualizandoRiesgo = true;
         try {
+            const riesgoSelect = document.getElementById('nivelRiesgo');
+            if (!riesgoSelect) return;
+
             await this._initRiesgoManager();
-
             this.nivelesRiesgoOptions = [];
-
             if (this.nivelesRiesgo && this.nivelesRiesgo.length > 0) {
                 this.nivelesRiesgo.forEach(nivel => {
                     this.nivelesRiesgoOptions.push({
@@ -477,17 +479,16 @@ class CrearIncidenciaController {
                     });
                 });
             }
-
             this.nivelesRiesgoOptions.push({
                 id: '__otro__',
                 nombre: 'Crear nuevo nivel de riesgo',
                 color: null
             });
-
             this._actualizarSelectRiesgoConOpciones();
-
         } catch (error) {
             console.error('Error cargando niveles de riesgo:', error);
+        } finally {
+            this.actualizandoRiesgo = false;
         }
     }
 
@@ -495,510 +496,264 @@ class CrearIncidenciaController {
         const riesgoSelect = document.getElementById('nivelRiesgo');
         if (!riesgoSelect) return;
 
+        const valorActual = riesgoSelect.value;
         let options = '<option value="">-- Selecciona el nivel de riesgo --</option>';
-
         this.nivelesRiesgoOptions.forEach(opcion => {
             const selected = (riesgoIdSeleccionado === opcion.id) ? 'selected' : '';
             options += `<option value="${opcion.id}" ${selected}>${opcion.nombre}</option>`;
         });
-
         riesgoSelect.innerHTML = options;
+        
+        if (riesgoIdSeleccionado && riesgoIdSeleccionado !== valorActual) {
+            riesgoSelect.value = riesgoIdSeleccionado;
+        } else if (!riesgoIdSeleccionado && valorActual && valorActual !== '') {
+            riesgoSelect.value = valorActual;
+        }
     }
 
     _mostrarRiesgoAsignadoUnico(riesgoId, riesgoNombre) {
         const riesgoSelect = document.getElementById('nivelRiesgo');
         if (!riesgoSelect) return;
-
         riesgoSelect.innerHTML = `<option value="${riesgoId}" selected>${this._escapeHTML(riesgoNombre)} (Asignado Automáticamente)</option>`;
         riesgoSelect.disabled = true;
         riesgoSelect.classList.add('field-disabled');
-
-        const changeEvent = new Event('change', { bubbles: true });
-        riesgoSelect.dispatchEvent(changeEvent);
-
+        riesgoSelect.dispatchEvent(new Event('change', { bubbles: true }));
         this._mostrarPaso(5);
     }
 
     _mostrarListaCompletaRiesgos() {
         const riesgoSelect = document.getElementById('nivelRiesgo');
         if (!riesgoSelect) return;
-
         this._actualizarSelectRiesgoConOpciones();
         riesgoSelect.disabled = false;
         riesgoSelect.classList.remove('field-disabled');
     }
 
-    // ==================== OBTENER RIESGO DESDE SUBCATEGORÍA ====================
     async _obtenerRiesgoDesdeSubcategoria(categoriaId, subcategoriaId) {
         if (!categoriaId || !subcategoriaId) return null;
-
         try {
             await this._initCategoriaManager();
-
-            if (!this.categoriaManager) {
-                console.error('CategoriaManager no disponible');
-                return null;
-            }
-
+            if (!this.categoriaManager) return null;
             const riesgoId = await this.categoriaManager.obtenerRiesgoDeSubcategoria(
-                categoriaId,
-                subcategoriaId,
-                this.usuarioActual.organizacionCamelCase
+                categoriaId, subcategoriaId, this.usuarioActual.organizacionCamelCase
             );
-
             if (riesgoId) {
                 const riesgoInfo = this.nivelesRiesgoMap.get(riesgoId);
-                if (riesgoInfo) {
-                    return {
-                        id: riesgoId,
-                        nombre: riesgoInfo.nombre,
-                        color: riesgoInfo.color
-                    };
-                }
-                return { id: riesgoId, nombre: riesgoId, color: null };
+                return riesgoInfo ? { id: riesgoId, nombre: riesgoInfo.nombre, color: riesgoInfo.color } : { id: riesgoId, nombre: riesgoId, color: null };
             }
-
             return null;
-
         } catch (error) {
-            console.error('Error obteniendo riesgo desde subcategoría:', error);
+            console.error('Error obteniendo riesgo:', error);
             return null;
         }
     }
 
-    // ==================== APLICAR RIESGO AUTOMÁTICO ====================
     async _aplicarRiesgoAutomatico() {
         const categoriaId = document.getElementById('categoriaIncidencia')?.dataset.selectedId;
         const subcategoriaId = document.getElementById('subcategoriaIncidencia')?.value;
-
         if (categoriaId && subcategoriaId && subcategoriaId !== '') {
             const riesgoInfo = await this._obtenerRiesgoDesdeSubcategoria(categoriaId, subcategoriaId);
-
             if (riesgoInfo && riesgoInfo.id) {
                 this._mostrarRiesgoAsignadoUnico(riesgoInfo.id, riesgoInfo.nombre);
                 this.riesgoSeleccionadoId = riesgoInfo.id;
                 return;
             }
         }
-
         this._mostrarListaCompletaRiesgos();
         this.riesgoSeleccionadoId = null;
     }
 
-    // ==================== CREAR NUEVO NIVEL DE RIESGO ====================
     async _crearNuevoNivelRiesgo() {
         const { value: formValues } = await Swal.fire({
             title: 'Crear nuevo nivel de riesgo',
             html: `
-            <div class="riesgo-modal-contenido">
-                <div class="riesgo-campo">
-                    <label class="riesgo-label">
-                        <i class="fas fa-tag"></i> Nombre del nivel *
-                    </label>
-                    <input type="text" id="nuevoRiesgoNombre" class="riesgo-input" 
-                        placeholder="Ej: Crítico, Alto, Medio, Bajo">
+                <div class="riesgo-modal-contenido">
+                    <div class="riesgo-campo">
+                        <label class="riesgo-label"><i class="fas fa-tag"></i> Nombre del nivel *</label>
+                        <input type="text" id="nuevoRiesgoNombre" class="riesgo-input" placeholder="Ej: Crítico, Alto, Medio, Bajo">
+                    </div>
+                    <div class="riesgo-campo">
+                        <label class="riesgo-label"><i class="fas fa-palette"></i> Color *</label>
+                        <input type="color" id="nuevoRiesgoColor" class="riesgo-color-input" value="#ff0000">
+                    </div>
                 </div>
-                
-                <div class="riesgo-campo">
-                    <label class="riesgo-label">
-                        <i class="fas fa-palette"></i> Color *
-                    </label>
-                    <input type="color" id="nuevoRiesgoColor" class="riesgo-color-input" value="#ff0000">
-                </div>
-            </div>
-        `,
+            `,
             focusConfirm: false,
             width: '450px',
             background: 'var(--color-bg-secondary)',
             showCancelButton: true,
-            showConfirmButton: true,
             confirmButtonText: '<i class="fas fa-save"></i> Crear riesgo',
             cancelButtonText: '<i class="fas fa-times"></i> Cancelar',
-            confirmButtonColor: '#28a745',
-            cancelButtonColor: '#6c757d',
-            reverseButtons: false,
-            customClass: {
-                popup: 'riesgo-modal-popup',
-                confirmButton: 'riesgo-btn-confirmar',
-                cancelButton: 'riesgo-btn-cancelar'
-            },
             preConfirm: () => {
                 const nombre = document.getElementById('nuevoRiesgoNombre')?.value.trim();
                 const color = document.getElementById('nuevoRiesgoColor')?.value;
-
                 if (!nombre) {
-                    Swal.showValidationMessage('❌ El nombre del nivel de riesgo es obligatorio');
+                    Swal.showValidationMessage('❌ El nombre es obligatorio');
                     return false;
                 }
-
-                if (nombre.length < 2) {
-                    Swal.showValidationMessage('❌ El nombre debe tener al menos 2 caracteres');
+                if (nombre.length < 2 || nombre.length > 30) {
+                    Swal.showValidationMessage('❌ El nombre debe tener entre 2 y 30 caracteres');
                     return false;
                 }
-
-                if (nombre.length > 30) {
-                    Swal.showValidationMessage('❌ El nombre no puede exceder 30 caracteres');
-                    return false;
-                }
-
                 return { nombre, color };
             }
         });
-
         if (!formValues) return null;
 
         try {
-            Swal.fire({
-                title: 'Guardando...',
-                text: 'Creando nuevo nivel de riesgo...',
-                allowOutsideClick: false,
-                didOpen: () => Swal.showLoading()
-            });
-
-            const nuevoNivel = await this.riesgoManager.crearNivel(
-                { nombre: formValues.nombre, color: formValues.color },
-                this.usuarioActual
-            );
-
+            Swal.fire({ title: 'Guardando...', text: 'Creando nuevo nivel...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+            const nuevoNivel = await this.riesgoManager.crearNivel({ nombre: formValues.nombre, color: formValues.color }, this.usuarioActual);
             await this._initRiesgoManager();
             await this._cargarNivelesRiesgoEnSelect();
-
-            Swal.fire({
-                icon: 'success',
-                title: '✓ Nivel creado',
-                html: `Se creó el nivel <strong style="color: ${formValues.color};">${this._escapeHTML(formValues.nombre)}</strong>`,
-                timer: 2000,
-                showConfirmButton: false
-            });
-
+            Swal.fire({ icon: 'success', title: '✓ Nivel creado', timer: 2000, showConfirmButton: false });
             return nuevoNivel.id;
-
         } catch (error) {
-            console.error('Error creando nivel de riesgo:', error);
-            Swal.fire({
-                icon: 'error',
-                title: 'Error',
-                text: error.message || 'No se pudo crear el nivel de riesgo',
-                confirmButtonColor: '#dc3545'
-            });
+            console.error('Error creando nivel:', error);
+            Swal.fire({ icon: 'error', title: 'Error', text: error.message });
             return null;
         }
     }
 
-    // ==================== ASOCIAR RIESGO A SUBCATEGORÍA ====================
     async _asociarRiesgoASubcategoria(categoriaId, subcategoriaId, riesgoId) {
         try {
             await this._initCategoriaManager();
-
-            if (!this.categoriaManager) {
-                throw new Error('CategoriaManager no disponible');
-            }
-
-            Swal.fire({
-                title: 'Asociando riesgo...',
-                text: 'Actualizando la subcategoría...',
-                allowOutsideClick: false,
-                didOpen: () => Swal.showLoading()
-            });
-
-            await this.categoriaManager.asignarRiesgoASubcategoria(
-                categoriaId,
-                subcategoriaId,
-                riesgoId,
-                this.usuarioActual,
-                this.usuarioActual.organizacionCamelCase
-            );
-
-            const categoriaIndex = this.categorias.findIndex(c => c.id === categoriaId);
-            if (categoriaIndex !== -1) {
-                const categoriaActualizada = await this.categoriaManager.obtenerCategoriaPorId(
-                    categoriaId,
-                    this.usuarioActual.organizacionCamelCase
-                );
-                if (categoriaActualizada) {
-                    this.categorias[categoriaIndex] = categoriaActualizada;
-                }
-            }
-
-            Swal.fire({
-                icon: 'success',
-                title: 'Riesgo asociado',
-                text: 'El nivel de riesgo se ha asociado a la subcategoría',
-                timer: 2000,
-                showConfirmButton: false
-            });
-
+            if (!this.categoriaManager) throw new Error('CategoriaManager no disponible');
+            Swal.fire({ title: 'Asociando riesgo...', text: 'Actualizando la subcategoría...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+            await this.categoriaManager.asignarRiesgoASubcategoria(categoriaId, subcategoriaId, riesgoId, this.usuarioActual, this.usuarioActual.organizacionCamelCase);
+            Swal.fire({ icon: 'success', title: 'Riesgo asociado', text: 'El nivel de riesgo se ha asociado a la subcategoría', timer: 2000, showConfirmButton: false });
             await this._aplicarRiesgoAutomatico();
-
         } catch (error) {
-            console.error('Error asociando riesgo a subcategoría:', error);
+            console.error('Error asociando riesgo:', error);
             Swal.close();
-            Swal.fire({
-                icon: 'error',
-                title: 'Error',
-                text: error.message || 'No se pudo asociar el riesgo a la subcategoría'
-            });
+            Swal.fire({ icon: 'error', title: 'Error', text: error.message });
         }
     }
 
-    // ==================== MANEJAR SELECCIÓN DE RIESGO ====================
     async _manejarSeleccionRiesgo() {
-        const riesgoSelect = document.getElementById('nivelRiesgo');
-        if (riesgoSelect.disabled) return;
+        if (this.actualizandoRiesgo) return;
+        this.actualizandoRiesgo = true;
+        try {
+            const riesgoSelect = document.getElementById('nivelRiesgo');
+            if (riesgoSelect.disabled) return;
+            const valorSeleccionado = riesgoSelect.value;
 
-        const valorSeleccionado = riesgoSelect.value;
-
-        if (valorSeleccionado === '__otro__') {
-            const nuevoRiesgoId = await this._crearNuevoNivelRiesgo();
-
-            if (nuevoRiesgoId) {
-                await this._cargarNivelesRiesgoEnSelect();
-                const nuevoSelect = document.getElementById('nivelRiesgo');
-                nuevoSelect.value = nuevoRiesgoId;
-
-                const subcategoriaId = document.getElementById('subcategoriaIncidencia')?.value;
-                const categoriaId = document.getElementById('categoriaIncidencia')?.dataset.selectedId;
-
-                if (subcategoriaId && subcategoriaId !== '' && categoriaId) {
-                    const { value: asociar } = await Swal.fire({
-                        title: '¿Asociar riesgo a la subcategoría?',
-                        text: '¿Deseas que este nuevo nivel de riesgo se asocie automáticamente a la subcategoría seleccionada?',
-                        icon: 'question',
-                        showCancelButton: true,
-                        confirmButtonText: 'Sí, asociar',
-                        cancelButtonText: 'No, solo para esta incidencia',
-                        confirmButtonColor: '#28a745'
-                    });
-
-                    if (asociar) {
-                        await this._asociarRiesgoASubcategoria(categoriaId, subcategoriaId, nuevoRiesgoId);
-                    }
-                }
-            } else {
-                await this._cargarNivelesRiesgoEnSelect();
-            }
-            return;
-        }
-
-        if (valorSeleccionado && valorSeleccionado !== '' && valorSeleccionado !== '__otro__') {
-            const subcategoriaId = document.getElementById('subcategoriaIncidencia')?.value;
-            const categoriaId = document.getElementById('categoriaIncidencia')?.dataset.selectedId;
-
-            if (subcategoriaId && subcategoriaId !== '' && categoriaId) {
-                const riesgoActual = await this._obtenerRiesgoDesdeSubcategoria(categoriaId, subcategoriaId);
-
-                if (!riesgoActual || !riesgoActual.id) {
-                    const riesgoNombre = this._getRiesgoTexto(valorSeleccionado);
-
-                    const { value: asociar } = await Swal.fire({
-                        title: '¿Asociar riesgo a la subcategoría?',
-                        html: `¿Deseas asociar el nivel de riesgo <strong>${this._escapeHTML(riesgoNombre)}</strong> a la subcategoría seleccionada?<br><small style="color: #aaa;">Esto permitirá que en el futuro se seleccione automáticamente.</small>`,
-                        icon: 'question',
-                        showCancelButton: true,
-                        confirmButtonText: 'Sí, asociar',
-                        cancelButtonText: 'No, solo para esta incidencia',
-                        confirmButtonColor: '#28a745'
-                    });
-
-                    if (asociar) {
-                        await this._asociarRiesgoASubcategoria(categoriaId, subcategoriaId, valorSeleccionado);
-                    }
-                }
-            }
-        }
-    }
-
-    _obtenerFechaActualFormateada() {
-        const ahora = new Date();
-        const year = ahora.getFullYear();
-        const month = String(ahora.getMonth() + 1).padStart(2, '0');
-        const day = String(ahora.getDate()).padStart(2, '0');
-        const hours = String(ahora.getHours()).padStart(2, '0');
-        const minutes = String(ahora.getMinutes()).padStart(2, '0');
-        return `${year}-${month}-${day} ${hours}:${minutes}`;
-    }
-
-    _obtenerFechaActualParaInput() {
-        const ahora = new Date();
-        const year = ahora.getFullYear();
-        const month = String(ahora.getMonth() + 1).padStart(2, '0');
-        const day = String(ahora.getDate()).padStart(2, '0');
-        const hours = String(ahora.getHours()).padStart(2, '0');
-        const minutes = String(ahora.getMinutes()).padStart(2, '0');
-        return `${year}-${month}-${day}T${hours}:${minutes}`;
-    }
-
-    _obtenerFechaActualLegible() {
-        const ahora = new Date();
-        return ahora.toLocaleString('es-MX', {
-            year: 'numeric',
-            month: '2-digit',
-            day: '2-digit',
-            hour: '2-digit',
-            minute: '2-digit'
-        });
-    }
-
-    _obtenerTipoEventoSeleccionado() {
-        const btnActivo = document.querySelector('.tipo-evento-btn.active');
-        return btnActivo ? btnActivo.dataset.tipo : null;
-    }
-
-    // ==================== CONFIGURAR BOTONES TIPO EVENTO ====================
-    _configurarBotonesTipoEvento() {
-        const botones = document.querySelectorAll('.tipo-evento-btn');
-        let tipoSeleccionado = null;
-
-        const desactivarTodos = () => {
-            botones.forEach(btn => {
-                btn.classList.remove('active');
-            });
-        };
-
-        botones.forEach(btn => {
-            btn.addEventListener('click', () => {
-                const tipo = btn.dataset.tipo;
-
-                if (tipoSeleccionado === tipo) {
-                    desactivarTodos();
-                    tipoSeleccionado = null;
-                    this.tipoEventoSeleccionado = null;
-                    this.fechaHoraTiempoRealFija = null;
-
-                    const fechaInput = document.getElementById('fechaHoraIncidencia');
-                    if (fechaInput) {
-                        fechaInput.value = '';
-                        fechaInput.readOnly = false;
-                        fechaInput.style.backgroundColor = '';
-                        fechaInput.style.opacity = '1';
-                        fechaInput.style.borderColor = '';
-                    }
-
-                    if (this.flatpickrInstance) {
-                        this.flatpickrInstance.destroy();
-                        this.flatpickrInstance = null;
-                    }
-                    if (fechaInput) {
-                        this.flatpickrInstance = flatpickr(fechaInput, {
-                            enableTime: true,
-                            dateFormat: "d/m/Y H:i",
-                            time_24hr: true,
-                            locale: "es",
-                            minuteIncrement: 1,
-                            maxDate: new Date(),
-                            disableMobile: true
+            if (valorSeleccionado === '__otro__') {
+                const nuevoRiesgoId = await this._crearNuevoNivelRiesgo();
+                if (nuevoRiesgoId) {
+                    await this._cargarNivelesRiesgoEnSelect();
+                    const nuevoSelect = document.getElementById('nivelRiesgo');
+                    nuevoSelect.value = nuevoRiesgoId;
+                    const subcategoriaId = document.getElementById('subcategoriaIncidencia')?.value;
+                    const categoriaId = document.getElementById('categoriaIncidencia')?.dataset.selectedId;
+                    if (subcategoriaId && categoriaId) {
+                        const { value: asociar } = await Swal.fire({
+                            title: '¿Asociar riesgo a la subcategoría?',
+                            text: '¿Deseas asociar este nuevo nivel a la subcategoría seleccionada?',
+                            icon: 'question',
+                            showCancelButton: true,
+                            confirmButtonText: 'Sí, asociar',
+                            cancelButtonText: 'No, solo para esta incidencia'
                         });
+                        if (asociar) await this._asociarRiesgoASubcategoria(categoriaId, subcategoriaId, nuevoRiesgoId);
                     }
                 } else {
-                    desactivarTodos();
-                    btn.classList.add('active');
-                    tipoSeleccionado = tipo;
-                    this.tipoEventoSeleccionado = tipo;
+                    await this._cargarNivelesRiesgoEnSelect();
                 }
+                return;
+            }
 
-                const tipoEventoEvent = new Event('tipoEventoChanged', { bubbles: true });
-                document.dispatchEvent(tipoEventoEvent);
-            });
-        });
+            if (valorSeleccionado && valorSeleccionado !== '' && valorSeleccionado !== '__otro__') {
+                const subcategoriaId = document.getElementById('subcategoriaIncidencia')?.value;
+                const categoriaId = document.getElementById('categoriaIncidencia')?.dataset.selectedId;
+                if (subcategoriaId && categoriaId) {
+                    const riesgoActual = await this._obtenerRiesgoDesdeSubcategoria(categoriaId, subcategoriaId);
+                    if (!riesgoActual || !riesgoActual.id) {
+                        const riesgoNombre = this._getRiesgoTexto(valorSeleccionado);
+                        const { value: asociar } = await Swal.fire({
+                            title: '¿Asociar riesgo a la subcategoría?',
+                            html: `¿Asociar el riesgo <strong>${this._escapeHTML(riesgoNombre)}</strong> a esta subcategoría?`,
+                            icon: 'question',
+                            showCancelButton: true,
+                            confirmButtonText: 'Sí, asociar',
+                            cancelButtonText: 'No, solo esta vez'
+                        });
+                        if (asociar) await this._asociarRiesgoASubcategoria(categoriaId, subcategoriaId, valorSeleccionado);
+                    }
+                }
+            }
+        } finally {
+            this.actualizandoRiesgo = false;
+        }
     }
 
+    // ==================== DRAG & DROP y PASTE de IMÁGENES ====================
     _configurarDragAndDropYPaste() {
-        const dropZone = document.getElementById('dropZone');
-
+        let dropZone = document.getElementById('dropZone');
         if (!dropZone) {
             this._crearDropZone();
-            return;
+            dropZone = document.getElementById('dropZone');
+            if (!dropZone) return;
         }
 
-        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-            dropZone.addEventListener(eventName, (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-            });
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(ev => {
+            dropZone.addEventListener(ev, e => { e.preventDefault(); e.stopPropagation(); });
+        });
+        ['dragenter', 'dragover'].forEach(ev => {
+            dropZone.addEventListener(ev, () => dropZone.classList.add('drag-over'));
+        });
+        ['dragleave', 'drop'].forEach(ev => {
+            dropZone.addEventListener(ev, () => dropZone.classList.remove('drag-over'));
         });
 
-        ['dragenter', 'dragover'].forEach(eventName => {
-            dropZone.addEventListener(eventName, () => {
-                dropZone.classList.add('drag-over');
-            });
-        });
-
-        ['dragleave', 'drop'].forEach(eventName => {
-            dropZone.addEventListener(eventName, () => {
-                dropZone.classList.remove('drag-over');
-            });
-        });
-
-        dropZone.addEventListener('drop', (e) => {
-            const files = Array.from(e.dataTransfer.files);
-            const imageFiles = files.filter(file => file.type.startsWith('image/'));
-
-            if (imageFiles.length > 0) {
-                this._procesarImagenes(imageFiles);
-            }
+        dropZone.addEventListener('drop', e => {
+            const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'));
+            if (files.length) this._procesarImagenes(files);
         });
 
         dropZone.addEventListener('click', () => {
-            const inputImagenes = document.getElementById('inputImagenes');
-            if (inputImagenes) {
-                inputImagenes.click();
-            } else {
-                this._crearInputImagenes();
-            }
+            let input = document.getElementById('inputImagenes');
+            if (!input) input = this._crearInputImagenes();
+            input.click();
         });
 
-        document.addEventListener('paste', (e) => {
-            this._manejarPegarImagen(e);
-        });
+        document.addEventListener('paste', e => this._manejarPegarImagen(e));
     }
 
     _crearInputImagenes() {
-        let inputImagenes = document.getElementById('inputImagenes');
-        if (!inputImagenes) {
-            inputImagenes = document.createElement('input');
-            inputImagenes.type = 'file';
-            inputImagenes.id = 'inputImagenes';
-            inputImagenes.multiple = true;
-            inputImagenes.accept = 'image/jpeg,image/png,image/jpg,image/webp';
-            inputImagenes.style.display = 'none';
-            document.body.appendChild(inputImagenes);
-
-            inputImagenes.addEventListener('change', (e) => {
-                if (e.target.files) {
-                    this._procesarImagenes(e.target.files);
-                }
-                inputImagenes.value = '';
+        let input = document.getElementById('inputImagenes');
+        if (!input) {
+            input = document.createElement('input');
+            input.type = 'file';
+            input.id = 'inputImagenes';
+            input.multiple = true;
+            input.accept = 'image/jpeg,image/png,image/jpg,image/webp';
+            input.style.display = 'none';
+            document.body.appendChild(input);
+            input.addEventListener('change', e => {
+                if (e.target.files) this._procesarImagenes(e.target.files);
+                input.value = '';
             });
         }
-        return inputImagenes;
+        return input;
     }
 
     _crearDropZone() {
-        const imageUploadSection = document.querySelector('.image-upload-section-wrapper');
-        if (!imageUploadSection) return;
-
-        const cardBody = imageUploadSection.querySelector('.card-body');
+        const wrapper = document.querySelector('.image-upload-section-wrapper');
+        if (!wrapper) return;
+        const cardBody = wrapper.querySelector('.card-body');
         if (!cardBody) return;
-
-        const dropZoneHTML = `
+        const dropHTML = `
             <div id="dropZone" class="drop-zone">
                 <i class="fas fa-cloud-upload-alt"></i>
                 <p>Arrastra y suelta imágenes aquí</p>
                 <p class="small">o haz clic para seleccionar archivos</p>
-                <p class="small text-muted mt-2">
-                    <i class="fas fa-keyboard"></i> También puedes pegar imágenes con Ctrl+V
-                </p>
+                <p class="small text-muted mt-2"><i class="fas fa-keyboard"></i> También puedes pegar imágenes con Ctrl+V</p>
                 <p class="small text-muted">Formatos: JPG, JPEG, PNG, WEBP. Máximo 10MB por imagen.</p>
             </div>
         `;
-
-        const previewContainer = document.getElementById('imagenesPreview');
-        if (previewContainer) {
-            previewContainer.insertAdjacentHTML('beforebegin', dropZoneHTML);
-        } else {
-            cardBody.insertAdjacentHTML('afterbegin', dropZoneHTML);
-        }
-
+        const preview = document.getElementById('imagenesPreview');
+        if (preview) preview.insertAdjacentHTML('beforebegin', dropHTML);
+        else cardBody.insertAdjacentHTML('afterbegin', dropHTML);
         this._crearInputImagenes();
         this._configurarDragAndDropYPaste();
     }
@@ -1006,280 +761,159 @@ class CrearIncidenciaController {
     _manejarPegarImagen(event) {
         const items = event.clipboardData?.items;
         if (!items) return;
-
         const imageFiles = [];
-
         for (let i = 0; i < items.length; i++) {
             const item = items[i];
             if (item.type.startsWith('image/')) {
                 const file = item.getAsFile();
                 if (file) {
-                    const timestamp = Date.now();
-                    const random = Math.random().toString(36).substring(2, 8);
-                    const extension = file.type.split('/')[1] || 'png';
-                    const fileName = `pasted_${timestamp}_${random}.${extension}`;
-                    const renamedFile = new File([file], fileName, { type: file.type });
-                    imageFiles.push(renamedFile);
+                    const ext = file.type.split('/')[1] || 'png';
+                    const renamed = new File([file], `pasted_${Date.now()}_${Math.random().toString(36).substr(2, 6)}.${ext}`, { type: file.type });
+                    imageFiles.push(renamed);
                 }
             }
         }
-
-        if (imageFiles.length > 0) {
+        if (imageFiles.length) {
             event.preventDefault();
             this._procesarImagenes(imageFiles);
         }
     }
 
-    _habilitarCamposPorSucursal(habilitar) {
-        const camposDependientes = [
-            'categoriaIncidencia',
-            'nivelRiesgo',
-            'subcategoriaIncidencia',
-            'detallesIncidencia',
-            'fechaHoraIncidencia'
-        ];
+    _procesarImagenes(files) {
+        if (!files || !files.length) return;
+        const maxSize = 10 * 1024 * 1024;
+        const maxImages = 20;
+        if (this.imagenesSeleccionadas.length + files.length > maxImages) {
+            this._mostrarError(`Máximo ${maxImages} imágenes permitidas`);
+            return;
+        }
+        Array.from(files).forEach(file => {
+            if (file.size > maxSize) {
+                console.warn(`Imagen ${file.name} excede 10MB`);
+                return;
+            }
+            if (!['image/jpeg','image/png','image/jpg','image/webp'].includes(file.type)) {
+                console.warn(`Formato no válido: ${file.name}`);
+                return;
+            }
+            const generatedName = `${Date.now()}_${Math.random().toString(36).substr(2, 6)}_${file.name.replace(/[^a-zA-Z0-9.]/g, '_')}`;
+            this.imagenesSeleccionadas.push({
+                file, preview: URL.createObjectURL(file), comentario: '', elementos: [], edited: false, generatedName
+            });
+        });
+        this._actualizarVistaPreviaImagenes();
+        const inputImg = document.getElementById('inputImagenes');
+        if (inputImg) inputImg.value = '';
+    }
 
-        camposDependientes.forEach(campoId => {
-            const campo = document.getElementById(campoId);
-            if (campo) {
-                if (habilitar) {
-                    campo.disabled = false;
-                    campo.classList.remove('field-disabled');
+    _actualizarVistaPreviaImagenes() {
+        const container = document.getElementById('imagenesPreview');
+        const countSpan = document.getElementById('imagenesCount');
+        if (!container) return;
+        if (countSpan) countSpan.textContent = this.imagenesSeleccionadas.length;
+        if (this.imagenesSeleccionadas.length === 0) {
+            container.innerHTML = `<div class="no-images"><i class="fas fa-images"></i><p>No hay imágenes seleccionadas</p></div>`;
+            return;
+        }
+        let html = '';
+        this.imagenesSeleccionadas.forEach((img, idx) => {
+            html += `
+                <div class="preview-item">
+                    <img src="${img.preview}" alt="Preview ${idx+1}">
+                    <div class="preview-overlay">
+                        <button type="button" class="preview-btn edit-btn" data-index="${idx}" title="Editar"><i class="fas fa-edit"></i></button>
+                        <button type="button" class="preview-btn delete-btn" data-index="${idx}" title="Eliminar"><i class="fas fa-trash"></i></button>
+                        ${img.edited ? '<span class="edited-badge"><i class="fas fa-check"></i> Editada</span>' : ''}
+                    </div>
+                    ${img.comentario ? `<div class="image-comment"><i class="fas fa-comment"></i> ${this._escapeHTML(img.comentario.substring(0,30))}${img.comentario.length>30?'...':''}</div>` : ''}
+                </div>
+            `;
+        });
+        container.innerHTML = html;
+        container.querySelectorAll('.edit-btn').forEach(btn => btn.addEventListener('click', e => this._editarImagen(parseInt(e.currentTarget.dataset.index))));
+        container.querySelectorAll('.delete-btn').forEach(btn => btn.addEventListener('click', e => this._eliminarImagen(parseInt(e.currentTarget.dataset.index))));
+    }
 
-                    const parent = campo.closest('.full-width');
-                    const hint = parent?.querySelector('.field-required-hint');
-                    if (hint) {
-                        hint.style.display = 'none';
-                    }
-                } else {
-                    campo.disabled = true;
-                    campo.classList.add('field-disabled');
-                    campo.value = campo.tagName === 'SELECT' ? '' : '';
+    _editarImagen(index) {
+        if (this.imageEditorModal && this.imagenesSeleccionadas[index]) {
+            const img = this.imagenesSeleccionadas[index];
+            this.imageEditorModal.show(img.file, index, img.comentario, (savedIndex, editedFile, comentario, elementos) => {
+                URL.revokeObjectURL(this.imagenesSeleccionadas[savedIndex].preview);
+                this.imagenesSeleccionadas[savedIndex].file = editedFile;
+                this.imagenesSeleccionadas[savedIndex].comentario = comentario;
+                this.imagenesSeleccionadas[savedIndex].elementos = elementos;
+                this.imagenesSeleccionadas[savedIndex].edited = true;
+                this.imagenesSeleccionadas[savedIndex].preview = URL.createObjectURL(editedFile);
+                this._actualizarVistaPreviaImagenes();
+            });
+        }
+    }
 
-                    const parent = campo.closest('.full-width');
-                    const hint = parent?.querySelector('.field-required-hint');
-                    if (hint) {
-                        hint.style.display = 'flex';
-                    }
-                }
+    _eliminarImagen(index) {
+        Swal.fire({
+            title: '¿Eliminar imagen?', text: 'No se puede deshacer', icon: 'warning', showCancelButton: true,
+            confirmButtonColor: '#dc3545', cancelButtonColor: '#6c757d', confirmButtonText: 'Sí, eliminar', cancelButtonText: 'Cancelar'
+        }).then(result => {
+            if (result.isConfirmed) {
+                URL.revokeObjectURL(this.imagenesSeleccionadas[index].preview);
+                this.imagenesSeleccionadas.splice(index, 1);
+                this._actualizarVistaPreviaImagenes();
             }
         });
-
-        if (!habilitar) {
-            const categoriaInput = document.getElementById('categoriaIncidencia');
-            if (categoriaInput) {
-                delete categoriaInput.dataset.selectedId;
-                delete categoriaInput.dataset.selectedName;
-            }
-
-            const subcategoriaSelect = document.getElementById('subcategoriaIncidencia');
-            if (subcategoriaSelect) {
-                subcategoriaSelect.innerHTML = '<option value="">-- Selecciona una subcategoría (opcional) --</option>';
-            }
-
-            this.categoriaSeleccionada = null;
-        }
     }
 
-    async _inicializarManager() {
-        try {
-            const { IncidenciaManager } = await import('/clases/incidencia.js');
-            this.incidenciaManager = new IncidenciaManager();
-        } catch (error) {
-            console.error('Error cargando IncidenciaManager:', error);
-            throw error;
-        }
-    }
-
-    _configurarOrganizacion() {
-        const orgInput = document.getElementById('organization');
-        if (orgInput) {
-            orgInput.value = this.usuarioActual.organizacion;
-        }
-    }
-
-    _inicializarDateTimePicker() {
-        const fechaInput = document.getElementById('fechaHoraIncidencia');
-        if (!fechaInput) return;
-
-        if (typeof flatpickr !== 'undefined') {
-            this.flatpickrInstance = flatpickr(fechaInput, {
-                enableTime: true,
-                dateFormat: "d/m/Y H:i",
-                time_24hr: true,
-                locale: "es",
-                minuteIncrement: 1,
-                maxDate: new Date(),
-                disableMobile: true
-            });
-        }
-
-        this._configurarBotonesTipoEvento();
-    }
-
-    async _cargarDatosRelacionados() {
-        try {
-            await this._cargarSucursales();
-            await this._cargarCategorias();
-        } catch (error) {
-            console.error('Error cargando datos relacionados:', error);
-            throw error;
-        }
-    }
-
-    async _cargarSucursales() {
-        try {
-            const { SucursalManager } = await import('/clases/sucursal.js');
-            const sucursalManager = new SucursalManager();
-            this.sucursales = await sucursalManager.getSucursalesByOrganizacion(
-                this.usuarioActual.organizacionCamelCase
-            );
-        } catch (error) {
-            console.error('Error cargando sucursales:', error);
-            throw error;
-        }
-    }
-
-    async _cargarCategorias() {
-        try {
-            const { CategoriaManager } = await import('/clases/categoria.js');
-            const categoriaManager = new CategoriaManager();
-            this.categoriasOriginales = await categoriaManager.obtenerTodasCategorias();
-            this.categorias = [...this.categoriasOriginales];
-        } catch (error) {
-            console.error('Error cargando categorías:', error);
-            throw error;
-        }
-    }
-
-    async _cargarAreas() {
-        try {
-            const { AreaManager } = await import('/clases/area.js');
-            this.AreaManager = new AreaManager();
-
-            if (this.usuarioActual && this.usuarioActual.organizacionCamelCase) {
-                const areasObtenidas = await this.AreaManager.getAreasByOrganizacion(
-                    this.usuarioActual.organizacionCamelCase,
-                    true);
-                this.areas = areasObtenidas.filter(area => area.estado === 'activa');
-            }
-        } catch (error) {
-            console.error('Error cargando áreas:', error);
-            this.areas = [];
-        }
-    }
-
-    async _cargarSucursalesParaNotificacion() {
-        try {
-            const { SucursalManager } = await import('/clases/sucursal.js');
-            const sucursalManager = new SucursalManager();
-            this.sucursalesParaNotificar = await sucursalManager.getSucursalesByOrganizacion(
-                this.usuarioActual.organizacionCamelCase
-            );
-        } catch (error) {
-            console.error('Error cargando sucursales:', error);
-            this.sucursalesParaNotificar = [];
-        }
-    }
-
-    _cargarUsuario() {
-        try {
-            const adminInfo = localStorage.getItem('adminInfo');
-            if (adminInfo) {
-                const adminData = JSON.parse(adminInfo);
-                this.usuarioActual = {
-                    id: adminData.id || adminData.uid || `admin_${Date.now()}`,
-                    uid: adminData.uid || adminData.id,
-                    nombreCompleto: adminData.nombreCompleto || 'Administrador',
-                    organizacion: adminData.organizacion || 'Sin organización',
-                    organizacionCamelCase: adminData.organizacionCamelCase ||
-                        this._generarCamelCase(adminData.organizacion),
-                    correo: adminData.correoElectronico || '',
-                    email: adminData.correoElectronico || '',
-                    codigoColaborador: adminData.codigoColaborador || ''
-                };
-                return;
-            }
-
-            const userData = JSON.parse(localStorage.getItem('userData') || '{}');
-            if (userData && Object.keys(userData).length > 0) {
-                this.usuarioActual = {
-                    id: userData.uid || userData.id || `user_${Date.now()}`,
-                    uid: userData.uid || userData.id,
-                    nombreCompleto: userData.nombreCompleto || userData.nombre || 'Usuario',
-                    organizacion: userData.organizacion || userData.empresa || 'Sin organización',
-                    organizacionCamelCase: userData.organizacionCamelCase ||
-                        this._generarCamelCase(userData.organizacion || userData.empresa),
-                    correo: userData.correo || userData.email || '',
-                    codigoColaborador: userData.codigoColaborador || ''
-                };
-                return;
-            }
-
-            this.usuarioActual = {
-                id: `admin_${Date.now()}`,
-                uid: `admin_${Date.now()}`,
-                nombreCompleto: 'Administrador',
-                organizacion: 'Mi Organización',
-                organizacionCamelCase: 'miOrganizacion',
-                correo: 'admin@centinela.com',
-                email: 'admin@centinela.com',
-                codigoColaborador: ''
-            };
-
-        } catch (error) {
-            console.error('Error cargando usuario:', error);
-            throw error;
-        }
-    }
-
-    _generarCamelCase(texto) {
-        if (!texto || typeof texto !== 'string') return 'miOrganizacion';
-        return texto
-            .toLowerCase()
-            .normalize("NFD")
-            .replace(/[\u0300-\u036f]/g, "")
-            .replace(/[^a-zA-Z0-9]+(.)/g, (match, chr) => chr.toUpperCase())
-            .replace(/[^a-zA-Z0-9]/g, '');
-    }
-
+    // ==================== VALIDACIONES Y CONTADOR ====================
     _inicializarValidaciones() {
-        const detallesInput = document.getElementById('detallesIncidencia');
-        if (detallesInput) {
-            detallesInput.maxLength = LIMITES.DETALLES_INCIDENCIA;
-            detallesInput.addEventListener('input', () => {
-                this._validarLongitudCampo(detallesInput, LIMITES.DETALLES_INCIDENCIA, 'Los detalles');
-                this._actualizarContador('detallesIncidencia', 'contadorCaracteres', LIMITES.DETALLES_INCIDENCIA);
+        if (this.descripcionComponent) {
+            this.descripcionComponent.addEventListener('input', () => {
+                this._validarLongitudCampoCompleto();
                 this._verificarBotonesFinales();
             });
+        } else {
+            const textarea = document.getElementById('detallesIncidenciaTextarea');
+            if (textarea) {
+                textarea.maxLength = LIMITES.DETALLES_INCIDENCIA;
+                textarea.addEventListener('input', () => {
+                    this._validarLongitudCampo(textarea, LIMITES.DETALLES_INCIDENCIA, 'Los detalles');
+                    this._actualizarContador('detallesIncidenciaTextarea', 'contadorCaracteres', LIMITES.DETALLES_INCIDENCIA);
+                    this._verificarBotonesFinales();
+                });
+            }
         }
-        this._actualizarContador('detallesIncidencia', 'contadorCaracteres', LIMITES.DETALLES_INCIDENCIA);
+        this._actualizarContador('', 'contadorCaracteres', LIMITES.DETALLES_INCIDENCIA);
+    }
+
+    _validarLongitudCampoCompleto() {
+        if (!this.descripcionComponent) return;
+        const texto = this.descripcionComponent.value || '';
+        const limite = LIMITES.DETALLES_INCIDENCIA;
+        if (texto.length > limite) {
+            this.descripcionComponent.value = texto.substring(0, limite);
+            this._mostrarNotificacion(`La descripción no puede exceder ${limite} caracteres`, 'warning', 3000);
+        }
+        const counter = document.getElementById('contadorCaracteres');
+        if (counter) counter.textContent = `${texto.length}/${limite}`;
+    }
+
+    _validarLongitudCampo(campo, limite, nombre) {
+        if (campo.value.length > limite) {
+            campo.value = campo.value.substring(0, limite);
+            this._mostrarNotificacion(`${nombre} no puede exceder ${limite} caracteres`, 'warning', 3000);
+        }
     }
 
     _actualizarContador(inputId, counterId, limite) {
-        const input = document.getElementById(inputId);
         const counter = document.getElementById(counterId);
-        if (input && counter) {
-            const longitud = input.value.length;
-            counter.textContent = `${longitud}/${limite}`;
-            if (longitud > limite * 0.9) {
-                counter.style.color = 'var(--color-warning)';
-            } else if (longitud > limite * 0.95) {
-                counter.style.color = 'var(--color-danger)';
-            } else {
-                counter.style.color = 'var(--color-accent-primary)';
-            }
-        }
+        if (!counter) return;
+        const texto = this.descripcionComponent ? this.descripcionComponent.value : '';
+        const longitud = texto.length;
+        counter.textContent = `${longitud}/${limite}`;
+        if (longitud > limite * 0.9) counter.style.color = 'var(--color-warning)';
+        else if (longitud > limite * 0.95) counter.style.color = 'var(--color-danger)';
+        else counter.style.color = 'var(--color-accent-primary)';
     }
 
-    _validarLongitudCampo(campo, limite, nombreCampo) {
-        const longitud = campo.value.length;
-        if (longitud > limite) {
-            campo.value = campo.value.substring(0, limite);
-            this._mostrarNotificacion(`${nombreCampo} no puede exceder ${limite} caracteres`, 'warning', 3000);
-        }
-    }
-
+    // ==================== EVENTOS Y SUGERENCIAS (SUCURSAL/CATEGORÍA) ====================
     _configurarEventos() {
         try {
             document.getElementById('btnVolverLista')?.addEventListener('click', () => this._volverALista());
@@ -1295,29 +929,21 @@ class CrearIncidenciaController {
 
             document.getElementById('categoriaIncidencia')?.addEventListener('change', (e) => {
                 const categoriaId = e.target.dataset.selectedId;
-                if (categoriaId) {
-                    this._cargarSubcategorias(categoriaId);
-                }
+                if (categoriaId) this._cargarSubcategorias(categoriaId);
             });
 
-            const subcategoriaSelect = document.getElementById('subcategoriaIncidencia');
-            if (subcategoriaSelect) {
-                subcategoriaSelect.addEventListener('change', () => {
+            const subSelect = document.getElementById('subcategoriaIncidencia');
+            if (subSelect) {
+                subSelect.addEventListener('change', () => {
                     this._aplicarRiesgoAutomatico();
-                    const event = new Event('change', { bubbles: true });
-                    subcategoriaSelect.dispatchEvent(event);
+                    subSelect.dispatchEvent(new Event('change', { bubbles: true }));
                 });
             }
 
             const riesgoSelect = document.getElementById('nivelRiesgo');
-            if (riesgoSelect) {
-                riesgoSelect.addEventListener('change', () => {
-                    this._manejarSeleccionRiesgo();
-                });
-            }
+            if (riesgoSelect) riesgoSelect.addEventListener('change', () => this._manejarSeleccionRiesgo());
 
             this._configurarSugerencias();
-
         } catch (error) {
             console.error('Error configurando eventos:', error);
         }
@@ -1328,46 +954,43 @@ class CrearIncidenciaController {
         const inputCategoria = document.getElementById('categoriaIncidencia');
 
         if (inputSucursal) {
-            inputSucursal.addEventListener('input', (e) => this._mostrarSugerenciasSucursal(e.target.value));
-            inputSucursal.addEventListener('blur', () => {
-                setTimeout(() => document.getElementById('sugerenciasSucursal').innerHTML = '', 200);
-            });
+            inputSucursal.addEventListener('input', e => this._mostrarSugerenciasSucursal(e.target.value));
+            inputSucursal.addEventListener('blur', () => setTimeout(() => {
+                const cont = document.getElementById('sugerenciasSucursal');
+                if (cont) cont.innerHTML = '';
+            }, 200));
         }
-
         if (inputCategoria) {
-            inputCategoria.addEventListener('input', (e) => this._mostrarSugerenciasCategoria(e.target.value));
-            inputCategoria.addEventListener('blur', () => {
-                setTimeout(() => document.getElementById('sugerenciasCategoria').innerHTML = '', 200);
-            });
+            inputCategoria.addEventListener('input', e => this._mostrarSugerenciasCategoria(e.target.value));
+            inputCategoria.addEventListener('blur', () => setTimeout(() => {
+                const cont = document.getElementById('sugerenciasCategoria');
+                if (cont) cont.innerHTML = '';
+            }, 200));
         }
     }
 
     _mostrarSugerenciasSucursal(termino) {
         const contenedor = document.getElementById('sugerenciasSucursal');
         if (!contenedor) return;
-
         const terminoLower = termino.toLowerCase().trim();
         if (terminoLower.length === 0) {
             contenedor.innerHTML = '';
             return;
         }
-
-        const sugerencias = this.sucursales.filter(suc =>
-            suc.nombre.toLowerCase().includes(terminoLower) ||
-            (suc.ciudad && suc.ciudad.toLowerCase().includes(terminoLower)) ||
-            (suc.direccion && suc.direccion.toLowerCase().includes(terminoLower))
+        const sugerencias = this.sucursales.filter(s =>
+            s.nombre.toLowerCase().includes(terminoLower) ||
+            (s.ciudad && s.ciudad.toLowerCase().includes(terminoLower)) ||
+            (s.direccion && s.direccion.toLowerCase().includes(terminoLower))
         ).slice(0, 8);
-
-        if (sugerencias.length === 0) {
+        if (!sugerencias.length) {
             contenedor.innerHTML = `<div class="sugerencias-lista"><div class="sugerencia-vacia"><i class="fas fa-store"></i><p>No se encontraron sucursales</p></div></div>`;
             return;
         }
-
         let html = '<div class="sugerencias-lista">';
         sugerencias.forEach(suc => {
-            const seleccionada = document.getElementById('sucursalIncidencia').dataset.selectedId === suc.id;
+            const selected = document.getElementById('sucursalIncidencia').dataset.selectedId === suc.id;
             html += `
-                <div class="sugerencia-item ${seleccionada ? 'seleccionada' : ''}" data-id="${suc.id}" data-nombre="${suc.nombre}">
+                <div class="sugerencia-item ${selected ? 'seleccionada' : ''}" data-id="${suc.id}" data-nombre="${suc.nombre}">
                     <div class="sugerencia-icono"><i class="fas fa-store"></i></div>
                     <div class="sugerencia-info">
                         <div class="sugerencia-nombre">${this._escapeHTML(suc.nombre)}</div>
@@ -1378,55 +1001,42 @@ class CrearIncidenciaController {
         });
         html += '</div>';
         contenedor.innerHTML = html;
-
         contenedor.querySelectorAll('.sugerencia-item').forEach(item => {
-            item.addEventListener('click', () => {
-                this._seleccionarSucursal(item.dataset.id, item.dataset.nombre);
-            });
+            item.addEventListener('click', () => this._seleccionarSucursal(item.dataset.id, item.dataset.nombre));
         });
     }
 
     _mostrarSugerenciasCategoria(termino) {
         const contenedor = document.getElementById('sugerenciasCategoria');
         if (!contenedor) return;
-
         const terminoLower = termino.toLowerCase().trim();
         if (terminoLower.length === 0) {
             contenedor.innerHTML = '';
             return;
         }
-
-        const sugerencias = this.categorias.filter(cat =>
-            cat.nombre.toLowerCase().includes(terminoLower)
-        ).slice(0, 8);
-
-        if (sugerencias.length === 0) {
+        const sugerencias = this.categorias.filter(c => c.nombre.toLowerCase().includes(terminoLower)).slice(0, 8);
+        if (!sugerencias.length) {
             contenedor.innerHTML = `<div class="sugerencias-lista"><div class="sugerencia-vacia"><i class="fas fa-tags"></i><p>No se encontraron categorías</p></div></div>`;
             return;
         }
-
         let html = '<div class="sugerencias-lista">';
         sugerencias.forEach(cat => {
-            const seleccionada = document.getElementById('categoriaIncidencia').dataset.selectedId === cat.id;
-            const totalSubcategorias = cat.subcategorias ?
-                (cat.subcategorias instanceof Map ? cat.subcategorias.size : Object.keys(cat.subcategorias).length) : 0;
+            const selected = document.getElementById('categoriaIncidencia').dataset.selectedId === cat.id;
+            const totalSub = cat.subcategorias ? (cat.subcategorias instanceof Map ? cat.subcategorias.size : Object.keys(cat.subcategorias).length) : 0;
             html += `
-                <div class="sugerencia-item ${seleccionada ? 'seleccionada' : ''}" data-id="${cat.id}" data-nombre="${cat.nombre}">
+                <div class="sugerencia-item ${selected ? 'seleccionada' : ''}" data-id="${cat.id}" data-nombre="${cat.nombre}">
                     <div class="sugerencia-icono"><i class="fas fa-tag"></i></div>
                     <div class="sugerencia-info">
                         <div class="sugerencia-nombre">${this._escapeHTML(cat.nombre)}</div>
-                        <div class="sugerencia-detalle"><i class="fas fa-layer-group"></i>${totalSubcategorias} subcategorías</div>
+                        <div class="sugerencia-detalle"><i class="fas fa-layer-group"></i>${totalSub} subcategorías</div>
                     </div>
                 </div>
             `;
         });
         html += '</div>';
         contenedor.innerHTML = html;
-
         contenedor.querySelectorAll('.sugerencia-item').forEach(item => {
-            item.addEventListener('click', () => {
-                this._seleccionarCategoria(item.dataset.id, item.dataset.nombre);
-            });
+            item.addEventListener('click', () => this._seleccionarCategoria(item.dataset.id, item.dataset.nombre));
         });
     }
 
@@ -1451,313 +1061,296 @@ class CrearIncidenciaController {
     }
 
     async _cargarSubcategorias(categoriaId) {
-        const selectSubcategoria = document.getElementById('subcategoriaIncidencia');
-        if (!selectSubcategoria) return;
-
-        selectSubcategoria.innerHTML = '<option value="">Cargando subcategorías...</option>';
-        selectSubcategoria.disabled = true;
-
+        const select = document.getElementById('subcategoriaIncidencia');
+        if (!select) return;
+        select.innerHTML = '<option value="">Cargando subcategorías...</option>';
+        select.disabled = true;
         if (!categoriaId) {
-            selectSubcategoria.innerHTML = '<option value="">-- Selecciona una subcategoría (opcional) --</option>';
-            selectSubcategoria.disabled = true;
+            select.innerHTML = '<option value="">-- Selecciona una subcategoría (opcional) --</option>';
+            select.disabled = true;
             return;
         }
-
         const categoria = this.categorias.find(c => c.id === categoriaId);
         if (!categoria) {
-            selectSubcategoria.innerHTML = '<option value="">-- Error: Categoría no encontrada --</option>';
-            selectSubcategoria.disabled = true;
+            select.innerHTML = '<option value="">-- Error: Categoría no encontrada --</option>';
+            select.disabled = true;
             return;
         }
-
         this.categoriaSeleccionada = categoria;
-
         try {
-            let subcategoriasArray = [];
-
+            let subArray = [];
             if (categoria.subcategorias) {
                 if (categoria.subcategorias instanceof Map) {
                     categoria.subcategorias.forEach((valor, clave) => {
-                        if (valor && typeof valor === 'object') {
-                            subcategoriasArray.push({
-                                id: clave,
-                                nombre: valor.nombre || clave,
-                                riesgoNivelId: valor.riesgoNivelId || null
-                            });
-                        }
+                        if (valor && typeof valor === 'object') subArray.push({ id: clave, nombre: valor.nombre || clave, riesgoNivelId: valor.riesgoNivelId || null });
                     });
-                }
-                else if (categoria.subcategorias.entries && typeof categoria.subcategorias.entries === 'function') {
+                } else if (categoria.subcategorias.entries && typeof categoria.subcategorias.entries === 'function') {
                     for (const [clave, valor] of categoria.subcategorias.entries()) {
-                        if (valor && typeof valor === 'object') {
-                            subcategoriasArray.push({
-                                id: clave,
-                                nombre: valor.nombre || clave,
-                                riesgoNivelId: valor.riesgoNivelId || null
-                            });
-                        }
+                        if (valor && typeof valor === 'object') subArray.push({ id: clave, nombre: valor.nombre || clave, riesgoNivelId: valor.riesgoNivelId || null });
                     }
-                }
-                else if (typeof categoria.subcategorias.forEach === 'function') {
+                } else if (typeof categoria.subcategorias.forEach === 'function') {
                     categoria.subcategorias.forEach((valor, clave) => {
-                        if (valor && typeof valor === 'object') {
-                            subcategoriasArray.push({
-                                id: clave,
-                                nombre: valor.nombre || clave,
-                                riesgoNivelId: valor.riesgoNivelId || null
-                            });
-                        }
+                        if (valor && typeof valor === 'object') subArray.push({ id: clave, nombre: valor.nombre || clave, riesgoNivelId: valor.riesgoNivelId || null });
                     });
-                }
-                else if (typeof categoria.subcategorias === 'object') {
-                    subcategoriasArray = Object.keys(categoria.subcategorias).map(key => ({
-                        id: key,
-                        nombre: categoria.subcategorias[key]?.nombre || key,
-                        riesgoNivelId: categoria.subcategorias[key]?.riesgoNivelId || null
+                } else if (typeof categoria.subcategorias === 'object') {
+                    subArray = Object.keys(categoria.subcategorias).map(key => ({
+                        id: key, nombre: categoria.subcategorias[key]?.nombre || key, riesgoNivelId: categoria.subcategorias[key]?.riesgoNivelId || null
                     }));
                 }
             }
-
-            if (subcategoriasArray.length === 0) {
-                selectSubcategoria.innerHTML = '<option value="">-- No hay subcategorías disponibles --</option>';
-                selectSubcategoria.disabled = true;
+            if (subArray.length === 0) {
+                select.innerHTML = '<option value="">-- No hay subcategorías disponibles --</option>';
+                select.disabled = true;
                 return;
             }
-
             let options = '<option value="">-- Selecciona una subcategoría (opcional) --</option>';
-            subcategoriasArray.forEach(sub => {
-                options += `<option value="${sub.id}" data-riesgo-id="${sub.riesgoNivelId || ''}">${sub.nombre || sub.id}</option>`;
-            });
-
-            selectSubcategoria.innerHTML = options;
-            selectSubcategoria.disabled = false;
-
+            subArray.forEach(sub => { options += `<option value="${sub.id}" data-riesgo-id="${sub.riesgoNivelId || ''}">${sub.nombre}</option>`; });
+            select.innerHTML = options;
+            select.disabled = false;
         } catch (error) {
             console.error('Error cargando subcategorías:', error);
-            selectSubcategoria.innerHTML = '<option value="">-- Error cargando subcategorías --</option>';
-            selectSubcategoria.disabled = true;
+            select.innerHTML = '<option value="">-- Error cargando subcategorías --</option>';
+            select.disabled = true;
         }
     }
 
-    _procesarImagenes(files) {
-        if (!files || files.length === 0) return;
-
-        const nuevosArchivos = Array.from(files);
-        const maxSize = 10 * 1024 * 1024;
-        const maxImages = 20;
-
-        if (this.imagenesSeleccionadas.length + nuevosArchivos.length > maxImages) {
-            this._mostrarError(`Máximo ${maxImages} imágenes permitidas`);
-            return;
-        }
-
-        const archivosValidos = nuevosArchivos.filter(file => {
-            if (file.size > maxSize) {
-                console.warn(`La imagen ${file.name} excede ${maxSize / 1024 / 1024}MB`);
-                return false;
-            }
-            const validTypes = ['image/jpeg', 'image/png', 'image/jpg', 'image/webp'];
-            if (!validTypes.includes(file.type)) {
-                console.warn(`Formato no válido: ${file.name}. Usa JPG, JPEG, PNG o WEBP`);
-                return false;
-            }
-            return true;
-        });
-
-        archivosValidos.forEach(file => {
-            const timestamp = Date.now();
-            const random = Math.random().toString(36).substring(2, 8);
-            const cleanFileName = file.name.replace(/[^a-zA-Z0-9.]/g, '_').replace(/\s+/g, '_');
-            const generatedName = `${timestamp}_${random}_${cleanFileName}`;
-
-            this.imagenesSeleccionadas.push({
-                file: file,
-                preview: URL.createObjectURL(file),
-                comentario: '',
-                elementos: [],
-                edited: false,
-                generatedName: generatedName
-            });
-        });
-
-        this._actualizarVistaPreviaImagenes();
-        const inputImagenes = document.getElementById('inputImagenes');
-        if (inputImagenes) inputImagenes.value = '';
-    }
-
-    _actualizarVistaPreviaImagenes() {
-        const container = document.getElementById('imagenesPreview');
-        const countSpan = document.getElementById('imagenesCount');
-
-        if (!container) return;
-        if (countSpan) countSpan.textContent = this.imagenesSeleccionadas.length;
-
-        if (this.imagenesSeleccionadas.length === 0) {
-            container.innerHTML = `<div class="no-images"><i class="fas fa-images"></i><p>No hay imágenes seleccionadas</p></div>`;
-            return;
-        }
-
-        let html = '';
-        this.imagenesSeleccionadas.forEach((img, index) => {
-            html += `
-                <div class="preview-item">
-                    <img src="${img.preview}" alt="Preview ${index + 1}">
-                    <div class="preview-overlay">
-                        <button type="button" class="preview-btn edit-btn" data-index="${index}" title="Editar"><i class="fas fa-edit"></i></button>
-                        <button type="button" class="preview-btn delete-btn" data-index="${index}" title="Eliminar"><i class="fas fa-trash"></i></button>
-                        ${img.edited ? '<span class="edited-badge"><i class="fas fa-check"></i> Editada</span>' : ''}
-                    </div>
-                    ${img.comentario ? `<div class="image-comment"><i class="fas fa-comment"></i> ${this._escapeHTML(img.comentario.substring(0, 30))}${img.comentario.length > 30 ? '...' : ''}</div>` : ''}
-                </div>
-            `;
-        });
-
-        container.innerHTML = html;
-
-        container.querySelectorAll('.edit-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => this._editarImagen(parseInt(e.currentTarget.dataset.index)));
-        });
-
-        container.querySelectorAll('.delete-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => this._eliminarImagen(parseInt(e.currentTarget.dataset.index)));
-        });
-    }
-
-    _editarImagen(index) {
-        if (this.imageEditorModal && this.imagenesSeleccionadas[index]) {
-            const img = this.imagenesSeleccionadas[index];
-            this.imageEditorModal.show(img.file, index, img.comentario, (savedIndex, editedFile, comentario, elementos) => {
-                if (this.imagenesSeleccionadas[savedIndex].preview) {
-                    URL.revokeObjectURL(this.imagenesSeleccionadas[savedIndex].preview);
+    _habilitarCamposPorSucursal(habilitar) {
+        const campos = ['categoriaIncidencia', 'nivelRiesgo', 'subcategoriaIncidencia', 'detallesIncidencia'];
+        campos.forEach(id => {
+            const campo = document.getElementById(id);
+            if (campo) {
+                campo.disabled = !habilitar;
+                if (!habilitar) {
+                    if (campo.tagName === 'AUTO-DESCRIPCION') campo.value = '';
+                    else campo.value = '';
                 }
-                this.imagenesSeleccionadas[savedIndex].file = editedFile;
-                this.imagenesSeleccionadas[savedIndex].comentario = comentario;
-                this.imagenesSeleccionadas[savedIndex].elementos = elementos;
-                this.imagenesSeleccionadas[savedIndex].edited = true;
-                this.imagenesSeleccionadas[savedIndex].preview = URL.createObjectURL(editedFile);
-                this._actualizarVistaPreviaImagenes();
+            }
+        });
+        if (!habilitar) {
+            const catInput = document.getElementById('categoriaIncidencia');
+            if (catInput) { delete catInput.dataset.selectedId; delete catInput.dataset.selectedName; }
+            const subSelect = document.getElementById('subcategoriaIncidencia');
+            if (subSelect) subSelect.innerHTML = '<option value="">-- Selecciona una subcategoría (opcional) --</option>';
+            this.categoriaSeleccionada = null;
+        }
+    }
+
+    // ==================== CARGA DE DATOS (SUCURSALES, CATEGORÍAS, ÁREAS) ====================
+    async _cargarDatosRelacionados() {
+        try {
+            await this._cargarSucursales();
+            await this._cargarCategorias();
+        } catch (error) {
+            console.error('Error cargando datos relacionados:', error);
+            throw error;
+        }
+    }
+
+    async _cargarSucursales() {
+        try {
+            const { SucursalManager } = await import('/clases/sucursal.js');
+            const manager = new SucursalManager();
+            this.sucursales = await manager.getSucursalesByOrganizacion(this.usuarioActual.organizacionCamelCase);
+        } catch (error) {
+            console.error('Error cargando sucursales:', error);
+            throw error;
+        }
+    }
+
+    async _cargarCategorias() {
+        try {
+            const { CategoriaManager } = await import('/clases/categoria.js');
+            const manager = new CategoriaManager();
+            this.categoriasOriginales = await manager.obtenerTodasCategorias();
+            this.categorias = [...this.categoriasOriginales];
+        } catch (error) {
+            console.error('Error cargando categorías:', error);
+            throw error;
+        }
+    }
+
+    async _cargarAreas() {
+        try {
+            const { AreaManager } = await import('/clases/area.js');
+            this.AreaManager = new AreaManager();
+            if (this.usuarioActual?.organizacionCamelCase) {
+                const areas = await this.AreaManager.getAreasByOrganizacion(this.usuarioActual.organizacionCamelCase, true);
+                this.areas = areas.filter(a => a.estado === 'activa');
+            }
+        } catch (error) {
+            console.error('Error cargando áreas:', error);
+            this.areas = [];
+        }
+    }
+
+    async _cargarSucursalesParaNotificacion() {
+        try {
+            const { SucursalManager } = await import('/clases/sucursal.js');
+            const manager = new SucursalManager();
+            this.sucursalesParaNotificar = await manager.getSucursalesByOrganizacion(this.usuarioActual.organizacionCamelCase);
+        } catch (error) {
+            console.error('Error cargando sucursales para notificación:', error);
+            this.sucursalesParaNotificar = [];
+        }
+    }
+
+    _configurarOrganizacion() {
+        const orgInput = document.getElementById('organization');
+        if (orgInput) orgInput.value = this.usuarioActual.organizacion;
+    }
+
+    _inicializarDateTimePicker() {
+        const fechaInput = document.getElementById('fechaHoraIncidencia');
+        if (!fechaInput) return;
+        if (typeof flatpickr !== 'undefined') {
+            this.flatpickrInstance = flatpickr(fechaInput, {
+                enableTime: true, dateFormat: "d/m/Y H:i", time_24hr: true, locale: "es",
+                minuteIncrement: 1, maxDate: new Date(), disableMobile: true
             });
         }
+        this._configurarBotonesTipoEvento();
     }
 
-    _eliminarImagen(index) {
-        Swal.fire({
-            title: '¿Eliminar imagen?',
-            text: 'Esta acción no se puede deshacer',
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonColor: '#dc3545',
-            cancelButtonColor: '#6c757d',
-            confirmButtonText: 'Sí, eliminar',
-            cancelButtonText: 'Cancelar'
-        }).then((result) => {
-            if (result.isConfirmed) {
-                if (this.imagenesSeleccionadas[index].preview) {
-                    URL.revokeObjectURL(this.imagenesSeleccionadas[index].preview);
+    _configurarBotonesTipoEvento() {
+        const botones = document.querySelectorAll('.tipo-evento-btn');
+        let tipoSeleccionado = null;
+        const desactivarTodos = () => botones.forEach(btn => btn.classList.remove('active'));
+        botones.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const tipo = btn.dataset.tipo;
+                if (tipoSeleccionado === tipo) {
+                    desactivarTodos();
+                    tipoSeleccionado = null;
+                    this.tipoEventoSeleccionado = null;
+                    this.fechaHoraTiempoRealFija = null;
+                    const fechaInput = document.getElementById('fechaHoraIncidencia');
+                    if (fechaInput) {
+                        fechaInput.value = '';
+                        fechaInput.readOnly = false;
+                        fechaInput.style.backgroundColor = '';
+                        if (this.flatpickrInstance) {
+                            this.flatpickrInstance.destroy();
+                            this.flatpickrInstance = flatpickr(fechaInput, {
+                                enableTime: true, dateFormat: "d/m/Y H:i", time_24hr: true, locale: "es",
+                                minuteIncrement: 1, maxDate: new Date(), disableMobile: true
+                            });
+                        }
+                    }
+                } else {
+                    desactivarTodos();
+                    btn.classList.add('active');
+                    tipoSeleccionado = tipo;
+                    this.tipoEventoSeleccionado = tipo;
                 }
-                this.imagenesSeleccionadas.splice(index, 1);
-                this._actualizarVistaPreviaImagenes();
-            }
+                document.dispatchEvent(new Event('tipoEventoChanged'));
+            });
         });
     }
 
+    _cargarUsuario() {
+        try {
+            const adminInfo = localStorage.getItem('adminInfo');
+            if (adminInfo) {
+                const adminData = JSON.parse(adminInfo);
+                this.usuarioActual = {
+                    id: adminData.id || adminData.uid || `admin_${Date.now()}`,
+                    uid: adminData.uid || adminData.id,
+                    nombreCompleto: adminData.nombreCompleto || 'Administrador',
+                    organizacion: adminData.organizacion || 'Sin organización',
+                    organizacionCamelCase: adminData.organizacionCamelCase || this._generarCamelCase(adminData.organizacion),
+                    correo: adminData.correoElectronico || '',
+                    email: adminData.correoElectronico || '',
+                    codigoColaborador: adminData.codigoColaborador || ''
+                };
+                return;
+            }
+            const userData = JSON.parse(localStorage.getItem('userData') || '{}');
+            if (userData && Object.keys(userData).length) {
+                this.usuarioActual = {
+                    id: userData.uid || userData.id || `user_${Date.now()}`,
+                    uid: userData.uid || userData.id,
+                    nombreCompleto: userData.nombreCompleto || userData.nombre || 'Usuario',
+                    organizacion: userData.organizacion || userData.empresa || 'Sin organización',
+                    organizacionCamelCase: userData.organizacionCamelCase || this._generarCamelCase(userData.organizacion || userData.empresa),
+                    correo: userData.correo || userData.email || '',
+                    codigoColaborador: userData.codigoColaborador || ''
+                };
+                return;
+            }
+            this.usuarioActual = {
+                id: `admin_${Date.now()}`,
+                uid: `admin_${Date.now()}`,
+                nombreCompleto: 'Administrador',
+                organizacion: 'Mi Organización',
+                organizacionCamelCase: 'miOrganizacion',
+                correo: 'admin@centinela.com',
+                email: 'admin@centinela.com',
+                codigoColaborador: ''
+            };
+        } catch (error) {
+            console.error('Error cargando usuario:', error);
+            throw error;
+        }
+    }
+
+    _generarCamelCase(texto) {
+        if (!texto || typeof texto !== 'string') return 'miOrganizacion';
+        return texto.toLowerCase()
+            .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+            .replace(/[^a-zA-Z0-9]+(.)/g, (_, chr) => chr.toUpperCase())
+            .replace(/[^a-zA-Z0-9]/g, '');
+    }
+
+    // ==================== GUARDAR INCIDENCIA (COMPLETO) ====================
     async _validarYGuardar() {
         const sucursalInput = document.getElementById('sucursalIncidencia');
         const categoriaInput = document.getElementById('categoriaIncidencia');
-
-        const sucursalId = sucursalInput.dataset.selectedId;
-        const categoriaId = categoriaInput.dataset.selectedId;
-
-        if (!sucursalId) {
-            this._mostrarError('⚠️ Es necesario seleccionar una sucursal primero');
-            sucursalInput.focus();
-            return;
-        }
-
-        if (!categoriaId) {
-            this._mostrarError('Debe seleccionar una categoría válida de la lista');
-            categoriaInput.focus();
-            return;
-        }
+        const sucursalId = sucursalInput?.dataset.selectedId;
+        const categoriaId = categoriaInput?.dataset.selectedId;
+        if (!sucursalId) { this._mostrarError('⚠️ Selecciona una sucursal'); sucursalInput.focus(); return; }
+        if (!categoriaId) { this._mostrarError('Selecciona una categoría'); categoriaInput.focus(); return; }
 
         const riesgoSelect = document.getElementById('nivelRiesgo');
         const nivelRiesgo = riesgoSelect.value;
-        if (!nivelRiesgo || nivelRiesgo === '__otro__') {
-            this._mostrarError('Debe seleccionar el nivel de riesgo');
-            riesgoSelect.focus();
-            return;
-        }
+        if (!nivelRiesgo || nivelRiesgo === '__otro__') { this._mostrarError('Selecciona el nivel de riesgo'); riesgoSelect.focus(); return; }
 
         const estadoSelect = document.getElementById('estadoIncidencia');
         const estado = estadoSelect.value;
-        if (!estado) {
-            this._mostrarError('Debe seleccionar el estado');
-            estadoSelect.focus();
-            return;
-        }
+        if (!estado) { this._mostrarError('Selecciona el estado'); estadoSelect.focus(); return; }
 
         const tipoEvento = this._obtenerTipoEventoSeleccionado();
-        if (!tipoEvento) {
-            this._mostrarError('Debes seleccionar un tipo de evento (Tiempo Real o Histórico)');
-            return;
-        }
+        if (!tipoEvento) { this._mostrarError('Selecciona tipo de evento'); return; }
 
-        let fechaInput = document.getElementById('fechaHoraIncidencia');
-        let fechaHora = fechaInput.value;
-
-        if (!fechaHora || fechaHora === '') {
-            this._mostrarError('Debe seleccionar fecha y hora');
-            fechaInput.focus();
-            return;
-        }
+        const fechaInput = document.getElementById('fechaHoraIncidencia');
+        const fechaHora = fechaInput.value;
+        if (!fechaHora) { this._mostrarError('Selecciona fecha y hora'); fechaInput.focus(); return; }
 
         let fechaSeleccionada;
-
         if (tipoEvento === 'tiempo_real' && this.fechaHoraTiempoRealFija) {
             fechaSeleccionada = new Date(this.fechaHoraTiempoRealFija);
         } else {
             if (fechaHora.includes('/')) {
-                const partes = fechaHora.split(' ');
-                const fechaPartes = partes[0].split('/');
-                const horaPartes = partes[1].split(':');
-                fechaSeleccionada = new Date(
-                    parseInt(fechaPartes[2]),
-                    parseInt(fechaPartes[1]) - 1,
-                    parseInt(fechaPartes[0]),
-                    parseInt(horaPartes[0]),
-                    parseInt(horaPartes[1])
-                );
+                const [fechaPart, horaPart] = fechaHora.split(' ');
+                const [d, m, y] = fechaPart.split('/');
+                const [h, min] = horaPart.split(':');
+                fechaSeleccionada = new Date(+y, +m-1, +d, +h, +min);
             } else {
                 fechaSeleccionada = new Date(fechaHora);
             }
         }
-
         const ahora = new Date();
+        if (isNaN(fechaSeleccionada)) { this._mostrarError('Fecha no válida'); fechaInput.focus(); return; }
+        if (tipoEvento !== 'tiempo_real' && fechaSeleccionada > ahora) { this._mostrarError('No puedes seleccionar una fecha futura'); fechaInput.focus(); return; }
 
-        if (isNaN(fechaSeleccionada.getTime())) {
-            this._mostrarError('La fecha seleccionada no es válida');
-            fechaInput.focus();
-            return;
+        let detalles = '';
+        if (this.descripcionComponent && this.descripcionComponent.value !== undefined) {
+            detalles = this.descripcionComponent.value.trim();
+        } else {
+            const fallback = document.getElementById('detallesIncidenciaTextarea');
+            detalles = fallback?.value.trim() || '';
         }
-
-        if (tipoEvento !== 'tiempo_real' && fechaSeleccionada > ahora) {
-            this._mostrarError('No puede seleccionar una fecha futura');
-            fechaInput.focus();
-            return;
-        }
-
-        const detallesInput = document.getElementById('detallesIncidencia');
-        const detalles = detallesInput.value.trim();
-        if (!detalles) {
-            this._mostrarError('La descripción de la incidencia es obligatoria');
-            detallesInput.focus();
-            return;
-        }
-        if (detalles.length < 10) {
-            this._mostrarError('La descripción debe tener al menos 10 caracteres');
-            detallesInput.focus();
-            return;
-        }
+        if (!detalles) { this._mostrarError('La descripción es obligatoria'); if(this.descripcionComponent) this.descripcionComponent.focus(); return; }
+        if (detalles.length < 10) { this._mostrarError('La descripción debe tener al menos 10 caracteres'); if(this.descripcionComponent) this.descripcionComponent.focus(); return; }
 
         const subcategoriaSelect = document.getElementById('subcategoriaIncidencia');
         const subcategoriaId = subcategoriaSelect.value;
@@ -1765,230 +1358,101 @@ class CrearIncidenciaController {
         const categoriaNombre = categoriaInput.value;
 
         const datos = {
-            sucursalId,
-            sucursalNombre,
-            categoriaId,
-            categoriaNombre,
-            subcategoriaId: subcategoriaId || '',
-            nivelRiesgo,
-            estado,
-            fechaHora: fechaSeleccionada.toISOString(),
-            detalles,
-            imagenes: this.imagenesSeleccionadas,
-            tipoEvento
+            sucursalId, sucursalNombre, categoriaId, categoriaNombre,
+            subcategoriaId: subcategoriaId || '', nivelRiesgo, estado,
+            fechaHora: fechaSeleccionada.toISOString(), detalles,
+            imagenes: this.imagenesSeleccionadas, tipoEvento
         };
 
-        const result = await Swal.fire({
-            title: 'Confirmar creación de incidencia',
-            html: `
-                <div style="text-align: left;">
-                    <p><strong>Tipo Evento:</strong> ${tipoEvento === 'tiempo_real' ? 'Tiempo Real' : 'Histórico'}</p>
-                    <p><strong>Sucursal:</strong> ${this._escapeHTML(sucursalNombre)}</p>
-                    <p><strong>Categoría:</strong> ${this._escapeHTML(categoriaNombre)}</p>
-                    ${subcategoriaId ? `<p><strong>Subcategoría:</strong> ${this._escapeHTML(subcategoriaSelect.options[subcategoriaSelect.selectedIndex]?.text)}</p>` : ''}
-                    <p><strong>Riesgo:</strong> ${this._getRiesgoTexto(nivelRiesgo)}</p>
-                    <p><strong>Estado:</strong> ${estado === 'pendiente' ? 'Pendiente' : 'Finalizada'}</p>
-                    <p><strong>Fecha:</strong> ${fechaSeleccionada.toLocaleString('es-MX')}</p>
-                    <p><strong>Evidencias:</strong> ${this.imagenesSeleccionadas.length} imagen(es)</p>
-                </div>
-            `,
-            icon: 'question',
-            showCancelButton: true,
-            confirmButtonText: '<i class="fas fa-save"></i> Crear',
-            cancelButtonText: '<i class="fas fa-times"></i> Cancelar',
-            confirmButtonColor: '#28a745',
-            cancelButtonColor: '#6c757d'
+        const confirm = await Swal.fire({
+            title: 'Confirmar creación',
+            html: `<div style="text-align:left;">
+                <p><strong>Tipo:</strong> ${tipoEvento === 'tiempo_real' ? 'Tiempo Real' : 'Histórico'}</p>
+                <p><strong>Sucursal:</strong> ${this._escapeHTML(sucursalNombre)}</p>
+                <p><strong>Categoría:</strong> ${this._escapeHTML(categoriaNombre)}</p>
+                ${subcategoriaId ? `<p><strong>Subcategoría:</strong> ${this._escapeHTML(subcategoriaSelect.options[subcategoriaSelect.selectedIndex]?.text)}</p>` : ''}
+                <p><strong>Riesgo:</strong> ${this._getRiesgoTexto(nivelRiesgo)}</p>
+                <p><strong>Estado:</strong> ${estado === 'pendiente' ? 'Pendiente' : 'Finalizada'}</p>
+                <p><strong>Fecha:</strong> ${fechaSeleccionada.toLocaleString('es-MX')}</p>
+                <p><strong>Evidencias:</strong> ${this.imagenesSeleccionadas.length} imagen(es)</p>
+            </div>`,
+            icon: 'question', showCancelButton: true, confirmButtonText: '<i class="fas fa-save"></i> Crear', cancelButtonText: 'Cancelar'
         });
-
-        if (result.isConfirmed) {
-            await this._guardarIncidencia(datos);
-        }
+        if (confirm.isConfirmed) await this._guardarIncidencia(datos);
     }
 
     async _guardarIncidencia(datos) {
         const btnCrear = document.getElementById('btnCrearIncidencia');
-        const originalHTML = btnCrear ? btnCrear.innerHTML : '<i class="fas fa-check me-2"></i>Crear Incidencia';
-
+        const originalHTML = btnCrear?.innerHTML || '<i class="fas fa-check"></i> Crear';
         try {
-            if (btnCrear) {
-                btnCrear.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> Guardando...';
-                btnCrear.disabled = true;
-            }
-
-            Swal.fire({
-                title: 'Guardando incidencia...',
-                text: 'Creando registro en la base de datos...',
-                allowOutsideClick: false,
-                allowEscapeKey: false,
-                showConfirmButton: false,
-                didOpen: () => Swal.showLoading()
-            });
+            if (btnCrear) { btnCrear.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Guardando...'; btnCrear.disabled = true; }
+            Swal.fire({ title: 'Guardando...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
 
             const fechaObj = new Date(datos.fechaHora);
-            if (isNaN(fechaObj.getTime())) {
-                fechaObj = new Date();
-            }
-
             const incidenciaData = {
-                sucursalId: datos.sucursalId,
-                categoriaId: datos.categoriaId,
-                subcategoriaId: datos.subcategoriaId || '',
-                nivelRiesgo: datos.nivelRiesgo,
-                estado: datos.estado,
-                fechaInicio: fechaObj,
-                detalles: datos.detalles,
-                reportadoPorId: this.usuarioActual.id,
-                reportadoPorCodigo: this.usuarioActual.codigoColaborador || '',
+                sucursalId: datos.sucursalId, categoriaId: datos.categoriaId, subcategoriaId: datos.subcategoriaId,
+                nivelRiesgo: datos.nivelRiesgo, estado: datos.estado, fechaInicio: fechaObj,
+                detalles: datos.detalles, reportadoPorId: this.usuarioActual.id,
+                reportadoPorCodigo: this.usuarioActual.codigoColaborador || ''
             };
+            const nuevaIncidencia = await this.incidenciaManager.crearIncidencia(incidenciaData, this.usuarioActual, [], []);
+            const folio = nuevaIncidencia.id;
 
-            const nuevaIncidencia = await this.incidenciaManager.crearIncidencia(
-                incidenciaData,
-                this.usuarioActual,
-                [],
-                []
-            );
-
-            const folioReal = nuevaIncidencia.id;
             let imagenesSubidas = [];
-
-            if (datos.imagenes && datos.imagenes.length > 0) {
-                Swal.update({ title: 'Subiendo imágenes...', text: `Subiendo ${datos.imagenes.length} imagen(es)...` });
-
-                const uploadPromises = datos.imagenes.map(async (img) => {
-                    const rutaStorage = `incidencias_${this.usuarioActual.organizacionCamelCase}/${nuevaIncidencia.id}/imagenes/${img.generatedName}`;
-                    const resultado = await this.incidenciaManager.subirArchivo(img.file, rutaStorage);
-                    return {
-                        url: resultado.url,
-                        path: resultado.path,
-                        comentario: img.comentario || '',
-                        elementos: img.elementos || [],
-                        nombre: img.file.name,
-                        generatedName: img.generatedName,
-                        tipo: img.file.type,
-                        tamaño: img.file.size
-                    };
+            if (datos.imagenes?.length) {
+                Swal.update({ title: 'Subiendo imágenes...' });
+                const uploads = datos.imagenes.map(async img => {
+                    const ruta = `incidencias_${this.usuarioActual.organizacionCamelCase}/${folio}/imagenes/${img.generatedName}`;
+                    const res = await this.incidenciaManager.subirArchivo(img.file, ruta);
+                    return { url: res.url, path: res.path, comentario: img.comentario || '', elementos: img.elementos || [], nombre: img.file.name, generatedName: img.generatedName, tipo: img.file.type, tamaño: img.file.size };
                 });
-
-                imagenesSubidas = await Promise.all(uploadPromises);
-                await this.incidenciaManager.actualizarImagenes(nuevaIncidencia.id, imagenesSubidas, this.usuarioActual.organizacionCamelCase, this.usuarioActual.id, this.usuarioActual.nombreCompleto);
-                nuevaIncidencia.imagenes = imagenesSubidas;
+                imagenesSubidas = await Promise.all(uploads);
+                await this.incidenciaManager.actualizarImagenes(folio, imagenesSubidas, this.usuarioActual.organizacionCamelCase, this.usuarioActual.id, this.usuarioActual.nombreCompleto);
             }
 
-            Swal.update({ title: 'Generando PDF...', text: 'Creando el documento de la incidencia...' });
-
+            Swal.update({ title: 'Generando PDF...' });
             const incidenciaParaPDF = {
-                ...nuevaIncidencia,
-                id: folioReal,
-                sucursalNombre: datos.sucursalNombre,
-                categoriaNombre: datos.categoriaNombre,
-                subcategoriaNombre: datos.subcategoriaNombre,
-                detalles: datos.detalles,
-                fechaInicio: fechaObj,
-                fechaCreacion: new Date(),
-                imagenes: imagenesSubidas,
-                reportadoPorNombre: this.usuarioActual.nombreCompleto,
-                reportadoPorCodigo: this.usuarioActual.codigoColaborador || '',
-                getSeguimientosArray: () => []
+                ...nuevaIncidencia, id: folio, sucursalNombre: datos.sucursalNombre, categoriaNombre: datos.categoriaNombre,
+                detalles: datos.detalles, fechaInicio: fechaObj, fechaCreacion: new Date(),
+                imagenes: imagenesSubidas, reportadoPorNombre: this.usuarioActual.nombreCompleto,
+                reportadoPorCodigo: this.usuarioActual.codigoColaborador || '', getSeguimientosArray: () => []
             };
-
             let pdfBlob = null;
-            try {
-                pdfBlob = await this.pdfGenerator.generarIPH(incidenciaParaPDF, {
-                    mostrarAlerta: false,
-                    returnBlob: true,
-                    diagnosticar: false
-                });
-            } catch (pdfError) {
-                console.error('Error generando PDF:', pdfError);
-            }
+            try { pdfBlob = await this.pdfGenerator.generarIPH(incidenciaParaPDF, { mostrarAlerta: false, returnBlob: true }); } catch(e) { console.error(e); }
 
-            Swal.update({ title: 'Subiendo PDF...', text: 'Guardando el documento PDF...' });
-
+            Swal.update({ title: 'Subiendo PDF...' });
             let pdfUrl = null;
-            if (pdfBlob && pdfBlob.size > 0) {
-                const pdfFile = new File([pdfBlob], `incidencia_${nuevaIncidencia.id}.pdf`, { type: 'application/pdf' });
-                const rutaPDF = `incidencias_${this.usuarioActual.organizacionCamelCase}/${nuevaIncidencia.id}/pdf/incidencia_${nuevaIncidencia.id}.pdf`;
-                const resultadoPDF = await this.incidenciaManager.subirArchivo(pdfFile, rutaPDF);
-                pdfUrl = resultadoPDF.url;
-                await this.incidenciaManager.actualizarPDF(nuevaIncidencia.id, pdfUrl, this.usuarioActual.organizacionCamelCase, this.usuarioActual.id, this.usuarioActual.nombreCompleto);
+            if (pdfBlob?.size) {
+                const pdfFile = new File([pdfBlob], `incidencia_${folio}.pdf`, { type: 'application/pdf' });
+                const rutaPDF = `incidencias_${this.usuarioActual.organizacionCamelCase}/${folio}/pdf/incidencia_${folio}.pdf`;
+                const resPDF = await this.incidenciaManager.subirArchivo(pdfFile, rutaPDF);
+                pdfUrl = resPDF.url;
+                await this.incidenciaManager.actualizarPDF(folio, pdfUrl, this.usuarioActual.organizacionCamelCase, this.usuarioActual.id, this.usuarioActual.nombreCompleto);
             }
-
             Swal.close();
 
-            if (pdfUrl) {
-                await this._mostrarDialogoCompartir(pdfUrl, datos);
-            }
+            if (pdfUrl) await this._mostrarDialogoCompartir(pdfUrl, datos);
 
+            // Canalización a sucursal
+            const quiereSucursal = await Swal.fire({ icon: 'question', title: '¿Canalizar a la sucursal?', text: '¿Deseas canalizar esta incidencia a la sucursal?', showCancelButton: true, confirmButtonText: 'Sí', cancelButtonText: 'No' });
             let sucursalCanalizada = null;
-            const quiereCanalizarSucursal = await Swal.fire({
-                icon: 'question',
-                title: '¿Canalizar a la sucursal?',
-                text: '¿Deseas canalizar esta incidencia a la sucursal seleccionada?',
-                showCancelButton: true,
-                confirmButtonText: 'SÍ, CANALIZAR',
-                cancelButtonText: 'NO, CONTINUAR',
-                confirmButtonColor: '#28a745'
-            });
+            if (quiereSucursal.isConfirmed) sucursalCanalizada = await this._canalizarSucursal(folio, datos.detalles.substring(0,50));
 
-            if (quiereCanalizarSucursal.isConfirmed) {
-                sucursalCanalizada = await this._canalizarSucursal(nuevaIncidencia.id, datos.detalles.substring(0, 50));
-            }
-
+            const quiereArea = await Swal.fire({ icon: 'question', title: '¿Canalizar a área(s)?', text: '¿Deseas canalizar a alguna área?', showCancelButton: true, confirmButtonText: 'Sí', cancelButtonText: 'No' });
             let areasCanalizadas = [];
-            const quiereCanalizarArea = await Swal.fire({
-                icon: 'question',
-                title: '¿Canalizar a área(s)?',
-                text: '¿Deseas canalizar esta incidencia a alguna área adicional?',
-                showCancelButton: true,
-                confirmButtonText: 'SÍ, CANALIZAR A ÁREA',
-                cancelButtonText: 'NO, FINALIZAR',
-                confirmButtonColor: '#28a745'
-            });
+            if (quiereArea.isConfirmed) areasCanalizadas = await this._canalizarAreas(folio, datos.detalles.substring(0,50));
 
-            if (quiereCanalizarArea.isConfirmed) {
-                areasCanalizadas = await this._canalizarAreas(nuevaIncidencia.id, datos.detalles.substring(0, 50));
-            }
-
-            const tieneSucursal = sucursalCanalizada !== null;
-            const totalAreas = areasCanalizadas.length;
-
-            let mensajeCanalizacion = '';
-            if (tieneSucursal && totalAreas > 0) {
-                mensajeCanalizacion = `Canalizada a sucursal ${sucursalCanalizada.nombre} y ${totalAreas} área(s).`;
-            } else if (tieneSucursal) {
-                mensajeCanalizacion = `Canalizada a sucursal ${sucursalCanalizada.nombre}.`;
-            } else if (totalAreas > 0) {
-                mensajeCanalizacion = `Canalizada a ${totalAreas} área(s).`;
-            } else {
-                mensajeCanalizacion = 'No se canalizó a ninguna sucursal o área.';
-            }
-
-            await Swal.fire({
-                icon: 'success',
-                title: '¡Incidencia creada!',
-                html: `
-                    <div style="text-align: left;">
-                        <p><strong>Folio:</strong> ${folioReal}</p>
-                        <p>Incidencia guardada ${nuevaIncidencia.imagenes?.length > 0 ? `con ${nuevaIncidencia.imagenes.length} imagen(es)` : 'sin imágenes'}.</p>
-                        ${pdfBlob && pdfBlob.size > 0 ? '<p>El PDF se ha generado correctamente.</p>' : '<p>No se pudo generar el PDF, pero la incidencia se guardó.</p>'}
-                        <p>${mensajeCanalizacion}</p>
-                    </div>
-                `,
-                confirmButtonText: 'Ver incidencias',
-                confirmButtonColor: '#28a745'
-            });
-
+            let mensaje = `Incidencia creada con folio ${folio}. `;
+            if (sucursalCanalizada) mensaje += `Canalizada a sucursal ${sucursalCanalizada.nombre}. `;
+            if (areasCanalizadas.length) mensaje += `Canalizada a ${areasCanalizadas.length} área(s).`;
+            await Swal.fire({ icon: 'success', title: '¡Incidencia creada!', text: mensaje, confirmButtonText: 'Ver incidencias' });
             this._volverALista();
-
         } catch (error) {
-            console.error('Error guardando incidencia:', error);
+            console.error(error);
             Swal.close();
-            this._mostrarError(error.message || 'No se pudo crear la incidencia');
+            this._mostrarError(error.message || 'Error al crear incidencia');
         } finally {
-            if (btnCrear) {
-                btnCrear.innerHTML = originalHTML;
-                btnCrear.disabled = false;
-            }
+            if (btnCrear) { btnCrear.innerHTML = originalHTML; btnCrear.disabled = false; }
         }
     }
 
@@ -1997,135 +1461,41 @@ class CrearIncidenciaController {
             Swal.fire({
                 title: 'Compartir incidencia',
                 html: `
-                    <div style="text-align: center;">
-                        <i class="fas fa-file-pdf" style="font-size: 48px; color: #e74c3c; margin-bottom: 15px; display: inline-block;"></i>
-                        <p style="margin-bottom: 20px;">El PDF se ha generado correctamente</p>
-                        <p style="font-size: 13px; color: #aaa; margin-bottom: 20px;">¿Como deseas compartirlo?</p>
-                        <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 15px;">
-                            <button id="shareWhatsAppBtn" class="btn-compartir" style="background: linear-gradient(145deg, #0f0f0f, #1a1a1a); border: 1px solid #25D366; border-radius: 8px; padding: 12px; color: white; font-weight: 600; font-family: 'Orbitron', sans-serif; text-transform: uppercase; letter-spacing: 0.5px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; transition: all 0.3s ease;">
-                                <i class="fab fa-whatsapp" style="color: #25D366; font-size: 18px;"></i> WhatsApp
-                            </button>
-                            <button id="shareEmailBtn" class="btn-compartir" style="background: linear-gradient(145deg, #0f0f0f, #1a1a1a); border: 1px solid #0077B5; border-radius: 8px; padding: 12px; color: white; font-weight: 600; font-family: 'Orbitron', sans-serif; text-transform: uppercase; letter-spacing: 0.5px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; transition: all 0.3s ease;">
-                                <i class="fas fa-envelope" style="color: #0077B5; font-size: 18px;"></i> Correo Electronico
-                            </button>
-                            <button id="shareLinkBtn" class="btn-compartir" style="background: linear-gradient(145deg, #0f0f0f, #1a1a1a); border: 1px solid var(--color-accent-primary); border-radius: 8px; padding: 12px; color: white; font-weight: 600; font-family: 'Orbitron', sans-serif; text-transform: uppercase; letter-spacing: 0.5px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; transition: all 0.3s ease;">
-                                <i class="fas fa-link" style="color: var(--color-accent-primary); font-size: 18px;"></i> Copiar Enlace
-                            </button>
-                            <button id="shareCancelBtn" class="btn-compartir" style="background: linear-gradient(145deg, #0f0f0f, #1a1a1a); border: 1px solid var(--color-border-light); border-radius: 8px; padding: 12px; color: #aaa; font-weight: 600; font-family: 'Orbitron', sans-serif; text-transform: uppercase; letter-spacing: 0.5px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; margin-top: 5px; transition: all 0.3s ease;">
-                                <i class="fas fa-times" style="color: #aaa; font-size: 18px;"></i> No compartir ahora
-                            </button>
+                    <div style="text-align:center;">
+                        <i class="fas fa-file-pdf" style="font-size:48px; color:#e74c3c;"></i>
+                        <p>PDF generado correctamente</p>
+                        <div style="display:flex; flex-direction:column; gap:10px; margin-top:15px;">
+                            <button id="shareWhatsAppBtn" class="btn-compartir" style="background:#0f0f0f; border:1px solid #25D366; border-radius:8px; padding:10px; cursor:pointer;"><i class="fab fa-whatsapp" style="color:#25D366;"></i> WhatsApp</button>
+                            <button id="shareEmailBtn" class="btn-compartir" style="background:#0f0f0f; border:1px solid #0077B5; border-radius:8px; padding:10px; cursor:pointer;"><i class="fas fa-envelope" style="color:#0077B5;"></i> Correo</button>
+                            <button id="shareLinkBtn" class="btn-compartir" style="background:#0f0f0f; border:1px solid var(--color-accent-primary); border-radius:8px; padding:10px; cursor:pointer;"><i class="fas fa-link"></i> Copiar enlace</button>
+                            <button id="shareCancelBtn" class="btn-compartir" style="background:#0f0f0f; border:1px solid #aaa; border-radius:8px; padding:10px; cursor:pointer;">Cerrar</button>
                         </div>
                     </div>
                 `,
-                icon: 'info',
-                showConfirmButton: false,
-                showCancelButton: false,
-                didOpen: () => {
-                    const tituloIncidencia = `INCIDENCIA: ${datos.sucursalNombre} - ${datos.categoriaNombre}`;
-
+                showConfirmButton: false, didOpen: () => {
+                    const titulo = `INCIDENCIA: ${datos.sucursalNombre} - ${datos.categoriaNombre}`;
                     document.getElementById('shareWhatsAppBtn').onclick = () => {
                         Swal.close();
-                        const mensajeWhatsApp = `${tituloIncidencia}\n\nSucursal: ${datos.sucursalNombre}\nRiesgo: ${this._getRiesgoTexto(datos.nivelRiesgo)}\n\nPDF de la incidencia:\n${pdfUrl}\n\n--\nPDF enviado por el sistema Centinela.`;
-                        const urlWhatsapp = `https://wa.me/?text=${encodeURIComponent(mensajeWhatsApp)}`;
-                        window.open(urlWhatsapp, '_blank');
-                        Swal.fire({
-                            icon: 'success',
-                            title: 'WhatsApp abierto',
-                            text: 'Se abrira WhatsApp con el enlace del PDF.',
-                            timer: 2500,
-                            showConfirmButton: false
-                        });
+                        window.open(`https://wa.me/?text=${encodeURIComponent(`${titulo}\n\nPDF: ${pdfUrl}`)}`, '_blank');
                         resolve('whatsapp');
                     };
-
                     document.getElementById('shareEmailBtn').onclick = async () => {
                         Swal.close();
-
-                        const { value: servicio } = await Swal.fire({
-                            title: 'Enviar por correo',
-                            text: 'Selecciona tu servicio de correo',
-                            icon: 'question',
-                            input: 'select',
-                            inputOptions: {
-                                'gmail': 'Gmail',
-                                'outlook': 'Outlook / Hotmail'
-                            },
-                            inputPlaceholder: 'Selecciona un servicio',
-                            showCancelButton: true,
-                            confirmButtonText: 'Abrir Correo',
-                            cancelButtonText: 'Cancelar',
-                            confirmButtonColor: '#ff9122'
-                        });
-
-                        if (!servicio) {
-                            resolve('cancel');
-                            return;
+                        const { value: servicio } = await Swal.fire({ title: 'Servicio', input: 'select', inputOptions: { 'gmail':'Gmail','outlook':'Outlook' }, confirmButtonText: 'Abrir' });
+                        if (servicio) {
+                            const cuerpo = encodeURIComponent(`${titulo}\n\nPDF: ${pdfUrl}`);
+                            const url = servicio === 'gmail' ? `https://mail.google.com/mail/?view=cm&fs=1&su=${encodeURIComponent(titulo)}&body=${cuerpo}` : `https://outlook.live.com/mail/0/deeplink/compose?subject=${encodeURIComponent(titulo)}&body=${cuerpo}`;
+                            window.open(url, '_blank');
                         }
-
-                        const sucursalNombre = datos.sucursalNombre;
-                        const categoriaNombre = datos.categoriaNombre;
-                        const riesgoTexto = this._getRiesgoTexto(datos.nivelRiesgo);
-                        const estadoTexto = datos.estado === 'pendiente' ? 'Pendiente' : 'Finalizada';
-                        const fechaInicio = new Date(datos.fechaHora).toLocaleDateString('es-MX');
-
-                        const tituloIncidencia = `INCIDENCIA: ${sucursalNombre} - ${categoriaNombre}`;
-
-                        const cuerpoTexto =
-                            `${tituloIncidencia}\n\n` +
-                            `Sucursal: ${sucursalNombre}\n` +
-                            `Categoria: ${categoriaNombre}\n` +
-                            `Riesgo: ${riesgoTexto}\n` +
-                            `Fecha: ${fechaInicio}\n` +
-                            `Estado: ${estadoTexto}\n\n` +
-                            `PDF de la incidencia:\n${pdfUrl}\n\n` +
-                            `--\nPDF enviado por el sistema Centinela.`;
-
-                        const asunto = encodeURIComponent(tituloIncidencia);
-                        const cuerpoCodificado = encodeURIComponent(cuerpoTexto);
-
-                        if (servicio === 'gmail') {
-                            window.open(`https://mail.google.com/mail/?view=cm&fs=1&su=${asunto}&body=${cuerpoCodificado}`, '_blank');
-                        } else if (servicio === 'outlook') {
-                            window.open(`https://outlook.live.com/mail/0/deeplink/compose?subject=${asunto}&body=${cuerpoCodificado}`, '_blank');
-                        }
-
-                        Swal.fire({
-                            icon: 'success',
-                            title: 'Correo abierto',
-                            text: 'Se abrio tu correo con el enlace del PDF.',
-                            timer: 2500,
-                            showConfirmButton: false
-                        });
                         resolve('email');
                     };
-
-                    document.getElementById('shareLinkBtn').onclick = async () => {
+                    document.getElementById('shareLinkBtn').onclick = () => {
+                        navigator.clipboard.writeText(pdfUrl);
                         Swal.close();
-                        try {
-                            await navigator.clipboard.writeText(pdfUrl);
-                            Swal.fire({
-                                icon: 'success',
-                                title: 'Enlace copiado',
-                                text: 'El enlace del PDF ha sido copiado al portapapeles',
-                                timer: 2000,
-                                showConfirmButton: false
-                            });
-                        } catch (err) {
-                            Swal.fire({
-                                icon: 'info',
-                                title: 'Enlace del PDF',
-                                html: `<input type="text" value="${pdfUrl}" style="width:100%; padding:8px; margin-top:10px; border-radius:5px; background: #1a1a1a; color: white; border: 1px solid #333;" readonly onclick="this.select()">`,
-                                confirmButtonText: 'Cerrar',
-                                confirmButtonColor: '#28a745'
-                            });
-                        }
+                        Swal.fire({ icon: 'success', title: 'Enlace copiado', timer: 1500, showConfirmButton: false });
                         resolve('link');
                     };
-
-                    document.getElementById('shareCancelBtn').onclick = () => {
-                        Swal.close();
-                        resolve('cancel');
-                    };
+                    document.getElementById('shareCancelBtn').onclick = () => { Swal.close(); resolve('cancel'); };
                 }
             });
         });
@@ -2135,367 +1505,118 @@ class CrearIncidenciaController {
         const sucursalInput = document.getElementById('sucursalIncidencia');
         const sucursalId = sucursalInput?.dataset.selectedId;
         const sucursalNombre = sucursalInput?.value;
-
-        if (!sucursalId || !sucursalNombre) {
-            console.warn('No hay sucursal seleccionada para canalizar');
-            return null;
-        }
-
-        Swal.fire({
-            title: 'Canalizando...',
-            html: '<i class="fas fa-spinner fa-spin"></i>',
-            allowOutsideClick: false,
-            showConfirmButton: false,
-            didOpen: () => Swal.showLoading()
-        });
-
+        if (!sucursalId) return null;
         try {
-            const resultado = await this.incidenciaManager.agregarCanalizacionSucursal(
-                incidenciaId,
-                sucursalId,
-                sucursalNombre,
-                this.usuarioActual.id,
-                this.usuarioActual.nombreCompleto,
-                'Canalización desde creación',
-                this.usuarioActual.organizacionCamelCase
-            );
-
+            Swal.fire({ title: 'Canalizando...', didOpen: () => Swal.showLoading(), allowOutsideClick: false });
+            const res = await this.incidenciaManager.agregarCanalizacionSucursal(incidenciaId, sucursalId, sucursalNombre, this.usuarioActual.id, this.usuarioActual.nombreCompleto, 'Canalización desde creación', this.usuarioActual.organizacionCamelCase);
             Swal.close();
-
-            if (resultado && resultado.success) {
-                await Swal.fire({
-                    icon: 'success',
-                    title: 'Canalizada',
-                    text: `La incidencia ha sido canalizada a ${sucursalNombre}`,
-                    timer: 2000,
-                    showConfirmButton: false
-                });
-
-                await this._enviarNotificacionesSucursal([{
-                    id: sucursalId,
-                    nombre: sucursalNombre
-                }], incidenciaId, incidenciaTitulo);
-
-                return {
-                    id: sucursalId,
-                    nombre: sucursalNombre
-                };
-            } else {
-                throw new Error(resultado?.message || 'Error al guardar canalización');
+            if (res?.success) {
+                await this._enviarNotificacionesSucursal([{ id: sucursalId, nombre: sucursalNombre }], incidenciaId, incidenciaTitulo);
+                return { id: sucursalId, nombre: sucursalNombre };
             }
-
+            throw new Error(res?.message || 'Error');
         } catch (error) {
             Swal.close();
-            console.error('Error guardando canalización a sucursal:', error);
-            await Swal.fire({
-                icon: 'error',
-                title: 'Error',
-                text: error.message || 'No se pudo canalizar a la sucursal'
-            });
+            console.error(error);
             return null;
         }
     }
 
     async _enviarNotificacionesSucursal(sucursales, incidenciaId, incidenciaTitulo) {
         try {
-            const notificacionSucursalManager = await this._initNotificacionSucursalManager();
-
-            if (!notificacionSucursalManager) {
-                console.error('No se pudo inicializar notificacionSucursalManager');
-                return;
-            }
-
+            const manager = await this._initNotificacionSucursalManager();
+            if (!manager) return;
             const sucursalInput = document.getElementById('sucursalIncidencia');
-            const categoriaInput = document.getElementById('categoriaIncidencia');
+            const catInput = document.getElementById('categoriaIncidencia');
             const riesgoSelect = document.getElementById('nivelRiesgo');
-
-            const sucursalesFormateadas = sucursales.map(suc => ({
-                id: suc.id,
-                nombre: suc.nombre
-            }));
-
-            Swal.fire({
-                title: 'Enviando notificaciones...',
-                text: 'Notificando a colaboradores de las sucursales y administradores',
-                allowOutsideClick: false,
-                didOpen: () => Swal.showLoading()
-            });
-
-            const resultado = await notificacionSucursalManager.notificarMultiplesSucursales({
-                sucursales: sucursalesFormateadas,
-                incidenciaId: incidenciaId,
-                incidenciaTitulo: incidenciaTitulo || 'Incidencia',
-                sucursalId: sucursalInput?.dataset.selectedId || '',
-                sucursalNombre: sucursalInput?.value || '',
-                categoriaId: categoriaInput?.dataset.selectedId || '',
-                categoriaNombre: categoriaInput?.value || '',
-                nivelRiesgo: riesgoSelect?.value || 'medio',
-                tipo: 'canalizacion',
+            await manager.notificarMultiplesSucursales({
+                sucursales: sucursales.map(s => ({ id: s.id, nombre: s.nombre })),
+                incidenciaId, incidenciaTitulo: incidenciaTitulo || 'Incidencia',
+                sucursalId: sucursalInput?.dataset.selectedId || '', sucursalNombre: sucursalInput?.value || '',
+                categoriaId: catInput?.dataset.selectedId || '', categoriaNombre: catInput?.value || '',
+                nivelRiesgo: riesgoSelect?.value || 'medio', tipo: 'canalizacion',
                 prioridad: riesgoSelect?.value === 'critico' ? 'urgente' : 'normal',
-                remitenteId: this.usuarioActual.id,
-                remitenteNombre: this.usuarioActual.nombreCompleto,
-                organizacionCamelCase: this.usuarioActual.organizacionCamelCase,
-                enviarPush: true,
-                incluirAdministradores: true
+                remitenteId: this.usuarioActual.id, remitenteNombre: this.usuarioActual.nombreCompleto,
+                organizacionCamelCase: this.usuarioActual.organizacionCamelCase, enviarPush: true, incluirAdministradores: true
             });
-
-            Swal.close();
-
-            if (resultado.success) {
-                let mensaje = `Notificaciones enviadas:`;
-                mensaje += `<br>${resultado.totalColaboradores} colaboradores en ${resultado.sucursales} sucursales`;
-                mensaje += `<br>${resultado.totalAdministradores} administradores`;
-
-                if (resultado.push && resultado.push.enviados > 0) {
-                    mensaje += `<br> Push: ${resultado.push.enviados}/${resultado.push.total} enviados`;
-                }
-
-                await Swal.fire({
-                    icon: 'success',
-                    title: 'Notificaciones enviadas',
-                    html: mensaje,
-                    timer: 4000,
-                    showConfirmButton: false
-                });
-            } else {
-                console.error('Error:', resultado.error);
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Error',
-                    text: 'No se pudieron enviar las notificaciones'
-                });
-            }
-
-        } catch (error) {
-            console.error('Error en _enviarNotificacionesSucursal:', error);
-            Swal.close();
-        }
+        } catch (error) { console.error(error); }
     }
 
     async _canalizarAreas(incidenciaId, incidenciaTitulo = '') {
-        let continuar = true;
         let areasCanalizadas = [];
-
+        let continuar = true;
         while (continuar) {
-            const areaOptions = {};
-            this.areas.forEach(area => {
-                if (!areasCanalizadas.some(a => a.id === area.id)) {
-                    areaOptions[area.id] = area.nombreArea;
-                }
-            });
-
-            if (Object.keys(areaOptions).length === 0) {
-                await Swal.fire({
-                    icon: 'info',
-                    title: 'No hay más áreas',
-                    text: 'Ya has canalizado a todas las áreas disponibles',
-                    timer: 2000,
-                    showConfirmButton: false
-                });
-                break;
-            }
-
+            const disponibles = {};
+            this.areas.forEach(area => { if (!areasCanalizadas.some(a => a.id === area.id)) disponibles[area.id] = area.nombreArea; });
+            if (!Object.keys(disponibles).length) break;
             const { value: areaId, isConfirmed } = await Swal.fire({
-                title: areasCanalizadas.length === 0 ? '¿Canalizar a un área?' : 'Canalizar a otra área',
-                text: areasCanalizadas.length === 0
-                    ? 'Selecciona el área a la que deseas canalizar esta incidencia'
-                    : `Áreas actuales: ${areasCanalizadas.map(a => a.nombre).join(', ')}\n\nSelecciona otra área (o cancela para terminar)`,
-                input: 'select',
-                inputOptions: areaOptions,
-                inputPlaceholder: 'Selecciona un área',
-                showCancelButton: true,
-                confirmButtonText: 'CANALIZAR',
-                cancelButtonText: areasCanalizadas.length === 0 ? 'NO CANALIZAR' : 'FINALIZAR',
-                confirmButtonColor: '#28a745',
-                inputValidator: (value) => {
-                    if (!value) {
-                        return 'Debes seleccionar un área';
-                    }
-                }
+                title: areasCanalizadas.length ? 'Canalizar a otra área' : 'Selecciona un área',
+                input: 'select', inputOptions: disponibles, showCancelButton: true,
+                confirmButtonText: 'Canalizar', cancelButtonText: areasCanalizadas.length ? 'Finalizar' : 'Saltar'
             });
-
-            if (!isConfirmed) {
-                continuar = false;
-                break;
-            }
-
-            if (areaId) {
-                const area = this.areas.find(a => a.id === areaId);
-                if (area) {
-                    areasCanalizadas.push({
-                        id: area.id,
-                        nombre: area.nombreArea
-                    });
-
-                    try {
-                        const resultado = await this.incidenciaManager.agregarCanalizacion(
-                            incidenciaId,
-                            area.id,
-                            area.nombreArea,
-                            this.usuarioActual.id,
-                            this.usuarioActual.nombreCompleto,
-                            'Canalización desde creación',
-                            this.usuarioActual.organizacionCamelCase
-                        );
-
-                        if (resultado && resultado.success) {
-                            await Swal.fire({
-                                icon: 'success',
-                                title: 'Área agregada',
-                                text: `La incidencia ha sido canalizada a ${area.nombreArea}`,
-                                timer: 1500,
-                                showConfirmButton: false
-                            });
-                        } else {
-                            throw new Error(resultado?.message || 'Error al guardar canalización');
-                        }
-
-                    } catch (error) {
-                        console.error('Error guardando canalización:', error);
-                        await Swal.fire({
-                            icon: 'error',
-                            title: 'Error',
-                            text: error.message || 'No se pudo canalizar a esta área'
-                        });
-                    }
-                }
+            if (!isConfirmed || !areaId) { continuar = false; break; }
+            const area = this.areas.find(a => a.id === areaId);
+            if (area) {
+                try {
+                    const res = await this.incidenciaManager.agregarCanalizacion(incidenciaId, area.id, area.nombreArea, this.usuarioActual.id, this.usuarioActual.nombreCompleto, 'Canalización desde creación', this.usuarioActual.organizacionCamelCase);
+                    if (res?.success) {
+                        areasCanalizadas.push({ id: area.id, nombre: area.nombreArea });
+                        Swal.fire({ icon: 'success', title: 'Área agregada', timer: 1500, showConfirmButton: false });
+                    } else throw new Error(res?.message);
+                } catch (error) { console.error(error); Swal.fire({ icon: 'error', title: 'Error', text: error.message }); }
             }
         }
-
-        if (areasCanalizadas.length > 0) {
-            await this._enviarNotificacionesCanalizacion(areasCanalizadas, incidenciaId, incidenciaTitulo);
-        }
-
+        if (areasCanalizadas.length) await this._enviarNotificacionesCanalizacion(areasCanalizadas, incidenciaId, incidenciaTitulo);
         return areasCanalizadas;
     }
 
     async _enviarNotificacionesCanalizacion(areas, incidenciaId, incidenciaTitulo) {
         try {
-            const notificacionManager = await this._initNotificacionManager();
-
-            if (!notificacionManager) {
-                console.error('No se pudo inicializar notificacionManager');
-                return;
-            }
-
+            const manager = await this._initNotificacionManager();
+            if (!manager) return;
             const sucursalInput = document.getElementById('sucursalIncidencia');
-            const categoriaInput = document.getElementById('categoriaIncidencia');
+            const catInput = document.getElementById('categoriaIncidencia');
             const riesgoSelect = document.getElementById('nivelRiesgo');
-
-            const areasFormateadas = areas.map(area => ({
-                id: area.id,
-                nombre: area.nombre
-            }));
-
-            Swal.fire({
-                title: 'Enviando notificaciones...',
-                text: 'Notificando a colaboradores de las áreas y administradores',
-                allowOutsideClick: false,
-                didOpen: () => Swal.showLoading()
-            });
-
-            const resultado = await notificacionManager.notificarMultiplesAreas({
-                areas: areasFormateadas,
-                incidenciaId: incidenciaId,
-                incidenciaTitulo: incidenciaTitulo || 'Incidencia',
-                sucursalId: sucursalInput?.dataset.selectedId || '',
-                sucursalNombre: sucursalInput?.value || '',
-                categoriaId: categoriaInput?.dataset.selectedId || '',
-                categoriaNombre: categoriaInput?.value || '',
-                nivelRiesgo: riesgoSelect?.value || 'medio',
-                tipo: 'canalizacion',
+            await manager.notificarMultiplesAreas({
+                areas: areas.map(a => ({ id: a.id, nombre: a.nombre })),
+                incidenciaId, incidenciaTitulo: incidenciaTitulo || 'Incidencia',
+                sucursalId: sucursalInput?.dataset.selectedId || '', sucursalNombre: sucursalInput?.value || '',
+                categoriaId: catInput?.dataset.selectedId || '', categoriaNombre: catInput?.value || '',
+                nivelRiesgo: riesgoSelect?.value || 'medio', tipo: 'canalizacion',
                 prioridad: riesgoSelect?.value === 'critico' ? 'urgente' : 'normal',
-                remitenteId: this.usuarioActual.id,
-                remitenteNombre: this.usuarioActual.nombreCompleto,
-                organizacionCamelCase: this.usuarioActual.organizacionCamelCase,
-                enviarPush: true
+                remitenteId: this.usuarioActual.id, remitenteNombre: this.usuarioActual.nombreCompleto,
+                organizacionCamelCase: this.usuarioActual.organizacionCamelCase, enviarPush: true
             });
-
-            Swal.close();
-
-            if (resultado.success) {
-                let mensaje = `Notificaciones enviadas:`;
-                mensaje += `<br> ${resultado.totalColaboradores} colaboradores en ${resultado.areas} áreas`;
-                mensaje += `<br> ${resultado.totalAdministradores} administradores`;
-
-                if (resultado.push && resultado.push.enviados > 0) {
-                    mensaje += `<br>📱 Push: ${resultado.push.enviados}/${resultado.push.total} enviados`;
-                }
-
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Notificaciones enviadas',
-                    html: mensaje,
-                    timer: 4000,
-                    showConfirmButton: false
-                });
-            } else {
-                console.error('Error:', resultado.error);
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Error',
-                    text: 'No se pudieron enviar las notificaciones'
-                });
-            }
-
-        } catch (error) {
-            console.error('Error en _enviarNotificacionesCanalizacion:', error);
-            Swal.close();
-        }
+        } catch (error) { console.error(error); }
     }
 
     _volverALista() {
-        this.imagenesSeleccionadas.forEach(img => {
-            if (img.preview) URL.revokeObjectURL(img.preview);
-        });
+        this.imagenesSeleccionadas.forEach(img => URL.revokeObjectURL(img.preview));
         window.location.href = '../incidencias/incidencias.html';
     }
 
     _cancelarCreacion() {
-        Swal.fire({
-            title: '¿Cancelar?',
-            text: 'Los cambios no guardados se perderán',
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonText: 'Sí, cancelar',
-            cancelButtonText: 'No, continuar'
-        }).then((result) => {
-            if (result.isConfirmed) {
-                this.imagenesSeleccionadas.forEach(img => {
-                    if (img.preview) URL.revokeObjectURL(img.preview);
-                });
-                this._volverALista();
-            }
+        Swal.fire({ title: '¿Cancelar?', text: 'Los cambios se perderán', icon: 'warning', showCancelButton: true, confirmButtonText: 'Sí', cancelButtonText: 'No' }).then(res => {
+            if (res.isConfirmed) { this.imagenesSeleccionadas.forEach(img => URL.revokeObjectURL(img.preview)); this._volverALista(); }
         });
     }
 
-    _mostrarError(mensaje) {
-        this._mostrarNotificacion(mensaje, 'error');
-    }
-
+    _mostrarError(mensaje) { this._mostrarNotificacion(mensaje, 'error'); }
     _mostrarNotificacion(mensaje, tipo = 'info', duracion = 5000) {
-        Swal.fire({
-            title: tipo === 'success' ? 'Éxito' : tipo === 'error' ? 'Error' : tipo === 'warning' ? 'Advertencia' : 'Información',
-            text: mensaje,
-            icon: tipo,
-            timer: duracion,
-            timerProgressBar: true,
-            showConfirmButton: false
-        });
+        Swal.fire({ title: tipo === 'success' ? 'Éxito' : tipo === 'error' ? 'Error' : 'Información', text: mensaje, icon: tipo, timer: duracion, timerProgressBar: true, showConfirmButton: false });
     }
-
-    _escapeHTML(text) {
-        if (!text) return '';
-        return String(text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
-    }
-
+    _escapeHTML(text) { return String(text || '').replace(/[&<>]/g, m => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;' }[m])); }
     _getRiesgoTexto(riesgo) {
-        if (this.nivelesRiesgoOptions && this.nivelesRiesgoOptions.length > 0) {
+        if (this.nivelesRiesgoOptions?.length) {
             const nivel = this.nivelesRiesgoOptions.find(n => n.id === riesgo);
             if (nivel && nivel.id !== '__otro__') return nivel.nombre;
         }
-        const riesgos = { 'bajo': 'Bajo', 'medio': 'Medio', 'alto': 'Alto', 'critico': 'Crítico' };
-        return riesgos[riesgo] || riesgo;
+        const map = { bajo: 'Bajo', medio: 'Medio', alto: 'Alto', critico: 'Crítico' };
+        return map[riesgo] || riesgo;
+    }
+    _obtenerTipoEventoSeleccionado() {
+        const btn = document.querySelector('.tipo-evento-btn.active');
+        return btn ? btn.dataset.tipo : null;
     }
 }
 
