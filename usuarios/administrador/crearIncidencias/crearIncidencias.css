@@ -1373,7 +1373,18 @@ body {
     margin-top: 5px;
     z-index: 100000 !important;
 }
-
+.sugerencias {
+    position: fixed;          /* ← cambia de absolute a fixed */
+    background: #1a1a2e;
+    border: 1px solid #00cfff;
+    border-radius: 16px;
+    max-width: 100%;
+    min-width: 240px;
+    z-index: 10000;           /* valor alto para que esté por encima de todo */
+    display: none;
+    max-height: 280px;
+    overflow-y: auto;
+}
 .sugerencia-item {
     padding: 12px 15px;
     cursor: pointer;

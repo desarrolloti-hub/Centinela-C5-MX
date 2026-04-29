@@ -1,4 +1,4 @@
-// crearIncidencias.js - VERSIÓN COMPLETA CON AUTOCOMPLETADO Y GUARDADO DE FRASES
+// crearIncidencias.js - VERSIÓN COMPLETA CON AUTOCOMPLETADO PREDICTIVO FUNCIONAL
 // ✅ Canalizaciones a áreas y sucursales
 // ✅ Notificaciones push
 // ✅ Compartir PDF (WhatsApp, Email, Link)
@@ -9,7 +9,7 @@
 // ✅ Organización siempre visible
 // ✅ AUTOCOMPLETADO PREDICTIVO con <auto-descripcion>
 // ✅ Guardado automático de frases en colección frasesAutoCompletar
-// ✅ Sin recursión en niveles de riesgo
+// ✅ Actualización dinámica de atributos (categoría-id, subcategoria-id)
 
 const LIMITES = {
     DETALLES_INCIDENCIA: 1000
@@ -51,6 +51,8 @@ class CrearIncidenciaController {
         
         // Bandera para evitar recursión en riesgos
         this.actualizandoRiesgo = false;
+        this.actualizandoSubcategoria = false; // nueva bandera
+        this.actualizandoAtributos = false;    // nueva bandera
 
         this._init();
     }
@@ -112,6 +114,10 @@ class CrearIncidenciaController {
                 const { FrasesAutoCompletarManager } = await import('/clases/frasesAutoCompletar.js');
                 this.frasesManager = new FrasesAutoCompletarManager();
                 console.log('✅ FrasesAutoCompletarManager inicializado');
+                // Crear frase de ejemplo si la colección está vacía (para pruebas)
+                if (this.usuarioActual && this.usuarioActual.organizacionCamelCase) {
+                    await this.frasesManager.crearFraseEjemploSiVacia(this.usuarioActual.organizacionCamelCase);
+                }
             } catch (error) {
                 console.error('Error inicializando FrasesAutoCompletarManager:', error);
                 this.frasesManager = null;
@@ -203,70 +209,72 @@ class CrearIncidenciaController {
             this._mostrarError('Error al inicializar: ' + error.message);
         }
     }
-_configurarOrganizacion() {
-    const orgInput = document.getElementById('organization');
-    if (orgInput) {
-        orgInput.value = this.usuarioActual.organizacion;
-    }
-}
 
-_inicializarDateTimePicker() {
-    const fechaInput = document.getElementById('fechaHoraIncidencia');
-    if (!fechaInput) return;
-    if (typeof flatpickr !== 'undefined') {
-        this.flatpickrInstance = flatpickr(fechaInput, {
-            enableTime: true,
-            dateFormat: "d/m/Y H:i",
-            time_24hr: true,
-            locale: "es",
-            minuteIncrement: 1,
-            maxDate: new Date(),
-            disableMobile: true
-        });
+    _configurarOrganizacion() {
+        const orgInput = document.getElementById('organization');
+        if (orgInput) {
+            orgInput.value = this.usuarioActual.organizacion;
+        }
     }
-    this._configurarBotonesTipoEvento();
-}
 
-_configurarBotonesTipoEvento() {
-    const botones = document.querySelectorAll('.tipo-evento-btn');
-    let tipoSeleccionado = null;
-    const desactivarTodos = () => botones.forEach(btn => btn.classList.remove('active'));
-    botones.forEach(btn => {
-        btn.addEventListener('click', () => {
-            const tipo = btn.dataset.tipo;
-            if (tipoSeleccionado === tipo) {
-                desactivarTodos();
-                tipoSeleccionado = null;
-                this.tipoEventoSeleccionado = null;
-                this.fechaHoraTiempoRealFija = null;
-                const fechaInput = document.getElementById('fechaHoraIncidencia');
-                if (fechaInput) {
-                    fechaInput.value = '';
-                    fechaInput.readOnly = false;
-                    fechaInput.style.backgroundColor = '';
-                    if (this.flatpickrInstance) {
-                        this.flatpickrInstance.destroy();
-                        this.flatpickrInstance = flatpickr(fechaInput, {
-                            enableTime: true, dateFormat: "d/m/Y H:i", time_24hr: true, locale: "es",
-                            minuteIncrement: 1, maxDate: new Date(), disableMobile: true
-                        });
+    _inicializarDateTimePicker() {
+        const fechaInput = document.getElementById('fechaHoraIncidencia');
+        if (!fechaInput) return;
+        if (typeof flatpickr !== 'undefined') {
+            this.flatpickrInstance = flatpickr(fechaInput, {
+                enableTime: true,
+                dateFormat: "d/m/Y H:i",
+                time_24hr: true,
+                locale: "es",
+                minuteIncrement: 1,
+                maxDate: new Date(),
+                disableMobile: true
+            });
+        }
+        this._configurarBotonesTipoEvento();
+    }
+
+    _configurarBotonesTipoEvento() {
+        const botones = document.querySelectorAll('.tipo-evento-btn');
+        let tipoSeleccionado = null;
+        const desactivarTodos = () => botones.forEach(btn => btn.classList.remove('active'));
+        botones.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const tipo = btn.dataset.tipo;
+                if (tipoSeleccionado === tipo) {
+                    desactivarTodos();
+                    tipoSeleccionado = null;
+                    this.tipoEventoSeleccionado = null;
+                    this.fechaHoraTiempoRealFija = null;
+                    const fechaInput = document.getElementById('fechaHoraIncidencia');
+                    if (fechaInput) {
+                        fechaInput.value = '';
+                        fechaInput.readOnly = false;
+                        fechaInput.style.backgroundColor = '';
+                        if (this.flatpickrInstance) {
+                            this.flatpickrInstance.destroy();
+                            this.flatpickrInstance = flatpickr(fechaInput, {
+                                enableTime: true, dateFormat: "d/m/Y H:i", time_24hr: true, locale: "es",
+                                minuteIncrement: 1, maxDate: new Date(), disableMobile: true
+                            });
+                        }
                     }
+                } else {
+                    desactivarTodos();
+                    btn.classList.add('active');
+                    tipoSeleccionado = tipo;
+                    this.tipoEventoSeleccionado = tipo;
                 }
-            } else {
-                desactivarTodos();
-                btn.classList.add('active');
-                tipoSeleccionado = tipo;
-                this.tipoEventoSeleccionado = tipo;
-            }
-            document.dispatchEvent(new Event('tipoEventoChanged'));
+                document.dispatchEvent(new Event('tipoEventoChanged'));
+            });
         });
-    });
-}
+    }
 
-_obtenerTipoEventoSeleccionado() {
-    const btn = document.querySelector('.tipo-evento-btn.active');
-    return btn ? btn.dataset.tipo : null;
-}
+    _obtenerTipoEventoSeleccionado() {
+        const btn = document.querySelector('.tipo-evento-btn.active');
+        return btn ? btn.dataset.tipo : null;
+    }
+
     // ==================== NUEVO: INICIALIZACIÓN DEL AUTOCOMPLETADO ====================
     _inicializarAutoCompletado() {
         this.descripcionComponent = document.getElementById('detallesIncidencia');
@@ -277,6 +285,7 @@ _obtenerTipoEventoSeleccionado() {
         const org = this.usuarioActual?.organizacionCamelCase || '';
         this.descripcionComponent.setAttribute('organizacion', org);
         
+        // Escuchar eventos del componente
         this.descripcionComponent.addEventListener('input', (e) => {
             let texto = '';
             if (e.detail?.texto) texto = e.detail.texto;
@@ -289,11 +298,50 @@ _obtenerTipoEventoSeleccionado() {
         
         const catInput = document.getElementById('categoriaIncidencia');
         if (catInput) {
-            new MutationObserver(() => document.dispatchEvent(new Event('categoriaCambiada')))
-                .observe(catInput, { attributes: true });
+            new MutationObserver(() => {
+                document.dispatchEvent(new Event('categoriaCambiada'));
+                this._actualizarAtributosAutoDescripcion(
+                    catInput.dataset.selectedId,
+                    document.getElementById('subcategoriaIncidencia')?.value
+                );
+            }).observe(catInput, { attributes: true });
         }
         console.log('✅ Autocompletado listo con org:', org);
     }
+
+    // ==================== ACTUALIZAR ATRIBUTOS DEL AUTO-DESCRIPCION ====================
+    _actualizarAtributosAutoDescripcion(categoriaId, subcategoriaId) {
+    // Evita ejecución recursiva
+    if (this.actualizandoAtributos) return;
+    if (!this.descripcionComponent) return;
+
+    // Obtener valores actuales del componente
+    const catActual = this.descripcionComponent.getAttribute('categoria-id');
+    const subActual = this.descripcionComponent.getAttribute('subcategoria-id');
+
+    const nuevaCat = (categoriaId && categoriaId !== '') ? categoriaId : null;
+    const nuevaSub = (subcategoriaId && subcategoriaId !== '') ? subcategoriaId : null;
+
+    // Si no hay cambios reales, salir
+    if (catActual === nuevaCat && subActual === nuevaSub) return;
+
+    this.actualizandoAtributos = true;
+    try {
+        if (nuevaCat) {
+            this.descripcionComponent.setAttribute('categoria-id', nuevaCat);
+        } else {
+            this.descripcionComponent.removeAttribute('categoria-id');
+        }
+        if (nuevaSub) {
+            this.descripcionComponent.setAttribute('subcategoria-id', nuevaSub);
+        } else {
+            this.descripcionComponent.removeAttribute('subcategoria-id');
+        }
+        console.log(`🔁 Atributos auto-descripcion actualizados: cat=${nuevaCat}, sub=${nuevaSub}`);
+    } finally {
+        this.actualizandoAtributos = false;
+    }
+}
 
     // ==================== FORMULARIO ACUMULATIVO ====================
     _inicializarFormularioAcumulativo() {
@@ -350,6 +398,11 @@ _obtenerTipoEventoSeleccionado() {
                         const tieneCategoria = categoriaInput.dataset.selectedId && categoriaInput.dataset.selectedId !== '';
                         if (tieneCategoria) {
                             this._mostrarPaso(3);
+                            // Actualizar atributos del auto-descripcion con la nueva categoría
+                            this._actualizarAtributosAutoDescripcion(
+                                categoriaInput.dataset.selectedId,
+                                document.getElementById('subcategoriaIncidencia')?.value
+                            );
                         }
                     }
                 });
@@ -363,6 +416,11 @@ _obtenerTipoEventoSeleccionado() {
             subcategoriaSelect.addEventListener('change', () => {
                 this._mostrarPaso(4);
                 this._aplicarRiesgoAutomatico();
+                // Actualizar atributos del auto-descripcion con la subcategoría seleccionada
+                this._actualizarAtributosAutoDescripcion(
+                    document.getElementById('categoriaIncidencia')?.dataset.selectedId,
+                    subcategoriaSelect.value
+                );
             });
         }
 
@@ -452,7 +510,6 @@ _obtenerTipoEventoSeleccionado() {
         fechaInput.style.opacity = '1';
         fechaInput.style.borderColor = '';
 
-        // Fecha actual para preseleccionar
         const ahora = new Date();
         const day = String(ahora.getDate()).padStart(2, '0');
         const month = String(ahora.getMonth() + 1).padStart(2, '0');
@@ -489,7 +546,6 @@ _obtenerTipoEventoSeleccionado() {
             }
         });
 
-        // Abrir el selector automáticamente después de un pequeño retraso
         setTimeout(() => {
             if (this.flatpickrInstance) {
                 this.flatpickrInstance.open();
@@ -558,7 +614,6 @@ _obtenerTipoEventoSeleccionado() {
         const estadoValido = document.getElementById('estadoIncidencia')?.value !== '';
         const fechaValida = document.getElementById('fechaHoraIncidencia')?.value !== '';
 
-        // 👇 Validación con el componente de autocompletado
         let descripcionValida = false;
         if (this.descripcionComponent && this.descripcionComponent.value !== undefined) {
             const texto = this.descripcionComponent.value?.trim() || '';
@@ -569,8 +624,8 @@ _obtenerTipoEventoSeleccionado() {
             descripcionValida = texto.length >= 10 && texto.length <= LIMITES.DETALLES_INCIDENCIA;
         }
 
-        const todoCompleto = tipoEventoValido && sucursalValida && categoriaValida &&
-            riesgoValido && estadoValido && fechaValida && descripcionValida;
+ const todoCompleto = tipoEventoValido && sucursalValida && categoriaValida &&
+    riesgoValido && estadoValido && fechaValida && descripcionValida;
 
         const botonesContainer = document.getElementById('originalButtons');
         const seccionImagenes = document.getElementById('seccionImagenesWrapper');
@@ -643,18 +698,30 @@ _obtenerTipoEventoSeleccionado() {
     }
 
     _mostrarRiesgoAsignadoUnico(riesgoId, riesgoNombre) {
-        const riesgoSelect = document.getElementById('nivelRiesgo');
-        if (!riesgoSelect) return;
+    const riesgoSelect = document.getElementById('nivelRiesgo');
+    if (!riesgoSelect) return;
 
-        riesgoSelect.innerHTML = `<option value="${riesgoId}" selected>${this._escapeHTML(riesgoNombre)} (Asignado Automáticamente)</option>`;
-        riesgoSelect.disabled = true;
-        riesgoSelect.classList.add('field-disabled');
+    // Guardar referencia al listener original (si existe)
+    const originalOnChange = riesgoSelect.onchange;
+    // Deshabilitar temporalmente el evento change para evitar recursión
+    riesgoSelect.onchange = null;
 
+    // Construir opción única
+    riesgoSelect.innerHTML = `<option value="${riesgoId}" selected>${this._escapeHTML(riesgoNombre)} (Asignado Automáticamente)</option>`;
+    riesgoSelect.disabled = true;
+    riesgoSelect.classList.add('field-disabled');
+
+    // Restaurar el listener (si había uno)
+    if (originalOnChange) riesgoSelect.onchange = originalOnChange;
+
+    // Solo disparar el evento si el valor realmente cambió
+    if (riesgoSelect.value !== riesgoId) {
         const changeEvent = new Event('change', { bubbles: true });
         riesgoSelect.dispatchEvent(changeEvent);
-
-        this._mostrarPaso(5);
     }
+
+    this._mostrarPaso(5);
+}
 
     _mostrarListaCompletaRiesgos() {
         const riesgoSelect = document.getElementById('nivelRiesgo');
@@ -981,11 +1048,6 @@ _obtenerTipoEventoSeleccionado() {
             hour: '2-digit',
             minute: '2-digit'
         });
-    }
-
-    _obtenerTipoEventoSeleccionado() {
-        const btnActivo = document.querySelector('.tipo-evento-btn.active');
-        return btnActivo ? btnActivo.dataset.tipo : null;
     }
 
     // ==================== CONFIGURAR BOTONES TIPO EVENTO ====================
@@ -1357,14 +1419,12 @@ _obtenerTipoEventoSeleccionado() {
 
     // ==================== VALIDACIONES ====================
     _inicializarValidaciones() {
-        // El componente ya se maneja en _inicializarAutoCompletado, pero añadimos eventos extra
         if (this.descripcionComponent) {
             this.descripcionComponent.addEventListener('input', () => {
                 this._validarLongitudCampoCompleto();
                 this._verificarBotonesFinales();
             });
         } else {
-            // Fallback por si hay un textarea normal
             const detallesTextarea = document.getElementById('detallesIncidenciaTextarea');
             if (detallesTextarea) {
                 detallesTextarea.maxLength = LIMITES.DETALLES_INCIDENCIA;
@@ -1447,12 +1507,23 @@ _obtenerTipoEventoSeleccionado() {
                 }
             });
 
+            // Paso 3: Subcategoría -> riesgo
             const subcategoriaSelect = document.getElementById('subcategoriaIncidencia');
             if (subcategoriaSelect) {
-                subcategoriaSelect.addEventListener('change', () => {
-                    this._aplicarRiesgoAutomatico();
-                    const event = new Event('change', { bubbles: true });
-                    subcategoriaSelect.dispatchEvent(event);
+                subcategoriaSelect.addEventListener('change', async () => {
+                    // Evitar recursión
+                    if (this.actualizandoSubcategoria) return;
+                    this.actualizandoSubcategoria = true;
+                    try {
+                        this._mostrarPaso(4);
+                        await this._aplicarRiesgoAutomatico();
+                        this._actualizarAtributosAutoDescripcion(
+                            document.getElementById('categoriaIncidencia')?.dataset.selectedId,
+                            subcategoriaSelect.value
+                        );
+                    } finally {
+                        this.actualizandoSubcategoria = false;
+                    }
                 });
             }
 
@@ -1895,7 +1966,6 @@ _obtenerTipoEventoSeleccionado() {
             return;
         }
 
-        // 👇 OBTENER DESCRIPCIÓN DESDE EL COMPONENTE
         let detalles = '';
         if (this.descripcionComponent && this.descripcionComponent.value !== undefined) {
             detalles = this.descripcionComponent.value.trim();
@@ -2008,15 +2078,15 @@ _obtenerTipoEventoSeleccionado() {
             let imagenesSubidas = [];
 
             // 👇 GUARDAR LA FRASE EN frasesAutoCompletar 👇
-           if (this.frasesManager && datos.detalles && datos.categoriaId) {
-            await this.frasesManager.guardarFrase(
-                datos.detalles,           // texto
-                datos.categoriaId,        // categoriaId
-                datos.subcategoriaId,     // subcategoriaId (puede ser "")
-                this.usuarioActual.organizacionCamelCase,  // organizacion
-                this.usuarioActual
-            );
-        } else {
+            if (this.frasesManager && datos.detalles && datos.categoriaId) {
+                await this.frasesManager.guardarFrase(
+                    datos.detalles,
+                    datos.categoriaId,
+                    datos.subcategoriaId,
+                    this.usuarioActual.organizacionCamelCase,
+                    this.usuarioActual
+                );
+            } else {
                 console.warn('⚠️ No se pudo guardar la frase: faltan datos o manager no disponible');
             }
 
@@ -2200,7 +2270,7 @@ _obtenerTipoEventoSeleccionado() {
                         Swal.fire({
                             icon: 'success',
                             title: 'WhatsApp abierto',
-                            text: 'Se abrira WhatsApp con el enlace del PDF.',
+                            text: 'Se abrirá WhatsApp con el enlace del PDF.',
                             timer: 2500,
                             showConfirmButton: false
                         });
@@ -2261,7 +2331,7 @@ _obtenerTipoEventoSeleccionado() {
                         Swal.fire({
                             icon: 'success',
                             title: 'Correo abierto',
-                            text: 'Se abrio tu correo con el enlace del PDF.',
+                            text: 'Se abrió tu correo con el enlace del PDF.',
                             timer: 2500,
                             showConfirmButton: false
                         });
