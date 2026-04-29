@@ -1,14 +1,13 @@
-// autoDescripcion.js - Componente con sugerencias desde Firestore + palabras locales
+// autoDescripcion.js - Con ghost text siempre visible
 import { FrasesAutoCompletarManager } from '/clases/frasesAutoCompletar.js';
 
-// 📚 Lista de palabras comunes para autocompletado local (sin conexión a BD)
-const PALABRAS_COMUNES = [
+const DICCIONARIO_LOCAL = [
     "robo", "asalto", "daño", "vandalismo", "fuga", "accidente", "incendio",
     "falla eléctrica", "fuga de gas", "inundación", "violación de perímetro",
     "alerta sísmica", "persona sospechosa", "vehículo sospechoso", "golpe",
     "rotura", "mal funcionamiento", "hurto", "extorsión", "amenaza",
     "lesionado", "desmayo", "caída", "emergencia médica", "corto circuito",
-    "intento de robo", "daño estructural", "pérdida de energía", "fuga de agua"
+    "intento de robo", "daño estructural", "pérdida de energía"
 ];
 
 class AutoDescripcion extends HTMLElement {
@@ -16,10 +15,10 @@ class AutoDescripcion extends HTMLElement {
         super();
         this.attachShadow({ mode: 'open' });
         this.frasesManager = null;
-        this.sugerenciaActual = "";          // texto completo que se sugiere (ghost)
-        this.frasesCoincidentes = [];         // lista de sugerencias actuales (para dropdown)
-        this.indiceSeleccionado = -1;         // índice seleccionado en el dropdown
-        this.ultimoTexto = "";                // para evitar procesar el mismo input múltiples veces
+        this.sugerenciaActual = "";
+        this.frasesCoincidentes = [];
+        this.indiceSeleccionado = -1;
+        this.ultimoTexto = "";
     }
 
     static get observedAttributes() {
@@ -29,32 +28,24 @@ class AutoDescripcion extends HTMLElement {
     async connectedCallback() {
         try {
             this.frasesManager = new FrasesAutoCompletarManager();
-            console.log('✅ FrasesManager inicializado en auto-descripcion');
         } catch (error) {
-            console.error('❌ Error al inicializar FrasesManager:', error);
+            console.warn('⚠️ FrasesManager no disponible', error);
         }
-
         this.render();
         this.textarea = this.shadowRoot.querySelector('textarea');
         this.ghostDiv = this.shadowRoot.querySelector('.ghost-text');
         this.sugerenciasDiv = this.shadowRoot.querySelector('.sugerencias');
-
-        // Eventos del textarea
         this.textarea.addEventListener('input', () => this.onInput());
         this.textarea.addEventListener('keydown', (e) => this.onKeyDown(e));
         this.textarea.addEventListener('blur', () => {
-            setTimeout(() => { this.ocultarSugerenciasYGhost(); }, 200);
+            setTimeout(() => this.ocultarSugerenciasYGhost(), 200);
         });
-
-        const org = this.getAttribute('organizacion');
-        if (org) console.log(`📁 auto-descripcion inicializado con organización: ${org}`);
     }
 
     attributeChangedCallback(name, oldValue, newValue) {
         if (oldValue === newValue) return;
-        console.log(`🔄 Atributo ${name} cambiado: ${newValue}`);
         if (this.textarea && this.textarea.value.length >= 2) {
-            this.onInput();  // refrescar sugerencias con nuevos filtros
+            this.onInput();
         }
     }
 
@@ -95,12 +86,13 @@ class AutoDescripcion extends HTMLElement {
                 }
                 .sugerencias {
                     position: absolute;
+                    top: 100%;
+                    left: 0;
+                    width: 100%;
                     background: #1a1a2e;
                     border: 1px solid #00cfff;
                     border-radius: 16px;
-                    max-width: 100%;
-                    min-width: 240px;
-                    z-index: 1000;
+                    z-index: 10000;
                     display: none;
                     max-height: 280px;
                     overflow-y: auto;
@@ -119,19 +111,15 @@ class AutoDescripcion extends HTMLElement {
                     color: #aaa;
                     cursor: default;
                 }
-                .sugerencias .no-results:hover {
-                    background: transparent;
-                }
             </style>
             <div class="wrapper">
-                <textarea rows="5" placeholder="Describe la incidencia... (escribe, usa ↑/↓ y presiona Tab para autocompletar)"></textarea>
+                <textarea rows="5" placeholder="Describe la incidencia... (escribe, usa ↑/↓, presiona Tab para autocompletar)"></textarea>
                 <div class="ghost-text"></div>
             </div>
             <div class="sugerencias"></div>
         `;
     }
 
-    // ================== LÓGICA DE SUGERENCIAS COMBINADAS ==================
     async onInput() {
         const texto = this.textarea.value;
         if (texto === this.ultimoTexto) return;
@@ -142,88 +130,63 @@ class AutoDescripcion extends HTMLElement {
             return;
         }
 
-        // 1️⃣ Obtener sugerencias desde Firestore (si el manager está disponible)
-        let frasesFirestore = [];
         const organizacion = this.getAttribute('organizacion');
         const categoriaId = this.getAttribute('categoria-id') || '';
         const subcategoriaId = this.getAttribute('subcategoria-id') || '';
 
+        let frasesFirestore = [];
         if (organizacion && this.frasesManager) {
             try {
                 frasesFirestore = await this.frasesManager.obtenerFrasesSugeridas(organizacion, categoriaId, subcategoriaId, 10);
-                console.log(`📚 Frases Firestore: ${frasesFirestore.length}`);
-            } catch (error) {
-                console.warn('Error obteniendo frases de Firestore (se usará solo modo local):', error);
-            }
+            } catch (error) {}
         }
 
-        // 2️⃣ Generar sugerencias locales basadas en la última palabra
         const palabras = texto.split(/\s+/);
         const ultimaPalabra = palabras[palabras.length - 1];
         const textoLower = texto.toLowerCase();
 
         let sugerenciasLocales = [];
         if (ultimaPalabra && ultimaPalabra.length >= 2) {
-            sugerenciasLocales = PALABRAS_COMUNES.filter(palabra =>
-                palabra.toLowerCase().startsWith(ultimaPalabra.toLowerCase())
-            ).map(p => p); // solo la palabra, pero podemos convertir en frases completas si se desea
+            const coincidenciasPalabra = DICCIONARIO_LOCAL.filter(p =>
+                p.toLowerCase().startsWith(ultimaPalabra.toLowerCase())
+            );
+            sugerenciasLocales = coincidenciasPalabra.map(sug => {
+                const nuevasPalabras = [...palabras];
+                nuevasPalabras[nuevasPalabras.length - 1] = sug;
+                return nuevasPalabras.join(' ');
+            });
         }
 
-        // 3️⃣ Combinar: primero las frases de Firestore (coincidencia parcial o completa)
-        let frasesCombinadas = [];
-        
-        // Frases de Firestore que contengan el texto actual (coincidencia en cualquier parte)
-        const frasesFirestoreCoincidentes = frasesFirestore
+        const firestoreMatch = frasesFirestore
             .filter(f => f.texto.toLowerCase().includes(textoLower))
             .map(f => f.texto);
-        
-        // Sugerencias locales que coinciden exactamente con la última palabra (para completar palabras simples)
-        // Pero también podemos mostrar frases completas que comiencen con la última palabra
-        const sugerenciasLocalesFrase = sugerenciasLocales.map(p => {
-            // Reemplazar la última palabra del texto actual por la sugerencia completa
-            const palabrasTemp = [...palabras];
-            palabrasTemp[palabrasTemp.length - 1] = p;
-            return palabrasTemp.join(' ');
-        });
 
-        // Unir sin duplicados
-        const conjunto = new Set([...frasesFirestoreCoincidentes, ...sugerenciasLocalesFrase]);
-        frasesCombinadas = Array.from(conjunto);
+        const todas = [...new Set([...firestoreMatch, ...sugerenciasLocales])];
 
-        if (frasesCombinadas.length === 0) {
+        if (todas.length === 0) {
             this.ocultarSugerenciasYGhost();
             return;
         }
 
-        // Guardar lista para navegación
-        this.frasesCoincidentes = frasesCombinadas;
+        this.frasesCoincidentes = todas;
         this.indiceSeleccionado = -1;
+        this.mostrarMenu(todas);
 
-        // Mostrar menú desplegable
-        this.mostrarMenu(frasesCombinadas);
-
-        // Ghost text solo si alguna sugerencia empieza exactamente con el texto actual
-        const mejorCoincidenciaExacta = frasesCombinadas.find(f => f.toLowerCase().startsWith(textoLower));
-        if (mejorCoincidenciaExacta) {
-            const resto = mejorCoincidenciaExacta.substring(texto.length);
-            if (resto.length > 0) {
-                this.sugerenciaActual = mejorCoincidenciaExacta;
-                this.mostrarGhost(texto, resto);
-            } else {
-                this.ghostDiv.style.display = 'none';
-                this.sugerenciaActual = "";
-            }
+        // 👇 GHOST TEXT SIEMPRE con la primera sugerencia
+        const sugerenciaGhost = todas[0];
+        const resto = sugerenciaGhost.substring(texto.length);
+        if (resto.length > 0) {
+            this.sugerenciaActual = sugerenciaGhost;
+            this.mostrarGhost(texto, resto);
         } else {
             this.ghostDiv.style.display = 'none';
             this.sugerenciaActual = "";
         }
     }
 
-    // ================== NAVEGACIÓN POR TECLADO ==================
     onKeyDown(e) {
         const visible = this.sugerenciasDiv.style.display === 'block';
         if (!visible) {
-            // Si no hay sugerencias, pero sí ghost text, Tab puede aceptar ghost
             if (e.key === 'Tab' && this.sugerenciaActual) {
                 e.preventDefault();
                 this.aceptarSugerencia();
@@ -249,13 +212,12 @@ class AutoDescripcion extends HTMLElement {
             case 'Enter':
                 e.preventDefault();
                 if (this.indiceSeleccionado >= 0 && this.indiceSeleccionado < this.frasesCoincidentes.length) {
-                    const textoSeleccionado = this.frasesCoincidentes[this.indiceSeleccionado];
-                    this.textarea.value = textoSeleccionado;
+                    const textoElegido = this.frasesCoincidentes[this.indiceSeleccionado];
+                    this.textarea.value = textoElegido;
                     this.ocultarSugerenciasYGhost();
                     this.dispatchEvent(new Event('input', { bubbles: true, composed: true }));
                     this.textarea.focus();
                 } else if (this.sugerenciaActual) {
-                    // Si no hay selección en dropdown pero hay ghost, aceptar ghost
                     this.aceptarSugerencia();
                 }
                 break;
@@ -269,35 +231,27 @@ class AutoDescripcion extends HTMLElement {
         items.forEach((item, idx) => {
             if (idx === this.indiceSeleccionado) {
                 item.classList.add('selected');
-                // Opcional: hacer scroll al elemento seleccionado
                 item.scrollIntoView({ block: 'nearest' });
+                // Actualizar ghost text con la sugerencia seleccionada
+                if (this.frasesCoincidentes[idx]) {
+                    const textoActual = this.textarea.value;
+                    const sugerenciaSeleccionada = this.frasesCoincidentes[idx];
+                    const resto = sugerenciaSeleccionada.substring(textoActual.length);
+                    if (resto.length > 0) {
+                        this.sugerenciaActual = sugerenciaSeleccionada;
+                        this.mostrarGhost(textoActual, resto);
+                    } else {
+                        this.ghostDiv.style.display = 'none';
+                    }
+                }
             } else {
                 item.classList.remove('selected');
             }
         });
-        // Sincronizar ghost text con la sugerencia seleccionada (opcional)
-        if (this.indiceSeleccionado >= 0 && this.frasesCoincidentes[this.indiceSeleccionado]) {
-            const textoSeleccionado = this.frasesCoincidentes[this.indiceSeleccionado];
-            const textoActual = this.textarea.value;
-            if (textoSeleccionado.toLowerCase().startsWith(textoActual.toLowerCase())) {
-                const resto = textoSeleccionado.substring(textoActual.length);
-                if (resto.length > 0) {
-                    this.sugerenciaActual = textoSeleccionado;
-                    this.mostrarGhost(textoActual, resto);
-                }
-            }
-        }
     }
 
-    // ================== MÉTODOS DE UI ==================
     mostrarMenu(frases) {
-        const rect = this.textarea.getBoundingClientRect();
-        const scrollTop = window.scrollY || document.documentElement.scrollTop;
-        const scrollLeft = window.scrollX || document.documentElement.scrollLeft;
-        this.sugerenciasDiv.style.top = `${rect.bottom + scrollTop + 5}px`;
-        this.sugerenciasDiv.style.left = `${rect.left + scrollLeft}px`;
-        this.sugerenciasDiv.style.width = `${rect.width}px`;
-
+        this.sugerenciasDiv.style.width = `${this.textarea.clientWidth}px`;
         if (frases.length === 0) {
             this.sugerenciasDiv.innerHTML = `<div class="no-results">Sin sugerencias</div>`;
         } else {
@@ -305,16 +259,14 @@ class AutoDescripcion extends HTMLElement {
         }
         this.sugerenciasDiv.style.display = 'block';
 
-        // Agregar eventos click a cada sugerencia (sin interferir con la selección por teclado)
-        this.sugerenciasDiv.querySelectorAll('div').forEach((div, idx) => {
-            if (div.classList.contains('no-results')) return;
+        const divs = this.sugerenciasDiv.querySelectorAll('div:not(.no-results)');
+        divs.forEach((div, idx) => {
             div.addEventListener('click', () => {
                 this.textarea.value = div.innerText;
                 this.ocultarSugerenciasYGhost();
                 this.dispatchEvent(new Event('input', { bubbles: true, composed: true }));
                 this.textarea.focus();
             });
-            // Al pasar mouse, actualizar la selección visual (opcional)
             div.addEventListener('mouseenter', () => {
                 this.indiceSeleccionado = idx;
                 const items = this.sugerenciasDiv.querySelectorAll('div:not(.no-results)');
@@ -329,8 +281,6 @@ class AutoDescripcion extends HTMLElement {
         this.ghostDiv.style.fontSize = estilo.fontSize;
         this.ghostDiv.style.lineHeight = estilo.lineHeight;
         this.ghostDiv.style.padding = estilo.padding;
-        this.ghostDiv.style.left = '0px';
-        this.ghostDiv.style.top = '0px';
         this.ghostDiv.style.width = `calc(100% - ${parseInt(estilo.paddingLeft) + parseInt(estilo.paddingRight)}px)`;
         this.ghostDiv.innerHTML = this.escapeHtml(textoEscrito) + `<span style="opacity:0.5;">${this.escapeHtml(resto)}</span>`;
         this.ghostDiv.style.display = 'block';
@@ -357,16 +307,15 @@ class AutoDescripcion extends HTMLElement {
         return str.replace(/[&<>]/g, m => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;' }[m]));
     }
 
-    // ================== API pública para crearIncidencias.js ==================
     get value() {
         return this.textarea ? this.textarea.value : '';
     }
-    
+
     set value(v) {
         if (this.textarea) {
             this.textarea.value = v;
             this.dispatchEvent(new Event('input', { bubbles: true, composed: true }));
-            this.onInput();  // actualizar ghost y sugerencias
+            this.onInput();
         }
     }
 
@@ -378,4 +327,4 @@ class AutoDescripcion extends HTMLElement {
 if (!customElements.get('auto-descripcion')) {
     customElements.define('auto-descripcion', AutoDescripcion);
 }
-console.log('✅ Componente auto-descripcion mejorado con palabras locales y teclado');
+console.log('✅ Componente auto-descripcion con ghost text siempre visible');
