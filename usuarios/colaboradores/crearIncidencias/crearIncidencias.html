@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Crear Nueva Incidencia | Centinela C5</title>
+    <title>Crear Nueva Incidencia | Centinela C5 - Colaborador</title>
 
     <!-- Estilos -->
     <link rel="stylesheet" href="/components/personalization/personalization.css">
@@ -20,7 +20,7 @@
     <link rel="icon" href="/assets/images/logo.png" type="image/png">
     <!-- Archivo para PWA -->
     <link rel="manifest" href="/manifest.json">
-    <!-- Estilos modulo -->
+    <!-- Estilos modulo (ruta compartida con administrador) -->
     <link rel="stylesheet" href="/usuarios/administrador/crearIncidencias/crearIncidencias.css">
     <!-- SweetAlert2 -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
@@ -47,10 +47,6 @@
     <meta property="og:image:width" content="500">
     <meta property="og:image:height" content="500">
     <meta property="og:image:alt" content="Vista previa oficial de Centinela-C5">
-    <meta property="og:image" content="https://centinela-c5.web.app/assets/images/logo.png">
-    <meta property="og:image:width" content="500">
-    <meta property="og:image:height" content="500">
-    <meta property="og:image:alt" content="Logo oficial de Centinela">
     <meta property="og:site_name" content="Centinela">
 
     <!-- Twitter Card -->
@@ -60,7 +56,6 @@
     <meta name="twitter:description"
         content="Sistema de seguridad inteligente para monitoreo, almacenamiento y predicción de incidencias.">
     <meta name="twitter:image" content="https://centinela-c5.web.app/assets/images/logo.png">
-    <meta name="twitter:creator" content="">
 
     <!-- Schema.org / JSON-LD -->
     <script type="application/ld+json">
@@ -138,7 +133,7 @@
                                     <div class="form-help-text">Organización a la que pertenece la incidencia</div>
                                 </div>
 
-                                <!-- NUEVO: Tipo de Evento como botones (sin selección inicial) -->
+                                <!-- Tipo de Evento (botones, sin selección inicial) -->
                                 <div class="full-width field-group-step" data-step="0">
                                     <label class="form-label">Tipo de Evento *</label>
                                     <div class="tipo-evento-buttons">
@@ -153,8 +148,7 @@
                                             <small>Seleccionar fecha y hora manualmente</small>
                                         </button>
                                     </div>
-                                    <div class="form-help-text">Selecciona si el evento ocurrió ahora o en el pasado
-                                    </div>
+                                    <div class="form-help-text">Selecciona si el evento ocurrió ahora o en el pasado</div>
                                 </div>
 
                                 <!-- ============ PASO 1: Sucursal ============ -->
@@ -165,8 +159,7 @@
                                         <input type="text" class="form-control" id="sucursalIncidencia"
                                             placeholder="Escribe para buscar sucursal..." autocomplete="off" required>
                                     </div>
-                                    <div class="form-help-text">Escribe y selecciona la sucursal de las sugerencias
-                                    </div>
+                                    <div class="form-help-text">Escribe y selecciona la sucursal de las sugerencias</div>
                                     <div id="sugerenciasSucursal" class="sugerencias-container"></div>
                                 </div>
 
@@ -178,8 +171,7 @@
                                         <input type="text" class="form-control" id="categoriaIncidencia"
                                             placeholder="Escribe para buscar categoría..." autocomplete="off" required>
                                     </div>
-                                    <div class="form-help-text">Escribe y selecciona la categoría de las sugerencias
-                                    </div>
+                                    <div class="form-help-text">Escribe y selecciona la categoría de las sugerencias</div>
                                     <div id="sugerenciasCategoria" class="sugerencias-container"></div>
                                 </div>
 
@@ -199,8 +191,7 @@
                                 <div class="full-width field-group-step" data-step="4">
                                     <label for="nivelRiesgo" class="form-label">Nivel de Riesgo *</label>
                                     <div class="input-group">
-                                        <span class="input-group-icon"><i
-                                                class="fas fa-exclamation-triangle"></i></span>
+                                        <span class="input-group-icon"><i class="fas fa-exclamation-triangle"></i></span>
                                         <select class="form-control" id="nivelRiesgo" required>
                                             <option value="">-- Selecciona el nivel de riesgo --</option>
                                             <option value="bajo">Bajo</option>
@@ -234,19 +225,15 @@
                                         <input type="text" class="form-control" id="fechaHoraIncidencia"
                                             placeholder="Selecciona fecha y hora" required>
                                     </div>
-                                    <div class="form-help-text">Fecha y hora en que ocurrió la incidencia (no puede ser
-                                        futura)</div>
+                                    <div class="form-help-text">Fecha y hora en que ocurrió la incidencia (no puede ser futura)</div>
                                 </div>
 
-                                <!-- ============ PASO 7: Descripción ============ -->
+                                <!-- ============ PASO 7: Descripción con AUTOCOMPLETADO ============ -->
                                 <div class="full-width field-group-step" data-step="7">
-                                    <label for="detallesIncidencia" class="form-label">Descripción de la Incidencia
-                                        *</label>
-                                    <textarea class="form-control" id="detallesIncidencia" rows="5"
-                                        placeholder="Describa detalladamente lo sucedido, incluyendo fechas, personas involucradas, y cualquier información relevante..."
-                                        required></textarea>
-                                    <div class="form-help-text">Proporcione una descripción detallada del incidente
-                                    </div>
+                                    <label for="detallesIncidencia" class="form-label">Descripción de la Incidencia *</label>
+                                    <!-- ✅ Componente auto-descripcion (autocompletado predictivo) -->
+                                    <auto-descripcion id="detallesIncidencia" rows="5" placeholder="Describe la incidencia..."></auto-descripcion>
+                                    <div class="form-help-text">Comienza a escribir y verás sugerencias basadas en incidentes anteriores</div>
                                     <div class="char-limit-info">
                                         <span class="char-counter" id="contadorCaracteres">0/1000</span>
                                     </div>
@@ -280,11 +267,8 @@
                                 <p>Arrastra y suelta imágenes aquí</p>
                                 <p class="small">o haz clic para seleccionar archivos</p>
                                 <p class="small text-muted mt-2">También puedes pegar imágenes con Ctrl+V</p>
-                                <p class="small text-muted mt-2">Formatos: JPG, JPEG, PNG y WEBP. Máximo 5MB por imagen.
-                                </p>
+                                <p class="small text-muted mt-2">Formatos: JPG, JPEG, PNG y WEBP. Máximo 5MB por imagen.</p>
                             </div>
-
-
 
                             <div class="images-preview-container">
                                 <h6>
@@ -317,16 +301,19 @@
 
     <br>
 
-    <!-- Scripts - VERSIÓN COLABORADOR -->
+    <!-- ==================== SCRIPTS (VERSIÓN COLABORADOR) ==================== -->
     <script type="module" src="/components/autenticador.js"></script>
     <script type="module" src="/components/cargadorTemas.js"></script>
     <script type="module" src="/components/particulas.js"></script>
     <script src="/components/navbarColaborador.js"></script>
     <script src="/components/imagenEditorEvidencias.js"></script>
     <script src="/components/footerColaborador.js"></script>
+    <!-- Componente de autocompletado -->
+    <script type="module" src="/components/autoDescripcion.js"></script>
+    <!-- Lógica principal de creación de incidencias (compartida con administrador) -->
     <script type="module" src="/usuarios/administrador/crearIncidencias/crearIncidencias.js"></script>
+    <!-- Protector de acceso para colaboradores (solo podrá crear si tiene permisos) -->
     <script src="/components/protector-colaborador.js" data-modulo="incidencias"></script>
-
 </body>
 
 </html>
