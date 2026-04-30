@@ -943,52 +943,91 @@ function renderizarTodasLasGraficas(datos) {
 function actualizarTablaActualizadores(actualizadores) {
     const tbody = document.querySelector('#tablaActualizadores tbody');
     if (!tbody) return;
-
+    
     if (!actualizadores || actualizadores.length === 0) {
         tbody.innerHTML = '<tr><td colspan="2" style="text-align:center; color: #9ca3af;">Sin datos</td></tr>';
         return;
     }
-
+    
     tbody.innerHTML = actualizadores.map(a => `
         <tr>
-            <td><i class="fas fa-user-circle" style="color: #3b82f6; margin-right: 8px;"></i>${escapeHTML(a.nombre)}</td>
+            <td class="colaborador-clickable" data-colaborador-nombre="${escapeHTML(a.nombre)}" style="cursor: pointer;">
+                <i class="fas fa-user-circle" style="color: #3b82f6; margin-right: 8px;"></i>
+                ${escapeHTML(a.nombre)}
+            </td>
             <td><span class="badge-value" style="background: rgba(59,130,246,0.2); color: #3b82f6;">${a.cantidad}</span></td>
         </tr>
     `).join('');
+    
+    // Agregar eventos de clic a las filas de colaboradores
+    document.querySelectorAll('#tablaActualizadores .colaborador-clickable').forEach(el => {
+        el.addEventListener('click', (e) => {
+            const colaboradorNombre = el.dataset.colaboradorNombre;
+            if (colaboradorNombre) {
+                window.location.href = `/usuarios/administrador/estadisticasUsuarios/estadisticasUsuarios.html?id=${encodeURIComponent(colaboradorNombre)}`;
+            }
+        });
+    });
 }
 
 function actualizarTablaReportadores(reportadores) {
     const tbody = document.querySelector('#tablaReportadores tbody');
     if (!tbody) return;
-
+    
     if (!reportadores || reportadores.length === 0) {
         tbody.innerHTML = '<tr><td colspan="2" style="text-align:center; color: #9ca3af;">Sin datos</td></tr>';
         return;
     }
-
+    
     tbody.innerHTML = reportadores.map(r => `
         <tr>
-            <td><i class="fas fa-user-circle" style="color: #10b981; margin-right: 8px;"></i>${escapeHTML(r.nombre)}</td>
+            <td class="colaborador-clickable" data-colaborador-nombre="${escapeHTML(r.nombre)}" style="cursor: pointer;">
+                <i class="fas fa-user-circle" style="color: #10b981; margin-right: 8px;"></i>
+                ${escapeHTML(r.nombre)}
+            </td>
             <td><span class="badge-value" style="background: rgba(16,185,129,0.2); color: #10b981;">${r.cantidad}</span></td>
         </tr>
     `).join('');
+    
+    // Agregar eventos de clic a las filas de colaboradores
+    document.querySelectorAll('#tablaReportadores .colaborador-clickable').forEach(el => {
+        el.addEventListener('click', (e) => {
+            const colaboradorNombre = el.dataset.colaboradorNombre;
+            if (colaboradorNombre) {
+                window.location.href = `/usuarios/administrador/estadisticasUsuarios/estadisticasUsuarios.html?id=${encodeURIComponent(colaboradorNombre)}`;
+            }
+        });
+    });
 }
 
 function actualizarTablaSeguimientos(seguimientos) {
     const tbody = document.querySelector('#tablaSeguimientos tbody');
     if (!tbody) return;
-
+    
     if (!seguimientos || seguimientos.length === 0) {
         tbody.innerHTML = '<tr><td colspan="2" style="text-align:center; color: #9ca3af;">Sin datos</td></tr>';
         return;
     }
-
+    
     tbody.innerHTML = seguimientos.map(s => `
         <tr>
-            <td><i class="fas fa-user-circle" style="color: #f97316; margin-right: 8px;"></i>${escapeHTML(s.nombre)}</td>
+            <td class="colaborador-clickable" data-colaborador-nombre="${escapeHTML(s.nombre)}" style="cursor: pointer;">
+                <i class="fas fa-user-circle" style="color: #f97316; margin-right: 8px;"></i>
+                ${escapeHTML(s.nombre)}
+            </td>
             <td><span class="badge-value" style="background: rgba(249,115,22,0.2); color: #f97316;">${s.cantidad}</span></td>
         </tr>
     `).join('');
+    
+    // Agregar eventos de clic a las filas de colaboradores
+    document.querySelectorAll('#tablaSeguimientos .colaborador-clickable').forEach(el => {
+        el.addEventListener('click', (e) => {
+            const colaboradorNombre = el.dataset.colaboradorNombre;
+            if (colaboradorNombre) {
+                window.location.href = `/usuarios/administrador/estadisticasUsuarios/estadisticasUsuarios.html?id=${encodeURIComponent(colaboradorNombre)}`;
+            }
+        });
+    });
 }
 
 function actualizarTablaEstado(estadoData) {
@@ -1169,31 +1208,44 @@ function actualizarTablaSucursalesDesdeDatos(sucursalesData) {
 function actualizarTablaTiempoResolucion(tiemposPromedio) {
     const tbody = document.querySelector('#tablaTiempoResolucion tbody');
     if (!tbody) return;
-
+    
     if (!tiemposPromedio || tiemposPromedio.length === 0) {
         tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; color: #9ca3af;">Sin datos</td></tr>';
         return;
     }
-
+    
     tbody.innerHTML = tiemposPromedio.map(t => {
         let tiempoColor = '#10b981';
         if (t.promedio > 72) tiempoColor = '#ef4444';
         else if (t.promedio > 24) tiempoColor = '#f97316';
         else if (t.promedio > 0) tiempoColor = '#eab308';
-
+        
         const dias = Math.floor(t.promedio / 24);
         const horasResto = t.promedio % 24;
         let tiempoTexto = `${t.promedio}h`;
         if (dias > 0) tiempoTexto = `${dias}d ${horasResto}h`;
-
+        
         return `
             <tr>
-                <td><i class="fas fa-user-circle" style="color: #8b5cf6; margin-right: 8px;"></i>${escapeHTML(t.nombre)}</td>
+                <td class="colaborador-clickable" data-colaborador-nombre="${escapeHTML(t.nombre)}" style="cursor: pointer;">
+                    <i class="fas fa-user-circle" style="color: #8b5cf6; margin-right: 8px;"></i>
+                    ${escapeHTML(t.nombre)}
+                </td>
                 <td><span class="badge-value" style="background: ${tiempoColor}20; color: ${tiempoColor};">${tiempoTexto}</span></td>
                 <td><span class="badge-value" style="background: rgba(139,92,246,0.2); color: #8b5cf6;">${t.incidenciasResueltas || 0}</span></td>
             </tr>
         `;
     }).join('');
+    
+    // Agregar eventos de clic a las filas de colaboradores
+    document.querySelectorAll('#tablaTiempoResolucion .colaborador-clickable').forEach(el => {
+        el.addEventListener('click', (e) => {
+            const colaboradorNombre = el.dataset.colaboradorNombre;
+            if (colaboradorNombre) {
+                window.location.href = `/usuarios/administrador/estadisticasUsuarios/estadisticasUsuarios.html?id=${encodeURIComponent(colaboradorNombre)}`;
+            }
+        });
+    });
 }
 
 function agregarEventosClickCanvas() {
@@ -1662,7 +1714,7 @@ function renderizarTablaColaboradores(colaboradores) {
     const tbody = document.getElementById('tablaColaboradoresBody');
     if (!tbody) return;
     if (!colaboradores || colaboradores.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:30px;">No hay datos de colaboradores</td</tr>';
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:30px;">No hay datos de colaboradores</td></tr>';
         return;
     }
     tbody.innerHTML = colaboradores.slice(0, 10).map(col => {
@@ -1674,8 +1726,28 @@ function renderizarTablaColaboradores(colaboradores) {
         if (tiempoPromedio > 72) tiempoColor = COLORS.critico;
         else if (tiempoPromedio > 24) tiempoColor = COLORS.alto;
         else if (tiempoPromedio > 0) tiempoColor = COLORS.medio;
-        return `<tr><td><i class="fas fa-user-circle" style="color: ${COLORS.azul}; margin-right: 8px;"></i> ${escapeHTML(col.nombre)}</td><td><span class="badge-value badge-info">${col.reportados || 0}</span></td><td><span class="badge-value badge-warning">${col.actualizados || 0}</span></td><td><span class="badge-value badge-success">${col.seguimientos || 0}</span></td><td><span class="badge-value" style="background: ${tiempoColor}20; color: ${tiempoColor};">${tiempoPromedio} h</span></td><td><div style="display: flex; align-items: center; gap: 8px;"><div class="eficiencia-bar" style="flex: 1; height: 6px; background: rgba(255,255,255,0.1); border-radius: 3px;"><div class="eficiencia-fill" style="width: ${eficiencia}%; height: 100%; background: linear-gradient(90deg, ${COLORS.verde}, ${COLORS.azul}); border-radius: 3px;"></div></div><span style="color: white; min-width: 40px;">${eficiencia}%</span></div></td></tr>`;
+        
+        return `<tr>
+            <td class="colaborador-clickable-desempeno" data-colaborador-nombre="${escapeHTML(col.nombre)}" style="cursor: pointer;">
+                <i class="fas fa-user-circle" style="color: ${COLORS.azul}; margin-right: 8px;"></i> ${escapeHTML(col.nombre)}
+            </td>
+            <td><span class="badge-value badge-info">${col.reportados || 0}</span></td>
+            <td><span class="badge-value badge-warning">${col.actualizados || 0}</span></td>
+            <td><span class="badge-value badge-success">${col.seguimientos || 0}</span></td>
+            <td><span class="badge-value" style="background: ${tiempoColor}20; color: ${tiempoColor};">${tiempoPromedio} h</span></td>
+            <td><div style="display: flex; align-items: center; gap: 8px;"><div class="eficiencia-bar" style="flex: 1; height: 6px; background: rgba(255,255,255,0.1); border-radius: 3px;"><div class="eficiencia-fill" style="width: ${eficiencia}%; height: 100%; background: linear-gradient(90deg, ${COLORS.verde}, ${COLORS.azul}); border-radius: 3px;"></div></div><span style="color: white; min-width: 40px;">${eficiencia}%</span></div></td>
+        </tr>`;
     }).join('');
+    
+    // Agregar eventos de clic a las filas de colaboradores en la tabla de desempeño
+    document.querySelectorAll('#tablaColaboradoresBody .colaborador-clickable-desempeno').forEach(el => {
+        el.addEventListener('click', (e) => {
+            const colaboradorNombre = el.dataset.colaboradorNombre;
+            if (colaboradorNombre) {
+                window.location.href = `/usuarios/administrador/estadisticasUsuarios/estadisticasUsuarios.html?id=${encodeURIComponent(colaboradorNombre)}`;
+            }
+        });
+    });
 }
 
 function renderizarTablaCategorias(categorias) {
