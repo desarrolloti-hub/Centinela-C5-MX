@@ -1,10 +1,12 @@
-// autoDescripcion.js - Con ghost text siempre visible
+// autoDescripcion.js - Componente de autocompletado con diccionario local + Firestore
+// Colores mediante variables CSS para adaptarse al tema global
 import { FrasesAutoCompletarManager } from '/clases/frasesAutoCompletar.js';
 
+// 📚 Palabras/frases comunes para autocompletado inmediato (sin depender de Firestore)
 const DICCIONARIO_LOCAL = [
     "robo", "asalto", "daño", "vandalismo", "fuga", "accidente", "incendio",
     "falla eléctrica", "fuga de gas", "inundación", "violación de perímetro",
-    "alerta sísmica", "persona sospechosa", "vehículo sospechoso", "golpe",
+    "alerta sísmica", "persona sospechosa", "personal en tienda", "vehículo sospechoso", "golpe",
     "rotura", "mal funcionamiento", "hurto", "extorsión", "amenaza",
     "lesionado", "desmayo", "caída", "emergencia médica", "corto circuito",
     "intento de robo", "daño estructural", "pérdida de energía"
@@ -28,22 +30,29 @@ class AutoDescripcion extends HTMLElement {
     async connectedCallback() {
         try {
             this.frasesManager = new FrasesAutoCompletarManager();
+            console.log('✅ FrasesManager inicializado');
         } catch (error) {
-            console.warn('⚠️ FrasesManager no disponible', error);
+            console.warn('⚠️ FrasesManager no disponible (se usará solo diccionario local)', error);
         }
+
         this.render();
         this.textarea = this.shadowRoot.querySelector('textarea');
         this.ghostDiv = this.shadowRoot.querySelector('.ghost-text');
         this.sugerenciasDiv = this.shadowRoot.querySelector('.sugerencias');
+
         this.textarea.addEventListener('input', () => this.onInput());
         this.textarea.addEventListener('keydown', (e) => this.onKeyDown(e));
         this.textarea.addEventListener('blur', () => {
             setTimeout(() => this.ocultarSugerenciasYGhost(), 200);
         });
+
+        const org = this.getAttribute('organizacion');
+        if (org) console.log(`📁 auto-descripcion con organización: ${org}`);
     }
 
     attributeChangedCallback(name, oldValue, newValue) {
         if (oldValue === newValue) return;
+        console.log(`🔄 Atributo ${name}: ${newValue}`);
         if (this.textarea && this.textarea.value.length >= 2) {
             this.onInput();
         }
@@ -53,14 +62,19 @@ class AutoDescripcion extends HTMLElement {
         this.shadowRoot.innerHTML = `
             <style>
                 :host { display: block; position: relative; width: 100%; }
-                .wrapper { position: relative; width: 100%; }
+                .wrapper {
+                    position: relative;
+                    width: 100%;
+                    background: var(--color-bg-secondary, #1e1e2f);
+                    border-radius: 20px;
+                    border: 1px solid var(--color-border-light, #2d2d44);
+                }
                 textarea {
                     width: 100%;
                     padding: 14px;
-                    border-radius: 20px;
-                    border: 1px solid #2d2d44;
-                    background: #1e1e2f;
-                    color: white;
+                    background: transparent;
+                    border: none;
+                    color: var(--color-text-primary, white);
                     font-family: inherit;
                     font-size: 1rem;
                     line-height: 1.5;
@@ -68,7 +82,9 @@ class AutoDescripcion extends HTMLElement {
                     position: relative;
                     z-index: 2;
                 }
-                textarea:focus { outline: none; border-color: #00cfff; }
+                textarea:focus {
+                    outline: none;
+                }
                 .ghost-text {
                     position: absolute;
                     top: 0;
@@ -89,8 +105,8 @@ class AutoDescripcion extends HTMLElement {
                     top: 100%;
                     left: 0;
                     width: 100%;
-                    background: #1a1a2e;
-                    border: 1px solid #00cfff;
+                    background: var(--color-bg-tertiary, #1a1a2e);
+                    border: 1px solid var(--color-accent-primary, #00cfff);
                     border-radius: 16px;
                     z-index: 10000;
                     display: none;
@@ -101,9 +117,10 @@ class AutoDescripcion extends HTMLElement {
                     padding: 10px 14px;
                     cursor: pointer;
                     border-bottom: 1px solid rgba(0,207,255,0.2);
-                    color: #eee;
+                    color: var(--color-text-secondary, #eee);
                 }
                 .sugerencias div:hover, .sugerencias .selected {
+                    background: var(--color-accent-primary, #00cfff)20;
                     background: rgba(0,207,255,0.2);
                 }
                 .sugerencias .no-results {
@@ -130,15 +147,18 @@ class AutoDescripcion extends HTMLElement {
             return;
         }
 
+        let frasesFirestore = [];
         const organizacion = this.getAttribute('organizacion');
         const categoriaId = this.getAttribute('categoria-id') || '';
         const subcategoriaId = this.getAttribute('subcategoria-id') || '';
 
-        let frasesFirestore = [];
         if (organizacion && this.frasesManager) {
             try {
                 frasesFirestore = await this.frasesManager.obtenerFrasesSugeridas(organizacion, categoriaId, subcategoriaId, 10);
-            } catch (error) {}
+                console.log(`📚 Firestore: ${frasesFirestore.length} frases`);
+            } catch (error) {
+                console.warn('Error leyendo frases de Firestore (usando solo diccionario local)', error);
+            }
         }
 
         const palabras = texto.split(/\s+/);
@@ -172,7 +192,6 @@ class AutoDescripcion extends HTMLElement {
         this.indiceSeleccionado = -1;
         this.mostrarMenu(todas);
 
-        // 👇 GHOST TEXT SIEMPRE con la primera sugerencia
         const sugerenciaGhost = todas[0];
         const resto = sugerenciaGhost.substring(texto.length);
         if (resto.length > 0) {
@@ -232,7 +251,6 @@ class AutoDescripcion extends HTMLElement {
             if (idx === this.indiceSeleccionado) {
                 item.classList.add('selected');
                 item.scrollIntoView({ block: 'nearest' });
-                // Actualizar ghost text con la sugerencia seleccionada
                 if (this.frasesCoincidentes[idx]) {
                     const textoActual = this.textarea.value;
                     const sugerenciaSeleccionada = this.frasesCoincidentes[idx];
@@ -252,6 +270,7 @@ class AutoDescripcion extends HTMLElement {
 
     mostrarMenu(frases) {
         this.sugerenciasDiv.style.width = `${this.textarea.clientWidth}px`;
+
         if (frases.length === 0) {
             this.sugerenciasDiv.innerHTML = `<div class="no-results">Sin sugerencias</div>`;
         } else {
@@ -327,4 +346,4 @@ class AutoDescripcion extends HTMLElement {
 if (!customElements.get('auto-descripcion')) {
     customElements.define('auto-descripcion', AutoDescripcion);
 }
-console.log('✅ Componente auto-descripcion con ghost text siempre visible');
+console.log('✅ Componente auto-descripcion con variables CSS y ghost text visible');
