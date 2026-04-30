@@ -1,10 +1,11 @@
 // estadisticas.js - VERSIÓN CORREGIDA CON GRÁFICAS DE RECUPERACIÓN FUNCIONALES
-  // version con colores para el nivel de riesgo ya funcional. 
+// version con colores para el nivel de riesgo ya funcional. 
 
 
 
-  
+
 import { generadorPDFEstadisticasUnificado } from '/components/pdf-estadisticas-unificado.js';
+
 // =============================================
 // VARIABLES GLOBALES
 // =============================================
@@ -33,17 +34,17 @@ async function diagnosticarRecuperacion() {
     console.log('organizacionActual:', organizacionActual);
     console.log('mercanciaManager:', !!mercanciaManager);
     console.log('registrosRecuperacionCache.length:', registrosRecuperacionCache.length);
-    
+
     if (!organizacionActual?.camelCase) {
         console.error('❌ No hay organización camelCase');
         return false;
     }
-    
+
     if (!mercanciaManager) {
         console.error('❌ mercanciaManager no está inicializado');
         return false;
     }
-    
+
     try {
         // Intentar cargar datos directamente
         const testRegistros = await mercanciaManager.getRegistrosByOrganizacion(organizacionActual.camelCase);
@@ -466,10 +467,10 @@ async function cargarRegiones() {
         const { RegionManager } = await import('/clases/region.js');
         const regionManager = new RegionManager();
         regionesCache = await regionManager.getRegionesByOrganizacion(organizacionActual.camelCase);
-        
+
         // Depuración: Verificar que se cargaron las regiones con sus colores
         console.log('Regiones cargadas:', regionesCache.map(r => ({ nombre: r.nombre, color: r.color })));
-        
+
     } catch (error) {
         console.error('Error cargando regiones:', error);
         regionesCache = [];
@@ -560,8 +561,8 @@ async function cargarIncidencias() {
             return;
         }
         mostrarResultados();
-        const datos = await procesarDatosGraficas(incidenciasFiltradas);    
-            datosGraficas = {
+        const datos = await procesarDatosGraficas(incidenciasFiltradas);
+        datosGraficas = {
             topActualizadores: datos.topActualizadores,
             topReportadores: datos.topReportadores,
             topSeguimientos: datos.topSeguimientos,
@@ -604,7 +605,7 @@ async function procesarDatosGraficas(incidencias) {
         medias: incidencias.filter(i => i.nivelRiesgo === 'medio').length,
         bajas: incidencias.filter(i => i.nivelRiesgo === 'bajo').length
     };
-    
+
     const actualizacionesPorColaborador = new Map();
     incidencias.forEach(inc => {
         if (inc.actualizadoPorNombre) {
@@ -614,7 +615,7 @@ async function procesarDatosGraficas(incidencias) {
     const topActualizadores = Array.from(actualizacionesPorColaborador.entries())
         .map(([nombre, cantidad]) => ({ nombre, cantidad }))
         .sort((a, b) => b.cantidad - a.cantidad).slice(0, 5);
-    
+
     const reportesPorColaborador = new Map();
     incidencias.forEach(inc => {
         if (inc.creadoPorNombre) {
@@ -624,7 +625,7 @@ async function procesarDatosGraficas(incidencias) {
     const topReportadores = Array.from(reportesPorColaborador.entries())
         .map(([nombre, cantidad]) => ({ nombre, cantidad }))
         .sort((a, b) => b.cantidad - a.cantidad).slice(0, 5);
-    
+
     const seguimientosPorColaborador = new Map();
     incidencias.forEach(inc => {
         if (inc.seguimiento) {
@@ -638,60 +639,60 @@ async function procesarDatosGraficas(incidencias) {
     const topSeguimientos = Array.from(seguimientosPorColaborador.entries())
         .map(([nombre, cantidad]) => ({ nombre, cantidad }))
         .sort((a, b) => b.cantidad - a.cantidad).slice(0, 5);
-    
+
     const estadoData = { pendientes: metricas.pendientes, finalizadas: metricas.finalizadas };
     // =============================================
-// NIVELES DE RIESGO - DINÁMICOS (desde RiesgoNivelManager)
-// =============================================
-const riesgoData = {};
-const nivelesRiesgoMap = new Map(); // Para almacenar colores
+    // NIVELES DE RIESGO - DINÁMICOS (desde RiesgoNivelManager)
+    // =============================================
+    const riesgoData = {};
+    const nivelesRiesgoMap = new Map(); // Para almacenar colores
 
-// Cargar niveles de riesgo dinámicos si no están cargados
-if (!window.nivelesRiesgoEstaticos && organizacionActual?.camelCase) {
-    try {
-        const { RiesgoNivelManager } = await import('/clases/riesgoNivel.js');
-        const riesgoManager = new RiesgoNivelManager();
-        const niveles = await riesgoManager.obtenerTodosNiveles(organizacionActual.camelCase);
-        
-        window.nivelesRiesgoEstaticos = niveles;
-        
-        // Inicializar contadores para cada nivel
-        niveles.forEach(nivel => {
-            riesgoData[nivel.id] = 0;
-            nivelesRiesgoMap.set(nivel.id, nivel.color || '#6c757d');
-        });
-    } catch (error) {
-        console.error('Error cargando niveles de riesgo dinámicos:', error);
-        // Fallback a niveles estáticos si hay error
-        window.nivelesRiesgoEstaticos = [];
-    }
-}
+    // Cargar niveles de riesgo dinámicos si no están cargados
+    if (!window.nivelesRiesgoEstaticos && organizacionActual?.camelCase) {
+        try {
+            const { RiesgoNivelManager } = await import('/clases/riesgoNivel.js');
+            const riesgoManager = new RiesgoNivelManager();
+            const niveles = await riesgoManager.obtenerTodosNiveles(organizacionActual.camelCase);
 
-// Si tenemos niveles dinámicos, contar incidencias por nivel de riesgo
-if (window.nivelesRiesgoEstaticos && window.nivelesRiesgoEstaticos.length > 0) {
-    // Reiniciar contadores
-    window.nivelesRiesgoEstaticos.forEach(nivel => {
-        riesgoData[nivel.id] = 0;
-    });
-    
-    // Contar incidencias por nivel de riesgo
-    incidencias.forEach(inc => {
-        const nivelRiesgo = inc.nivelRiesgo;
-        if (nivelRiesgo && riesgoData.hasOwnProperty(nivelRiesgo)) {
-            riesgoData[nivelRiesgo]++;
-        } else if (nivelRiesgo && !riesgoData.hasOwnProperty(nivelRiesgo)) {
-            // Si encontramos un nivel que no está en nuestro mapa, lo agregamos
-            riesgoData[nivelRiesgo] = 1;
-            nivelesRiesgoMap.set(nivelRiesgo, '#6c757d');
+            window.nivelesRiesgoEstaticos = niveles;
+
+            // Inicializar contadores para cada nivel
+            niveles.forEach(nivel => {
+                riesgoData[nivel.id] = 0;
+                nivelesRiesgoMap.set(nivel.id, nivel.color || '#6c757d');
+            });
+        } catch (error) {
+            console.error('Error cargando niveles de riesgo dinámicos:', error);
+            // Fallback a niveles estáticos si hay error
+            window.nivelesRiesgoEstaticos = [];
         }
-    });
-} else {
-    // Fallback: usar niveles estáticos (compatibilidad con datos antiguos)
-    riesgoData.critico = metricas.criticas;
-    riesgoData.alto = metricas.altas;
-    riesgoData.medio = metricas.medias;
-    riesgoData.bajo = metricas.bajas;
-}    
+    }
+
+    // Si tenemos niveles dinámicos, contar incidencias por nivel de riesgo
+    if (window.nivelesRiesgoEstaticos && window.nivelesRiesgoEstaticos.length > 0) {
+        // Reiniciar contadores
+        window.nivelesRiesgoEstaticos.forEach(nivel => {
+            riesgoData[nivel.id] = 0;
+        });
+
+        // Contar incidencias por nivel de riesgo
+        incidencias.forEach(inc => {
+            const nivelRiesgo = inc.nivelRiesgo;
+            if (nivelRiesgo && riesgoData.hasOwnProperty(nivelRiesgo)) {
+                riesgoData[nivelRiesgo]++;
+            } else if (nivelRiesgo && !riesgoData.hasOwnProperty(nivelRiesgo)) {
+                // Si encontramos un nivel que no está en nuestro mapa, lo agregamos
+                riesgoData[nivelRiesgo] = 1;
+                nivelesRiesgoMap.set(nivelRiesgo, '#6c757d');
+            }
+        });
+    } else {
+        // Fallback: usar niveles estáticos (compatibilidad con datos antiguos)
+        riesgoData.critico = metricas.criticas;
+        riesgoData.alto = metricas.altas;
+        riesgoData.medio = metricas.medias;
+        riesgoData.bajo = metricas.bajas;
+    }
     // =============================================
     // CATEGORÍAS - Con color desde la base de datos
     // =============================================
@@ -711,50 +712,50 @@ if (window.nivelesRiesgoEstaticos && window.nivelesRiesgoEstaticos.length > 0) {
         .map(([nombre, data]) => ({ nombre, cantidad: data.cantidad, color: data.color }))
         .sort((a, b) => b.cantidad - a.cantidad)
         .slice(0, 5);
-    
+
     // =============================================
     // SUCURSALES - Con color de la región de cada sucursal
     // =============================================
     const sucursalesMap = new Map();
-    
+
     // Obtener colores de regiones para cada sucursal
-// Obtener colores de regiones para cada sucursal
-for (const inc of incidencias) {
-    if (inc.sucursalId) {
-        const sucursal = sucursalesCache.find(s => s.id === inc.sucursalId);
-        const nombre = sucursal ? sucursal.nombre : obtenerNombreSucursal(inc.sucursalId);
-        
-        if (!sucursalesMap.has(nombre)) {
-            // Obtener el color de la región de esta sucursal
-            let regionColor = '#6c757d'; // Color por defecto
-            if (sucursal && sucursal.regionId && regionesCache) {  // <--- CORREGIDO: regionesCache sin window
-                const region = regionesCache.find(r => r.id === sucursal.regionId);
-                if (region && region.color) {
-                    regionColor = region.color;
+    // Obtener colores de regiones para cada sucursal
+    for (const inc of incidencias) {
+        if (inc.sucursalId) {
+            const sucursal = sucursalesCache.find(s => s.id === inc.sucursalId);
+            const nombre = sucursal ? sucursal.nombre : obtenerNombreSucursal(inc.sucursalId);
+
+            if (!sucursalesMap.has(nombre)) {
+                // Obtener el color de la región de esta sucursal
+                let regionColor = '#6c757d'; // Color por defecto
+                if (sucursal && sucursal.regionId && regionesCache) {  // <--- CORREGIDO: regionesCache sin window
+                    const region = regionesCache.find(r => r.id === sucursal.regionId);
+                    if (region && region.color) {
+                        regionColor = region.color;
+                    }
                 }
+                sucursalesMap.set(nombre, {
+                    cantidad: 0,
+                    color: regionColor
+                });
             }
-            sucursalesMap.set(nombre, {
-                cantidad: 0,
-                color: regionColor
-            });
+            sucursalesMap.get(nombre).cantidad++;
         }
-        sucursalesMap.get(nombre).cantidad++;
     }
-}
-    
+
     const sucursalesData = Array.from(sucursalesMap.entries())
         .map(([nombre, data]) => ({ nombre, cantidad: data.cantidad, color: data.color }))
         .sort((a, b) => b.cantidad - a.cantidad)
         .slice(0, 5);
-    
+
     // Tiempos de resolución (sin cambios)
     const tiemposResolucion = new Map();
     const incidenciasFinalizadas = incidencias.filter(i => i.estado === 'finalizada');
-    
+
     incidenciasFinalizadas.forEach(inc => {
         const inicio = inc.fechaInicio instanceof Date ? inc.fechaInicio : new Date(inc.fechaInicio);
         let fechaFin = null;
-        
+
         if (inc.fechaFinalizacion) {
             fechaFin = inc.fechaFinalizacion instanceof Date ? inc.fechaFinalizacion : new Date(inc.fechaFinalizacion);
         } else if (inc.fechaActualizacion) {
@@ -770,15 +771,15 @@ for (const inc of incidencias) {
                 }
             }
         }
-        
+
         if (!fechaFin && inc.fechaActualizacion) {
             fechaFin = inc.fechaActualizacion instanceof Date ? inc.fechaActualizacion : new Date(inc.fechaActualizacion);
         }
-        
+
         if (fechaFin && inicio && inc.actualizadoPorNombre) {
             const diffMs = fechaFin - inicio;
             const diffHoras = diffMs / (1000 * 60 * 60);
-            
+
             if (diffHoras > 0 && diffHoras < 720) {
                 if (!tiemposResolucion.has(inc.actualizadoPorNombre)) {
                     tiemposResolucion.set(inc.actualizadoPorNombre, { total: 0, count: 0 });
@@ -789,60 +790,60 @@ for (const inc of incidencias) {
             }
         }
     });
-    
+
     const tiemposPromedio = Array.from(tiemposResolucion.entries())
-        .map(([nombre, data]) => ({ 
-            nombre, 
+        .map(([nombre, data]) => ({
+            nombre,
             promedio: data.count > 0 ? Math.round(data.total / data.count) : 0,
             incidenciasResueltas: data.count
         }))
         .filter(t => t.promedio > 0)
         .sort((a, b) => a.promedio - b.promedio)
         .slice(0, 8);
-    
+
     const colaboradoresMap = new Map();
     incidencias.forEach(inc => {
         if (inc.creadoPorNombre) {
             if (!colaboradoresMap.has(inc.creadoPorNombre)) {
-                colaboradoresMap.set(inc.creadoPorNombre, { 
-                    nombre: inc.creadoPorNombre, 
-                    reportados: 0, 
-                    actualizados: 0, 
-                    seguimientos: 0, 
-                    tiempoTotal: 0, 
-                    incidenciasResueltas: 0 
+                colaboradoresMap.set(inc.creadoPorNombre, {
+                    nombre: inc.creadoPorNombre,
+                    reportados: 0,
+                    actualizados: 0,
+                    seguimientos: 0,
+                    tiempoTotal: 0,
+                    incidenciasResueltas: 0
                 });
             }
             colaboradoresMap.get(inc.creadoPorNombre).reportados++;
         }
-        
+
         if (inc.actualizadoPorNombre) {
             if (!colaboradoresMap.has(inc.actualizadoPorNombre)) {
-                colaboradoresMap.set(inc.actualizadoPorNombre, { 
-                    nombre: inc.actualizadoPorNombre, 
-                    reportados: 0, 
-                    actualizados: 0, 
-                    seguimientos: 0, 
-                    tiempoTotal: 0, 
-                    incidenciasResueltas: 0 
+                colaboradoresMap.set(inc.actualizadoPorNombre, {
+                    nombre: inc.actualizadoPorNombre,
+                    reportados: 0,
+                    actualizados: 0,
+                    seguimientos: 0,
+                    tiempoTotal: 0,
+                    incidenciasResueltas: 0
                 });
             }
             const col = colaboradoresMap.get(inc.actualizadoPorNombre);
             col.actualizados++;
             if (inc.estado === 'finalizada') col.incidenciasResueltas++;
         }
-        
+
         if (inc.seguimiento) {
             Object.values(inc.seguimiento).forEach(seg => {
                 if (seg.usuarioNombre) {
                     if (!colaboradoresMap.has(seg.usuarioNombre)) {
-                        colaboradoresMap.set(seg.usuarioNombre, { 
-                            nombre: seg.usuarioNombre, 
-                            reportados: 0, 
-                            actualizados: 0, 
-                            seguimientos: 0, 
-                            tiempoTotal: 0, 
-                            incidenciasResueltas: 0 
+                        colaboradoresMap.set(seg.usuarioNombre, {
+                            nombre: seg.usuarioNombre,
+                            reportados: 0,
+                            actualizados: 0,
+                            seguimientos: 0,
+                            tiempoTotal: 0,
+                            incidenciasResueltas: 0
                         });
                     }
                     colaboradoresMap.get(seg.usuarioNombre).seguimientos++;
@@ -850,7 +851,7 @@ for (const inc of incidencias) {
             });
         }
     });
-    
+
     incidenciasFinalizadas.forEach(inc => {
         if (inc.actualizadoPorNombre && colaboradoresMap.has(inc.actualizadoPorNombre)) {
             const inicio = inc.fechaInicio instanceof Date ? inc.fechaInicio : new Date(inc.fechaInicio);
@@ -870,7 +871,7 @@ for (const inc of incidencias) {
                     }
                 }
             }
-            
+
             if (fechaFin) {
                 const tiempo = Math.round((fechaFin - inicio) / (1000 * 60 * 60));
                 if (tiempo > 0 && tiempo < 720) {
@@ -879,15 +880,15 @@ for (const inc of incidencias) {
             }
         }
     });
-    
+
     return {
-        metricas, 
-        topActualizadores, 
-        topReportadores, 
+        metricas,
+        topActualizadores,
+        topReportadores,
         topSeguimientos,
-        estadoData, 
-        riesgoData, 
-        categoriasData, 
+        estadoData,
+        riesgoData,
+        categoriasData,
         sucursalesData,
         tiemposPromedio,
         colaboradores: Array.from(colaboradoresMap.values())
@@ -923,7 +924,7 @@ function renderizarTodasLasGraficas(datos) {
     crearGraficoSucursales(datos.sucursalesData);
     crearGraficoTiempoResolucion(datos.tiemposPromedio);
     agregarEventosClickCanvas();
-    
+
     // ===== NUEVO: Actualizar todas las tablas de datos =====
     actualizarTablaActualizadores(datos.topActualizadores);
     actualizarTablaReportadores(datos.topReportadores);
@@ -942,12 +943,12 @@ function renderizarTodasLasGraficas(datos) {
 function actualizarTablaActualizadores(actualizadores) {
     const tbody = document.querySelector('#tablaActualizadores tbody');
     if (!tbody) return;
-    
+
     if (!actualizadores || actualizadores.length === 0) {
         tbody.innerHTML = '<tr><td colspan="2" style="text-align:center; color: #9ca3af;">Sin datos</td></tr>';
         return;
     }
-    
+
     tbody.innerHTML = actualizadores.map(a => `
         <tr>
             <td><i class="fas fa-user-circle" style="color: #3b82f6; margin-right: 8px;"></i>${escapeHTML(a.nombre)}</td>
@@ -959,12 +960,12 @@ function actualizarTablaActualizadores(actualizadores) {
 function actualizarTablaReportadores(reportadores) {
     const tbody = document.querySelector('#tablaReportadores tbody');
     if (!tbody) return;
-    
+
     if (!reportadores || reportadores.length === 0) {
         tbody.innerHTML = '<tr><td colspan="2" style="text-align:center; color: #9ca3af;">Sin datos</td></tr>';
         return;
     }
-    
+
     tbody.innerHTML = reportadores.map(r => `
         <tr>
             <td><i class="fas fa-user-circle" style="color: #10b981; margin-right: 8px;"></i>${escapeHTML(r.nombre)}</td>
@@ -976,12 +977,12 @@ function actualizarTablaReportadores(reportadores) {
 function actualizarTablaSeguimientos(seguimientos) {
     const tbody = document.querySelector('#tablaSeguimientos tbody');
     if (!tbody) return;
-    
+
     if (!seguimientos || seguimientos.length === 0) {
         tbody.innerHTML = '<tr><td colspan="2" style="text-align:center; color: #9ca3af;">Sin datos</td></tr>';
         return;
     }
-    
+
     tbody.innerHTML = seguimientos.map(s => `
         <tr>
             <td><i class="fas fa-user-circle" style="color: #f97316; margin-right: 8px;"></i>${escapeHTML(s.nombre)}</td>
@@ -993,16 +994,16 @@ function actualizarTablaSeguimientos(seguimientos) {
 function actualizarTablaEstado(estadoData) {
     const tbody = document.querySelector('#tablaEstado tbody');
     if (!tbody) return;
-    
+
     const total = (estadoData.pendientes || 0) + (estadoData.finalizadas || 0);
     const pendientesPorc = total > 0 ? ((estadoData.pendientes || 0) / total * 100).toFixed(1) : 0;
     const finalizadasPorc = total > 0 ? ((estadoData.finalizadas || 0) / total * 100).toFixed(1) : 0;
-    
+
     if (total === 0) {
         tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; color: #9ca3af;">Sin datos</td></tr>';
         return;
     }
-    
+
     tbody.innerHTML = `
         <tr>
             <td><i class="fas fa-clock" style="color: #f59e0b; margin-right: 8px;"></i>Pendientes</td>
@@ -1020,17 +1021,17 @@ function actualizarTablaEstado(estadoData) {
 function actualizarTablaRiesgoDesdeDatos(riesgoData) {
     const tbody = document.querySelector('#tablaRiesgo tbody');
     if (!tbody) return;
-    
+
     const tieneDatos = Object.values(riesgoData).some(v => v > 0);
-    
+
     if (!tieneDatos) {
         tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color: #9ca3af;">Sin datos</td></tr>';
         return;
     }
-    
+
     let nivelesData = [];
     let totalIncidencias = 0;
-    
+
     if (window.nivelesRiesgoEstaticos && window.nivelesRiesgoEstaticos.length > 0) {
         window.nivelesRiesgoEstaticos.forEach(nivel => {
             const cantidad = riesgoData[nivel.id] || 0;
@@ -1043,7 +1044,7 @@ function actualizarTablaRiesgoDesdeDatos(riesgoData) {
                 });
             }
         });
-        
+
         Object.keys(riesgoData).forEach(key => {
             if (riesgoData[key] > 0 && !window.nivelesRiesgoEstaticos.some(n => n.id === key)) {
                 totalIncidencias += riesgoData[key];
@@ -1073,12 +1074,12 @@ function actualizarTablaRiesgoDesdeDatos(riesgoData) {
             }
         });
     }
-    
+
     if (nivelesData.length === 0) {
         tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color: #9ca3af;">Sin datos</td></tr>';
         return;
     }
-    
+
     tbody.innerHTML = nivelesData.map(n => {
         const porcentaje = totalIncidencias > 0 ? ((n.cantidad / totalIncidencias) * 100).toFixed(1) : 0;
         return `
@@ -1098,12 +1099,12 @@ function actualizarTablaRiesgoDesdeDatos(riesgoData) {
 function actualizarTablaCategoriasDesdeDatos(categoriasData) {
     const tbody = document.querySelector('#tablaCategoriasGrafica tbody');
     if (!tbody) return;
-    
+
     if (!categoriasData || categoriasData.length === 0) {
         tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; color: #9ca3af;">Sin datos</td></tr>';
         return;
     }
-    
+
     tbody.innerHTML = categoriasData.map(c => `
         <tr>
             <td>
@@ -1119,17 +1120,17 @@ function actualizarTablaCategoriasDesdeDatos(categoriasData) {
 function actualizarTablaSucursalesDesdeDatos(sucursalesData) {
     const tbody = document.querySelector('#tablaSucursalesGrafica tbody');
     if (!tbody) return;
-    
+
     if (!sucursalesData || sucursalesData.length === 0) {
         tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; color: #9ca3af;">Sin datos</td></tr>';
         return;
     }
-    
+
     tbody.innerHTML = sucursalesData.map(s => {
         // Buscar el ID de la sucursal para la redirección
         const sucursalObj = sucursalesCache.find(suc => suc.nombre === s.nombre);
         const sucursalId = sucursalObj ? sucursalObj.id : '';
-        
+
         return `
             <tr>
                 <td class="sucursal-clickable" data-sucursal-id="${sucursalId}" data-sucursal-nombre="${escapeHTML(s.nombre)}" style="cursor: pointer;">
@@ -1141,13 +1142,13 @@ function actualizarTablaSucursalesDesdeDatos(sucursalesData) {
             </tr>
         `;
     }).join('');
-    
+
     // Agregar eventos de clic a las filas de sucursales
     document.querySelectorAll('.sucursal-clickable').forEach(el => {
         el.addEventListener('click', (e) => {
             const sucursalId = el.dataset.sucursalId;
             const sucursalNombre = el.dataset.sucursalNombre;
-            
+
             if (!sucursalId) {
                 Swal.fire({
                     icon: 'warning',
@@ -1158,7 +1159,7 @@ function actualizarTablaSucursalesDesdeDatos(sucursalesData) {
                 });
                 return;
             }
-            
+
             // Redirigir a la vista detalle
             window.location.href = `/usuarios/administrador/estadisticasSucursales/estadisticasSucursales.html?id=${sucursalId}`;
         });
@@ -1168,23 +1169,23 @@ function actualizarTablaSucursalesDesdeDatos(sucursalesData) {
 function actualizarTablaTiempoResolucion(tiemposPromedio) {
     const tbody = document.querySelector('#tablaTiempoResolucion tbody');
     if (!tbody) return;
-    
+
     if (!tiemposPromedio || tiemposPromedio.length === 0) {
         tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; color: #9ca3af;">Sin datos</td></tr>';
         return;
     }
-    
+
     tbody.innerHTML = tiemposPromedio.map(t => {
         let tiempoColor = '#10b981';
         if (t.promedio > 72) tiempoColor = '#ef4444';
         else if (t.promedio > 24) tiempoColor = '#f97316';
         else if (t.promedio > 0) tiempoColor = '#eab308';
-        
+
         const dias = Math.floor(t.promedio / 24);
         const horasResto = t.promedio % 24;
         let tiempoTexto = `${t.promedio}h`;
         if (dias > 0) tiempoTexto = `${dias}d ${horasResto}h`;
-        
+
         return `
             <tr>
                 <td><i class="fas fa-user-circle" style="color: #8b5cf6; margin-right: 8px;"></i>${escapeHTML(t.nombre)}</td>
@@ -1221,10 +1222,10 @@ function crearGraficoActualizadores(actualizadores) {
             labels: actualizadores.map(a => a.nombre.length > 12 ? a.nombre.substring(0, 10) + '...' : a.nombre),
             datasets: [{ label: 'Incidencias actualizadas', data: actualizadores.map(a => a.cantidad), backgroundColor: COLORS.azul, borderRadius: 4 }]
         },
-        options: { 
-            responsive: true, 
-            maintainAspectRatio: true, 
-            plugins: { legend: { labels: { color: 'white' } } }, 
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: { legend: { labels: { color: 'white' } } },
             scales: { y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.1)' }, ticks: { color: 'white', stepSize: 1 } }, x: { grid: { display: false }, ticks: { color: 'white', maxRotation: 45 } } },
             onClick: (event, activeElements) => {
                 if (activeElements.length > 0) {
@@ -1258,10 +1259,10 @@ function crearGraficoReportadores(reportadores) {
             labels: reportadores.map(r => r.nombre.length > 12 ? r.nombre.substring(0, 10) + '...' : r.nombre),
             datasets: [{ label: 'Incidencias reportadas', data: reportadores.map(r => r.cantidad), backgroundColor: COLORS.verde, borderRadius: 4 }]
         },
-        options: { 
-            responsive: true, 
-            maintainAspectRatio: true, 
-            plugins: { legend: { labels: { color: 'white' } } }, 
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: { legend: { labels: { color: 'white' } } },
             scales: { y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.1)' }, ticks: { color: 'white', stepSize: 1 } }, x: { grid: { display: false }, ticks: { color: 'white', maxRotation: 45 } } },
             onClick: (event, activeElements) => {
                 if (activeElements.length > 0) {
@@ -1295,10 +1296,10 @@ function crearGraficoSeguimientos(seguimientos) {
             labels: seguimientos.map(s => s.nombre.length > 12 ? s.nombre.substring(0, 10) + '...' : s.nombre),
             datasets: [{ label: 'Seguimientos realizados', data: seguimientos.map(s => s.cantidad), backgroundColor: COLORS.naranja, borderRadius: 4 }]
         },
-        options: { 
-            responsive: true, 
-            maintainAspectRatio: true, 
-            plugins: { legend: { labels: { color: 'white' } } }, 
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: { legend: { labels: { color: 'white' } } },
             scales: { y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.1)' }, ticks: { color: 'white', stepSize: 1 } }, x: { grid: { display: false }, ticks: { color: 'white', maxRotation: 45 } } },
             onClick: (event, activeElements) => {
                 if (activeElements.length > 0) {
@@ -1329,9 +1330,9 @@ function crearGraficoEstado(estado) {
     charts.estado = new Chart(ctx, {
         type: 'doughnut',
         data: { labels: ['Pendientes', 'Finalizadas'], datasets: [{ data: [estado.pendientes || 0, estado.finalizadas || 0], backgroundColor: [COLORS.pendiente, COLORS.finalizada], borderWidth: 0, hoverOffset: 15 }] },
-        options: { 
-            responsive: true, 
-            maintainAspectRatio: true, 
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
             plugins: { legend: { labels: { color: 'white' }, position: 'bottom' }, tooltip: { callbacks: { label: (ctx) => { const total = (estado.pendientes || 0) + (estado.finalizadas || 0); const porcentaje = total > 0 ? Math.round((ctx.raw / total) * 100) : 0; return `${ctx.label}: ${ctx.raw} (${porcentaje}%)`; } } } },
             onClick: (event, activeElements) => {
                 if (activeElements.length > 0) {
@@ -1354,21 +1355,21 @@ function crearGraficoRiesgo(riesgo) {
     const canvas = document.getElementById('graficoRiesgo');
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
-    
+
     const tieneDatos = Object.values(riesgo).some(valor => valor > 0);
-    
+
     if (!tieneDatos) {
         mostrarMensajeSinDatosEnCanvas(ctx, canvas, 'Sin datos de riesgo');
         if (typeof actualizarTablaRiesgo === 'function') actualizarTablaRiesgo([]);
         return;
     }
-    
+
     let labels = [];
     let data = [];
     let backgroundColors = [];
     let totalIncidencias = 0;
     let nivelesMap = [];
-    
+
     if (window.nivelesRiesgoEstaticos && window.nivelesRiesgoEstaticos.length > 0) {
         window.nivelesRiesgoEstaticos.forEach(nivel => {
             const cantidad = riesgo[nivel.id] || 0;
@@ -1378,7 +1379,7 @@ function crearGraficoRiesgo(riesgo) {
             backgroundColors.push(nivel.color || '#6c757d');
             nivelesMap.push({ id: nivel.id, nombre: nivel.nombre });
         });
-        
+
         Object.keys(riesgo).forEach(key => {
             if (riesgo[key] > 0 && !window.nivelesRiesgoEstaticos.some(n => n.id === key)) {
                 labels.push(key);
@@ -1400,13 +1401,13 @@ function crearGraficoRiesgo(riesgo) {
             { id: 'bajo', nombre: 'Bajo' }
         ];
     }
-    
+
     const filteredLabels = [];
     const filteredData = [];
     const filteredColors = [];
     const filteredNiveles = [];
     const filteredPorcentajes = [];
-    
+
     for (let i = 0; i < labels.length; i++) {
         if (data[i] > 0) {
             filteredLabels.push(labels[i]);
@@ -1417,35 +1418,35 @@ function crearGraficoRiesgo(riesgo) {
             filteredPorcentajes.push(porcentaje);
         }
     }
-    
+
     if (filteredData.length === 0) {
         mostrarMensajeSinDatosEnCanvas(ctx, canvas, 'Sin datos de riesgo');
         if (typeof actualizarTablaRiesgo === 'function') actualizarTablaRiesgo([]);
         return;
     }
-    
+
     if (charts.riesgo) {
         charts.riesgo.destroy();
     }
-    
+
     charts.riesgo = new Chart(ctx, {
         type: 'bar',
-        data: { 
-            labels: filteredLabels, 
-            datasets: [{ 
-                label: 'Incidencias', 
-                data: filteredData, 
+        data: {
+            labels: filteredLabels,
+            datasets: [{
+                label: 'Incidencias',
+                data: filteredData,
                 backgroundColor: filteredColors,
                 borderColor: filteredColors.map(c => c),
                 borderWidth: 1,
                 borderRadius: 8,
                 barPercentage: 0.7,
                 categoryPercentage: 0.8
-            }] 
+            }]
         },
-        options: { 
+        options: {
             indexAxis: 'y',
-            responsive: true, 
+            responsive: true,
             maintainAspectRatio: true,
             onClick: (event, activeElements) => {
                 if (activeElements.length > 0) {
@@ -1461,17 +1462,17 @@ function crearGraficoRiesgo(riesgo) {
                     }
                 }
             },
-            plugins: { 
-                legend: { labels: { color: 'white' }, position: 'top' }, 
+            plugins: {
+                legend: { labels: { color: 'white' }, position: 'top' },
                 tooltip: { callbacks: { label: (ctx) => { const total = filteredData.reduce((a, b) => a + b, 0); const porcentaje = total > 0 ? ((ctx.raw / total) * 100).toFixed(1) : 0; return `${ctx.dataset.label}: ${ctx.raw} (${porcentaje}%)`; } } }
             },
-            scales: { 
-                x: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.1)' }, ticks: { color: 'white', stepSize: 1 } }, 
-                y: { grid: { display: false }, ticks: { color: 'white', font: { size: 12 } } } 
-            } 
+            scales: {
+                x: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.1)' }, ticks: { color: 'white', stepSize: 1 } },
+                y: { grid: { display: false }, ticks: { color: 'white', font: { size: 12 } } }
+            }
         }
     });
-    
+
     const tablaData = filteredLabels.map((label, index) => ({
         nombre: label,
         cantidad: filteredData[index],
@@ -1491,30 +1492,30 @@ function crearGraficoCategorias(categorias) {
         mostrarMensajeSinDatosEnCanvas(ctx, canvas, 'Sin datos de categorías');
         return;
     }
-    
+
     const colores = categorias.map(c => c.color || '#2f8cff');
-    
+
     charts.categorias = new Chart(ctx, {
         type: 'bar',
         data: {
             labels: categorias.map(c => c.nombre.length > 15 ? c.nombre.substring(0, 12) + '...' : c.nombre),
-            datasets: [{ 
-                label: 'Incidencias', 
-                data: categorias.map(c => c.cantidad), 
+            datasets: [{
+                label: 'Incidencias',
+                data: categorias.map(c => c.cantidad),
                 backgroundColor: colores,
-                borderRadius: 4 
+                borderRadius: 4
             }]
         },
-        options: { 
-            responsive: true, 
-            maintainAspectRatio: true, 
-            plugins: { 
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
                 legend: { labels: { color: 'white' } },
                 tooltip: { callbacks: { label: (ctx) => `${ctx.dataset.label}: ${ctx.raw}` } }
-            }, 
-            scales: { 
-                y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.1)' }, ticks: { color: 'white', stepSize: 1 } }, 
-                x: { grid: { display: false }, ticks: { color: 'white', maxRotation: 45 } } 
+            },
+            scales: {
+                y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.1)' }, ticks: { color: 'white', stepSize: 1 } },
+                x: { grid: { display: false }, ticks: { color: 'white', maxRotation: 45 } }
             },
             onClick: (event, activeElements) => {
                 if (activeElements.length > 0) {
@@ -1545,30 +1546,30 @@ function crearGraficoSucursales(sucursales) {
         mostrarMensajeSinDatosEnCanvas(ctx, canvas, 'Sin datos de sucursales');
         return;
     }
-    
+
     const colores = sucursales.map(s => s.color || '#6c757d');
-    
+
     charts.sucursales = new Chart(ctx, {
         type: 'bar',
         data: {
             labels: sucursales.map(s => s.nombre.length > 15 ? s.nombre.substring(0, 12) + '...' : s.nombre),
-            datasets: [{ 
-                label: 'Incidencias', 
-                data: sucursales.map(s => s.cantidad), 
+            datasets: [{
+                label: 'Incidencias',
+                data: sucursales.map(s => s.cantidad),
                 backgroundColor: colores,
-                borderRadius: 4 
+                borderRadius: 4
             }]
         },
-        options: { 
-            responsive: true, 
-            maintainAspectRatio: true, 
-            plugins: { 
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
                 legend: { labels: { color: 'white' } },
                 tooltip: { callbacks: { label: (ctx) => `${ctx.dataset.label}: ${ctx.raw}` } }
-            }, 
-            scales: { 
-                y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.1)' }, ticks: { color: 'white', stepSize: 1 } }, 
-                x: { grid: { display: false }, ticks: { color: 'white', maxRotation: 45 } } 
+            },
+            scales: {
+                y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.1)' }, ticks: { color: 'white', stepSize: 1 } },
+                x: { grid: { display: false }, ticks: { color: 'white', maxRotation: 45 } }
             },
             onClick: (event, activeElements) => {
                 if (activeElements.length > 0) {
@@ -1608,17 +1609,17 @@ function crearGraficoTiempoResolucion(tiempos) {
     charts.tiempo = new Chart(ctx, {
         type: 'bar',
         data: { labels: nombres, datasets: [{ label: 'Horas promedio de resolución', data: promedios, backgroundColor: colores, borderRadius: 4 }] },
-        options: { 
-            responsive: true, 
-            maintainAspectRatio: true, 
-            indexAxis: 'y', 
-            plugins: { 
-                legend: { labels: { color: 'white' } }, 
-                tooltip: { callbacks: { label: (ctx) => { const horas = ctx.raw; const dias = Math.floor(horas / 24); const horasResto = horas % 24; let texto = `${horas} horas`; if (dias > 0) texto = `${dias} día${dias > 1 ? 's' : ''} y ${horasResto} horas`; return `${ctx.dataset.label}: ${texto}`; } } } 
-            }, 
-            scales: { 
-                x: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.1)' }, ticks: { color: 'white', stepSize: 24, callback: (value) => value >= 24 ? `${value / 24}d` : `${value}h` } }, 
-                y: { grid: { display: false }, ticks: { color: 'white', font: { size: 10 } } } 
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            indexAxis: 'y',
+            plugins: {
+                legend: { labels: { color: 'white' } },
+                tooltip: { callbacks: { label: (ctx) => { const horas = ctx.raw; const dias = Math.floor(horas / 24); const horasResto = horas % 24; let texto = `${horas} horas`; if (dias > 0) texto = `${dias} día${dias > 1 ? 's' : ''} y ${horasResto} horas`; return `${ctx.dataset.label}: ${texto}`; } } }
+            },
+            scales: {
+                x: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.1)' }, ticks: { color: 'white', stepSize: 24, callback: (value) => value >= 24 ? `${value / 24}d` : `${value}h` } },
+                y: { grid: { display: false }, ticks: { color: 'white', font: { size: 10 } } }
             },
             onClick: (event, activeElements) => {
                 if (activeElements.length > 0) {
@@ -1750,16 +1751,16 @@ function mostrarRegistrosPorEstado() {
 function mostrarRegistrosPorRiesgo() {
     // Obtener el primer nivel de riesgo que tenga datos (para mostrar el top 1)
     const riesgoData = datosGraficas.riesgoData;
-    
+
     if (!riesgoData || Object.keys(riesgoData).length === 0) {
         Swal.fire({ icon: 'info', title: 'Sin datos', text: 'No hay información de niveles de riesgo', background: 'var(--color-bg-primary)', color: 'white' });
         return;
     }
-    
+
     // Encontrar el nivel de riesgo con mayor cantidad de incidencias
     let topRiesgoId = null;
     let topCantidad = 0;
-    
+
     Object.keys(riesgoData).forEach(riesgoId => {
         const cantidad = riesgoData[riesgoId];
         if (cantidad > topCantidad) {
@@ -1767,31 +1768,31 @@ function mostrarRegistrosPorRiesgo() {
             topRiesgoId = riesgoId;
         }
     });
-    
+
     if (!topRiesgoId || topCantidad === 0) {
         Swal.fire({ icon: 'info', title: 'Sin datos', text: 'No hay incidencias con niveles de riesgo', background: 'var(--color-bg-primary)', color: 'white' });
         return;
     }
-    
+
     // Obtener el nombre del nivel de riesgo
     let riesgoNombre = topRiesgoId;
     let riesgoIcon = '<i class="fas fa-exclamation-triangle"></i>';
-    
+
     if (window.nivelesRiesgoEstaticos) {
         const nivel = window.nivelesRiesgoEstaticos.find(n => n.id === topRiesgoId);
         if (nivel) {
             riesgoNombre = nivel.nombre;
         }
     }
-    
+
     // Filtrar incidencias por ese nivel de riesgo
     const incidenciasRiesgo = datosGraficas.incidenciasFiltradas?.filter(i => i.nivelRiesgo === topRiesgoId) || [];
-    
+
     if (incidenciasRiesgo.length === 0) {
         Swal.fire({ icon: 'info', title: 'Sin registros', text: `No hay incidencias con nivel de riesgo ${riesgoNombre}`, background: 'var(--color-bg-primary)', color: 'white' });
         return;
     }
-    
+
     mostrarRegistrosEnSweet(incidenciasRiesgo, `Incidencias: ${riesgoNombre}`, riesgoIcon);
 }
 
@@ -1820,53 +1821,53 @@ function mostrarRegistrosPorSucursal() {
 function mostrarRegistrosPorTiempo() {
     const data = datosGraficas.tiemposPromedio;
     if (!data || data.length === 0) {
-        Swal.fire({ 
-            icon: 'info', 
-            title: 'Sin datos', 
-            text: 'No hay información de tiempos de resolución.\n\nNota: Solo se muestran incidencias FINALIZADAS que tienen fecha de inicio y fecha de finalización/actualización.', 
-            background: 'var(--color-bg-primary)', 
-            color: 'white' 
+        Swal.fire({
+            icon: 'info',
+            title: 'Sin datos',
+            text: 'No hay información de tiempos de resolución.\n\nNota: Solo se muestran incidencias FINALIZADAS que tienen fecha de inicio y fecha de finalización/actualización.',
+            background: 'var(--color-bg-primary)',
+            color: 'white'
         });
         return;
     }
-    
+
     const colaborador = data[0];
-    
+
     // Filtrar incidencias finalizadas actualizadas por este colaborador
-    const incidencias = datosGraficas.incidenciasFiltradas?.filter(i => 
-        i.actualizadoPorNombre === colaborador.nombre && 
+    const incidencias = datosGraficas.incidenciasFiltradas?.filter(i =>
+        i.actualizadoPorNombre === colaborador.nombre &&
         i.estado === 'finalizada'
     ) || [];
-    
+
     if (incidencias.length === 0) {
-        Swal.fire({ 
-            icon: 'info', 
-            title: 'Sin registros', 
-            text: `No hay incidencias finalizadas actualizadas por ${colaborador.nombre}`, 
-            background: 'var(--color-bg-primary)', 
-            color: 'white' 
+        Swal.fire({
+            icon: 'info',
+            title: 'Sin registros',
+            text: `No hay incidencias finalizadas actualizadas por ${colaborador.nombre}`,
+            background: 'var(--color-bg-primary)',
+            color: 'white'
         });
         return;
     }
-    
+
     // Calcular tiempos individuales para mostrar en el detalle
     const incidenciasConTiempo = incidencias.map(inc => {
         const inicio = inc.fechaInicio instanceof Date ? inc.fechaInicio : new Date(inc.fechaInicio);
         let fechaFin = null;
-        
+
         if (inc.fechaFinalizacion) {
             fechaFin = inc.fechaFinalizacion instanceof Date ? inc.fechaFinalizacion : new Date(inc.fechaFinalizacion);
         } else if (inc.fechaActualizacion) {
             fechaFin = inc.fechaActualizacion instanceof Date ? inc.fechaActualizacion : new Date(inc.fechaActualizacion);
         }
-        
+
         const tiempoHoras = fechaFin ? Math.round((fechaFin - inicio) / (1000 * 60 * 60)) : 0;
         return { ...inc, tiempoResolucionHoras: tiempoHoras };
     }).filter(inc => inc.tiempoResolucionHoras > 0);
-    
+
     mostrarRegistrosEnSweet(
-        incidenciasConTiempo, 
-        `Incidencias resueltas por ${colaborador.nombre} (Promedio: ${colaborador.promedio} horas)`, 
+        incidenciasConTiempo,
+        `Incidencias resueltas por ${colaborador.nombre} (Promedio: ${colaborador.promedio} horas)`,
         `<i class="fas fa-clock"></i>`
     );
 }
@@ -2050,7 +2051,7 @@ function configurarKpiCardsRecuperacionClickeables() {
     }
 }
 
-window.verRegistrosSobrePromedioRecuperacion = function() {
+window.verRegistrosSobrePromedioRecuperacion = function () {
     const promedio = datosActualesRecuperacion.estadisticas?.promedioPerdida || 0;
     const registrosSobrePromedio = datosActualesRecuperacion.registros.filter(r => (r.montoPerdido || 0) > promedio);
     if (registrosSobrePromedio.length > 0) {
@@ -2059,7 +2060,7 @@ window.verRegistrosSobrePromedioRecuperacion = function() {
     }
 };
 
-window.verRegistrosBajoPromedioRecuperacion = function() {
+window.verRegistrosBajoPromedioRecuperacion = function () {
     const promedio = datosActualesRecuperacion.estadisticas?.promedioPerdida || 0;
     const registrosBajoPromedio = datosActualesRecuperacion.registros.filter(r => (r.montoPerdido || 0) <= promedio && (r.montoPerdido || 0) > 0);
     if (registrosBajoPromedio.length > 0) {
@@ -2082,7 +2083,7 @@ function actualizarGraficasRecuperacion(registros, estadisticas) {
     actualizarGraficoEvolucionMensual(registros);
     actualizarGraficoTopSucursales(registros);
     actualizarGraficoComparativaRecuperacion(estadisticas);
-    
+
     // ===== NUEVO: Actualizar tablas de recuperación =====
     actualizarTablaTipoEvento(registros);
     actualizarTablaEvolucionMensual(registros);
@@ -2091,29 +2092,29 @@ function actualizarGraficasRecuperacion(registros, estadisticas) {
 }
 
 function actualizarGraficoTipoEvento(registros) {
-    const tipos = { 
-        'robo': 0, 
+    const tipos = {
+        'robo': 0,
         'recuperacion': 0,     // CAMBIADO: antes era 'extravio'
         'incidencias': 0,       // CAMBIADO: antes era 'accidente'
-        'otro': 0 
+        'otro': 0
     };
-    window.registrosPorTipo = { 
-        'robo': [], 
+    window.registrosPorTipo = {
+        'robo': [],
         'recuperacion': [],     // CAMBIADO
         'incidencias': [],       // CAMBIADO
-        'otro': [] 
+        'otro': []
     };
-    const nombresTipos = { 
-        'robo': 'Robo', 
+    const nombresTipos = {
+        'robo': 'Robo',
         'recuperacion': 'Recuperación',  // CAMBIADO
         'incidencias': 'Incidencias',    // CAMBIADO
-        'otro': 'Otro' 
+        'otro': 'Otro'
     };
-    const colores = { 
-        'robo': COLORS_REC.rojo, 
+    const colores = {
+        'robo': COLORS_REC.rojo,
         'recuperacion': COLORS_REC.naranja,   // CAMBIADO
         'incidencias': COLORS_REC.azul,        // CAMBIADO
-        'otro': COLORS_REC.morado 
+        'otro': COLORS_REC.morado
     };
 
     registros.forEach(r => {
@@ -2122,7 +2123,7 @@ function actualizarGraficoTipoEvento(registros) {
         let tipoMapeado = tipo;
         if (tipo === 'extravio') tipoMapeado = 'recuperacion';
         if (tipo === 'accidente') tipoMapeado = 'incidencias';
-        
+
         tipos[tipoMapeado] = (tipos[tipoMapeado] || 0) + (r.montoPerdido || 0);
         window.registrosPorTipo[tipoMapeado].push(r);
     });
@@ -2229,22 +2230,22 @@ function actualizarGraficoEvolucionMensual(registros) {
 function actualizarGraficoTopSucursales(registros) {
     const sucursalesMap = {};
     window.registrosPorSucursal = {};
-    
-// Obtener colores de regiones para cada sucursal
-const sucursalesColores = new Map();
-if (sucursalesCache && sucursalesCache.length > 0) {
-    for (const suc of sucursalesCache) {
-        let regionColor = '#FF6600'; // Color por defecto
-        if (suc.regionId && regionesCache) {  // <--- CORREGIDO: regionesCache sin window
-            const region = regionesCache.find(r => r.id === suc.regionId);
-            if (region && region.color) {
-                regionColor = region.color;
+
+    // Obtener colores de regiones para cada sucursal
+    const sucursalesColores = new Map();
+    if (sucursalesCache && sucursalesCache.length > 0) {
+        for (const suc of sucursalesCache) {
+            let regionColor = '#FF6600'; // Color por defecto
+            if (suc.regionId && regionesCache) {  // <--- CORREGIDO: regionesCache sin window
+                const region = regionesCache.find(r => r.id === suc.regionId);
+                if (region && region.color) {
+                    regionColor = region.color;
+                }
             }
+            sucursalesColores.set(suc.nombre, regionColor);
         }
-        sucursalesColores.set(suc.nombre, regionColor);
     }
-}
-    
+
     registros.forEach(r => {
         const sucursal = r.nombreEmpresaCC || 'Sin asignar';
         if (!sucursalesMap[sucursal]) {
@@ -2258,19 +2259,19 @@ if (sucursalesCache && sucursalesCache.length > 0) {
     });
 
     const sucursalesArray = Object.entries(sucursalesMap)
-        .map(([nombre, datos]) => ({ 
-            nombre, 
+        .map(([nombre, datos]) => ({
+            nombre,
             ...datos,
             color: sucursalesColores.get(nombre) || '#FF6600'
         }))
         .sort((a, b) => b.perdido - a.perdido)
         .slice(0, 8);
-    
+
     const labels = sucursalesArray.map(s => s.nombre.length > 25 ? s.nombre.substring(0, 22) + '...' : s.nombre);
     const perdidosData = sucursalesArray.map(s => s.perdido);
     const colores = sucursalesArray.map(s => s.color);
     const nombresCompletos = sucursalesArray.map(s => s.nombre);
-    
+
     const canvas = document.getElementById('graficoTopSucursales');
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
@@ -2283,21 +2284,21 @@ if (sucursalesCache && sucursalesCache.length > 0) {
     } else {
         graficoTopSucursales = new Chart(ctx, {
             type: 'bar',
-            data: { 
-                labels: labels, 
-                datasets: [{ 
-                    label: 'Monto perdido', 
-                    data: perdidosData, 
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Monto perdido',
+                    data: perdidosData,
                     backgroundColor: colores,
                     borderColor: colores,
-                    borderRadius: 8, 
-                    barPercentage: 0.7, 
-                    categoryPercentage: 0.8 
-                }] 
+                    borderRadius: 8,
+                    barPercentage: 0.7,
+                    categoryPercentage: 0.8
+                }]
             },
             options: {
-                indexAxis: 'y', 
-                responsive: true, 
+                indexAxis: 'y',
+                responsive: true,
                 maintainAspectRatio: true,
                 onClick: (event, activeElements) => {
                     if (activeElements.length > 0) {
@@ -2311,22 +2312,22 @@ if (sucursalesCache && sucursalesCache.length > 0) {
                         mostrarRegistrosRecuperacionEnSweet(registrosSucursal, `Registros de ${sucursalNombre}`, `<i class="fas fa-building"></i> ${sucursalNombre}`);
                     }
                 },
-                plugins: { 
-                    legend: { labels: { color: 'white', font: { size: 10 } } }, 
-                    tooltip: { callbacks: { label: (ctx) => { const formatter = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }); return `${ctx.dataset.label}: ${formatter.format(ctx.raw)}`; } } } 
+                plugins: {
+                    legend: { labels: { color: 'white', font: { size: 10 } } },
+                    tooltip: { callbacks: { label: (ctx) => { const formatter = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }); return `${ctx.dataset.label}: ${formatter.format(ctx.raw)}`; } } }
                 },
-                scales: { 
-                    x: { 
-                        ticks: { 
-                            callback: (value) => { const formatter = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', notation: 'compact' }); return formatter.format(value); }, 
-                            color: '#aaa' 
-                        }, 
-                        grid: { color: 'rgba(255,255,255,0.05)' } 
-                    }, 
-                    y: { 
-                        ticks: { color: '#aaa', font: { size: 10 } }, 
-                        grid: { display: false } 
-                    } 
+                scales: {
+                    x: {
+                        ticks: {
+                            callback: (value) => { const formatter = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', notation: 'compact' }); return formatter.format(value); },
+                            color: '#aaa'
+                        },
+                        grid: { color: 'rgba(255,255,255,0.05)' }
+                    },
+                    y: {
+                        ticks: { color: '#aaa', font: { size: 10 } },
+                        grid: { display: false }
+                    }
                 }
             }
         });
@@ -2337,7 +2338,7 @@ function actualizarGraficoComparativaRecuperacion(estadisticas) {
     const canvas = document.getElementById('graficoComparativa');
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
-    
+
     if (graficoComparativa) {
         graficoComparativa.data.datasets[0].data = [estadisticas.totalPerdido, estadisticas.totalRecuperado];
         graficoComparativa.update();
@@ -2417,17 +2418,17 @@ function actualizarGraficaVaciaRecuperacion() {
 function actualizarTablaTipoEvento(registros) {
     const tbody = document.querySelector('#tablaTipoEvento tbody');
     if (!tbody) return;
-    
+
     if (!registros || registros.length === 0) {
         tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; color: #9ca3af;">Sin datos</td></tr>';
         return;
     }
-    
+
     const tipos = { 'robo': 0, 'recuperacion': 0, 'incidencias': 0, 'otro': 0 };
     const nombresTipos = { 'robo': 'Robo', 'recuperacion': 'Recuperación', 'incidencias': 'Incidencias', 'otro': 'Otro' };
     const coloresTipos = { 'robo': '#ef4444', 'recuperacion': '#f59e0b', 'incidencias': '#3b82f6', 'otro': '#8b5cf6' };
     const iconosTipos = { 'robo': 'fa-mask', 'recuperacion': 'fa-undo-alt', 'incidencias': 'fa-circle-exclamation', 'otro': 'fa-tag' };
-    
+
     let totalPerdido = 0;
     registros.forEach(r => {
         let tipo = r.tipoEvento || 'otro';
@@ -2436,9 +2437,9 @@ function actualizarTablaTipoEvento(registros) {
         tipos[tipo] = (tipos[tipo] || 0) + (r.montoPerdido || 0);
         totalPerdido += (r.montoPerdido || 0);
     });
-    
+
     const formatter = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' });
-    
+
     tbody.innerHTML = Object.keys(tipos).filter(k => tipos[k] > 0).map(k => {
         const porcentaje = totalPerdido > 0 ? ((tipos[k] / totalPerdido) * 100).toFixed(1) : 0;
         return `
@@ -2453,16 +2454,16 @@ function actualizarTablaTipoEvento(registros) {
 function actualizarTablaEvolucionMensual(registros) {
     const tbody = document.querySelector('#tablaEvolucionMensual tbody');
     if (!tbody) return;
-    
+
     if (!registros || registros.length === 0) {
         tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color: #9ca3af;">Sin datos</td></tr>';
         return;
     }
-    
+
     const meses = {};
     const mesesNombres = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
     const formatter = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' });
-    
+
     registros.forEach(r => {
         if (r.fecha) {
             const fecha = new Date(r.fecha);
@@ -2475,21 +2476,21 @@ function actualizarTablaEvolucionMensual(registros) {
             meses[mesKey].recuperado += r.montoRecuperado || 0;
         }
     });
-    
+
     const mesesOrdenados = Object.keys(meses).sort();
-    
+
     if (mesesOrdenados.length === 0) {
         tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color: #9ca3af;">Sin datos</td></tr>';
         return;
     }
-    
+
     tbody.innerHTML = mesesOrdenados.map(m => {
         const mes = meses[m];
         const tasa = mes.perdido > 0 ? ((mes.recuperado / mes.perdido) * 100).toFixed(1) : 0;
         let tasaColor = '#ef4444';
         if (tasa > 50) tasaColor = '#10b981';
         else if (tasa > 25) tasaColor = '#f59e0b';
-        
+
         return `
             <tr>
                 <td><i class="fas fa-calendar-alt" style="color: #3b82f6; margin-right: 8px;"></i>${mes.nombre}</td>
@@ -2504,15 +2505,15 @@ function actualizarTablaEvolucionMensual(registros) {
 function actualizarTablaTopSucursales(registros) {
     const tbody = document.querySelector('#tablaTopSucursales tbody');
     if (!tbody) return;
-    
+
     if (!registros || registros.length === 0) {
         tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; color: #9ca3af;">Sin datos</td></tr>';
         return;
     }
-    
+
     const sucursalesMap = {};
     const formatter = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', notation: 'compact' });
-    
+
     registros.forEach(r => {
         const sucursal = r.nombreEmpresaCC || 'Sin asignar';
         if (!sucursalesMap[sucursal]) {
@@ -2521,19 +2522,19 @@ function actualizarTablaTopSucursales(registros) {
         sucursalesMap[sucursal].perdido += r.montoPerdido || 0;
         sucursalesMap[sucursal].eventos += 1;
     });
-    
+
     const sucursalesArray = Object.entries(sucursalesMap)
         .map(([nombre, datos]) => ({ nombre, ...datos }))
         .sort((a, b) => b.perdido - a.perdido)
         .slice(0, 10);
-    
+
     if (sucursalesArray.length === 0) {
         tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; color: #9ca3af;">Sin datos</td></tr>';
         return;
     }
-    
+
     const coloresSucursales = ['#ef4444', '#f97316', '#f59e0b', '#eab308', '#10b981', '#3b82f6', '#8b5cf6', '#ec4899', '#06b6d4', '#6366f1'];
-    
+
     tbody.innerHTML = sucursalesArray.map((s, idx) => {
         const color = coloresSucursales[idx % coloresSucursales.length];
         return `
@@ -2549,13 +2550,13 @@ function actualizarTablaTopSucursales(registros) {
 function actualizarTablaComparativa(estadisticas) {
     const tbody = document.querySelector('#tablaComparativa tbody');
     if (!tbody) return;
-    
+
     const formatter = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' });
     const total = estadisticas?.totalPerdido || 0;
     const recuperado = estadisticas?.totalRecuperado || 0;
     const porcentajeRec = total > 0 ? ((recuperado / total) * 100).toFixed(1) : 0;
     const porcentajePerd = 100 - parseFloat(porcentajeRec);
-    
+
     tbody.innerHTML = `
         <tr>
             <td><i class="fas fa-arrow-down" style="color: #ef4444; margin-right: 8px;"></i>Pérdidas</td>
@@ -2632,13 +2633,13 @@ function mostrarRegistrosRecuperacionEnSweet(registros, titulo, icono = '<i clas
 
 async function cargarRegistrosRecuperacionConFiltros() {
     console.log('=== CARGANDO REGISTROS DE RECUPERACIÓN ===');
-    
+
     if (!organizacionActual?.camelCase) {
         console.error('❌ No se pudo inicializar el módulo de recuperación: falta organización');
         mostrarMensajeSinDatosRecuperacion();
         return;
     }
-    
+
     if (!mercanciaManager) {
         console.error('❌ mercanciaManager no está inicializado');
         mostrarMensajeSinDatosRecuperacion();
@@ -2651,7 +2652,7 @@ async function cargarRegistrosRecuperacionConFiltros() {
             console.log('📡 Cargando registros de recuperación desde la BD...');
             registrosRecuperacionCache = await mercanciaManager.getRegistrosByOrganizacion(organizacionActual.camelCase);
             console.log(`📊 Registros cargados: ${registrosRecuperacionCache.length}`);
-            
+
             if (registrosRecuperacionCache.length > 0) {
                 console.log('📋 Ejemplo de registro:', registrosRecuperacionCache[0]);
             } else {
@@ -2707,17 +2708,17 @@ async function cargarRegistrosRecuperacionConFiltros() {
 
         registrosRecuperacionFiltrados = registrosFiltrados;
         datosActualesRecuperacion.registros = registrosFiltrados;
-        
+
         console.log(`📈 Total registros después de filtros: ${registrosFiltrados.length}`);
-        
+
         const estadisticas = calcularEstadisticasRecuperacion(registrosFiltrados);
         datosActualesRecuperacion.estadisticas = estadisticas;
-        
+
         console.log('💰 Estadísticas calculadas:', estadisticas);
 
         // Mostrar KPIs (siempre mostrar, aunque sea en cero)
         mostrarKPIsRecuperacion(estadisticas);
-        
+
         // Actualizar gráficas y tablas
         if (registrosFiltrados.length === 0) {
             console.warn('⚠️ No hay registros para mostrar después de los filtros');
@@ -2748,7 +2749,7 @@ function mostrarMensajeSinDatosRecuperacion() {
     setElementText('porcentajeRecuperacion', '0%');
     setElementText('totalEventosRecuperacion', '0');
     setElementText('promedioPerdida', formatter.format(0));
-    
+
     // Mostrar mensaje en la tabla de resumen
     const tablaBody = document.getElementById('tablaResumenBody');
     if (tablaBody) {
@@ -2760,16 +2761,25 @@ function mostrarMensajeSinDatosRecuperacion() {
 }
 
 async function generarReportePDF() {
+    function limpiarTextoParaPDF(texto) {
+        if (!texto) return '';
+        // Eliminar caracteres extraños y emojis de títulos
+        return texto
+            .replace(/[^\w\sáéíóúñÑüÜÁÉÍÓÚ\-\/\(\)\$\#\%\&\']/g, '')  // Solo permite letras, números, espacios y algunos símbolos
+            .replace(/\s+/g, ' ')  // Normalizar espacios
+            .trim();
+    }
+
     try {
         // ===== CAMBIAR TEXTOS HTML A NEGRO =====
         prepararTextosParaPDF();
-        
+
         // ===== CAMBIAR GRÁFICAS A NEGRO =====
         cambiarGraficasAModoPDF();
-        
+
         // Delay para que los cambios se apliquen
         await new Promise(resolve => setTimeout(resolve, 200));
-        
+
         Swal.fire({
             title: 'Preparando PDF...',
             text: 'Estamos generando tu reporte estadístico completo',
@@ -2781,28 +2791,23 @@ async function generarReportePDF() {
             }
         });
 
-        // Obtener datos de la tabla de sucursales desde el HTML
-        const tablaResumenBody = document.getElementById('tablaResumenBody');
-        let sucursalesResumenData = [];
-        
-        if (tablaResumenBody) {
-            const filas = tablaResumenBody.querySelectorAll('tr');
-            filas.forEach(fila => {
-                const celdas = fila.querySelectorAll('td');
-                if (celdas.length >= 6 && !celdas[0].innerText.includes('No hay datos')) {
-                    sucursalesResumenData.push({
-                        nombre: celdas[0]?.innerText || 'N/A',
-                        eventos: parseInt(celdas[1]?.innerText) || 0,
-                        perdido: parseFloat(celdas[2]?.innerText.replace(/[^0-9.-]/g, '')) || 0,
-                        recuperado: parseFloat(celdas[3]?.innerText.replace(/[^0-9.-]/g, '')) || 0,
-                        neto: parseFloat(celdas[4]?.innerText.replace(/[^0-9.-]/g, '')) || 0,
-                        porcentaje: parseFloat(celdas[5]?.innerText.replace('%', '')) || 0
-                    });
-                }
-            });
-        }
+        // =============================================
+        // RECOLECTAR TODOS LOS DATOS NECESARIOS
+        // =============================================
 
-        // Obtener datos de colaboradores desde datosGraficas
+        // 1. Datos de incidencias desde datosGraficas
+        const incidenciasFiltradas = datosGraficas.incidenciasFiltradas || [];
+        const metricas = {
+            criticas: incidenciasFiltradas.filter(i => i.nivelRiesgo === 'critico').length,
+            altas: incidenciasFiltradas.filter(i => i.nivelRiesgo === 'alto').length,
+            medias: incidenciasFiltradas.filter(i => i.nivelRiesgo === 'medio').length,
+            bajas: incidenciasFiltradas.filter(i => i.nivelRiesgo === 'bajo').length,
+            pendientes: incidenciasFiltradas.filter(i => i.estado === 'pendiente').length,
+            finalizadas: incidenciasFiltradas.filter(i => i.estado === 'finalizada').length,
+            total: incidenciasFiltradas.length
+        };
+
+        // 2. Datos de colaboradores desde datosGraficas.colaboradores
         const colaboradoresData = (datosGraficas.colaboradores || []).map(col => ({
             nombre: col.nombre || 'N/A',
             reportados: col.reportados || 0,
@@ -2812,37 +2817,276 @@ async function generarReportePDF() {
             incidenciasResueltas: col.incidenciasResueltas || 0
         }));
 
-        // Obtener datos de categorías
+        // 3. Datos de top actualizadores, reportadores, seguimientos
+        const topActualizadores = datosGraficas.topActualizadores || [];
+        const topReportadores = datosGraficas.topReportadores || [];
+        const topSeguimientos = datosGraficas.topSeguimientos || [];
+
+        // 4. Datos de sucursales para incidencias
+        const sucursalesData = (datosGraficas.sucursalesData || []).map(s => ({
+            nombre: s.nombre || 'N/A',
+            cantidad: s.cantidad || 0
+        }));
+
+        // 5. Datos de tiempos promedio
+        const tiemposPromedio = (datosGraficas.tiemposPromedio || []).map(t => ({
+            nombre: t.nombre || 'N/A',
+            promedio: t.promedio || 0,
+            incidenciasResueltas: t.incidenciasResueltas || 0
+        }));
+
+        // 6. Datos de categorías
         const categoriasData = datosGraficas.categoriasData || [];
 
-        const datosParaPDF = {
-            datosIncidencias: {
-                metricas: {
-                    criticas: parseInt(document.getElementById('metricCriticas')?.textContent || '0'),
-                    altas: parseInt(document.getElementById('metricAltas')?.textContent || '0'),
-                    pendientes: parseInt(document.getElementById('metricPendientes')?.textContent || '0'),
-                    total: parseInt(document.getElementById('metricTotal')?.textContent || '0'),
-                    finalizadas: (parseInt(document.getElementById('metricTotal')?.textContent || '0') - parseInt(document.getElementById('metricPendientes')?.textContent || '0'))
-                },
-                colaboradores: colaboradoresData,
-                categoriasData: categoriasData
-            },
-            datosRecuperacion: {
-                estadisticas: datosActualesRecuperacion.estadisticas,
-                sucursalesResumen: sucursalesResumenData
-            },
-            datosMapaCalor: {
-                datosPorUbicacion: window.mapaCalorComponente?.datosPorUbicacion ? Array.from(window.mapaCalorComponente.datosPorUbicacion.entries()) : [],
-                estadisticasGenerales: {
-                    totalIncidentes: document.getElementById('mapaTotalIncidentes')?.textContent || '0',
-                    criticasAltas: document.getElementById('mapaCriticasAltas')?.textContent || '0',
-                    totalPerdido: document.getElementById('mapaTotalPerdido')?.textContent || '$0',
-                    tasaRecuperacion: document.getElementById('mapaTasaRecuperacion')?.textContent || '0%'
-                }
-            },
-            filtrosAplicados: filtrosActivos
+        // 7. Datos de estado y riesgo detallados
+        const estadoData = datosGraficas.estadoData || { pendientes: 0, finalizadas: 0 };
+        const riesgoData = datosGraficas.riesgoData || {};
+
+        // 8. Datos de recuperación
+        const registrosRecuperacion = datosActualesRecuperacion.registros || [];
+        const estadisticasRecuperacion = datosActualesRecuperacion.estadisticas || {
+            totalPerdido: 0,
+            totalRecuperado: 0,
+            totalNeto: 0,
+            porcentajeRecuperacion: 0,
+            totalEventos: 0,
+            promedioPerdida: 0
         };
 
+        // 9. Datos de sucursales para resumen de recuperación (desde la tabla HTML)
+        const tablaResumenBody = document.getElementById('tablaResumenBody');
+        let sucursalesResumenData = [];
+
+        if (tablaResumenBody) {
+            const filas = tablaResumenBody.querySelectorAll('tr');
+            filas.forEach(fila => {
+                const celdas = fila.querySelectorAll('td');
+                if (celdas.length >= 6 && !celdas[0]?.innerText?.includes('No hay datos')) {
+                    let nombre = celdas[0]?.innerText || 'N/A';
+                    nombre = nombre.replace(/[^\w\sáéíóúñÑ]/g, '').trim();
+                    sucursalesResumenData.push({
+                        nombre: nombre,
+                        eventos: parseInt(celdas[1]?.innerText) || 0,
+                        perdido: parseFloat(String(celdas[2]?.innerText).replace(/[^0-9.-]/g, '')) || 0,
+                        recuperado: parseFloat(String(celdas[3]?.innerText).replace(/[^0-9.-]/g, '')) || 0,
+                        neto: parseFloat(String(celdas[4]?.innerText).replace(/[^0-9.-]/g, '')) || 0,
+                        porcentaje: parseFloat(String(celdas[5]?.innerText).replace('%', '')) || 0
+                    });
+                }
+            });
+        }
+
+        // 10. Datos de estado detallado desde la tabla HTML
+        const tablaEstadoBody = document.querySelector('#tablaEstado tbody');
+        let estadoDetalleData = [];
+        if (tablaEstadoBody) {
+            const filas = tablaEstadoBody.querySelectorAll('tr');
+            filas.forEach(fila => {
+                const celdas = fila.querySelectorAll('td');
+                if (celdas.length >= 3 && !celdas[0]?.innerText?.includes('Sin datos')) {
+                    estadoDetalleData.push({
+                        estado: (celdas[0]?.innerText || '').replace(/[^\w\sáéíóúñÑ]/g, '').trim(),
+                        cantidad: parseInt(celdas[1]?.innerText) || 0,
+                        porcentaje: celdas[2]?.innerText || '0%'
+                    });
+                }
+            });
+        }
+
+        // 11. Datos de riesgo detallado desde la tabla HTML
+        const tablaRiesgoBody = document.querySelector('#tablaRiesgo tbody');
+        let riesgoDetalleData = [];
+        if (tablaRiesgoBody) {
+            const filas = tablaRiesgoBody.querySelectorAll('tr');
+            filas.forEach(fila => {
+                const celdas = fila.querySelectorAll('td');
+                if (celdas.length >= 4 && !celdas[0]?.innerText?.includes('Sin datos')) {
+                    riesgoDetalleData.push({
+                        nivel: (celdas[0]?.innerText || '').replace(/[^\w\sáéíóúñÑ]/g, '').trim(),
+                        cantidad: parseInt(celdas[1]?.innerText) || 0,
+                        porcentaje: celdas[2]?.innerText || '0%'
+                    });
+                }
+            });
+        }
+
+        // 12. Datos de categorías detallado desde la tabla HTML
+        const tablaCategoriasBody = document.querySelector('#tablaCategoriasGrafica tbody');
+        let categoriasDetalleData = [];
+        if (tablaCategoriasBody) {
+            const filas = tablaCategoriasBody.querySelectorAll('tr');
+            filas.forEach(fila => {
+                const celdas = fila.querySelectorAll('td');
+                if (celdas.length >= 3 && !celdas[0]?.innerText?.includes('Sin datos')) {
+                    categoriasDetalleData.push({
+                        nombre: (celdas[0]?.innerText || '').replace(/[^\w\sáéíóúñÑ]/g, '').trim(),
+                        cantidad: parseInt(celdas[1]?.innerText) || 0
+                    });
+                }
+            });
+        }
+
+        // 13. Datos de tipo de evento desde la tabla HTML
+        const tablaTipoEventoBody = document.querySelector('#tablaTipoEvento tbody');
+        let tipoEventoData = [];
+        if (tablaTipoEventoBody) {
+            const filas = tablaTipoEventoBody.querySelectorAll('tr');
+            filas.forEach(fila => {
+                const celdas = fila.querySelectorAll('td');
+                if (celdas.length >= 3 && !celdas[0]?.innerText?.includes('Sin datos')) {
+                    tipoEventoData.push({
+                        tipo: (celdas[0]?.innerText || '').replace(/[^\w\sáéíóúñÑ]/g, '').trim(),
+                        monto: celdas[1]?.innerText || '$0',
+                        porcentaje: celdas[2]?.innerText || '0%'
+                    });
+                }
+            });
+        }
+
+        // 14. Datos de evolución mensual desde la tabla HTML
+        const tablaEvolucionBody = document.querySelector('#tablaEvolucionMensual tbody');
+        let evolucionMensualData = [];
+        if (tablaEvolucionBody) {
+            const filas = tablaEvolucionBody.querySelectorAll('tr');
+            filas.forEach(fila => {
+                const celdas = fila.querySelectorAll('td');
+                if (celdas.length >= 4 && !celdas[0]?.innerText?.includes('Sin datos')) {
+                    evolucionMensualData.push({
+                        mes: (celdas[0]?.innerText || '').replace(/[^\w\sáéíóúñÑ0-9]/g, '').trim(),
+                        perdido: celdas[1]?.innerText || '$0',
+                        recuperado: celdas[2]?.innerText || '$0',
+                        tasa: celdas[3]?.innerText || '0%'
+                    });
+                }
+            });
+        }
+
+        // 15. Datos de top sucursales recuperación desde la tabla HTML
+        const tablaTopSucursalesBody = document.querySelector('#tablaTopSucursales tbody');
+        let topSucursalesData = [];
+        if (tablaTopSucursalesBody) {
+            const filas = tablaTopSucursalesBody.querySelectorAll('tr');
+            filas.forEach(fila => {
+                const celdas = fila.querySelectorAll('td');
+                if (celdas.length >= 3 && !celdas[0]?.innerText?.includes('Sin datos')) {
+                    topSucursalesData.push({
+                        sucursal: (celdas[0]?.innerText || '').replace(/[^\w\sáéíóúñÑ]/g, '').trim(),
+                        perdido: celdas[1]?.innerText || '$0',
+                        eventos: celdas[2]?.innerText || '0'
+                    });
+                }
+            });
+        }
+
+        // 16. Datos de comparativa desde la tabla HTML
+        const tablaComparativaBody = document.querySelector('#tablaComparativa tbody');
+        let comparativaData = [];
+        if (tablaComparativaBody) {
+            const filas = tablaComparativaBody.querySelectorAll('tr');
+            filas.forEach(fila => {
+                const celdas = fila.querySelectorAll('td');
+                if (celdas.length >= 3 && !celdas[0]?.innerText?.includes('Sin datos')) {
+                    comparativaData.push({
+                        concepto: (celdas[0]?.innerText || '').replace(/[^\w\sáéíóúñÑ]/g, '').trim(),
+                        monto: celdas[1]?.innerText || '$0',
+                        porcentaje: celdas[2]?.innerText || '0%'
+                    });
+                }
+            });
+        }
+
+        // 17. Datos de colaboradores tabla desde la tabla HTML
+        const tablaColaboradoresBody = document.querySelector('#tablaColaboradoresBody');
+        let colaboradoresTablaData = [];
+        if (tablaColaboradoresBody) {
+            const filas = tablaColaboradoresBody.querySelectorAll('tr');
+            filas.forEach(fila => {
+                const celdas = fila.querySelectorAll('td');
+                if (celdas.length >= 6 && !celdas[0]?.innerText?.includes('No hay datos')) {
+                    colaboradoresTablaData.push({
+                        nombre: (celdas[0]?.innerText || '').replace(/[^\w\sáéíóúñÑ]/g, '').trim(),
+                        reportados: parseInt(celdas[1]?.innerText) || 0,
+                        actualizados: parseInt(celdas[2]?.innerText) || 0,
+                        seguimientos: parseInt(celdas[3]?.innerText) || 0,
+                        tiempoPromedio: celdas[4]?.innerText || '0 h',
+                        eficiencia: celdas[5]?.innerText?.replace('%', '') || '0'
+                    });
+                }
+            });
+        }
+
+        // 18. Datos de categorías desempeño desde la tabla HTML
+        const tablaCategoriasDesempenoBody = document.querySelector('#tablaCategoriasBody');
+        let categoriasDesempenoData = [];
+        if (tablaCategoriasDesempenoBody) {
+            const filas = tablaCategoriasDesempenoBody.querySelectorAll('tr');
+            filas.forEach(fila => {
+                const celdas = fila.querySelectorAll('td');
+                if (celdas.length >= 2 && !celdas[0]?.innerText?.includes('No hay datos')) {
+                    categoriasDesempenoData.push({
+                        nombre: (celdas[0]?.innerText || '').replace(/[^\w\sáéíóúñÑ]/g, '').trim(),
+                        cantidad: parseInt(celdas[1]?.innerText) || 0
+                    });
+                }
+            });
+        }
+
+        // =============================================
+        // ARMAR OBJETO COMPLETO PARA EL PDF
+        // =============================================
+        const datosParaPDF = {
+            metricasIncidencias: metricas,
+
+            datosIncidencias: {
+                metricas: metricas,
+                colaboradores: colaboradoresData,
+                categoriasData: categoriasData,
+                sucursalesData: sucursalesData,
+                tiemposPromedio: tiemposPromedio,
+                topActualizadores: topActualizadores,
+                topReportadores: topReportadores,
+                topSeguimientos: topSeguimientos,
+                estadoData: estadoData,
+                riesgoData: riesgoData,
+                incidenciasFiltradas: incidenciasFiltradas
+            },
+
+            datosRecuperacion: {
+                estadisticas: estadisticasRecuperacion,
+                sucursalesResumen: sucursalesResumenData,
+                registros: registrosRecuperacion
+            },
+
+            tablasData: {
+                actualizadores: topActualizadores,
+                reportadores: topReportadores,
+                seguimientos: topSeguimientos,
+                estadoDetalle: estadoDetalleData,
+                riesgoDetalle: riesgoDetalleData,
+                categoriasDetalle: categoriasDetalleData,
+                sucursalesData: sucursalesData,
+                tiemposPromedio: tiemposPromedio,
+                tipoEvento: tipoEventoData,
+                evolucionMensual: evolucionMensualData,
+                topSucursales: topSucursalesData,
+                comparativa: comparativaData,
+                colaboradoresTabla: colaboradoresTablaData,
+                categoriasDesempeno: categoriasDesempenoData
+            },
+
+            filtrosAplicados: filtrosActivos,
+            organizacion: organizacionActual,
+            sucursalesCache: sucursalesCache,
+            categoriasCache: categoriasCache
+        };
+
+        console.log('Datos preparados para PDF:');
+        console.log('- sucursalesData:', sucursalesData.length);
+        console.log('- tiemposPromedio:', tiemposPromedio.length);
+        console.log('- topSucursalesData:', topSucursalesData.length);
+        console.log('- sucursalesResumen:', sucursalesResumenData.length);
+
+        // Configurar y generar PDF
         generadorPDFEstadisticasUnificado.configurar({
             organizacionActual: organizacionActual,
             sucursalesCache: sucursalesCache,
@@ -2850,17 +3094,15 @@ async function generarReportePDF() {
             authToken: authToken
         });
 
-        await generadorPDFEstadisticasUnificado.generarReporte(datosParaPDF, { mostrarAlerta: true });
+        // ELIMINÉ la variable mostrarAlerta - llamada directa
+        await generadorPDFEstadisticasUnificado.generarReporte(datosParaPDF, true);
 
-        // ===== RESTAURAR TEXTOS HTML A BLANCO =====
+        // ===== RESTAURAR =====
         restaurarTextosOriginales();
-        
-        // ===== RESTAURAR GRÁFICAS A BLANCO =====
         restaurarGraficasAModoNormal();
 
     } catch (error) {
         console.error('Error generando PDF:', error);
-        // En caso de error, restaurar todo
         restaurarTextosOriginales();
         restaurarGraficasAModoNormal();
         Swal.close();
@@ -2873,7 +3115,6 @@ async function generarReportePDF() {
         });
     }
 }
-
 // =============================================
 // FUNCIONES PRINCIPALES CON SINCRONIZACIÓN
 // =============================================
@@ -2891,7 +3132,7 @@ async function aplicarFiltros() {
         agrupacionMapa: document.getElementById('filtroAgrupacionMapa')?.value || 'sucursal'
     };
     filtrosActivos = nuevosFiltros;
-    
+
     // Sincronizar con el mapa de calor
     if (window.mapaCalorComponente) {
         window.mapaCalorComponente.sincronizarFiltros({
@@ -2902,10 +3143,10 @@ async function aplicarFiltros() {
         });
         window.mapaCalorComponente.aplicarFiltros();
     }
-    
+
     await cargarIncidencias();
     await cargarRegistrosRecuperacionConFiltros();
-    
+
     const totalIncidencias = incidenciasFiltradas?.length || 0;
     const totalRecuperaciones = registrosRecuperacionFiltrados?.length || 0;
     if (totalIncidencias > 0 || totalRecuperaciones > 0) {
@@ -2917,7 +3158,7 @@ async function limpiarFiltros() {
     const hoy = new Date();
     const hace30Dias = new Date();
     hace30Dias.setDate(hoy.getDate() - 30);
-    
+
     const fechaInicio = document.getElementById('filtroFechaInicio');
     const fechaFin = document.getElementById('filtroFechaFin');
     const filtroCategoria = document.getElementById('filtroCategoria');
@@ -2927,7 +3168,7 @@ async function limpiarFiltros() {
     const filtroNivelRiesgoMapa = document.getElementById('filtroNivelRiesgoMapa');
     const filtroAgrupacionMapa = document.getElementById('filtroAgrupacionMapa');
     const buscar = document.getElementById('buscarIncidencias');
-    
+
     if (fechaInicio) fechaInicio.value = hace30Dias.toISOString().split('T')[0];
     if (fechaFin) fechaFin.value = hoy.toISOString().split('T')[0];
     if (filtroCategoria) filtroCategoria.value = 'todas';
@@ -2937,7 +3178,7 @@ async function limpiarFiltros() {
     if (filtroNivelRiesgoMapa) filtroNivelRiesgoMapa.value = 'todos';
     if (filtroAgrupacionMapa) filtroAgrupacionMapa.value = 'sucursal';
     if (buscar) buscar.value = '';
-    
+
     filtrosActivos = {
         fechaInicio: hace30Dias.toISOString().split('T')[0],
         fechaFin: hoy.toISOString().split('T')[0],
@@ -2949,7 +3190,7 @@ async function limpiarFiltros() {
         nivelRiesgoMapa: 'todos',
         agrupacionMapa: 'sucursal'
     };
-    
+
     if (window.mapaCalorComponente) {
         window.mapaCalorComponente.sincronizarFiltros({
             fechaInicio: filtrosActivos.fechaInicio,
@@ -2959,7 +3200,7 @@ async function limpiarFiltros() {
         });
         window.mapaCalorComponente.aplicarFiltros();
     }
-    
+
     await registrarLimpiezaFiltros();
     await cargarIncidencias();
     await cargarRegistrosRecuperacionConFiltros();
@@ -2975,29 +3216,29 @@ async function inicializarDashboardUnificado() {
         await Promise.all([cargarSucursales(), cargarCategorias(), cargarSucursalesRecuperacion(), cargarRegiones()]);
         establecerFechasPorDefecto();
         await registrarAccesoVistaEstadisticas();
-        
+
         // ===== DIAGNÓSTICO DE RECUPERACIÓN =====
         await diagnosticarRecuperacion();
-        
+
         // Sincronizar filtros con el mapa de calor
         sincronizarFiltrosConMapa();
-        
+
         // NO cargar datos automáticamente - esperar a que el usuario aplique filtros
         const welcomeMsg = document.getElementById('welcomeMessage');
         const resultadosSection = document.getElementById('resultadosSection');
         if (welcomeMsg) welcomeMsg.style.display = 'block';
         if (resultadosSection) resultadosSection.classList.remove('visible');
-        
+
         incidenciasFiltradas = [];
         registrosRecuperacionFiltrados = [];
-        
+
         if (window.mapaCalorComponente) {
             window.mapaCalorComponente.mostrarMensajeInicialMapa();
         }
-        
+
         // Mostrar estado inicial de recuperación
         mostrarMensajeSinDatosRecuperacion();
-        
+
     } catch (error) {
         console.error('Error al inicializar estadísticas unificadas:', error);
         mostrarError('Error al cargar la página: ' + error.message);
@@ -3010,7 +3251,7 @@ function sincronizarFiltrosConMapa() {
         if (window.mapaCalorComponente) {
             const nivelRiesgo = document.getElementById('filtroNivelRiesgoMapa')?.value || 'todos';
             const agrupacion = document.getElementById('filtroAgrupacionMapa')?.value || 'sucursal';
-            
+
             window.mapaCalorComponente.sincronizarFiltros({
                 fechaInicio: filtrosActivos.fechaInicio,
                 fechaFin: filtrosActivos.fechaFin,
@@ -3032,38 +3273,38 @@ function prepararTextosParaPDF() {
     document.querySelectorAll('.metric-card .metric-title, .metric-card .metric-value, .metric-card .metric-subtitle').forEach(el => {
         el.style.setProperty('color', '#000000', 'important');
     });
-    
+
     // Cambiar títulos de secciones
     document.querySelectorAll('.seccion-titulo h2, .seccion-titulo p').forEach(el => {
         el.style.setProperty('color', '#000000', 'important');
     });
-    
+
     // Cambiar textos de tablas
     document.querySelectorAll('.table, .resumen-tabla, .table th, .table td, .resumen-tabla th, .resumen-tabla td').forEach(el => {
         el.style.setProperty('color', '#000000', 'important');
     });
-    
+
     // Cambiar headers de cards
     document.querySelectorAll('.card-header h5, .card-grafica .card-header h5').forEach(el => {
         el.style.setProperty('color', '#000000', 'important');
     });
-    
+
     // Cambiar KPIs de recuperación
     document.querySelectorAll('.kpi-info h3, .kpi-info p').forEach(el => {
         el.style.setProperty('color', '#000000', 'important');
     });
-    
+
     // Cambiar textos de filtros
     document.querySelectorAll('.filtros-header h5, .filtro-grupo label').forEach(el => {
         el.style.setProperty('color', '#000000', 'important');
     });
-    
+
     // Cambiar valores de inputs y selects
     document.querySelectorAll('.filtro-select, .filtro-input').forEach(el => {
         el.style.setProperty('color', '#000000', 'important');
         el.style.setProperty('background', '#ffffff', 'important');
     });
-    
+
     // Cambiar footer
     document.querySelectorAll('.footer-datetime').forEach(el => {
         el.style.setProperty('color', '#000000', 'important');
@@ -3075,32 +3316,32 @@ function restaurarTextosOriginales() {
     document.querySelectorAll('.metric-card .metric-title, .metric-card .metric-value, .metric-card .metric-subtitle').forEach(el => {
         el.style.removeProperty('color');
     });
-    
+
     document.querySelectorAll('.seccion-titulo h2, .seccion-titulo p').forEach(el => {
         el.style.removeProperty('color');
     });
-    
+
     document.querySelectorAll('.table, .resumen-tabla, .table th, .table td, .resumen-tabla th, .resumen-tabla td').forEach(el => {
         el.style.removeProperty('color');
     });
-    
+
     document.querySelectorAll('.card-header h5, .card-grafica .card-header h5').forEach(el => {
         el.style.removeProperty('color');
     });
-    
+
     document.querySelectorAll('.kpi-info h3, .kpi-info p').forEach(el => {
         el.style.removeProperty('color');
     });
-    
+
     document.querySelectorAll('.filtros-header h5, .filtro-grupo label').forEach(el => {
         el.style.removeProperty('color');
     });
-    
+
     document.querySelectorAll('.filtro-select, .filtro-input').forEach(el => {
         el.style.removeProperty('color');
         el.style.removeProperty('background');
     });
-    
+
     document.querySelectorAll('.footer-datetime').forEach(el => {
         el.style.removeProperty('color');
     });
@@ -3126,7 +3367,7 @@ function cambiarGraficasAModoPDF() {
         { chart: graficoTopSucursales },
         { chart: graficoComparativa }
     ];
-    
+
     graficas.forEach(g => {
         if (g.chart && g.chart.options) {
             // Cambiar colores de texto de los ejes
@@ -3166,7 +3407,7 @@ function restaurarGraficasAModoNormal() {
         { chart: graficoTopSucursales },
         { chart: graficoComparativa }
     ];
-    
+
     graficas.forEach(g => {
         if (g.chart && g.chart.options) {
             // Restaurar colores de texto de los ejes a blanco

@@ -1,15 +1,15 @@
-// crearIncidencias.js - VERSIÓN COMPLETA CON TODOS LOS MÉTODOS
+// crearIncidencias.js - VERSIÓN COMPLETA CON AUTOCOMPLETADO PREDICTIVO FUNCIONAL
 // ✅ Canalizaciones a áreas y sucursales
 // ✅ Notificaciones push
 // ✅ Compartir PDF (WhatsApp, Email, Link)
 // ✅ Riesgo automático desde subcategoría (riesgoNivelId)
 // ✅ Drag & drop de imágenes
 // ✅ Fecha/Hora con flatpickr (Tiempo Real e Histórico)
-// ✅ Formulario ACUMULATIVO - Los campos se quedan visibles después de llenarse
-// ✅ Organización siempre visible (no forma parte del flujo)
-// ✅ Tiempo Real: al seleccionar Estado, muestra Fecha + Descripción JUNTOS
-// ✅ Histórico: Fecha con fecha actual preseleccionada y selector se abre automáticamente
-// ✅ Nivel de Riesgo aparece inmediatamente después de seleccionar Subcategoría
+// ✅ Formulario ACUMULATIVO
+// ✅ Organización siempre visible
+// ✅ AUTOCOMPLETADO PREDICTIVO con <auto-descripcion>
+// ✅ Guardado automático de frases en colección frasesAutoCompletar
+// ✅ Actualización dinámica de atributos (categoría-id, subcategoria-id)
 
 const LIMITES = {
     DETALLES_INCIDENCIA: 1000
@@ -44,6 +44,15 @@ class CrearIncidenciaController {
         this.riesgoSeleccionadoId = null;
         this.fechaHoraTiempoRealFija = null;
         this.tipoEventoSeleccionado = null;
+        this.descripcionComponent = null;
+        
+        // Manager para frases de autocompletado
+        this.frasesManager = null;
+        
+        // Bandera para evitar recursión en riesgos
+        this.actualizandoRiesgo = false;
+        this.actualizandoSubcategoria = false; // nueva bandera
+        this.actualizandoAtributos = false;    // nueva bandera
 
         this._init();
     }
@@ -65,12 +74,10 @@ class CrearIncidenciaController {
             try {
                 const { RiesgoNivelManager } = await import('/clases/riesgoNivel.js');
                 this.riesgoManager = new RiesgoNivelManager();
-
                 if (this.usuarioActual && this.usuarioActual.organizacionCamelCase) {
                     this.nivelesRiesgo = await this.riesgoManager.obtenerTodosNiveles(
                         this.usuarioActual.organizacionCamelCase
                     );
-
                     this.nivelesRiesgoMap.clear();
                     this.nivelesRiesgo.forEach(nivel => {
                         this.nivelesRiesgoMap.set(nivel.id, {
@@ -100,6 +107,22 @@ class CrearIncidenciaController {
         }
         return this.categoriaManager;
     }
+async _initFrasesManager() {
+    if (!this.frasesManager) {
+        try {
+            const { FrasesAutoCompletarManager } = await import('/clases/frasesAutoCompletar.js');
+            // 👇 PASA LA ORGANIZACIÓN CAMELCASE AL CONSTRUCTOR
+            const orgCamel = this.usuarioActual.organizacionCamelCase;
+            this.frasesManager = new FrasesAutoCompletarManager(orgCamel);
+        
+            await this.frasesManager.crearFraseEjemploSiVacia(orgCamel);
+        } catch (error) {
+            console.error('Error inicializando FrasesAutoCompletarManager:', error);
+            this.frasesManager = null;
+        }
+    }
+    return this.frasesManager;
+}
 
     async _initNotificacionManager() {
         if (!this.notificacionManager) {
@@ -139,6 +162,16 @@ class CrearIncidenciaController {
         return true;
     }
 
+    async _inicializarManager() {
+        try {
+            const { IncidenciaManager } = await import('/clases/incidencia.js');
+            this.incidenciaManager = new IncidenciaManager();
+        } catch (error) {
+            console.error('Error cargando IncidenciaManager:', error);
+            throw error;
+        }
+    }
+
     async _init() {
         try {
             this._cargarUsuario();
@@ -150,6 +183,7 @@ class CrearIncidenciaController {
             await this._inicializarManager();
             await this._initRiesgoManager();
             await this._initCategoriaManager();
+            await this._initFrasesManager();        // 👈 NUEVO: inicializar manager de frases
             await this._cargarDatosRelacionados();
             await this._cargarAreas();
             await this._cargarSucursalesParaNotificacion();
@@ -164,6 +198,7 @@ class CrearIncidenciaController {
             this._inicializarFormularioAcumulativo();
             this._configurarDragAndDropYPaste();
             this._cargarNivelesRiesgoEnSelect();
+            this._inicializarAutoCompletado();     // 👈 NUEVO: iniciar el componente
 
             this.imageEditorModal = new window.ImageEditorModal();
 
@@ -173,10 +208,142 @@ class CrearIncidenciaController {
         }
     }
 
+    _configurarOrganizacion() {
+        const orgInput = document.getElementById('organization');
+        if (orgInput) {
+            orgInput.value = this.usuarioActual.organizacion;
+        }
+    }
+
+    _inicializarDateTimePicker() {
+        const fechaInput = document.getElementById('fechaHoraIncidencia');
+        if (!fechaInput) return;
+        if (typeof flatpickr !== 'undefined') {
+            this.flatpickrInstance = flatpickr(fechaInput, {
+                enableTime: true,
+                dateFormat: "d/m/Y H:i",
+                time_24hr: true,
+                locale: "es",
+                minuteIncrement: 1,
+                maxDate: new Date(),
+                disableMobile: true
+            });
+        }
+        this._configurarBotonesTipoEvento();
+    }
+
+    _configurarBotonesTipoEvento() {
+        const botones = document.querySelectorAll('.tipo-evento-btn');
+        let tipoSeleccionado = null;
+        const desactivarTodos = () => botones.forEach(btn => btn.classList.remove('active'));
+        botones.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const tipo = btn.dataset.tipo;
+                if (tipoSeleccionado === tipo) {
+                    desactivarTodos();
+                    tipoSeleccionado = null;
+                    this.tipoEventoSeleccionado = null;
+                    this.fechaHoraTiempoRealFija = null;
+                    const fechaInput = document.getElementById('fechaHoraIncidencia');
+                    if (fechaInput) {
+                        fechaInput.value = '';
+                        fechaInput.readOnly = false;
+                        fechaInput.style.backgroundColor = '';
+                        if (this.flatpickrInstance) {
+                            this.flatpickrInstance.destroy();
+                            this.flatpickrInstance = flatpickr(fechaInput, {
+                                enableTime: true, dateFormat: "d/m/Y H:i", time_24hr: true, locale: "es",
+                                minuteIncrement: 1, maxDate: new Date(), disableMobile: true
+                            });
+                        }
+                    }
+                } else {
+                    desactivarTodos();
+                    btn.classList.add('active');
+                    tipoSeleccionado = tipo;
+                    this.tipoEventoSeleccionado = tipo;
+                }
+                document.dispatchEvent(new Event('tipoEventoChanged'));
+            });
+        });
+    }
+
+    _obtenerTipoEventoSeleccionado() {
+        const btn = document.querySelector('.tipo-evento-btn.active');
+        return btn ? btn.dataset.tipo : null;
+    }
+
+    // ==================== NUEVO: INICIALIZACIÓN DEL AUTOCOMPLETADO ====================
+    _inicializarAutoCompletado() {
+        this.descripcionComponent = document.getElementById('detallesIncidencia');
+        if (!this.descripcionComponent) {
+            console.warn('⚠️ Componente auto-descripcion no encontrado');
+            return;
+        }
+        const org = this.usuarioActual?.organizacionCamelCase || '';
+        this.descripcionComponent.setAttribute('organizacion', org);
+        
+        // Escuchar eventos del componente
+        this.descripcionComponent.addEventListener('input', (e) => {
+            let texto = '';
+            if (e.detail?.texto) texto = e.detail.texto;
+            else if (this.descripcionComponent.value) texto = this.descripcionComponent.value;
+            else if (e.target?.value) texto = e.target.value;
+         
+            this._validarLongitudCampoCompleto();
+            this._verificarBotonesFinales();
+        });
+        
+        const catInput = document.getElementById('categoriaIncidencia');
+        if (catInput) {
+            new MutationObserver(() => {
+                document.dispatchEvent(new Event('categoriaCambiada'));
+                this._actualizarAtributosAutoDescripcion(
+                    catInput.dataset.selectedId,
+                    document.getElementById('subcategoriaIncidencia')?.value
+                );
+            }).observe(catInput, { attributes: true });
+        }
+       
+    }
+
+    // ==================== ACTUALIZAR ATRIBUTOS DEL AUTO-DESCRIPCION ====================
+    _actualizarAtributosAutoDescripcion(categoriaId, subcategoriaId) {
+    // Evita ejecución recursiva
+    if (this.actualizandoAtributos) return;
+    if (!this.descripcionComponent) return;
+
+    // Obtener valores actuales del componente
+    const catActual = this.descripcionComponent.getAttribute('categoria-id');
+    const subActual = this.descripcionComponent.getAttribute('subcategoria-id');
+
+    const nuevaCat = (categoriaId && categoriaId !== '') ? categoriaId : null;
+    const nuevaSub = (subcategoriaId && subcategoriaId !== '') ? subcategoriaId : null;
+
+    // Si no hay cambios reales, salir
+    if (catActual === nuevaCat && subActual === nuevaSub) return;
+
+    this.actualizandoAtributos = true;
+    try {
+        if (nuevaCat) {
+            this.descripcionComponent.setAttribute('categoria-id', nuevaCat);
+        } else {
+            this.descripcionComponent.removeAttribute('categoria-id');
+        }
+        if (nuevaSub) {
+            this.descripcionComponent.setAttribute('subcategoria-id', nuevaSub);
+        } else {
+            this.descripcionComponent.removeAttribute('subcategoria-id');
+        }
+ 
+    } finally {
+        this.actualizandoAtributos = false;
+    }
+}
+
     // ==================== FORMULARIO ACUMULATIVO ====================
     _inicializarFormularioAcumulativo() {
         const pasos = document.querySelectorAll('.field-group-step');
-
         pasos.forEach((paso) => {
             const step = parseInt(paso.dataset.step);
             if (step === 0) {
@@ -185,7 +352,6 @@ class CrearIncidenciaController {
                 paso.style.display = 'none';
             }
         });
-
         this._configurarObservadorPasos();
     }
 
@@ -230,6 +396,11 @@ class CrearIncidenciaController {
                         const tieneCategoria = categoriaInput.dataset.selectedId && categoriaInput.dataset.selectedId !== '';
                         if (tieneCategoria) {
                             this._mostrarPaso(3);
+                            // Actualizar atributos del auto-descripcion con la nueva categoría
+                            this._actualizarAtributosAutoDescripcion(
+                                categoriaInput.dataset.selectedId,
+                                document.getElementById('subcategoriaIncidencia')?.value
+                            );
                         }
                     }
                 });
@@ -237,16 +408,21 @@ class CrearIncidenciaController {
             observer.observe(categoriaInput, { attributes: true });
         }
 
-        // Paso 3: Subcategoría - al seleccionar, mostrar nivel riesgo INMEDIATAMENTE
+        // Paso 3: Subcategoría -> riesgo
         const subcategoriaSelect = document.getElementById('subcategoriaIncidencia');
         if (subcategoriaSelect) {
             subcategoriaSelect.addEventListener('change', () => {
                 this._mostrarPaso(4);
                 this._aplicarRiesgoAutomatico();
+                // Actualizar atributos del auto-descripcion con la subcategoría seleccionada
+                this._actualizarAtributosAutoDescripcion(
+                    document.getElementById('categoriaIncidencia')?.dataset.selectedId,
+                    subcategoriaSelect.value
+                );
             });
         }
 
-        // Paso 4: Nivel riesgo -> mostrar estado
+        // Paso 4: Nivel riesgo -> estado
         const riesgoSelect = document.getElementById('nivelRiesgo');
         if (riesgoSelect) {
             riesgoSelect.addEventListener('change', () => {
@@ -256,7 +432,7 @@ class CrearIncidenciaController {
             });
         }
 
-        // Paso 5: Estado -> según el tipo de evento
+        // Paso 5: Estado -> fecha y descripción según tipo evento
         const estadoSelect = document.getElementById('estadoIncidencia');
         if (estadoSelect) {
             estadoSelect.addEventListener('change', () => {
@@ -279,7 +455,7 @@ class CrearIncidenciaController {
 
         if (!this.fechaHoraTiempoRealFija) {
             this.fechaHoraTiempoRealFija = new Date();
-            console.log('🔒 Fecha/Hora Tiempo Real fijada:', this.fechaHoraTiempoRealFija);
+        
         }
 
         const day = String(this.fechaHoraTiempoRealFija.getDate()).padStart(2, '0');
@@ -332,7 +508,6 @@ class CrearIncidenciaController {
         fechaInput.style.opacity = '1';
         fechaInput.style.borderColor = '';
 
-        // Fecha actual para preseleccionar
         const ahora = new Date();
         const day = String(ahora.getDate()).padStart(2, '0');
         const month = String(ahora.getMonth() + 1).padStart(2, '0');
@@ -369,7 +544,6 @@ class CrearIncidenciaController {
             }
         });
 
-        // Abrir el selector automáticamente después de un pequeño retraso
         setTimeout(() => {
             if (this.flatpickrInstance) {
                 this.flatpickrInstance.open();
@@ -400,9 +574,8 @@ class CrearIncidenciaController {
 
         if (pasosArray.includes(7)) {
             setTimeout(() => {
-                const detallesInput = document.getElementById('detallesIncidencia');
-                if (detallesInput && !detallesInput.disabled) {
-                    detallesInput.focus();
+                if (this.descripcionComponent) {
+                    this.descripcionComponent.focus();
                 }
             }, 150);
         }
@@ -438,13 +611,19 @@ class CrearIncidenciaController {
             document.getElementById('nivelRiesgo')?.value !== '__otro__';
         const estadoValido = document.getElementById('estadoIncidencia')?.value !== '';
         const fechaValida = document.getElementById('fechaHoraIncidencia')?.value !== '';
-        const descripcionValida = (() => {
-            const texto = document.getElementById('detallesIncidencia')?.value.trim() || '';
-            return texto.length >= 10 && texto.length <= 1000;
-        })();
 
-        const todoCompleto = tipoEventoValido && sucursalValida && categoriaValida &&
-            riesgoValido && estadoValido && fechaValida && descripcionValida;
+        let descripcionValida = false;
+        if (this.descripcionComponent && this.descripcionComponent.value !== undefined) {
+            const texto = this.descripcionComponent.value?.trim() || '';
+            descripcionValida = texto.length >= 10 && texto.length <= LIMITES.DETALLES_INCIDENCIA;
+        } else {
+            const detallesTextarea = document.getElementById('detallesIncidenciaTextarea');
+            const texto = detallesTextarea?.value?.trim() || '';
+            descripcionValida = texto.length >= 10 && texto.length <= LIMITES.DETALLES_INCIDENCIA;
+        }
+
+ const todoCompleto = tipoEventoValido && sucursalValida && categoriaValida &&
+    riesgoValido && estadoValido && fechaValida && descripcionValida;
 
         const botonesContainer = document.getElementById('originalButtons');
         const seccionImagenes = document.getElementById('seccionImagenesWrapper');
@@ -460,10 +639,12 @@ class CrearIncidenciaController {
 
     // ==================== CARGAR NIVELES DE RIESGO EN SELECT ====================
     async _cargarNivelesRiesgoEnSelect() {
-        const riesgoSelect = document.getElementById('nivelRiesgo');
-        if (!riesgoSelect) return;
-
+        if (this.actualizandoRiesgo) return;
+        this.actualizandoRiesgo = true;
         try {
+            const riesgoSelect = document.getElementById('nivelRiesgo');
+            if (!riesgoSelect) return;
+
             await this._initRiesgoManager();
 
             this.nivelesRiesgoOptions = [];
@@ -488,6 +669,8 @@ class CrearIncidenciaController {
 
         } catch (error) {
             console.error('Error cargando niveles de riesgo:', error);
+        } finally {
+            this.actualizandoRiesgo = false;
         }
     }
 
@@ -495,6 +678,7 @@ class CrearIncidenciaController {
         const riesgoSelect = document.getElementById('nivelRiesgo');
         if (!riesgoSelect) return;
 
+        const valorActual = riesgoSelect.value;
         let options = '<option value="">-- Selecciona el nivel de riesgo --</option>';
 
         this.nivelesRiesgoOptions.forEach(opcion => {
@@ -503,21 +687,39 @@ class CrearIncidenciaController {
         });
 
         riesgoSelect.innerHTML = options;
+        
+        if (riesgoIdSeleccionado && riesgoIdSeleccionado !== valorActual) {
+            riesgoSelect.value = riesgoIdSeleccionado;
+        } else if (!riesgoIdSeleccionado && valorActual && valorActual !== '') {
+            riesgoSelect.value = valorActual;
+        }
     }
 
     _mostrarRiesgoAsignadoUnico(riesgoId, riesgoNombre) {
-        const riesgoSelect = document.getElementById('nivelRiesgo');
-        if (!riesgoSelect) return;
+    const riesgoSelect = document.getElementById('nivelRiesgo');
+    if (!riesgoSelect) return;
 
-        riesgoSelect.innerHTML = `<option value="${riesgoId}" selected>${this._escapeHTML(riesgoNombre)} (Asignado Automáticamente)</option>`;
-        riesgoSelect.disabled = true;
-        riesgoSelect.classList.add('field-disabled');
+    // Guardar referencia al listener original (si existe)
+    const originalOnChange = riesgoSelect.onchange;
+    // Deshabilitar temporalmente el evento change para evitar recursión
+    riesgoSelect.onchange = null;
 
+    // Construir opción única
+    riesgoSelect.innerHTML = `<option value="${riesgoId}" selected>${this._escapeHTML(riesgoNombre)} (Asignado Automáticamente)</option>`;
+    riesgoSelect.disabled = true;
+    riesgoSelect.classList.add('field-disabled');
+
+    // Restaurar el listener (si había uno)
+    if (originalOnChange) riesgoSelect.onchange = originalOnChange;
+
+    // Solo disparar el evento si el valor realmente cambió
+    if (riesgoSelect.value !== riesgoId) {
         const changeEvent = new Event('change', { bubbles: true });
         riesgoSelect.dispatchEvent(changeEvent);
-
-        this._mostrarPaso(5);
     }
+
+    this._mostrarPaso(5);
+}
 
     _mostrarListaCompletaRiesgos() {
         const riesgoSelect = document.getElementById('nivelRiesgo');
@@ -743,68 +945,75 @@ class CrearIncidenciaController {
 
     // ==================== MANEJAR SELECCIÓN DE RIESGO ====================
     async _manejarSeleccionRiesgo() {
-        const riesgoSelect = document.getElementById('nivelRiesgo');
-        if (riesgoSelect.disabled) return;
+        if (this.actualizandoRiesgo) return;
+        this.actualizandoRiesgo = true;
 
-        const valorSeleccionado = riesgoSelect.value;
+        try {
+            const riesgoSelect = document.getElementById('nivelRiesgo');
+            if (riesgoSelect.disabled) return;
 
-        if (valorSeleccionado === '__otro__') {
-            const nuevoRiesgoId = await this._crearNuevoNivelRiesgo();
+            const valorSeleccionado = riesgoSelect.value;
 
-            if (nuevoRiesgoId) {
-                await this._cargarNivelesRiesgoEnSelect();
-                const nuevoSelect = document.getElementById('nivelRiesgo');
-                nuevoSelect.value = nuevoRiesgoId;
+            if (valorSeleccionado === '__otro__') {
+                const nuevoRiesgoId = await this._crearNuevoNivelRiesgo();
 
+                if (nuevoRiesgoId) {
+                    await this._cargarNivelesRiesgoEnSelect();
+                    const nuevoSelect = document.getElementById('nivelRiesgo');
+                    nuevoSelect.value = nuevoRiesgoId;
+
+                    const subcategoriaId = document.getElementById('subcategoriaIncidencia')?.value;
+                    const categoriaId = document.getElementById('categoriaIncidencia')?.dataset.selectedId;
+
+                    if (subcategoriaId && subcategoriaId !== '' && categoriaId) {
+                        const { value: asociar } = await Swal.fire({
+                            title: '¿Asociar riesgo a la subcategoría?',
+                            text: '¿Deseas que este nuevo nivel de riesgo se asocie automáticamente a la subcategoría seleccionada?',
+                            icon: 'question',
+                            showCancelButton: true,
+                            confirmButtonText: 'Sí, asociar',
+                            cancelButtonText: 'No, solo para esta incidencia',
+                            confirmButtonColor: '#28a745'
+                        });
+
+                        if (asociar) {
+                            await this._asociarRiesgoASubcategoria(categoriaId, subcategoriaId, nuevoRiesgoId);
+                        }
+                    }
+                } else {
+                    await this._cargarNivelesRiesgoEnSelect();
+                }
+                return;
+            }
+
+            if (valorSeleccionado && valorSeleccionado !== '' && valorSeleccionado !== '__otro__') {
                 const subcategoriaId = document.getElementById('subcategoriaIncidencia')?.value;
                 const categoriaId = document.getElementById('categoriaIncidencia')?.dataset.selectedId;
 
                 if (subcategoriaId && subcategoriaId !== '' && categoriaId) {
-                    const { value: asociar } = await Swal.fire({
-                        title: '¿Asociar riesgo a la subcategoría?',
-                        text: '¿Deseas que este nuevo nivel de riesgo se asocie automáticamente a la subcategoría seleccionada?',
-                        icon: 'question',
-                        showCancelButton: true,
-                        confirmButtonText: 'Sí, asociar',
-                        cancelButtonText: 'No, solo para esta incidencia',
-                        confirmButtonColor: '#28a745'
-                    });
+                    const riesgoActual = await this._obtenerRiesgoDesdeSubcategoria(categoriaId, subcategoriaId);
 
-                    if (asociar) {
-                        await this._asociarRiesgoASubcategoria(categoriaId, subcategoriaId, nuevoRiesgoId);
-                    }
-                }
-            } else {
-                await this._cargarNivelesRiesgoEnSelect();
-            }
-            return;
-        }
+                    if (!riesgoActual || !riesgoActual.id) {
+                        const riesgoNombre = this._getRiesgoTexto(valorSeleccionado);
 
-        if (valorSeleccionado && valorSeleccionado !== '' && valorSeleccionado !== '__otro__') {
-            const subcategoriaId = document.getElementById('subcategoriaIncidencia')?.value;
-            const categoriaId = document.getElementById('categoriaIncidencia')?.dataset.selectedId;
+                        const { value: asociar } = await Swal.fire({
+                            title: '¿Asociar riesgo a la subcategoría?',
+                            html: `¿Deseas asociar el nivel de riesgo <strong>${this._escapeHTML(riesgoNombre)}</strong> a la subcategoría seleccionada?<br><small style="color: #aaa;">Esto permitirá que en el futuro se seleccione automáticamente.</small>`,
+                            icon: 'question',
+                            showCancelButton: true,
+                            confirmButtonText: 'Sí, asociar',
+                            cancelButtonText: 'No, solo para esta incidencia',
+                            confirmButtonColor: '#28a745'
+                        });
 
-            if (subcategoriaId && subcategoriaId !== '' && categoriaId) {
-                const riesgoActual = await this._obtenerRiesgoDesdeSubcategoria(categoriaId, subcategoriaId);
-
-                if (!riesgoActual || !riesgoActual.id) {
-                    const riesgoNombre = this._getRiesgoTexto(valorSeleccionado);
-
-                    const { value: asociar } = await Swal.fire({
-                        title: '¿Asociar riesgo a la subcategoría?',
-                        html: `¿Deseas asociar el nivel de riesgo <strong>${this._escapeHTML(riesgoNombre)}</strong> a la subcategoría seleccionada?<br><small style="color: #aaa;">Esto permitirá que en el futuro se seleccione automáticamente.</small>`,
-                        icon: 'question',
-                        showCancelButton: true,
-                        confirmButtonText: 'Sí, asociar',
-                        cancelButtonText: 'No, solo para esta incidencia',
-                        confirmButtonColor: '#28a745'
-                    });
-
-                    if (asociar) {
-                        await this._asociarRiesgoASubcategoria(categoriaId, subcategoriaId, valorSeleccionado);
+                        if (asociar) {
+                            await this._asociarRiesgoASubcategoria(categoriaId, subcategoriaId, valorSeleccionado);
+                        }
                     }
                 }
             }
+        } finally {
+            this.actualizandoRiesgo = false;
         }
     }
 
@@ -837,11 +1046,6 @@ class CrearIncidenciaController {
             hour: '2-digit',
             minute: '2-digit'
         });
-    }
-
-    _obtenerTipoEventoSeleccionado() {
-        const btnActivo = document.querySelector('.tipo-evento-btn.active');
-        return btnActivo ? btnActivo.dataset.tipo : null;
     }
 
     // ==================== CONFIGURAR BOTONES TIPO EVENTO ====================
@@ -902,6 +1106,7 @@ class CrearIncidenciaController {
         });
     }
 
+    // ==================== DRAG & DROP Y PASTE ====================
     _configurarDragAndDropYPaste() {
         const dropZone = document.getElementById('dropZone');
 
@@ -932,7 +1137,6 @@ class CrearIncidenciaController {
         dropZone.addEventListener('drop', (e) => {
             const files = Array.from(e.dataTransfer.files);
             const imageFiles = files.filter(file => file.type.startsWith('image/'));
-
             if (imageFiles.length > 0) {
                 this._procesarImagenes(imageFiles);
             }
@@ -1035,8 +1239,7 @@ class CrearIncidenciaController {
             'categoriaIncidencia',
             'nivelRiesgo',
             'subcategoriaIncidencia',
-            'detallesIncidencia',
-            'fechaHoraIncidencia'
+            'detallesIncidencia'  // este es el componente
         ];
 
         camposDependientes.forEach(campoId => {
@@ -1054,7 +1257,11 @@ class CrearIncidenciaController {
                 } else {
                     campo.disabled = true;
                     campo.classList.add('field-disabled');
-                    campo.value = campo.tagName === 'SELECT' ? '' : '';
+                    if (campo.tagName === 'AUTO-DESCRIPCION') {
+                        campo.value = '';
+                    } else {
+                        campo.value = '';
+                    }
 
                     const parent = campo.closest('.full-width');
                     const hint = parent?.querySelector('.field-required-hint');
@@ -1081,42 +1288,7 @@ class CrearIncidenciaController {
         }
     }
 
-    async _inicializarManager() {
-        try {
-            const { IncidenciaManager } = await import('/clases/incidencia.js');
-            this.incidenciaManager = new IncidenciaManager();
-        } catch (error) {
-            console.error('Error cargando IncidenciaManager:', error);
-            throw error;
-        }
-    }
-
-    _configurarOrganizacion() {
-        const orgInput = document.getElementById('organization');
-        if (orgInput) {
-            orgInput.value = this.usuarioActual.organizacion;
-        }
-    }
-
-    _inicializarDateTimePicker() {
-        const fechaInput = document.getElementById('fechaHoraIncidencia');
-        if (!fechaInput) return;
-
-        if (typeof flatpickr !== 'undefined') {
-            this.flatpickrInstance = flatpickr(fechaInput, {
-                enableTime: true,
-                dateFormat: "d/m/Y H:i",
-                time_24hr: true,
-                locale: "es",
-                minuteIncrement: 1,
-                maxDate: new Date(),
-                disableMobile: true
-            });
-        }
-
-        this._configurarBotonesTipoEvento();
-    }
-
+    // ==================== MÉTODOS DE CARGA DE DATOS ====================
     async _cargarDatosRelacionados() {
         try {
             await this._cargarSucursales();
@@ -1141,16 +1313,19 @@ class CrearIncidenciaController {
     }
 
     async _cargarCategorias() {
-        try {
-            const { CategoriaManager } = await import('/clases/categoria.js');
-            const categoriaManager = new CategoriaManager();
-            this.categoriasOriginales = await categoriaManager.obtenerTodasCategorias();
-            this.categorias = [...this.categoriasOriginales];
-        } catch (error) {
-            console.error('Error cargando categorías:', error);
-            throw error;
-        }
+    try {
+        const { CategoriaManager } = await import('/clases/categoria.js');
+        const categoriaManager = new CategoriaManager();
+        // 👇 AHORA LE PASAMOS LA ORGANIZACIÓN CAMELCASE
+        this.categoriasOriginales = await categoriaManager.obtenerTodasCategorias(
+            this.usuarioActual.organizacionCamelCase
+        );
+        this.categorias = [...this.categoriasOriginales];
+    } catch (error) {
+        console.error('Error cargando categorías:', error);
+        throw error;
     }
+}
 
     async _cargarAreas() {
         try {
@@ -1243,32 +1418,64 @@ class CrearIncidenciaController {
             .replace(/[^a-zA-Z0-9]/g, '');
     }
 
+    // ==================== VALIDACIONES ====================
     _inicializarValidaciones() {
-        const detallesInput = document.getElementById('detallesIncidencia');
-        if (detallesInput) {
-            detallesInput.maxLength = LIMITES.DETALLES_INCIDENCIA;
-            detallesInput.addEventListener('input', () => {
-                this._validarLongitudCampo(detallesInput, LIMITES.DETALLES_INCIDENCIA, 'Los detalles');
-                this._actualizarContador('detallesIncidencia', 'contadorCaracteres', LIMITES.DETALLES_INCIDENCIA);
+        if (this.descripcionComponent) {
+            this.descripcionComponent.addEventListener('input', () => {
+                this._validarLongitudCampoCompleto();
                 this._verificarBotonesFinales();
             });
+        } else {
+            const detallesTextarea = document.getElementById('detallesIncidenciaTextarea');
+            if (detallesTextarea) {
+                detallesTextarea.maxLength = LIMITES.DETALLES_INCIDENCIA;
+                detallesTextarea.addEventListener('input', () => {
+                    this._validarLongitudCampo(detallesTextarea, LIMITES.DETALLES_INCIDENCIA, 'Los detalles');
+                    this._actualizarContador('detallesIncidenciaTextarea', 'contadorCaracteres', LIMITES.DETALLES_INCIDENCIA);
+                    this._verificarBotonesFinales();
+                });
+            }
         }
-        this._actualizarContador('detallesIncidencia', 'contadorCaracteres', LIMITES.DETALLES_INCIDENCIA);
+
+        this._actualizarContador('', 'contadorCaracteres', LIMITES.DETALLES_INCIDENCIA);
     }
 
-    _actualizarContador(inputId, counterId, limite) {
-        const input = document.getElementById(inputId);
-        const counter = document.getElementById(counterId);
-        if (input && counter) {
-            const longitud = input.value.length;
-            counter.textContent = `${longitud}/${limite}`;
-            if (longitud > limite * 0.9) {
+    _validarLongitudCampoCompleto() {
+        if (!this.descripcionComponent) return;
+        const texto = this.descripcionComponent.value || '';
+        const limite = LIMITES.DETALLES_INCIDENCIA;
+
+        if (texto.length > limite) {
+            this.descripcionComponent.value = texto.substring(0, limite);
+            this._mostrarNotificacion(`La descripción no puede exceder ${limite} caracteres`, 'warning', 3000);
+        }
+
+        const counter = document.getElementById('contadorCaracteres');
+        if (counter) {
+            counter.textContent = `${texto.length}/${limite}`;
+            if (texto.length > limite * 0.9) {
                 counter.style.color = 'var(--color-warning)';
-            } else if (longitud > limite * 0.95) {
+            } else if (texto.length > limite * 0.95) {
                 counter.style.color = 'var(--color-danger)';
             } else {
                 counter.style.color = 'var(--color-accent-primary)';
             }
+        }
+    }
+
+    _actualizarContador(inputId, counterId, limite) {
+        const counter = document.getElementById(counterId);
+        if (!counter) return;
+
+        const texto = this.descripcionComponent ? this.descripcionComponent.value : '';
+        const longitud = texto.length;
+        counter.textContent = `${longitud}/${limite}`;
+        if (longitud > limite * 0.9) {
+            counter.style.color = 'var(--color-warning)';
+        } else if (longitud > limite * 0.95) {
+            counter.style.color = 'var(--color-danger)';
+        } else {
+            counter.style.color = 'var(--color-accent-primary)';
         }
     }
 
@@ -1280,6 +1487,7 @@ class CrearIncidenciaController {
         }
     }
 
+    // ==================== EVENTOS ====================
     _configurarEventos() {
         try {
             document.getElementById('btnVolverLista')?.addEventListener('click', () => this._volverALista());
@@ -1300,12 +1508,23 @@ class CrearIncidenciaController {
                 }
             });
 
+            // Paso 3: Subcategoría -> riesgo
             const subcategoriaSelect = document.getElementById('subcategoriaIncidencia');
             if (subcategoriaSelect) {
-                subcategoriaSelect.addEventListener('change', () => {
-                    this._aplicarRiesgoAutomatico();
-                    const event = new Event('change', { bubbles: true });
-                    subcategoriaSelect.dispatchEvent(event);
+                subcategoriaSelect.addEventListener('change', async () => {
+                    // Evitar recursión
+                    if (this.actualizandoSubcategoria) return;
+                    this.actualizandoSubcategoria = true;
+                    try {
+                        this._mostrarPaso(4);
+                        await this._aplicarRiesgoAutomatico();
+                        this._actualizarAtributosAutoDescripcion(
+                            document.getElementById('categoriaIncidencia')?.dataset.selectedId,
+                            subcategoriaSelect.value
+                        );
+                    } finally {
+                        this.actualizandoSubcategoria = false;
+                    }
                 });
             }
 
@@ -1539,6 +1758,7 @@ class CrearIncidenciaController {
         }
     }
 
+    // ==================== IMÁGENES ====================
     _procesarImagenes(files) {
         if (!files || files.length === 0) return;
 
@@ -1661,6 +1881,7 @@ class CrearIncidenciaController {
         });
     }
 
+    // ==================== GUARDAR INCIDENCIA ====================
     async _validarYGuardar() {
         const sucursalInput = document.getElementById('sucursalIncidencia');
         const categoriaInput = document.getElementById('categoriaIncidencia');
@@ -1746,16 +1967,22 @@ class CrearIncidenciaController {
             return;
         }
 
-        const detallesInput = document.getElementById('detallesIncidencia');
-        const detalles = detallesInput.value.trim();
+        let detalles = '';
+        if (this.descripcionComponent && this.descripcionComponent.value !== undefined) {
+            detalles = this.descripcionComponent.value.trim();
+        } else {
+            const fallbackTextarea = document.getElementById('detallesIncidenciaTextarea');
+            detalles = fallbackTextarea?.value.trim() || '';
+        }
+
         if (!detalles) {
             this._mostrarError('La descripción de la incidencia es obligatoria');
-            detallesInput.focus();
+            if (this.descripcionComponent) this.descripcionComponent.focus();
             return;
         }
         if (detalles.length < 10) {
             this._mostrarError('La descripción debe tener al menos 10 caracteres');
-            detallesInput.focus();
+            if (this.descripcionComponent) this.descripcionComponent.focus();
             return;
         }
 
@@ -1850,6 +2077,19 @@ class CrearIncidenciaController {
 
             const folioReal = nuevaIncidencia.id;
             let imagenesSubidas = [];
+
+            // 👇 GUARDAR LA FRASE EN frasesAutoCompletar 👇
+            if (this.frasesManager && datos.detalles && datos.categoriaId) {
+                await this.frasesManager.guardarFrase(
+                    datos.detalles,
+                    datos.categoriaId,
+                    datos.subcategoriaId,
+                    this.usuarioActual.organizacionCamelCase,
+                    this.usuarioActual
+                );
+            } else {
+                console.warn('⚠️ No se pudo guardar la frase: faltan datos o manager no disponible');
+            }
 
             if (datos.imagenes && datos.imagenes.length > 0) {
                 Swal.update({ title: 'Subiendo imágenes...', text: `Subiendo ${datos.imagenes.length} imagen(es)...` });
@@ -2031,7 +2271,7 @@ class CrearIncidenciaController {
                         Swal.fire({
                             icon: 'success',
                             title: 'WhatsApp abierto',
-                            text: 'Se abrira WhatsApp con el enlace del PDF.',
+                            text: 'Se abrirá WhatsApp con el enlace del PDF.',
                             timer: 2500,
                             showConfirmButton: false
                         });
@@ -2092,7 +2332,7 @@ class CrearIncidenciaController {
                         Swal.fire({
                             icon: 'success',
                             title: 'Correo abierto',
-                            text: 'Se abrio tu correo con el enlace del PDF.',
+                            text: 'Se abrió tu correo con el enlace del PDF.',
                             timer: 2500,
                             showConfirmButton: false
                         });
@@ -2486,7 +2726,7 @@ class CrearIncidenciaController {
 
     _escapeHTML(text) {
         if (!text) return '';
-        return String(text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+        return String(text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
     }
 
     _getRiesgoTexto(riesgo) {
