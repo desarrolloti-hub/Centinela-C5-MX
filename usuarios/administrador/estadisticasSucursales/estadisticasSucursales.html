@@ -41,6 +41,10 @@
                             <option value="">Cargando sucursales...</option>
                         </select>
                     </div>
+
+                       <button id="btnPDFSucursal" class="btn-pdf-sucursal">
+                        <i class="fas fa-file-pdf"></i> Generar PDF
+                    </button>
                 </div>
 
         <!-- Header de la sucursal -->
@@ -103,23 +107,28 @@
             </div>
 
             <!-- Categorías más reportadas -->
-            <div class="card">
-                <div class="card-header">
-                    <h5><i class="fas fa-tags"></i> Categorías más reportadas</h5>
-                </div>
-                <div class="card-body">
-                    <div class="table-responsive-mini">
-                        <table class="tabla-datos" id="tablaCategoriasSucursal">
-                            <thead>
-                                <tr><th>Categoría</th><th>Cantidad</th><th>%</th></tr>
-                            </thead>
-                            <tbody>
-                                <tr><td colspan="3">Cargando...</td></tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
+          <!-- Categorías más reportadas -->
+<div class="card">
+    <div class="card-header">
+        <h5><i class="fas fa-tags"></i> Categorías más reportadas</h5>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive-mini">
+            <table class="tabla-categorias" id="tablaCategoriasSucursal">
+                <thead>
+                    <tr>
+                        <th><i class="fas fa-tag"></i> Categoría</th>
+                        <th><i class="fas fa-chart-bar"></i> Cantidad</th>
+                        <th><i class="fas fa-percent"></i> %</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr><td colspan="3">Cargando...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
         </div>
 
         <div class="charts-row">
@@ -156,23 +165,28 @@
         </div>
 
         <!-- Incidencias recientes -->
-        <div class="card full-width">
-            <div class="card-header">
-                <h5><i class="fas fa-list"></i> Incidencias recientes</h5>
-            </div>
-            <div class="card-body">
-                <div class="table-responsive">
-                    <table class="tabla-incidencias" id="tablaIncidenciasRecientes">
-                        <thead>
-                            <tr><th>ID</th><th>Fecha</th><th>Riesgo</th><th>Estado</th><th>Detalles</th><th>PDF</th></tr>
-                        </thead>
-                        <tbody>
-                            <tr><td colspan="5">Cargando...</td></tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
+       <!-- Incidencias recientes -->
+<div class="card full-width">
+    <div class="card-header">
+        <h5><i class="fas fa-list"></i> Incidencias recientes</h5>
+    </div>
+    <div class="card-body">
+        <!-- TABLA (solo se ve en desktop) -->
+        <div class="incidencias-tabla-container">
+            <table class="tabla-incidencias" id="tablaIncidenciasRecientes">
+                <thead>
+                    <tr><th>ID</th><th>Fecha</th><th>Riesgo</th><th>Estado</th><th>Detalles</th><th>PDF</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td colspan="6">Cargando...</td></tr>
+                </tbody>
+            </table>
         </div>
+        
+        <!-- TARJETAS (solo se ven en móvil) -->
+        <div class="incidencias-grid" id="incidenciasGrid"></div>
+    </div>
+</div>
 
         <!-- Footer -->
         <div class="footer-datetime">

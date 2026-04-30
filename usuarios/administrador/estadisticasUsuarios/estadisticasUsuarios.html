@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes, viewport-fit=cover">
+    <title>Detalle de Colaborador | Centinela C5</title>
+
+    <!-- Estilos -->
+    <link rel="stylesheet" href="/components/personalization/personalization.css">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="icon" href="/assets/images/logo.png" type="image/png">
+    <link rel="stylesheet" href="/usuarios/administrador/estadisticasUsuarios/estadisticasUsuarios.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+
+<body>
+    <canvas id="particle-canvas"></canvas>
+
+    <div class="detalle-container">
+        <!-- Header con acciones -->
+        <div class="header-actions">
+            <button id="btnVolver" class="btn-volver">
+                <i class="fas fa-arrow-left"></i> Volver a Estadísticas
+            </button>
+            
+            <div class="colaborador-selector">
+                <label for="selectorColaborador">
+                    <i class="fas fa-users"></i> Cambiar colaborador:
+                </label>
+                <select id="selectorColaborador" class="filtro-select">
+                    <option value="">Cargando colaboradores...</option>
+                </select>
+            </div>
+
+            <button id="btnPDFColaborador" class="btn-pdf-colaborador">
+                <i class="fas fa-file-pdf"></i> Generar PDF
+            </button>
+        </div>
+
+        <!-- Header del colaborador -->
+        <div class="colaborador-header" id="colaboradorHeader">
+            <div class="colaborador-icon">
+                <i class="fas fa-user-circle"></i>
+            </div>
+            <div class="colaborador-info">
+                <h1 id="colaboradorNombre">Cargando...</h1>
+                <div class="colaborador-meta">
+                    <span id="colaboradorRol"><i class="fas fa-user-tag"></i> -</span>
+                    <span id="colaboradorEmail"><i class="fas fa-envelope"></i> -</span>
+                    <span id="colaboradorSucursal" class="sucursal-badge"><i class="fas fa-store"></i> -</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- KPIs del colaborador -->
+        <div class="kpis-grid">
+            <div class="kpi-card colaborador-total">
+                <div class="kpi-icon"><i class="fas fa-chart-bar"></i></div>
+                <div class="kpi-info">
+                    <h3 id="totalIncidencias">0</h3>
+                    <p>Total incidencias</p>
+                </div>
+            </div>
+            <div class="kpi-card colaborador-reportadas">
+                <div class="kpi-icon"><i class="fas fa-flag"></i></div>
+                <div class="kpi-info">
+                    <h3 id="totalReportadas">0</h3>
+                    <p>Incidencias reportadas</p>
+                </div>
+            </div>
+            <div class="kpi-card colaborador-actualizadas">
+                <div class="kpi-icon"><i class="fas fa-edit"></i></div>
+                <div class="kpi-info">
+                    <h3 id="totalActualizadas">0</h3>
+                    <p>Incidencias actualizadas</p>
+                </div>
+            </div>
+            <div class="kpi-card colaborador-seguimientos">
+                <div class="kpi-icon"><i class="fas fa-history"></i></div>
+                <div class="kpi-info">
+                    <h3 id="totalSeguimientos">0</h3>
+                    <p>Seguimientos realizados</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- KPIs secundarios -->
+        <div class="kpis-grid-secundario">
+            <div class="kpi-card sucursal-recursos">
+                <div class="kpi-icon"><i class="fas fa-star"></i></div>
+                <div class="kpi-info">
+                    <h3 id="eficienciaColaborador">0%</h3>
+                    <p>Eficiencia general</p>
+                </div>
+            </div>
+            <div class="kpi-card sucursal-criticas">
+                <div class="kpi-icon"><i class="fas fa-exclamation-triangle"></i></div>
+                <div class="kpi-info">
+                    <h3 id="totalCriticasAltas">0</h3>
+                    <p>Críticas + Altas atendidas</p>
+                </div>
+            </div>
+            <div class="kpi-card sucursal-pendientes">
+                <div class="kpi-icon"><i class="fas fa-clock"></i></div>
+                <div class="kpi-info">
+                    <h3 id="tiempoPromedio">0</h3>
+                    <p>Horas promedio resolución</p>
+                </div>
+            </div>
+            <div class="kpi-card sucursal-recuperacion">
+                <div class="kpi-icon"><i class="fas fa-percent"></i></div>
+                <div class="kpi-info">
+                    <h3 id="tasaExito">0%</h3>
+                    <p>Tasa de éxito</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Gráficas principales -->
+        <div class="charts-row">
+            <!-- Evolución mensual -->
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="fas fa-chart-line"></i> Evolución semanal de actividad</h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="graficoEvolucionMensual"></canvas>
+                </div>
+            </div>
+
+            <!-- Distribución por nivel de riesgo -->
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="fas fa-chart-pie"></i> Niveles de riesgo atendidos</h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="graficoRiesgoColaborador"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Gráficas secundarias -->
+        <div class="charts-row">
+            <!-- Incidencias por estado -->
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="fas fa-check-circle"></i> Estado de incidencias</h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="graficoEstadoColaborador"></canvas>
+                </div>
+            </div>
+
+            <!-- Top categorías -->
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="fas fa-tags"></i> Categorías más atendidas</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive-mini">
+                        <table class="tabla-categorias" id="tablaCategoriasColaborador">
+                            <thead>
+                                <tr>
+                                    <th><i class="fas fa-tag"></i> Categoría</th>
+                                    <th><i class="fas fa-chart-bar"></i> Cantidad</th>
+                                    <th><i class="fas fa-percent"></i> %</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr><td colspan="3">Cargando...</td</tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tiempo promedio de resolución por categoría -->
+        <div class="charts-row">
+            <div class="card full-width">
+                <div class="card-header">
+                    <h5><i class="fas fa-clock"></i> Tiempo promedio de resolución por categoría</h5>
+                </div>
+                <div class="card-body">
+                    <div class="tiempo-categorias-container">
+                        <canvas id="graficoTiempoCategorias"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Incidencias recientes -->
+        <div class="card full-width">
+            <div class="card-header">
+                <h5><i class="fas fa-list"></i> Incidencias recientes</h5>
+            </div>
+            <div class="card-body">
+                <!-- TABLA (desktop) -->
+                <div class="incidencias-tabla-container">
+                    <table class="tabla-incidencias" id="tablaIncidenciasRecientes">
+                        <thead>
+                            <tr><th>ID</th><th>Fecha</th><th>Sucursal</th><th>Riesgo</th><th>Estado</th><th>Detalles</th><th>Rol</th><th>PDF</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr><td colspan="8">Cargando...</td</tr>
+                        </tbody>
+                    </table>
+                </div>
+                
+                <!-- TARJETAS (móvil) -->
+                <div class="incidencias-grid" id="incidenciasGrid"></div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer-datetime">
+            <i class="fas fa-sync-alt"></i>
+            Última actualización: <span id="fechaActualizacion">-</span>
+        </div>
+    </div>
+
+    <script type="module" src="/components/autenticador.js"></script>
+    <script type="module" src="/components/cargadorTemas.js"></script>
+    <script type="module" src="/components/particulas.js"></script>
+    <script type="module" src="/components/navbarAdministrador.js"></script>
+    <script src="/components/footerAdministrador.js"></script>
+    <script type="module" src="/usuarios/administrador/estadisticasUsuarios/estadisticasUsuarios.js"></script>
+</body>
+
+</html>
