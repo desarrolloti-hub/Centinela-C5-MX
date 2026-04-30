@@ -30,10 +30,7 @@ let accesoVistaRegistrado = false;
 // =============================================
 
 async function diagnosticarRecuperacion() {
-    console.log('=== DIAGNÓSTICO DE RECUPERACIÓN ===');
-    console.log('organizacionActual:', organizacionActual);
-    console.log('mercanciaManager:', !!mercanciaManager);
-    console.log('registrosRecuperacionCache.length:', registrosRecuperacionCache.length);
+
 
     if (!organizacionActual?.camelCase) {
         console.error('❌ No hay organización camelCase');
@@ -48,9 +45,9 @@ async function diagnosticarRecuperacion() {
     try {
         // Intentar cargar datos directamente
         const testRegistros = await mercanciaManager.getRegistrosByOrganizacion(organizacionActual.camelCase);
-        console.log('✅ Registros encontrados:', testRegistros?.length || 0);
+   
         if (testRegistros && testRegistros.length > 0) {
-            console.log('Primer registro ejemplo:', testRegistros[0]);
+
         } else {
             console.warn('⚠️ No hay registros de recuperación en la BD para esta organización');
         }
@@ -468,9 +465,7 @@ async function cargarRegiones() {
         const regionManager = new RegionManager();
         regionesCache = await regionManager.getRegionesByOrganizacion(organizacionActual.camelCase);
 
-        // Depuración: Verificar que se cargaron las regiones con sus colores
-        console.log('Regiones cargadas:', regionesCache.map(r => ({ nombre: r.nombre, color: r.color })));
-
+ 
     } catch (error) {
         console.error('Error cargando regiones:', error);
         regionesCache = [];
@@ -2704,7 +2699,6 @@ function mostrarRegistrosRecuperacionEnSweet(registros, titulo, icono = '<i clas
 }
 
 async function cargarRegistrosRecuperacionConFiltros() {
-    console.log('=== CARGANDO REGISTROS DE RECUPERACIÓN ===');
 
     if (!organizacionActual?.camelCase) {
         console.error('❌ No se pudo inicializar el módulo de recuperación: falta organización');
@@ -2721,22 +2715,22 @@ async function cargarRegistrosRecuperacionConFiltros() {
     try {
         // Cargar datos si no están en caché
         if (registrosRecuperacionCache.length === 0) {
-            console.log('📡 Cargando registros de recuperación desde la BD...');
+
             registrosRecuperacionCache = await mercanciaManager.getRegistrosByOrganizacion(organizacionActual.camelCase);
-            console.log(`📊 Registros cargados: ${registrosRecuperacionCache.length}`);
+ 
 
             if (registrosRecuperacionCache.length > 0) {
-                console.log('📋 Ejemplo de registro:', registrosRecuperacionCache[0]);
+     
             } else {
                 console.warn('⚠️ No hay registros de recuperación en la base de datos');
             }
         } else {
-            console.log(`📦 Usando caché: ${registrosRecuperacionCache.length} registros`);
+       
         }
 
         // Aplicar filtros
         let registrosFiltrados = [...registrosRecuperacionCache];
-        console.log('🎯 Filtros activos:', filtrosActivos);
+
 
         // Filtro por sucursal
         const sucursalId = document.getElementById('filtroSucursal')?.value || 'todas';
@@ -2744,7 +2738,7 @@ async function cargarRegistrosRecuperacionConFiltros() {
             const sucursalSeleccionada = sucursalesCache.find(s => s.id === sucursalId);
             if (sucursalSeleccionada) {
                 registrosFiltrados = registrosFiltrados.filter(r => r.nombreEmpresaCC === sucursalSeleccionada.nombre);
-                console.log(`🔍 Filtrado por sucursal "${sucursalSeleccionada.nombre}": ${registrosFiltrados.length} registros`);
+
             }
         }
 
@@ -2757,7 +2751,7 @@ async function cargarRegistrosRecuperacionConFiltros() {
                 const fechaRegistro = r.fecha ? new Date(r.fecha) : null;
                 return fechaRegistro && fechaRegistro >= fechaInicioObj;
             });
-            console.log(`📅 Filtro fecha inicio (${filtrosActivos.fechaInicio}): ${antes} → ${registrosFiltrados.length}`);
+
         }
 
         if (filtrosActivos.fechaFin) {
@@ -2768,25 +2762,25 @@ async function cargarRegistrosRecuperacionConFiltros() {
                 const fechaRegistro = r.fecha ? new Date(r.fecha) : null;
                 return fechaRegistro && fechaRegistro <= fechaFinObj;
             });
-            console.log(`📅 Filtro fecha fin (${filtrosActivos.fechaFin}): ${antes} → ${registrosFiltrados.length}`);
+     
         }
 
         // Filtro por tipo de evento
         if (filtrosActivos.tipoEvento !== 'todos') {
             const antes = registrosFiltrados.length;
             registrosFiltrados = registrosFiltrados.filter(r => r.tipoEvento === filtrosActivos.tipoEvento);
-            console.log(`🏷️ Filtro tipo evento "${filtrosActivos.tipoEvento}": ${antes} → ${registrosFiltrados.length}`);
+        
         }
 
         registrosRecuperacionFiltrados = registrosFiltrados;
         datosActualesRecuperacion.registros = registrosFiltrados;
 
-        console.log(`📈 Total registros después de filtros: ${registrosFiltrados.length}`);
+   
 
         const estadisticas = calcularEstadisticasRecuperacion(registrosFiltrados);
         datosActualesRecuperacion.estadisticas = estadisticas;
 
-        console.log('💰 Estadísticas calculadas:', estadisticas);
+
 
         // Mostrar KPIs (siempre mostrar, aunque sea en cero)
         mostrarKPIsRecuperacion(estadisticas);
@@ -3152,11 +3146,6 @@ async function generarReportePDF() {
             categoriasCache: categoriasCache
         };
 
-        console.log('Datos preparados para PDF:');
-        console.log('- sucursalesData:', sucursalesData.length);
-        console.log('- tiemposPromedio:', tiemposPromedio.length);
-        console.log('- topSucursalesData:', topSucursalesData.length);
-        console.log('- sucursalesResumen:', sucursalesResumenData.length);
 
         // Configurar y generar PDF
         generadorPDFEstadisticasUnificado.configurar({

@@ -547,7 +547,7 @@ async function cargarNivelesRiesgo() {
             nivelesRiesgoCache = niveles;
             // Guardar en window para acceso global también
             window.nivelesRiesgoEstaticos = niveles;
-            console.log('Niveles de riesgo cargados:', niveles.map(n => ({ id: n.id, nombre: n.nombre, color: n.color })));
+
         } else {
             // Fallback: usar niveles por defecto si no hay configurados
             nivelesRiesgoCache = [
