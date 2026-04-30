@@ -10,6 +10,7 @@
 // ✅ AUTOCOMPLETADO PREDICTIVO con <auto-descripcion>
 // ✅ Guardado automático de frases en colección frasesAutoCompletar
 // ✅ Actualización dinámica de atributos (categoría-id, subcategoria-id)
+// ✅ Descarga automática del PDF en local (además de subida a la nube)
 
 const LIMITES = {
     DETALLES_INCIDENCIA: 1000
@@ -51,8 +52,8 @@ class CrearIncidenciaController {
         
         // Bandera para evitar recursión en riesgos
         this.actualizandoRiesgo = false;
-        this.actualizandoSubcategoria = false; // nueva bandera
-        this.actualizandoAtributos = false;    // nueva bandera
+        this.actualizandoSubcategoria = false;
+        this.actualizandoAtributos = false;
 
         this._init();
     }
@@ -107,22 +108,21 @@ class CrearIncidenciaController {
         }
         return this.categoriaManager;
     }
-async _initFrasesManager() {
-    if (!this.frasesManager) {
-        try {
-            const { FrasesAutoCompletarManager } = await import('/clases/frasesAutoCompletar.js');
-            // 👇 PASA LA ORGANIZACIÓN CAMELCASE AL CONSTRUCTOR
-            const orgCamel = this.usuarioActual.organizacionCamelCase;
-            this.frasesManager = new FrasesAutoCompletarManager(orgCamel);
-        
-            await this.frasesManager.crearFraseEjemploSiVacia(orgCamel);
-        } catch (error) {
-            console.error('Error inicializando FrasesAutoCompletarManager:', error);
-            this.frasesManager = null;
+
+    async _initFrasesManager() {
+        if (!this.frasesManager) {
+            try {
+                const { FrasesAutoCompletarManager } = await import('/clases/frasesAutoCompletar.js');
+                const orgCamel = this.usuarioActual.organizacionCamelCase;
+                this.frasesManager = new FrasesAutoCompletarManager(orgCamel);
+                await this.frasesManager.crearFraseEjemploSiVacia(orgCamel);
+            } catch (error) {
+                console.error('Error inicializando FrasesAutoCompletarManager:', error);
+                this.frasesManager = null;
+            }
         }
+        return this.frasesManager;
     }
-    return this.frasesManager;
-}
 
     async _initNotificacionManager() {
         if (!this.notificacionManager) {
@@ -183,7 +183,7 @@ async _initFrasesManager() {
             await this._inicializarManager();
             await this._initRiesgoManager();
             await this._initCategoriaManager();
-            await this._initFrasesManager();        // 👈 NUEVO: inicializar manager de frases
+            await this._initFrasesManager();
             await this._cargarDatosRelacionados();
             await this._cargarAreas();
             await this._cargarSucursalesParaNotificacion();
@@ -198,7 +198,7 @@ async _initFrasesManager() {
             this._inicializarFormularioAcumulativo();
             this._configurarDragAndDropYPaste();
             this._cargarNivelesRiesgoEnSelect();
-            this._inicializarAutoCompletado();     // 👈 NUEVO: iniciar el componente
+            this._inicializarAutoCompletado();
 
             this.imageEditorModal = new window.ImageEditorModal();
 
@@ -273,7 +273,6 @@ async _initFrasesManager() {
         return btn ? btn.dataset.tipo : null;
     }
 
-    // ==================== NUEVO: INICIALIZACIÓN DEL AUTOCOMPLETADO ====================
     _inicializarAutoCompletado() {
         this.descripcionComponent = document.getElementById('detallesIncidencia');
         if (!this.descripcionComponent) {
@@ -283,7 +282,6 @@ async _initFrasesManager() {
         const org = this.usuarioActual?.organizacionCamelCase || '';
         this.descripcionComponent.setAttribute('organizacion', org);
         
-        // Escuchar eventos del componente
         this.descripcionComponent.addEventListener('input', (e) => {
             let texto = '';
             if (e.detail?.texto) texto = e.detail.texto;
@@ -304,44 +302,37 @@ async _initFrasesManager() {
                 );
             }).observe(catInput, { attributes: true });
         }
-       
     }
 
-    // ==================== ACTUALIZAR ATRIBUTOS DEL AUTO-DESCRIPCION ====================
     _actualizarAtributosAutoDescripcion(categoriaId, subcategoriaId) {
-    // Evita ejecución recursiva
-    if (this.actualizandoAtributos) return;
-    if (!this.descripcionComponent) return;
+        if (this.actualizandoAtributos) return;
+        if (!this.descripcionComponent) return;
 
-    // Obtener valores actuales del componente
-    const catActual = this.descripcionComponent.getAttribute('categoria-id');
-    const subActual = this.descripcionComponent.getAttribute('subcategoria-id');
+        const catActual = this.descripcionComponent.getAttribute('categoria-id');
+        const subActual = this.descripcionComponent.getAttribute('subcategoria-id');
 
-    const nuevaCat = (categoriaId && categoriaId !== '') ? categoriaId : null;
-    const nuevaSub = (subcategoriaId && subcategoriaId !== '') ? subcategoriaId : null;
+        const nuevaCat = (categoriaId && categoriaId !== '') ? categoriaId : null;
+        const nuevaSub = (subcategoriaId && subcategoriaId !== '') ? subcategoriaId : null;
 
-    // Si no hay cambios reales, salir
-    if (catActual === nuevaCat && subActual === nuevaSub) return;
+        if (catActual === nuevaCat && subActual === nuevaSub) return;
 
-    this.actualizandoAtributos = true;
-    try {
-        if (nuevaCat) {
-            this.descripcionComponent.setAttribute('categoria-id', nuevaCat);
-        } else {
-            this.descripcionComponent.removeAttribute('categoria-id');
+        this.actualizandoAtributos = true;
+        try {
+            if (nuevaCat) {
+                this.descripcionComponent.setAttribute('categoria-id', nuevaCat);
+            } else {
+                this.descripcionComponent.removeAttribute('categoria-id');
+            }
+            if (nuevaSub) {
+                this.descripcionComponent.setAttribute('subcategoria-id', nuevaSub);
+            } else {
+                this.descripcionComponent.removeAttribute('subcategoria-id');
+            }
+        } finally {
+            this.actualizandoAtributos = false;
         }
-        if (nuevaSub) {
-            this.descripcionComponent.setAttribute('subcategoria-id', nuevaSub);
-        } else {
-            this.descripcionComponent.removeAttribute('subcategoria-id');
-        }
- 
-    } finally {
-        this.actualizandoAtributos = false;
     }
-}
 
-    // ==================== FORMULARIO ACUMULATIVO ====================
     _inicializarFormularioAcumulativo() {
         const pasos = document.querySelectorAll('.field-group-step');
         pasos.forEach((paso) => {
@@ -356,7 +347,6 @@ async _initFrasesManager() {
     }
 
     _configurarObservadorPasos() {
-        // Paso 0: Tipo evento -> mostrar sucursal
         const tipoEventoBtns = document.querySelectorAll('.tipo-evento-btn');
         tipoEventoBtns.forEach(btn => {
             btn.addEventListener('click', () => {
@@ -370,7 +360,6 @@ async _initFrasesManager() {
             });
         });
 
-        // Paso 1: Sucursal -> mostrar categoría
         const sucursalInput = document.getElementById('sucursalIncidencia');
         if (sucursalInput) {
             const observer = new MutationObserver((mutations) => {
@@ -387,7 +376,6 @@ async _initFrasesManager() {
             observer.observe(sucursalInput, { attributes: true });
         }
 
-        // Paso 2: Categoría -> mostrar subcategoría
         const categoriaInput = document.getElementById('categoriaIncidencia');
         if (categoriaInput) {
             const observer = new MutationObserver((mutations) => {
@@ -396,7 +384,6 @@ async _initFrasesManager() {
                         const tieneCategoria = categoriaInput.dataset.selectedId && categoriaInput.dataset.selectedId !== '';
                         if (tieneCategoria) {
                             this._mostrarPaso(3);
-                            // Actualizar atributos del auto-descripcion con la nueva categoría
                             this._actualizarAtributosAutoDescripcion(
                                 categoriaInput.dataset.selectedId,
                                 document.getElementById('subcategoriaIncidencia')?.value
@@ -408,13 +395,11 @@ async _initFrasesManager() {
             observer.observe(categoriaInput, { attributes: true });
         }
 
-        // Paso 3: Subcategoría -> riesgo
         const subcategoriaSelect = document.getElementById('subcategoriaIncidencia');
         if (subcategoriaSelect) {
             subcategoriaSelect.addEventListener('change', () => {
                 this._mostrarPaso(4);
                 this._aplicarRiesgoAutomatico();
-                // Actualizar atributos del auto-descripcion con la subcategoría seleccionada
                 this._actualizarAtributosAutoDescripcion(
                     document.getElementById('categoriaIncidencia')?.dataset.selectedId,
                     subcategoriaSelect.value
@@ -422,7 +407,6 @@ async _initFrasesManager() {
             });
         }
 
-        // Paso 4: Nivel riesgo -> estado
         const riesgoSelect = document.getElementById('nivelRiesgo');
         if (riesgoSelect) {
             riesgoSelect.addEventListener('change', () => {
@@ -432,7 +416,6 @@ async _initFrasesManager() {
             });
         }
 
-        // Paso 5: Estado -> fecha y descripción según tipo evento
         const estadoSelect = document.getElementById('estadoIncidencia');
         if (estadoSelect) {
             estadoSelect.addEventListener('change', () => {
@@ -455,7 +438,6 @@ async _initFrasesManager() {
 
         if (!this.fechaHoraTiempoRealFija) {
             this.fechaHoraTiempoRealFija = new Date();
-        
         }
 
         const day = String(this.fechaHoraTiempoRealFija.getDate()).padStart(2, '0');
@@ -622,8 +604,8 @@ async _initFrasesManager() {
             descripcionValida = texto.length >= 10 && texto.length <= LIMITES.DETALLES_INCIDENCIA;
         }
 
- const todoCompleto = tipoEventoValido && sucursalValida && categoriaValida &&
-    riesgoValido && estadoValido && fechaValida && descripcionValida;
+        const todoCompleto = tipoEventoValido && sucursalValida && categoriaValida &&
+            riesgoValido && estadoValido && fechaValida && descripcionValida;
 
         const botonesContainer = document.getElementById('originalButtons');
         const seccionImagenes = document.getElementById('seccionImagenesWrapper');
@@ -637,7 +619,6 @@ async _initFrasesManager() {
         }
     }
 
-    // ==================== CARGAR NIVELES DE RIESGO EN SELECT ====================
     async _cargarNivelesRiesgoEnSelect() {
         if (this.actualizandoRiesgo) return;
         this.actualizandoRiesgo = true;
@@ -696,30 +677,25 @@ async _initFrasesManager() {
     }
 
     _mostrarRiesgoAsignadoUnico(riesgoId, riesgoNombre) {
-    const riesgoSelect = document.getElementById('nivelRiesgo');
-    if (!riesgoSelect) return;
+        const riesgoSelect = document.getElementById('nivelRiesgo');
+        if (!riesgoSelect) return;
 
-    // Guardar referencia al listener original (si existe)
-    const originalOnChange = riesgoSelect.onchange;
-    // Deshabilitar temporalmente el evento change para evitar recursión
-    riesgoSelect.onchange = null;
+        const originalOnChange = riesgoSelect.onchange;
+        riesgoSelect.onchange = null;
 
-    // Construir opción única
-    riesgoSelect.innerHTML = `<option value="${riesgoId}" selected>${this._escapeHTML(riesgoNombre)} (Asignado Automáticamente)</option>`;
-    riesgoSelect.disabled = true;
-    riesgoSelect.classList.add('field-disabled');
+        riesgoSelect.innerHTML = `<option value="${riesgoId}" selected>${this._escapeHTML(riesgoNombre)} (Asignado Automáticamente)</option>`;
+        riesgoSelect.disabled = true;
+        riesgoSelect.classList.add('field-disabled');
 
-    // Restaurar el listener (si había uno)
-    if (originalOnChange) riesgoSelect.onchange = originalOnChange;
+        if (originalOnChange) riesgoSelect.onchange = originalOnChange;
 
-    // Solo disparar el evento si el valor realmente cambió
-    if (riesgoSelect.value !== riesgoId) {
-        const changeEvent = new Event('change', { bubbles: true });
-        riesgoSelect.dispatchEvent(changeEvent);
+        if (riesgoSelect.value !== riesgoId) {
+            const changeEvent = new Event('change', { bubbles: true });
+            riesgoSelect.dispatchEvent(changeEvent);
+        }
+
+        this._mostrarPaso(5);
     }
-
-    this._mostrarPaso(5);
-}
 
     _mostrarListaCompletaRiesgos() {
         const riesgoSelect = document.getElementById('nivelRiesgo');
@@ -730,7 +706,6 @@ async _initFrasesManager() {
         riesgoSelect.classList.remove('field-disabled');
     }
 
-    // ==================== OBTENER RIESGO DESDE SUBCATEGORÍA ====================
     async _obtenerRiesgoDesdeSubcategoria(categoriaId, subcategoriaId) {
         if (!categoriaId || !subcategoriaId) return null;
 
@@ -768,7 +743,6 @@ async _initFrasesManager() {
         }
     }
 
-    // ==================== APLICAR RIESGO AUTOMÁTICO ====================
     async _aplicarRiesgoAutomatico() {
         const categoriaId = document.getElementById('categoriaIncidencia')?.dataset.selectedId;
         const subcategoriaId = document.getElementById('subcategoriaIncidencia')?.value;
@@ -787,7 +761,6 @@ async _initFrasesManager() {
         this.riesgoSeleccionadoId = null;
     }
 
-    // ==================== CREAR NUEVO NIVEL DE RIESGO ====================
     async _crearNuevoNivelRiesgo() {
         const { value: formValues } = await Swal.fire({
             title: 'Crear nuevo nivel de riesgo',
@@ -887,7 +860,6 @@ async _initFrasesManager() {
         }
     }
 
-    // ==================== ASOCIAR RIESGO A SUBCATEGORÍA ====================
     async _asociarRiesgoASubcategoria(categoriaId, subcategoriaId, riesgoId) {
         try {
             await this._initCategoriaManager();
@@ -943,7 +915,6 @@ async _initFrasesManager() {
         }
     }
 
-    // ==================== MANEJAR SELECCIÓN DE RIESGO ====================
     async _manejarSeleccionRiesgo() {
         if (this.actualizandoRiesgo) return;
         this.actualizandoRiesgo = true;
@@ -1048,65 +1019,6 @@ async _initFrasesManager() {
         });
     }
 
-    // ==================== CONFIGURAR BOTONES TIPO EVENTO ====================
-    _configurarBotonesTipoEvento() {
-        const botones = document.querySelectorAll('.tipo-evento-btn');
-        let tipoSeleccionado = null;
-
-        const desactivarTodos = () => {
-            botones.forEach(btn => {
-                btn.classList.remove('active');
-            });
-        };
-
-        botones.forEach(btn => {
-            btn.addEventListener('click', () => {
-                const tipo = btn.dataset.tipo;
-
-                if (tipoSeleccionado === tipo) {
-                    desactivarTodos();
-                    tipoSeleccionado = null;
-                    this.tipoEventoSeleccionado = null;
-                    this.fechaHoraTiempoRealFija = null;
-
-                    const fechaInput = document.getElementById('fechaHoraIncidencia');
-                    if (fechaInput) {
-                        fechaInput.value = '';
-                        fechaInput.readOnly = false;
-                        fechaInput.style.backgroundColor = '';
-                        fechaInput.style.opacity = '1';
-                        fechaInput.style.borderColor = '';
-                    }
-
-                    if (this.flatpickrInstance) {
-                        this.flatpickrInstance.destroy();
-                        this.flatpickrInstance = null;
-                    }
-                    if (fechaInput) {
-                        this.flatpickrInstance = flatpickr(fechaInput, {
-                            enableTime: true,
-                            dateFormat: "d/m/Y H:i",
-                            time_24hr: true,
-                            locale: "es",
-                            minuteIncrement: 1,
-                            maxDate: new Date(),
-                            disableMobile: true
-                        });
-                    }
-                } else {
-                    desactivarTodos();
-                    btn.classList.add('active');
-                    tipoSeleccionado = tipo;
-                    this.tipoEventoSeleccionado = tipo;
-                }
-
-                const tipoEventoEvent = new Event('tipoEventoChanged', { bubbles: true });
-                document.dispatchEvent(tipoEventoEvent);
-            });
-        });
-    }
-
-    // ==================== DRAG & DROP Y PASTE ====================
     _configurarDragAndDropYPaste() {
         const dropZone = document.getElementById('dropZone');
 
@@ -1239,7 +1151,7 @@ async _initFrasesManager() {
             'categoriaIncidencia',
             'nivelRiesgo',
             'subcategoriaIncidencia',
-            'detallesIncidencia'  // este es el componente
+            'detallesIncidencia'
         ];
 
         camposDependientes.forEach(campoId => {
@@ -1288,7 +1200,6 @@ async _initFrasesManager() {
         }
     }
 
-    // ==================== MÉTODOS DE CARGA DE DATOS ====================
     async _cargarDatosRelacionados() {
         try {
             await this._cargarSucursales();
@@ -1313,19 +1224,18 @@ async _initFrasesManager() {
     }
 
     async _cargarCategorias() {
-    try {
-        const { CategoriaManager } = await import('/clases/categoria.js');
-        const categoriaManager = new CategoriaManager();
-        // 👇 AHORA LE PASAMOS LA ORGANIZACIÓN CAMELCASE
-        this.categoriasOriginales = await categoriaManager.obtenerTodasCategorias(
-            this.usuarioActual.organizacionCamelCase
-        );
-        this.categorias = [...this.categoriasOriginales];
-    } catch (error) {
-        console.error('Error cargando categorías:', error);
-        throw error;
+        try {
+            const { CategoriaManager } = await import('/clases/categoria.js');
+            const categoriaManager = new CategoriaManager();
+            this.categoriasOriginales = await categoriaManager.obtenerTodasCategorias(
+                this.usuarioActual.organizacionCamelCase
+            );
+            this.categorias = [...this.categoriasOriginales];
+        } catch (error) {
+            console.error('Error cargando categorías:', error);
+            throw error;
+        }
     }
-}
 
     async _cargarAreas() {
         try {
@@ -1418,7 +1328,6 @@ async _initFrasesManager() {
             .replace(/[^a-zA-Z0-9]/g, '');
     }
 
-    // ==================== VALIDACIONES ====================
     _inicializarValidaciones() {
         if (this.descripcionComponent) {
             this.descripcionComponent.addEventListener('input', () => {
@@ -1487,7 +1396,6 @@ async _initFrasesManager() {
         }
     }
 
-    // ==================== EVENTOS ====================
     _configurarEventos() {
         try {
             document.getElementById('btnVolverLista')?.addEventListener('click', () => this._volverALista());
@@ -1508,11 +1416,9 @@ async _initFrasesManager() {
                 }
             });
 
-            // Paso 3: Subcategoría -> riesgo
             const subcategoriaSelect = document.getElementById('subcategoriaIncidencia');
             if (subcategoriaSelect) {
                 subcategoriaSelect.addEventListener('change', async () => {
-                    // Evitar recursión
                     if (this.actualizandoSubcategoria) return;
                     this.actualizandoSubcategoria = true;
                     try {
@@ -1758,7 +1664,6 @@ async _initFrasesManager() {
         }
     }
 
-    // ==================== IMÁGENES ====================
     _procesarImagenes(files) {
         if (!files || files.length === 0) return;
 
@@ -1881,7 +1786,6 @@ async _initFrasesManager() {
         });
     }
 
-    // ==================== GUARDAR INCIDENCIA ====================
     async _validarYGuardar() {
         const sucursalInput = document.getElementById('sucursalIncidencia');
         const categoriaInput = document.getElementById('categoriaIncidencia');
@@ -2078,19 +1982,24 @@ async _initFrasesManager() {
             const folioReal = nuevaIncidencia.id;
             let imagenesSubidas = [];
 
-            // 👇 GUARDAR LA FRASE EN frasesAutoCompletar 👇
+            // Guardar frase de autocompletado
             if (this.frasesManager && datos.detalles && datos.categoriaId) {
-                await this.frasesManager.guardarFrase(
-                    datos.detalles,
-                    datos.categoriaId,
-                    datos.subcategoriaId,
-                    this.usuarioActual.organizacionCamelCase,
-                    this.usuarioActual
-                );
+                try {
+                    await this.frasesManager.guardarFrase(
+                        datos.detalles,
+                        datos.categoriaId,
+                        datos.subcategoriaId,
+                        this.usuarioActual.organizacionCamelCase,
+                        this.usuarioActual
+                    );
+                } catch (err) {
+                    console.error('Error guardando frase de autocompletado:', err);
+                }
             } else {
                 console.warn('⚠️ No se pudo guardar la frase: faltan datos o manager no disponible');
             }
 
+            // Subir imágenes
             if (datos.imagenes && datos.imagenes.length > 0) {
                 Swal.update({ title: 'Subiendo imágenes...', text: `Subiendo ${datos.imagenes.length} imagen(es)...` });
 
@@ -2121,7 +2030,9 @@ async _initFrasesManager() {
                 id: folioReal,
                 sucursalNombre: datos.sucursalNombre,
                 categoriaNombre: datos.categoriaNombre,
-                subcategoriaNombre: datos.subcategoriaNombre,
+                subcategoriaNombre: datos.subcategoriaId
+                    ? (document.getElementById('subcategoriaIncidencia').options[document.getElementById('subcategoriaIncidencia').selectedIndex]?.text || '')
+                    : '',
                 detalles: datos.detalles,
                 fechaInicio: fechaObj,
                 fechaCreacion: new Date(),
@@ -2142,15 +2053,28 @@ async _initFrasesManager() {
                 console.error('Error generando PDF:', pdfError);
             }
 
+            // Subir PDF a la nube y descarga local automática
             Swal.update({ title: 'Subiendo PDF...', text: 'Guardando el documento PDF...' });
 
             let pdfUrl = null;
             if (pdfBlob && pdfBlob.size > 0) {
+                // 1. Subir a la nube
                 const pdfFile = new File([pdfBlob], `incidencia_${nuevaIncidencia.id}.pdf`, { type: 'application/pdf' });
                 const rutaPDF = `incidencias_${this.usuarioActual.organizacionCamelCase}/${nuevaIncidencia.id}/pdf/incidencia_${nuevaIncidencia.id}.pdf`;
                 const resultadoPDF = await this.incidenciaManager.subirArchivo(pdfFile, rutaPDF);
                 pdfUrl = resultadoPDF.url;
                 await this.incidenciaManager.actualizarPDF(nuevaIncidencia.id, pdfUrl, this.usuarioActual.organizacionCamelCase, this.usuarioActual.id, this.usuarioActual.nombreCompleto);
+
+                // 2. Descarga local automática
+                const downloadLink = document.createElement('a');
+                const blobUrl = URL.createObjectURL(pdfBlob);
+                downloadLink.href = blobUrl;
+                downloadLink.download = `incidencia_${nuevaIncidencia.id}.pdf`;
+                document.body.appendChild(downloadLink);
+                downloadLink.click();
+                document.body.removeChild(downloadLink);
+                URL.revokeObjectURL(blobUrl);
+                console.log('📥 PDF descargado automáticamente en el equipo del usuario');
             }
 
             Swal.close();
@@ -2159,6 +2083,7 @@ async _initFrasesManager() {
                 await this._mostrarDialogoCompartir(pdfUrl, datos);
             }
 
+            // Canalizaciones (opcionales)
             let sucursalCanalizada = null;
             const quiereCanalizarSucursal = await Swal.fire({
                 icon: 'question',
@@ -2210,7 +2135,7 @@ async _initFrasesManager() {
                     <div style="text-align: left;">
                         <p><strong>Folio:</strong> ${folioReal}</p>
                         <p>Incidencia guardada ${nuevaIncidencia.imagenes?.length > 0 ? `con ${nuevaIncidencia.imagenes.length} imagen(es)` : 'sin imágenes'}.</p>
-                        ${pdfBlob && pdfBlob.size > 0 ? '<p>El PDF se ha generado correctamente.</p>' : '<p>No se pudo generar el PDF, pero la incidencia se guardó.</p>'}
+                        ${pdfBlob && pdfBlob.size > 0 ? '<p>El PDF se ha generado, subido a la nube y descargado automáticamente en tu equipo.</p>' : '<p>No se pudo generar el PDF, pero la incidencia se guardó.</p>'}
                         <p>${mensajeCanalizacion}</p>
                     </div>
                 `,
