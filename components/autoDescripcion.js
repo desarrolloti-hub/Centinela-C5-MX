@@ -1,15 +1,13 @@
-// autoDescripcion.js - Componente de autocompletado con diccionario local + Firestore
-// Colores mediante variables CSS para adaptarse al tema global
+// autoDescripcion.js - Solo ghost text con autocompletado con TAB
 import { FrasesAutoCompletarManager } from '/clases/frasesAutoCompletar.js';
 
-// 📚 Palabras/frases comunes para autocompletado inmediato (sin depender de Firestore)
 const DICCIONARIO_LOCAL = [
     "robo", "asalto", "daño", "vandalismo", "fuga", "accidente", "incendio",
     "falla eléctrica", "fuga de gas", "inundación", "violación de perímetro",
     "alerta sísmica", "persona sospechosa", "personal en tienda", "vehículo sospechoso", "golpe",
     "rotura", "mal funcionamiento", "hurto", "extorsión", "amenaza",
     "lesionado", "desmayo", "caída", "emergencia médica", "corto circuito",
-    "intento de robo", "daño estructural", "pérdida de energía"
+    "intento de robo", "daño estructural", "pérdida de energía", "mediante el monitoreo cctv"
 ];
 
 class AutoDescripcion extends HTMLElement {
@@ -18,8 +16,6 @@ class AutoDescripcion extends HTMLElement {
         this.attachShadow({ mode: 'open' });
         this.frasesManager = null;
         this.sugerenciaActual = "";
-        this.frasesCoincidentes = [];
-        this.indiceSeleccionado = -1;
         this.ultimoTexto = "";
     }
 
@@ -28,31 +24,38 @@ class AutoDescripcion extends HTMLElement {
     }
 
     async connectedCallback() {
-        try {
-            this.frasesManager = new FrasesAutoCompletarManager();
-            console.log('✅ FrasesManager inicializado');
-        } catch (error) {
-            console.warn('⚠️ FrasesManager no disponible (se usará solo diccionario local)', error);
-        }
-
         this.render();
         this.textarea = this.shadowRoot.querySelector('textarea');
         this.ghostDiv = this.shadowRoot.querySelector('.ghost-text');
-        this.sugerenciasDiv = this.shadowRoot.querySelector('.sugerencias');
 
         this.textarea.addEventListener('input', () => this.onInput());
         this.textarea.addEventListener('keydown', (e) => this.onKeyDown(e));
         this.textarea.addEventListener('blur', () => {
-            setTimeout(() => this.ocultarSugerenciasYGhost(), 200);
+            this.ghostDiv.style.display = 'none';
+            this.sugerenciaActual = "";
         });
 
         const org = this.getAttribute('organizacion');
-        if (org) console.log(`📁 auto-descripcion con organización: ${org}`);
+        if (org) {
+            this._inicializarManager(org);
+        }
+    }
+
+    _inicializarManager(org) {
+        if (this.frasesManager) return;
+        try {
+            this.frasesManager = new FrasesAutoCompletarManager(org);
+           
+        } catch (error) {
+            console.warn('⚠️ FrasesManager no disponible', error);
+        }
     }
 
     attributeChangedCallback(name, oldValue, newValue) {
         if (oldValue === newValue) return;
-        console.log(`🔄 Atributo ${name}: ${newValue}`);
+        if (name === 'organizacion' && newValue && !this.frasesManager) {
+            this._inicializarManager(newValue);
+        }
         if (this.textarea && this.textarea.value.length >= 2) {
             this.onInput();
         }
@@ -100,40 +103,11 @@ class AutoDescripcion extends HTMLElement {
                     z-index: 1;
                     overflow: hidden;
                 }
-                .sugerencias {
-                    position: absolute;
-                    top: 100%;
-                    left: 0;
-                    width: 100%;
-                    background: var(--color-bg-tertiary, #1a1a2e);
-                    border: 1px solid var(--color-accent-primary, #00cfff);
-                    border-radius: 16px;
-                    z-index: 10000;
-                    display: none;
-                    max-height: 280px;
-                    overflow-y: auto;
-                }
-                .sugerencias div {
-                    padding: 10px 14px;
-                    cursor: pointer;
-                    border-bottom: 1px solid rgba(0,207,255,0.2);
-                    color: var(--color-text-secondary, #eee);
-                }
-                .sugerencias div:hover, .sugerencias .selected {
-                    background: var(--color-accent-primary, #00cfff)20;
-                    background: rgba(0,207,255,0.2);
-                }
-                .sugerencias .no-results {
-                    text-align: center;
-                    color: #aaa;
-                    cursor: default;
-                }
             </style>
             <div class="wrapper">
-                <textarea rows="5" placeholder="Describe la incidencia... (escribe, usa ↑/↓, presiona Tab para autocompletar)"></textarea>
+                <textarea rows="5" placeholder="Describe la incidencia... (escribe, presiona Tab para autocompletar)"></textarea>
                 <div class="ghost-text"></div>
             </div>
-            <div class="sugerencias"></div>
         `;
     }
 
@@ -143,7 +117,8 @@ class AutoDescripcion extends HTMLElement {
         this.ultimoTexto = texto;
 
         if (texto.length < 2) {
-            this.ocultarSugerenciasYGhost();
+            this.ghostDiv.style.display = 'none';
+            this.sugerenciaActual = "";
             return;
         }
 
@@ -155,9 +130,8 @@ class AutoDescripcion extends HTMLElement {
         if (organizacion && this.frasesManager) {
             try {
                 frasesFirestore = await this.frasesManager.obtenerFrasesSugeridas(organizacion, categoriaId, subcategoriaId, 10);
-                console.log(`📚 Firestore: ${frasesFirestore.length} frases`);
             } catch (error) {
-                console.warn('Error leyendo frases de Firestore (usando solo diccionario local)', error);
+                // silencio
             }
         }
 
@@ -184,13 +158,10 @@ class AutoDescripcion extends HTMLElement {
         const todas = [...new Set([...firestoreMatch, ...sugerenciasLocales])];
 
         if (todas.length === 0) {
-            this.ocultarSugerenciasYGhost();
+            this.ghostDiv.style.display = 'none';
+            this.sugerenciaActual = "";
             return;
         }
-
-        this.frasesCoincidentes = todas;
-        this.indiceSeleccionado = -1;
-        this.mostrarMenu(todas);
 
         const sugerenciaGhost = todas[0];
         const resto = sugerenciaGhost.substring(texto.length);
@@ -204,94 +175,13 @@ class AutoDescripcion extends HTMLElement {
     }
 
     onKeyDown(e) {
-        const visible = this.sugerenciasDiv.style.display === 'block';
-        if (!visible) {
-            if (e.key === 'Tab' && this.sugerenciaActual) {
-                e.preventDefault();
-                this.aceptarSugerencia();
-            }
-            return;
+        if (e.key === 'Tab' && this.sugerenciaActual) {
+            e.preventDefault();
+            this.aceptarSugerencia();
+        } else if (e.key === 'Escape') {
+            this.ghostDiv.style.display = 'none';
+            this.sugerenciaActual = "";
         }
-
-        const items = this.sugerenciasDiv.querySelectorAll('div:not(.no-results)');
-        if (items.length === 0) return;
-
-        switch (e.key) {
-            case 'ArrowDown':
-                e.preventDefault();
-                this.indiceSeleccionado = (this.indiceSeleccionado + 1) % items.length;
-                this.actualizarSeleccion(items);
-                break;
-            case 'ArrowUp':
-                e.preventDefault();
-                this.indiceSeleccionado = (this.indiceSeleccionado - 1 + items.length) % items.length;
-                this.actualizarSeleccion(items);
-                break;
-            case 'Tab':
-            case 'Enter':
-                e.preventDefault();
-                if (this.indiceSeleccionado >= 0 && this.indiceSeleccionado < this.frasesCoincidentes.length) {
-                    const textoElegido = this.frasesCoincidentes[this.indiceSeleccionado];
-                    this.textarea.value = textoElegido;
-                    this.ocultarSugerenciasYGhost();
-                    this.dispatchEvent(new Event('input', { bubbles: true, composed: true }));
-                    this.textarea.focus();
-                } else if (this.sugerenciaActual) {
-                    this.aceptarSugerencia();
-                }
-                break;
-            case 'Escape':
-                this.ocultarSugerenciasYGhost();
-                break;
-        }
-    }
-
-    actualizarSeleccion(items) {
-        items.forEach((item, idx) => {
-            if (idx === this.indiceSeleccionado) {
-                item.classList.add('selected');
-                item.scrollIntoView({ block: 'nearest' });
-                if (this.frasesCoincidentes[idx]) {
-                    const textoActual = this.textarea.value;
-                    const sugerenciaSeleccionada = this.frasesCoincidentes[idx];
-                    const resto = sugerenciaSeleccionada.substring(textoActual.length);
-                    if (resto.length > 0) {
-                        this.sugerenciaActual = sugerenciaSeleccionada;
-                        this.mostrarGhost(textoActual, resto);
-                    } else {
-                        this.ghostDiv.style.display = 'none';
-                    }
-                }
-            } else {
-                item.classList.remove('selected');
-            }
-        });
-    }
-
-    mostrarMenu(frases) {
-        this.sugerenciasDiv.style.width = `${this.textarea.clientWidth}px`;
-
-        if (frases.length === 0) {
-            this.sugerenciasDiv.innerHTML = `<div class="no-results">Sin sugerencias</div>`;
-        } else {
-            this.sugerenciasDiv.innerHTML = frases.map(f => `<div>${this.escapeHtml(f)}</div>`).join('');
-        }
-        this.sugerenciasDiv.style.display = 'block';
-
-        const divs = this.sugerenciasDiv.querySelectorAll('div:not(.no-results)');
-        divs.forEach((div, idx) => {
-            div.addEventListener('click', () => {
-                this.textarea.value = div.innerText;
-                this.ocultarSugerenciasYGhost();
-                this.dispatchEvent(new Event('input', { bubbles: true, composed: true }));
-                this.textarea.focus();
-            });
-            div.addEventListener('mouseenter', () => {
-                this.indiceSeleccionado = idx;
-                const items = this.sugerenciasDiv.querySelectorAll('div:not(.no-results)');
-                this.actualizarSeleccion(items);
-            });
-        });
     }
 
     mostrarGhost(textoEscrito, resto) {
@@ -308,18 +198,11 @@ class AutoDescripcion extends HTMLElement {
     aceptarSugerencia() {
         if (this.sugerenciaActual) {
             this.textarea.value = this.sugerenciaActual;
-            this.ocultarSugerenciasYGhost();
+            this.ghostDiv.style.display = 'none';
+            this.sugerenciaActual = "";
             this.dispatchEvent(new Event('input', { bubbles: true, composed: true }));
             this.textarea.focus();
         }
-    }
-
-    ocultarSugerenciasYGhost() {
-        this.sugerenciasDiv.style.display = 'none';
-        this.ghostDiv.style.display = 'none';
-        this.sugerenciaActual = "";
-        this.indiceSeleccionado = -1;
-        this.frasesCoincidentes = [];
     }
 
     escapeHtml(str) {
@@ -346,4 +229,3 @@ class AutoDescripcion extends HTMLElement {
 if (!customElements.get('auto-descripcion')) {
     customElements.define('auto-descripcion', AutoDescripcion);
 }
-console.log('✅ Componente auto-descripcion con variables CSS y ghost text visible');

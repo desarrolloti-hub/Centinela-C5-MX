@@ -107,24 +107,22 @@ class CrearIncidenciaController {
         }
         return this.categoriaManager;
     }
-
-    async _initFrasesManager() {
-        if (!this.frasesManager) {
-            try {
-                const { FrasesAutoCompletarManager } = await import('/clases/frasesAutoCompletar.js');
-                this.frasesManager = new FrasesAutoCompletarManager();
-                console.log('✅ FrasesAutoCompletarManager inicializado');
-                // Crear frase de ejemplo si la colección está vacía (para pruebas)
-                if (this.usuarioActual && this.usuarioActual.organizacionCamelCase) {
-                    await this.frasesManager.crearFraseEjemploSiVacia(this.usuarioActual.organizacionCamelCase);
-                }
-            } catch (error) {
-                console.error('Error inicializando FrasesAutoCompletarManager:', error);
-                this.frasesManager = null;
-            }
+async _initFrasesManager() {
+    if (!this.frasesManager) {
+        try {
+            const { FrasesAutoCompletarManager } = await import('/clases/frasesAutoCompletar.js');
+            // 👇 PASA LA ORGANIZACIÓN CAMELCASE AL CONSTRUCTOR
+            const orgCamel = this.usuarioActual.organizacionCamelCase;
+            this.frasesManager = new FrasesAutoCompletarManager(orgCamel);
+        
+            await this.frasesManager.crearFraseEjemploSiVacia(orgCamel);
+        } catch (error) {
+            console.error('Error inicializando FrasesAutoCompletarManager:', error);
+            this.frasesManager = null;
         }
-        return this.frasesManager;
     }
+    return this.frasesManager;
+}
 
     async _initNotificacionManager() {
         if (!this.notificacionManager) {
@@ -291,7 +289,7 @@ class CrearIncidenciaController {
             if (e.detail?.texto) texto = e.detail.texto;
             else if (this.descripcionComponent.value) texto = this.descripcionComponent.value;
             else if (e.target?.value) texto = e.target.value;
-            console.log('📝 Texto cambiado:', texto);
+         
             this._validarLongitudCampoCompleto();
             this._verificarBotonesFinales();
         });
@@ -306,7 +304,7 @@ class CrearIncidenciaController {
                 );
             }).observe(catInput, { attributes: true });
         }
-        console.log('✅ Autocompletado listo con org:', org);
+       
     }
 
     // ==================== ACTUALIZAR ATRIBUTOS DEL AUTO-DESCRIPCION ====================
@@ -337,7 +335,7 @@ class CrearIncidenciaController {
         } else {
             this.descripcionComponent.removeAttribute('subcategoria-id');
         }
-        console.log(`🔁 Atributos auto-descripcion actualizados: cat=${nuevaCat}, sub=${nuevaSub}`);
+ 
     } finally {
         this.actualizandoAtributos = false;
     }
@@ -457,7 +455,7 @@ class CrearIncidenciaController {
 
         if (!this.fechaHoraTiempoRealFija) {
             this.fechaHoraTiempoRealFija = new Date();
-            console.log('🔒 Fecha/Hora Tiempo Real fijada:', this.fechaHoraTiempoRealFija);
+        
         }
 
         const day = String(this.fechaHoraTiempoRealFija.getDate()).padStart(2, '0');
@@ -1315,16 +1313,19 @@ class CrearIncidenciaController {
     }
 
     async _cargarCategorias() {
-        try {
-            const { CategoriaManager } = await import('/clases/categoria.js');
-            const categoriaManager = new CategoriaManager();
-            this.categoriasOriginales = await categoriaManager.obtenerTodasCategorias();
-            this.categorias = [...this.categoriasOriginales];
-        } catch (error) {
-            console.error('Error cargando categorías:', error);
-            throw error;
-        }
+    try {
+        const { CategoriaManager } = await import('/clases/categoria.js');
+        const categoriaManager = new CategoriaManager();
+        // 👇 AHORA LE PASAMOS LA ORGANIZACIÓN CAMELCASE
+        this.categoriasOriginales = await categoriaManager.obtenerTodasCategorias(
+            this.usuarioActual.organizacionCamelCase
+        );
+        this.categorias = [...this.categoriasOriginales];
+    } catch (error) {
+        console.error('Error cargando categorías:', error);
+        throw error;
     }
+}
 
     async _cargarAreas() {
         try {

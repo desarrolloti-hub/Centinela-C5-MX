@@ -1,7 +1,4 @@
-// frasesAutoCompletar.js - VERSIÓN DEFINITIVA
-// ✅ Crea la colección automáticamente al guardar
-// ✅ Logs detallados para depuración
-// ✅ Manejo de errores con sugerencias
+// frasesAutoCompletar.js - VERSIÓN CON COLECCIÓN POR ORGANIZACIÓN
 
 import { db } from '/config/firebase-config.js';
 import { 
@@ -11,15 +8,25 @@ import {
 import consumo from '/clases/consumoFirebase.js';
 
 class FrasesAutoCompletarManager {
-    constructor() {
-        this.coleccion = 'frasesAutoCompletar';  // Nombre exacto: f minúscula, A mayúscula
-        console.log('📁 FrasesManager: usando colección', this.coleccion);
+    constructor(organizacionCamelCase = null) {
+        // Guardar la organización para usarla en todas las operaciones
+        this.organizacionCamelCase = organizacionCamelCase;
+        // El nombre de la colección ahora incluye la organización
+        this.coleccion = organizacionCamelCase 
+            ? `frasesAutoCompletar_${organizacionCamelCase}`
+            : 'frasesAutoCompletar';  // fallback por si no hay org
+       
     }
 
     /**
-     * Guarda o actualiza una frase. Si la colección no existe, Firestore la crea automáticamente.
+     * Guarda o actualiza una frase en la colección de la organización.
      */
     async guardarFrase(texto, categoriaId, subcategoriaId, organizacion, usuarioActual = null) {
+        // Validar que organización coincida con la del manager
+        if (organizacion !== this.organizacionCamelCase) {
+            console.warn(`⚠️ Organización recibida (${organizacion}) no coincide con la del manager (${this.organizacionCamelCase})`);
+        }
+
         if (!texto || !categoriaId || !organizacion) {
             console.error('❌ Faltan datos:', { texto, categoriaId, organizacion });
             throw new Error('Faltan datos obligatorios');
@@ -28,20 +35,19 @@ class FrasesAutoCompletarManager {
         try {
             const coleccionRef = collection(db, this.coleccion);
             
-            // Buscar si ya existe
+            // Buscar si ya existe (misma organización implícita por la colección)
             const q = query(
                 coleccionRef,
                 where('texto', '==', texto),
                 where('categoriaId', '==', categoriaId),
                 where('subcategoriaId', '==', subcategoriaId || ''),
-                where('organizacion', '==', organizacion),
+                // ya no necesitas where('organizacion') porque la colección ya es específica
                 limit(1)
             );
             
             const snapshot = await getDocs(q);
             
             if (!snapshot.empty) {
-                // Actualizar existente
                 const docRef = snapshot.docs[0].ref;
                 const data = snapshot.docs[0].data();
                 const nuevasVeces = (data.vecesUsada || 0) + 1;
@@ -49,35 +55,29 @@ class FrasesAutoCompletarManager {
                     vecesUsada: nuevasVeces,
                     fechaUltimaUso: serverTimestamp()
                 });
-                console.log(`✅ Frase actualizada: "${texto.substring(0, 50)}..." (${nuevasVeces} usos)`);
+          
                 await consumo.registrarFirestoreActualizacion(this.coleccion, docRef.id);
                 return { exito: true, id: docRef.id, veces: nuevasVeces };
             } 
             else {
-                // Crear nueva
                 const nuevoDocRef = doc(coleccionRef);
                 const nuevoDocumento = {
                     texto,
                     categoriaId,
                     subcategoriaId: subcategoriaId || '',
-                    organizacion,
+                    // ya no guardamos 'organizacion' porque la colección ya la representa
                     vecesUsada: 1,
                     activa: true,
                     fechaCreacion: serverTimestamp(),
                     fechaUltimaUso: serverTimestamp()
                 };
                 await setDoc(nuevoDocRef, nuevoDocumento);
-                console.log(`✨ Nueva frase creada: "${texto.substring(0, 50)}..." (ID: ${nuevoDocRef.id})`);
                 await consumo.registrarFirestoreEscritura(this.coleccion, nuevoDocRef.id);
                 return { exito: true, id: nuevoDocRef.id, veces: 1 };
             }
         } 
         catch (error) {
             console.error('❌ Error CRÍTICO al guardar frase:', error);
-            // Si el error es por falta de permisos, mostramos ayuda
-            if (error.code === 'permission-denied') {
-                console.warn('⚠️ Las reglas de Firestore están bloqueando la escritura. Ve a Firebase Console -> Firestore -> Reglas y cambia a: allow read, write: if true; (solo para pruebas)');
-            }
             throw error;
         }
     }
@@ -86,11 +86,16 @@ class FrasesAutoCompletarManager {
      * Obtiene frases sugeridas (solo con vecesUsada >= 3)
      */
     async obtenerFrasesSugeridas(organizacion, categoriaId = '', subcategoriaId = '', limite = 50) {
-        if (!organizacion) return [];
+        // Verificar que la organización coincida con la del manager
+        if (organizacion !== this.organizacionCamelCase) {
+            console.warn(`⚠️ Organización recibida (${organizacion}) no coincide con manager (${this.organizacionCamelCase})`);
+        }
+
+        if (!this.organizacionCamelCase) return [];
 
         try {
+            // Ya no necesitas filtrar por 'organizacion' porque la colección es específica
             let constraints = [
-                where('organizacion', '==', organizacion),
                 where('activa', '==', true),
                 where('vecesUsada', '>=', 3),
                 orderBy('vecesUsada', 'desc'),
@@ -115,7 +120,6 @@ class FrasesAutoCompletarManager {
                     vecesUsada: data.vecesUsada || 0
                 });
             });
-            console.log(`📊 Frases sugeridas: ${resultados.length} (org: ${organizacion}, cat: ${categoriaId || 'todas'})`);
             return resultados;
         } 
         catch (error) {
@@ -135,7 +139,6 @@ class FrasesAutoCompletarManager {
             if (snap.exists()) {
                 const veces = (snap.data().vecesUsada || 0) + 1;
                 await updateDoc(docRef, { vecesUsada: veces, fechaUltimaUso: serverTimestamp() });
-                console.log(`📈 Uso incrementado: ${id} -> ${veces}`);
             }
         } catch (error) {
             console.error('❌ Error incrementando uso:', error);
@@ -146,10 +149,9 @@ class FrasesAutoCompletarManager {
      * Método de prueba: crea una frase de ejemplo si la colección está vacía
      */
     async crearFraseEjemploSiVacia(organizacion) {
-        if (!organizacion) return;
+        if (!organizacion || organizacion !== this.organizacionCamelCase) return;
         const existentes = await this.obtenerFrasesSugeridas(organizacion, '', '', 1);
         if (existentes.length === 0) {
-            console.log('📝 Colección vacía. Creando frase de ejemplo...');
             await this.guardarFrase(
                 "Ejemplo: El sistema se reinició inesperadamente durante la noche",
                 "categoria_ejemplo",
@@ -157,7 +159,6 @@ class FrasesAutoCompletarManager {
                 organizacion,
                 null
             );
-            console.log('✅ Frase de ejemplo creada. Ahora escribe "ejemplo" en la descripción y debería aparecer.');
         }
     }
 }

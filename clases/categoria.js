@@ -1116,12 +1116,16 @@ class CategoriaManager {
         return await this.obtenerCategoriasPorOrganizacion();
     }
 
-    async obtenerTodasCategorias() {
-        if (this.categorias.length === 0) {
-            return await this.cargarTodasCategorias();
-        }
-        return this.categorias;
+    async obtenerTodasCategorias(organizacionOverride = null) {
+    // Si se pasa organización, la usamos; si no, usamos la del manager
+    if (organizacionOverride) {
+        return await this.obtenerCategoriasPorOrganizacion(organizacionOverride);
     }
+    if (this.categorias.length === 0) {
+        return await this.cargarTodasCategorias();
+    }
+    return this.categorias;
+}
 }
 
 export { Categoria, CategoriaManager };
