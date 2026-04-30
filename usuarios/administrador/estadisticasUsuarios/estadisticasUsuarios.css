@@ -1,7 +1,6 @@
 /* =============================================
-   sucursalDetalle.css - ULTRA RESPONSIVE
-   Versión final: Gráfica → Tabla → Tarjetas
-   Sin emojis - Profesional
+   estadisticasUsuarios.css - Vista detallada por colaborador
+   Basado en el estilo de estadisticasSucursales.css
    ============================================= */
 
 /* =============================================
@@ -115,9 +114,9 @@ body {
 }
 
 /* =============================================
-   SELECTOR DE SUCURSAL
+   SELECTOR DE COLABORADOR
    ============================================= */
-.sucursal-selector {
+.colaborador-selector {
     display: flex;
     align-items: center;
     gap: clamp(8px, 2vw, 15px);
@@ -129,7 +128,7 @@ body {
     flex-wrap: wrap;
 }
 
-.sucursal-selector label {
+.colaborador-selector label {
     font-family: var(--font-family-primary, 'Orbitron', sans-serif);
     font-size: var(--font-size-xs);
     text-transform: uppercase;
@@ -140,7 +139,7 @@ body {
     gap: 6px;
 }
 
-.sucursal-selector .filtro-select {
+.colaborador-selector .filtro-select {
     background: var(--color-bg-tertiary, rgba(0, 0, 0, 0.3));
     border: 1px solid var(--color-border-light);
     border-radius: clamp(6px, 1.5vw, 10px);
@@ -149,28 +148,28 @@ body {
     font-family: var(--font-family-secondary, 'Rajdhani', sans-serif);
     font-size: clamp(0.75rem, 2.5vw, 0.9rem);
     cursor: pointer;
-    min-width: clamp(140px, 25vw, 220px);
+    min-width: clamp(160px, 28vw, 240px);
     transition: all 0.2s ease;
 }
 
 @media (max-width: 640px) {
-    .sucursal-selector {
+    .colaborador-selector {
         width: 100%;
         justify-content: space-between;
     }
     
-    .sucursal-selector .filtro-select {
+    .colaborador-selector .filtro-select {
         flex: 1;
     }
 }
 
-@media (max-width: 480px) {
-    .sucursal-selector {
+@media (max-width: 550px) {
+    .colaborador-selector {
         flex-direction: column;
         align-items: stretch;
     }
     
-    .sucursal-selector .filtro-select {
+    .colaborador-selector .filtro-select {
         width: 100%;
         min-width: auto;
     }
@@ -179,7 +178,7 @@ body {
 /* =============================================
    BOTÓN PDF
    ============================================= */
-.btn-pdf-sucursal {
+.btn-pdf-colaborador {
     background: linear-gradient(145deg, #0f0f0f, #1a1a1a);
     border: 1px solid #c0392b;
     border-radius: clamp(6px, 1.5vw, 10px);
@@ -197,13 +196,13 @@ body {
 }
 
 @media (max-width: 640px) {
-    .btn-pdf-sucursal {
+    .btn-pdf-colaborador {
         justify-content: center;
         width: 100%;
     }
 }
 
-.btn-pdf-sucursal:hover {
+.btn-pdf-colaborador:hover {
     transform: translateY(-2px);
     box-shadow: 0 0 20px rgba(192, 57, 43, 0.3);
     border-color: #e74c3c;
@@ -211,9 +210,9 @@ body {
 }
 
 /* =============================================
-   HEADER SUCURSAL
+   HEADER COLABORADOR
    ============================================= */
-.sucursal-header {
+.colaborador-header {
     background: var(--color-bg-secondary);
     border: 1px solid var(--color-border-light);
     border-radius: clamp(16px, 3vw, 24px);
@@ -227,26 +226,26 @@ body {
     justify-content: center;
 }
 
-.sucursal-icon {
-    width: clamp(50px, 10vw, 80px);
-    height: clamp(50px, 10vw, 80px);
+.colaborador-icon {
+    width: clamp(60px, 12vw, 90px);
+    height: clamp(60px, 12vw, 90px);
     background: linear-gradient(135deg, rgba(59,130,246,0.2), rgba(59,130,246,0.05));
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: clamp(1.5rem, 5vw, 2.5rem);
+    font-size: clamp(2rem, 6vw, 3rem);
     color: var(--color-accent-primary);
     flex-shrink: 0;
 }
 
-.sucursal-info {
+.colaborador-info {
     flex: 1;
     min-width: 200px;
     text-align: center;
 }
 
-.sucursal-info h1 {
+.colaborador-info h1 {
     font-family: var(--font-family-primary, 'Orbitron', sans-serif);
     font-size: var(--font-size-h1);
     color: var(--color-text-primary);
@@ -254,7 +253,7 @@ body {
     word-break: break-word;
 }
 
-.sucursal-meta {
+.colaborador-meta {
     display: flex;
     flex-wrap: wrap;
     gap: clamp(10px, 2vw, 20px);
@@ -263,25 +262,25 @@ body {
     justify-content: center;
 }
 
-.sucursal-meta span {
+.colaborador-meta span {
     display: inline-flex;
     align-items: center;
     gap: 6px;
     flex-wrap: wrap;
 }
 
-.sucursal-meta i {
+.colaborador-meta i {
     color: var(--color-accent-primary);
 }
 
-.region-badge {
+.sucursal-badge {
     background: rgba(59,130,246,0.2);
     padding: 4px 12px;
     border-radius: 20px;
 }
 
 @media (max-width: 550px) {
-    .sucursal-meta {
+    .colaborador-meta {
         flex-direction: column;
         align-items: center;
         gap: 8px;
@@ -289,9 +288,16 @@ body {
 }
 
 /* =============================================
-   KPIs GRID
+   KPIs GRID - Principal y secundario
    ============================================= */
 .kpis-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: clamp(10px, 2vw, 20px);
+    margin-bottom: clamp(15px, 2.5vw, 25px);
+}
+
+.kpis-grid-secundario {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
     gap: clamp(10px, 2vw, 20px);
@@ -308,6 +314,13 @@ body {
     gap: clamp(10px, 2vw, 16px);
     backdrop-filter: blur(10px);
     transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.kpi-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+    border-color: var(--color-accent-primary);
 }
 
 .kpi-icon {
@@ -327,7 +340,7 @@ body {
 }
 
 .kpi-info h3 {
-    font-size: clamp(1.1rem, 5vw, 2rem);
+    font-size: clamp(1rem, 5vw, 2rem);
     font-weight: 800;
     color: white;
     font-family: var(--font-family-primary, 'Orbitron', sans-serif);
@@ -342,14 +355,14 @@ body {
     letter-spacing: 0.5px;
 }
 
-@media (max-width: 768px) {
-    .kpis-grid {
+@media (max-width: 900px) {
+    .kpis-grid, .kpis-grid-secundario {
         grid-template-columns: repeat(2, 1fr);
     }
 }
 
-@media (max-width: 480px) {
-    .kpis-grid {
+@media (max-width: 550px) {
+    .kpis-grid, .kpis-grid-secundario {
         grid-template-columns: 1fr;
     }
 }
@@ -366,6 +379,16 @@ body {
     display: flex;
     flex-direction: column;
     height: 100%;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+}
+
+.card.full-width:hover {
+    transform: none;
 }
 
 .card-header {
@@ -402,147 +425,41 @@ body {
     min-height: auto;
 }
 
-
-
-
 /* =============================================
-   GRÁFICA DE RIESGO - ALTA RESOLUCIÓN
+   GRÁFICAS
    ============================================= */
-
-/* La card que contiene la gráfica */
-.card:has(#graficoRiesgoSucursal) {
-    min-height: 480px;
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-}
-
-/* El body de la card */
-.card:has(#graficoRiesgoSucursal) .card-body {
-    flex: 1;
-    min-height: 420px;
-    padding: 20px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-}
-
-/* El canvas - configuración nítida */
-#graficoRiesgoSucursal {
-    width: 100% !important;
-    height: auto !important;
-    min-height: 380px;
-    max-height: 500px;
-    display: block;
-    image-rendering: crisp-edges;
-    image-rendering: -webkit-optimize-contrast;
-}
-
-/* Desktop grande (4K) */
-@media (min-width: 1920px) {
-    .card:has(#graficoRiesgoSucursal) {
-        min-height: 600px;
-    }
-    .card:has(#graficoRiesgoSucursal) .card-body {
-        min-height: 540px;
-    }
-    #graficoRiesgoSucursal {
-        min-height: 500px;
-        max-height: 580px;
-    }
-}
-
-/* Desktop normal */
-@media (min-width: 1024px) and (max-width: 1919px) {
-    .card:has(#graficoRiesgoSucursal) {
-        min-height: 520px;
-    }
-    .card:has(#graficoRiesgoSucursal) .card-body {
-        min-height: 470px;
-    }
-    #graficoRiesgoSucursal {
-        min-height: 430px;
-        max-height: 480px;
-    }
-}
-
-/* Tablet */
-@media (max-width: 768px) {
-    .card:has(#graficoRiesgoSucursal) {
-        min-height: 420px;
-    }
-    .card:has(#graficoRiesgoSucursal) .card-body {
-        min-height: 380px;
-        padding: 15px;
-    }
-    #graficoRiesgoSucursal {
-        min-height: 350px;
-        max-height: 400px;
-    }
-}
-
-/* Móvil grande */
-@media (max-width: 550px) {
-    .card:has(#graficoRiesgoSucursal) {
-        min-height: 380px;
-    }
-    .card:has(#graficoRiesgoSucursal) .card-body {
-        min-height: 340px;
-        padding: 12px;
-    }
-    #graficoRiesgoSucursal {
-        min-height: 320px;
-        max-height: 360px;
-    }
-}
-
-/* Móvil pequeño */
-@media (max-width: 380px) {
-    .card:has(#graficoRiesgoSucursal) {
-        min-height: 350px;
-    }
-    .card:has(#graficoRiesgoSucursal) .card-body {
-        min-height: 310px;
-        padding: 10px;
-    }
-    #graficoRiesgoSucursal {
-        min-height: 290px;
-        max-height: 330px;
-    }
-}
-
-/* Orientación landscape (móvil horizontal) */
-@media (max-height: 500px) and (orientation: landscape) {
-    .card:has(#graficoRiesgoSucursal) {
-        min-height: 320px;
-    }
-    .card:has(#graficoRiesgoSucursal) .card-body {
-        min-height: 280px;
-        padding: 10px;
-    }
-    #graficoRiesgoSucursal {
-        min-height: 260px;
-        max-height: 300px;
-    }
-}
-
-/* Hacer que la primera fila dé más espacio a la gráfica */
 .charts-row {
     display: grid;
-    grid-template-columns: 1.8fr 1fr;
+    grid-template-columns: repeat(2, 1fr);
     gap: 25px;
     margin-bottom: 35px;
 }
 
-@media (max-width: 768px) {
-    .charts-row {
-        grid-template-columns: 1fr;
-        gap: 20px;
-    }
+canvas {
+    max-width: 100%;
+    width: auto !important;
+    height: auto !important;
+    display: block;
+    object-fit: contain;
+    cursor: pointer;
+}
+
+#graficoRiesgoColaborador,
+#graficoEstadoColaborador {
+    max-width: 100%;
+    height: auto;
+    min-height: 280px;
+}
+
+#graficoEvolucionMensual,
+#graficoTiempoCategorias {
+    width: 100% !important;
+    height: auto !important;
+    min-height: 320px;
 }
 
 /* =============================================
-   TABLA DE CATEGORÍAS - MÁS GRANDE
+   TABLA DE CATEGORÍAS
    ============================================= */
 .tabla-categorias {
     width: 100%;
@@ -580,140 +497,12 @@ body {
     color: #10b981;
 }
 
-/* Hacer más grande la tarjeta de Categorías más reportadas */
-#tablaCategoriasSucursal {
-    font-size: 0.85rem;
-}
-
-#tablaCategoriasSucursal th {
-    font-size: 0.75rem;
-    padding: 14px 16px;
-}
-
-#tablaCategoriasSucursal td {
-    padding: 12px 16px;
-}
-
-/* Contenedor de la tabla de categorías con más altura */
-.card:has(#tablaCategoriasSucursal) .table-responsive-mini {
-    max-height: 400px;
-    overflow-y: auto;
-}
-
-#tablaCategoriasSucursal {
-    width: 100%;
-    font-size: 0.9rem;
-}
-
-#tablaCategoriasSucursal th,
-#tablaCategoriasSucursal td {
-    padding: 14px 18px;
-}
-
-#tablaCategoriasSucursal th {
-    font-size: 0.8rem;
-    padding: 14px 18px;
-}
-
-#tablaCategoriasSucursal td {
-    padding: 12px 18px;
-}
-
-/* Más grande aún en desktop */
-@media (min-width: 1024px) {
-    #tablaCategoriasSucursal th,
-    #tablaCategoriasSucursal td {
-        padding: 16px 22px;
-    }
-    
-    #tablaCategoriasSucursal {
-        font-size: 1rem;
-    }
-    
-    #tablaCategoriasSucursal th {
-        font-size: 0.85rem;
-    }
-}
-
-/* En móvil la tabla de categorías sigue siendo tabla con scroll horizontal */
-@media (max-width: 640px) {
-    .card:has(#tablaCategoriasSucursal) .table-responsive-mini {
-        overflow-x: auto;
-    }
-    
-    #tablaCategoriasSucursal {
-        min-width: 380px;
-        font-size: 0.8rem;
-    }
-    
-    #tablaCategoriasSucursal th,
-    #tablaCategoriasSucursal td {
-        padding: 10px 14px;
-    }
-}
-
 /* =============================================
-   GRÁFICA DE PÉRDIDAS VS RECUPERACIONES
+   TIEMPO CATEGORÍAS CONTAINER
    ============================================= */
-#graficoPerdidasRecuperacion {
-    width: 100% !important;
-    height: auto !important;
-    min-height: 280px;
-}
-
-.card:has(#graficoPerdidasRecuperacion) .card-body {
-    min-height: 300px;
-}
-
-@media (max-width: 768px) {
-    .card:has(#graficoPerdidasRecuperacion) .card-body {
-        min-height: 280px;
-    }
-}
-
-/* =============================================
-   TIEMPO PROMEDIO
-   ============================================= */
-.tiempo-promedio-container {
-    text-align: center;
+.tiempo-categorias-container {
     width: 100%;
-}
-
-.tiempo-valor {
-    font-size: clamp(2rem, 10vw, 3.5rem);
-    font-weight: 800;
-    color: white;
-    font-family: var(--font-family-primary, 'Orbitron', sans-serif);
-}
-
-.tiempo-unidad {
-    font-size: var(--font-size-body);
-    color: var(--color-text-secondary);
-    margin-bottom: 15px;
-}
-
-.tiempo-bar {
-    background: rgba(255,255,255,0.1);
-    border-radius: 10px;
-    height: 8px;
-    overflow: hidden;
-    margin: 12px 0;
-    width: 100%;
-}
-
-.tiempo-fill {
-    height: 100%;
-    border-radius: 10px;
-    transition: width 0.5s ease;
-}
-
-.tiempo-leyenda {
-    display: flex;
-    justify-content: center;
-    gap: clamp(10px, 3vw, 20px);
-    font-size: var(--font-size-xs);
-    margin-top: 10px;
-    flex-wrap: wrap;
+    min-height: 350px;
 }
 
 /* =============================================
@@ -750,7 +539,7 @@ body {
     font-family: monospace;
     font-size: var(--font-size-xs);
     word-break: break-all;
-    max-width: 200px;
+    max-width: 150px;
 }
 
 .tabla-incidencias td:last-child {
@@ -771,7 +560,6 @@ body {
     gap: 12px;
 }
 
-/* Desktop (>768px) - Mostrar tabla, ocultar tarjetas */
 @media (min-width: 769px) {
     .incidencias-grid {
         display: none !important;
@@ -781,7 +569,6 @@ body {
     }
 }
 
-/* Móvil (≤768px) - Mostrar tarjetas, ocultar tabla */
 @media (max-width: 768px) {
     .incidencias-tabla-container {
         display: none !important;
@@ -793,7 +580,6 @@ body {
     }
 }
 
-/* Estilos de cada tarjeta */
 .incidencia-card {
     background: linear-gradient(135deg, rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.3));
     border: 1px solid var(--color-border-light);
@@ -921,7 +707,7 @@ body {
 }
 
 /* =============================================
-   BOTÓN PDF MINI (para tabla)
+   BOTÓN PDF MINI
    ============================================= */
 .btn-pdf-mini {
     background: linear-gradient(145deg, #0f0f0f, #1a1a1a);
@@ -949,6 +735,33 @@ body {
 }
 
 /* =============================================
+   BADGES
+   ============================================= */
+.badge-riesgo {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.7rem;
+    font-weight: 500;
+}
+
+.badge-estado {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.7rem;
+    font-weight: 500;
+}
+
+.badge-value {
+    display: inline-block;
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 0.7rem;
+    font-weight: 500;
+}
+
+/* =============================================
    FOOTER
    ============================================= */
 .footer-datetime {
@@ -961,7 +774,7 @@ body {
 }
 
 /* =============================================
-   ESTILOS PARA SWEETALERT
+   ESTILOS PARA SWEETALERT - Versión Sucursales (clickeables)
    ============================================= */
 .swal2-popup-custom {
     font-family: var(--font-family-secondary, 'Rajdhani', sans-serif);
@@ -1030,6 +843,7 @@ body {
     padding-right: 4px;
 }
 
+/* Tarjeta clickeable dentro del SweetAlert */
 .swal-registro-card {
     background: linear-gradient(135deg, rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.3));
     border-radius: 14px;
@@ -1054,6 +868,23 @@ body {
     gap: 8px;
 }
 
+.swal-id {
+    font-family: monospace;
+    font-size: 0.7rem;
+    color: var(--color-accent-primary);
+    background: rgba(0, 0, 0, 0.4);
+    padding: 4px 10px;
+    border-radius: 20px;
+}
+
+.swal-fecha {
+    font-size: 0.65rem;
+    color: var(--color-text-secondary);
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
 .swal-card-body {
     padding: 10px 14px;
     display: flex;
@@ -1063,9 +894,84 @@ body {
     gap: 12px;
 }
 
+.swal-info-principal {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: center;
+}
+
+.swal-sucursal {
+    font-size: 0.7rem;
+    color: var(--color-text-secondary);
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.swal-sucursal i {
+    color: var(--color-accent-primary);
+}
+
+.swal-tipo-evento {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.7rem;
+    font-weight: 500;
+}
+
+.swal-estado-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.swal-montos {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    font-size: 0.65rem;
+}
+
+.swal-monto-perdido {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    color: #f59e0b;
+}
+
+.swal-monto-recuperado {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    color: #10b981;
+}
+
 .swal-card-footer {
     padding: 8px 14px 12px 14px;
     border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.swal-narracion {
+    font-size: 0.7rem;
+    color: var(--color-text-secondary);
+    display: flex;
+    gap: 8px;
+}
+
+.swal-narracion i {
+    color: var(--color-accent-primary);
+    margin-top: 2px;
+}
+
+.swal-mas-registros {
+    text-align: center;
+    padding: 12px;
+    color: #9ca3af;
+    font-size: var(--font-size-small);
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+    margin-top: 8px;
 }
 
 .swal2-confirm {
@@ -1080,32 +986,28 @@ body {
     transition: all 0.2s ease !important;
 }
 
-.swal-mas-registros {
-    text-align: center;
-    padding: 12px;
-    color: #9ca3af;
-    font-size: var(--font-size-small);
-    border-top: 1px solid rgba(255, 255, 255, 0.05);
-    margin-top: 8px;
+.swal2-confirm:hover {
+    background: linear-gradient(145deg, #2a2a2a, #1a1a1a) !important;
+    border-color: #ffffff !important;
 }
 
 /* =============================================
-   MEJORAS DE ACCESIBILIDAD Y SCROLL
+   MEJORAS DE ACCESIBILIDAD
    ============================================= */
 button, 
 .btn-pdf-card,
-.btn-pdf-sucursal,
+.btn-pdf-colaborador,
 .btn-volver,
-.sucursal-selector .filtro-select {
+.colaborador-selector .filtro-select {
     min-height: 44px;
 }
 
 @media (max-width: 768px) {
     button, 
     .btn-pdf-card,
-    .btn-pdf-sucursal,
+    .btn-pdf-colaborador,
     .btn-volver,
-    .sucursal-selector .filtro-select {
+    .colaborador-selector .filtro-select {
         min-height: 48px;
     }
 }
@@ -1139,66 +1041,35 @@ p, h1, h2, h3, h4, h5, h6, span, div {
 }
 
 /* =============================================
-   PANTALLAS GRANDES (4K)
-   ============================================= */
-@media (min-width: 1920px) {
-    .detalle-container {
-        max-width: 1800px;
-        padding: 40px;
-    }
-    
-    .kpi-info h3 {
-        font-size: 2.2rem;
-    }
-    
-    .card-header h5 {
-        font-size: 1rem;
-    }
-}
-
-/* =============================================
-   ANIMACIÓN SUAVE PARA LAS CARDS
-   ============================================= */
-.card {
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-
-.card:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
-}
-
-/* No aplicar hover a la card de incidencias si tiene scroll */
-.card.full-width:hover {
-    transform: none;
-}
-/* =============================================
-   RESPONSIVE - REORDENAR NIVELES RIESGO ARRIBA Y CATEGORÍAS ABAJO
+   RESPONSIVE - MÓVIL
    ============================================= */
 
-/* En móvil (≤768px) - Reordenar usando flex order */
+/* Tablet y móvil */
 @media (max-width: 768px) {
+    /* Contenedores de gráficas - de grid a flex en columna */
     .charts-row {
-        display: flex;
-        flex-direction: column;
-        gap: 20px;
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 25px;
+        margin-bottom: 35px;
     }
     
-    /* La card de Niveles de riesgo va primero (arriba) */
-    .charts-row .card:first-child {
-        order: 1;
+    /* Todas las cards dentro de charts-row ocupan todo el ancho */
+    .charts-row .card {
+        width: 100% !important;
         margin-bottom: 0;
     }
-    
-    /* La card de Categorías más reportadas va después (abajo) */
-    .charts-row .card:last-child {
-        order: 2;
-    }
+}
+/* Ocultar secciones sin datos - transiciones suaves */
+.charts-row {
+    transition: all 0.2s ease;
 }
 
-/* Para móviles aún más pequeños, mantener el mismo comportamiento */
-@media (max-width: 550px) {
-    .charts-row {
-        gap: 15px;
-    }
+.card {
+    transition: display 0.2s ease, opacity 0.2s ease;
+}
+
+.card[style*="display: none"] {
+    opacity: 0;
+    visibility: hidden;
 }

@@ -1,4 +1,5 @@
 // sucursalDetalle.js - Controlador para vista detallada de sucursal
+// VERSION: 2.0 - Con mejora de colores para PDF (texto negro en gráficas)
 
 import { IncidenciaManager } from '/clases/incidencia.js';
 import { MercanciaPerdidaManager } from '/clases/incidenciaRecuperacion.js';
@@ -16,10 +17,14 @@ let sucursalId = null;
 let incidenciasSucursal = [];
 let registrosRecuperacionSucursal = [];
 let categoriasCache = [];
+let nivelesRiesgoCache = [];  // <--- NUEVA: cache para niveles de riesgo dinámicos
 
-// Gráficas
+
+// Gráficas (con referencias globales para el PDF)
 let graficoRiesgo = null;
 let graficoPerdidasRecuperacion = null;
+window.graficoRiesgo = null;
+window.graficoPerdidasRecuperacion = null;
 
 // Colores para niveles de riesgo
 const COLOR_RIESGO = {
@@ -175,7 +180,6 @@ async function cargarSucursal() {
     }
 }
 
-
 async function cargarTodasLasSucursales() {
     try {
         const todasSucursales = await sucursalManager.getSucursalesByOrganizacion(organizacionActual.camelCase);
@@ -214,10 +218,171 @@ async function cargarTodasLasSucursales() {
     }
 }
 
+// =============================================
+// FUNCIONES PARA CAPTURA DE GRÁFICAS CON MEJORA DE COLORES
+// =============================================
+
+/**
+ * Cambia los colores de las gráficas a modo PDF (texto negro)
+ */
+function cambiarGraficasAModoPDF() {
+    // Cambiar gráfica de riesgo
+    if (window.graficoRiesgo && window.graficoRiesgo.options) {
+        aplicarColoresPDF(window.graficoRiesgo);
+    }
+    if (graficoRiesgo && graficoRiesgo.options) {
+        aplicarColoresPDF(graficoRiesgo);
+    }
+    
+    // Cambiar gráfica de pérdidas vs recuperaciones
+    if (window.graficoPerdidasRecuperacion && window.graficoPerdidasRecuperacion.options) {
+        aplicarColoresPDF(window.graficoPerdidasRecuperacion);
+    }
+    if (graficoPerdidasRecuperacion && graficoPerdidasRecuperacion.options) {
+        aplicarColoresPDF(graficoPerdidasRecuperacion);
+    }
+}
+
+/**
+ * Aplica colores oscuros (para PDF) a una gráfica específica
+ */
+function aplicarColoresPDF(chart) {
+    if (!chart || !chart.options) return;
+    
+    // Cambiar colores de texto de los ejes
+    if (chart.options.scales) {
+        if (chart.options.scales.y && chart.options.scales.y.ticks) {
+            chart.options.scales.y.ticks.color = '#000000';
+        }
+        if (chart.options.scales.x && chart.options.scales.x.ticks) {
+            chart.options.scales.x.ticks.color = '#000000';
+        }
+    }
+    
+    // Cambiar color de la leyenda
+    if (chart.options.plugins && chart.options.plugins.legend) {
+        if (chart.options.plugins.legend.labels) {
+            chart.options.plugins.legend.labels.color = '#000000';
+        }
+    }
+    
+    // Actualizar la gráfica
+    chart.update();
+}
+
+/**
+ * Restaura los colores originales de las gráficas (blanco)
+ */
+function restaurarGraficasAModoNormal() {
+    // Restaurar gráfica de riesgo
+    if (window.graficoRiesgo && window.graficoRiesgo.options) {
+        aplicarColoresOriginales(window.graficoRiesgo);
+    }
+    if (graficoRiesgo && graficoRiesgo.options) {
+        aplicarColoresOriginales(graficoRiesgo);
+    }
+    
+    // Restaurar gráfica de pérdidas vs recuperaciones
+    if (window.graficoPerdidasRecuperacion && window.graficoPerdidasRecuperacion.options) {
+        aplicarColoresOriginales(window.graficoPerdidasRecuperacion);
+    }
+    if (graficoPerdidasRecuperacion && graficoPerdidasRecuperacion.options) {
+        aplicarColoresOriginales(graficoPerdidasRecuperacion);
+    }
+}
+
+/**
+ * Restaura colores originales (blanco) a una gráfica
+ */
+function aplicarColoresOriginales(chart) {
+    if (!chart || !chart.options) return;
+    
+    // Restaurar colores de texto de los ejes a blanco
+    if (chart.options.scales) {
+        if (chart.options.scales.y && chart.options.scales.y.ticks) {
+            chart.options.scales.y.ticks.color = 'white';
+        }
+        if (chart.options.scales.x && chart.options.scales.x.ticks) {
+            chart.options.scales.x.ticks.color = 'white';
+        }
+    }
+    
+    // Restaurar color de la leyenda a blanco
+    if (chart.options.plugins && chart.options.plugins.legend) {
+        if (chart.options.plugins.legend.labels) {
+            chart.options.plugins.legend.labels.color = 'white';
+        }
+    }
+    
+    // Actualizar la gráfica
+    chart.update();
+}
+
+/**
+ * Captura las gráficas actuales como imágenes (con mejora de resolución)
+ */
+async function capturarGraficasSucursal() {
+    const graficas = {
+        riesgo: null,
+        perdidasRecuperacion: null
+    };
+    
+    // Capturar gráfica de riesgo
+    const canvasRiesgo = document.getElementById('graficoRiesgoSucursal');
+    if (canvasRiesgo && canvasRiesgo instanceof HTMLCanvasElement) {
+        try {
+            const scale = 3; // Mayor resolución para mejor calidad
+            const tempCanvas = document.createElement('canvas');
+            tempCanvas.width = canvasRiesgo.width * scale;
+            tempCanvas.height = canvasRiesgo.height * scale;
+            const tempCtx = tempCanvas.getContext('2d');
+            tempCtx.imageSmoothingEnabled = true;
+            tempCtx.imageSmoothingQuality = 'high';
+            tempCtx.drawImage(canvasRiesgo, 0, 0, tempCanvas.width, tempCanvas.height);
+            graficas.riesgo = tempCanvas.toDataURL('image/png', 1.0);
+        } catch (error) {
+            console.error('Error capturando gráfica de riesgo:', error);
+        }
+    }
+    
+    // Capturar gráfica de pérdidas vs recuperaciones
+    const canvasPerdidas = document.getElementById('graficoPerdidasRecuperacion');
+    if (canvasPerdidas && canvasPerdidas instanceof HTMLCanvasElement) {
+        try {
+            const scale = 3;
+            const tempCanvas = document.createElement('canvas');
+            tempCanvas.width = canvasPerdidas.width * scale;
+            tempCanvas.height = canvasPerdidas.height * scale;
+            const tempCtx = tempCanvas.getContext('2d');
+            tempCtx.imageSmoothingEnabled = true;
+            tempCtx.imageSmoothingQuality = 'high';
+            tempCtx.drawImage(canvasPerdidas, 0, 0, tempCanvas.width, tempCanvas.height);
+            graficas.perdidasRecuperacion = tempCanvas.toDataURL('image/png', 1.0);
+        } catch (error) {
+            console.error('Error capturando gráfica de pérdidas:', error);
+        }
+    }
+    
+    return graficas;
+}
+
+/**
+ * Recaptura las gráficas después de cambiar los colores (para el PDF)
+ */
+async function recapturarGraficasConNuevosColores() {
+    // Esperar un poco para que las gráficas se actualicen
+    await new Promise(resolve => setTimeout(resolve, 300));
+    
+    return await capturarGraficasSucursal();
+}
+
+
+// =============================================
+// MANEJO DE CAMBIO DE SUCURSAL
+// =============================================
 
 async function cambiarSucursal(nuevaSucursalId) {
     try {
-        // Mostrar loading
         Swal.fire({
             title: 'Cambiando sucursal...',
             text: 'Cargando datos de la nueva sucursal',
@@ -227,21 +392,16 @@ async function cambiarSucursal(nuevaSucursalId) {
             }
         });
         
-        // Actualizar URL sin recargar la página
         const nuevaUrl = `${window.location.pathname}?id=${nuevaSucursalId}`;
         window.history.pushState({}, '', nuevaUrl);
         
-        // Actualizar variables globales
         sucursalId = nuevaSucursalId;
-        
-        // Recargar datos de la nueva sucursal
         sucursalActual = await sucursalManager.getSucursalById(sucursalId, organizacionActual.camelCase);
         
         if (!sucursalActual) {
             throw new Error('Sucursal no encontrada');
         }
         
-        // Actualizar header
         document.getElementById('sucursalNombre').textContent = sucursalActual.nombre;
         document.getElementById('sucursalUbicacion').innerHTML = `<i class="fas fa-map-marker-alt"></i> ${sucursalActual.getUbicacionCompleta() || 'Sin ubicación'}`;
         document.getElementById('sucursalContacto').innerHTML = `<i class="fas fa-phone"></i> ${sucursalActual.getContactoFormateado() || 'Sin contacto'}`;
@@ -250,11 +410,9 @@ async function cambiarSucursal(nuevaSucursalId) {
         document.getElementById('sucursalRegion').innerHTML = `<i class="fas fa-layer-group"></i> ${regionInfo.nombre}`;
         document.getElementById('sucursalRegion').style.borderLeft = `3px solid ${regionInfo.color}`;
         
-        // Recargar incidencias y recuperaciones
         await cargarIncidenciasSucursal();
         await cargarRegistrosRecuperacionSucursal();
         
-        // Actualizar KPIs y gráficas
         actualizarKPIs();
         renderizarGraficoRiesgo();
         renderizarTablaCategorias();
@@ -262,6 +420,8 @@ async function cambiarSucursal(nuevaSucursalId) {
         renderizarTablaIncidenciasRecientes();
         actualizarFooter();
         
+        ocultarSeccionesSinDatos();
+
         Swal.close();
         Swal.fire({
             icon: 'success',
@@ -282,13 +442,16 @@ async function cambiarSucursal(nuevaSucursalId) {
             text: 'No se pudo cargar la nueva sucursal: ' + error.message
         });
         
-        // Restaurar el selector al valor anterior
         const selector = document.getElementById('selectorSucursal');
         if (selector && sucursalActual) {
             selector.value = sucursalActual.id;
         }
     }
 }
+
+// =============================================
+// CARGA DE INCIDENCIAS Y RECUPERACIONES
+// =============================================
 
 async function cargarIncidenciasSucursal() {
     try {
@@ -327,7 +490,6 @@ function calcularEstadisticasIncidencias() {
     const medias = incidenciasSucursal.filter(i => i.nivelRiesgo === 'medio').length;
     const bajas = incidenciasSucursal.filter(i => i.nivelRiesgo === 'bajo').length;
     
-    // Calcular tiempo promedio de resolución
     const incidenciasFinalizadasConTiempo = incidenciasSucursal.filter(i => i.estado === 'finalizada').map(inc => {
         const inicio = inc.fechaInicio instanceof Date ? inc.fechaInicio : new Date(inc.fechaInicio);
         let fechaFin = null;
@@ -371,37 +533,107 @@ function calcularEstadisticasRecuperacion() {
     };
 }
 
+
+
+async function cargarNivelesRiesgo() {
+    try {
+        if (!organizacionActual?.camelCase) return;
+        
+        const { RiesgoNivelManager } = await import('/clases/riesgoNivel.js');
+        const riesgoManager = new RiesgoNivelManager();
+        const niveles = await riesgoManager.obtenerTodosNiveles(organizacionActual.camelCase);
+        
+        if (niveles && niveles.length > 0) {
+            nivelesRiesgoCache = niveles;
+            // Guardar en window para acceso global también
+            window.nivelesRiesgoEstaticos = niveles;
+            console.log('Niveles de riesgo cargados:', niveles.map(n => ({ id: n.id, nombre: n.nombre, color: n.color })));
+        } else {
+            // Fallback: usar niveles por defecto si no hay configurados
+            nivelesRiesgoCache = [
+                { id: 'critico', nombre: 'Crítico', color: '#ef4444' },
+                { id: 'alto', nombre: 'Alto', color: '#f97316' },
+                { id: 'medio', nombre: 'Medio', color: '#eab308' },
+                { id: 'bajo', nombre: 'Bajo', color: '#10b981' }
+            ];
+            window.nivelesRiesgoEstaticos = nivelesRiesgoCache;
+        }
+    } catch (error) {
+        console.error('Error cargando niveles de riesgo:', error);
+        // Fallback
+        nivelesRiesgoCache = [
+            { id: 'critico', nombre: 'Crítico', color: '#ef4444' },
+            { id: 'alto', nombre: 'Alto', color: '#f97316' },
+            { id: 'medio', nombre: 'Medio', color: '#eab308' },
+            { id: 'bajo', nombre: 'Bajo', color: '#10b981' }
+        ];
+        window.nivelesRiesgoEstaticos = nivelesRiesgoCache;
+    }
+}
 function calcularDatosPorRiesgo() {
+    // Contar incidencias por nivel de riesgo
     const riesgoMap = new Map();
+    
+    // Inicializar contadores para todos los niveles dinámicos
+    if (nivelesRiesgoCache && nivelesRiesgoCache.length > 0) {
+        nivelesRiesgoCache.forEach(nivel => {
+            riesgoMap.set(nivel.id, 0);
+        });
+    }
     
     incidenciasSucursal.forEach(inc => {
         const nivel = inc.nivelRiesgo;
-        if (!riesgoMap.has(nivel)) {
-            riesgoMap.set(nivel, 0);
+        if (riesgoMap.has(nivel)) {
+            riesgoMap.set(nivel, riesgoMap.get(nivel) + 1);
+        } else if (nivel) {
+            // Si encontramos un nivel que no está en caché, lo agregamos
+            riesgoMap.set(nivel, (riesgoMap.get(nivel) || 0) + 1);
         }
-        riesgoMap.set(nivel, riesgoMap.get(nivel) + 1);
     });
     
-    const nivelesOrden = ['critico', 'alto', 'medio', 'bajo'];
-    const nombresMap = { critico: 'Crítico', alto: 'Alto', medio: 'Medio', bajo: 'Bajo' };
-    
+    // Construir arrays para la gráfica (solo niveles con cantidad > 0)
     const labels = [];
     const data = [];
     const colors = [];
-    const porcentajes = {};
-    const total = incidenciasSucursal.length;
+    const nivelesInfo = [];
+    let total = 0;
     
-    nivelesOrden.forEach(nivel => {
-        const cantidad = riesgoMap.get(nivel) || 0;
-        if (cantidad > 0) {
-            labels.push(nombresMap[nivel]);
+    // Primero procesar niveles desde la caché (ordenados como están en BD)
+    if (nivelesRiesgoCache && nivelesRiesgoCache.length > 0) {
+        nivelesRiesgoCache.forEach(nivel => {
+            const cantidad = riesgoMap.get(nivel.id) || 0;
+            total += cantidad;
+        });
+        
+        nivelesRiesgoCache.forEach(nivel => {
+            const cantidad = riesgoMap.get(nivel.id) || 0;
+            if (cantidad > 0) {
+                labels.push(nivel.nombre);
+                data.push(cantidad);
+                colors.push(nivel.color || '#6c757d');
+                nivelesInfo.push({ id: nivel.id, nombre: nivel.nombre, color: nivel.color || '#6c757d' });
+            }
+        });
+    }
+    
+    // Procesar niveles adicionales que no están en caché
+    for (const [nivelId, cantidad] of riesgoMap.entries()) {
+        if (cantidad > 0 && !nivelesRiesgoCache.some(n => n.id === nivelId)) {
+            labels.push(nivelId);
             data.push(cantidad);
-            colors.push(COLOR_RIESGO[nivel]);
-            porcentajes[nivel] = total > 0 ? (cantidad / total) * 100 : 0;
+            colors.push('#6c757d');
+            nivelesInfo.push({ id: nivelId, nombre: nivelId, color: '#6c757d' });
+            total += cantidad;
         }
+    }
+    
+    // Calcular porcentajes
+    const porcentajes = {};
+    nivelesInfo.forEach((nivel, idx) => {
+        porcentajes[nivel.id] = total > 0 ? (data[idx] / total) * 100 : 0;
     });
     
-    return { labels, data, colors, porcentajes };
+    return { labels, data, colors, nivelesInfo, porcentajes, total };
 }
 
 function calcularDatosPorCategoria() {
@@ -438,7 +670,6 @@ function actualizarKPIs() {
     document.getElementById('totalPendientes').textContent = statsIncidencias.pendientes;
     document.getElementById('tasaRecuperacion').textContent = `${statsRecuperacion.tasaRecuperacion.toFixed(1)}%`;
     
-    // Actualizar tiempo promedio
     document.getElementById('tiempoPromedio').textContent = statsIncidencias.tiempoPromedio;
     let porcentajeBar = 0;
     let barColor = '#10b981';
@@ -462,6 +693,29 @@ function renderizarGraficoRiesgo() {
     const canvas = document.getElementById('graficoRiesgoSucursal');
     if (!canvas) return;
     
+    // Forzar dimensiones CORRECTAS del canvas (ALTA RESOLUCIÓN)
+    const container = canvas.parentElement;
+    if (container) {
+        const containerWidth = container.clientWidth;
+        const containerHeight = Math.max(350, container.clientHeight);
+        
+        // Configurar el canvas con resolución nítida
+        canvas.style.width = '100%';
+        canvas.style.height = 'auto';
+        canvas.style.maxHeight = '500px';
+        canvas.style.minHeight = '350px';
+        
+        // Ajustar resolución interna del canvas (para que no se vea pixelado)
+        const scale = window.devicePixelRatio || 2;
+        const rect = canvas.getBoundingClientRect();
+        if (rect.width > 0) {
+            canvas.width = rect.width * scale;
+            canvas.height = (rect.height || 400) * scale;
+            canvas.style.width = `${rect.width}px`;
+            canvas.style.height = `${rect.height || 400}px`;
+        }
+    }
+    
     if (graficoRiesgo) {
         graficoRiesgo.destroy();
     }
@@ -476,60 +730,44 @@ function renderizarGraficoRiesgo() {
         return;
     }
     
-    // Guardar los datos de riesgo para usarlos en el click
-    const nivelesData = [];
-    const nivelesMap = [];
-    
-    // Mapear los niveles para el click
-    if (window.nivelesRiesgoEstaticos && window.nivelesRiesgoEstaticos.length > 0) {
-        window.nivelesRiesgoEstaticos.forEach(nivel => {
-            const cantidad = datos.porcentajes[nivel.id] ? (incidenciasSucursal.filter(i => i.nivelRiesgo === nivel.id).length) : 0;
-            if (cantidad > 0) {
-                nivelesMap.push({
-                    id: nivel.id,
-                    nombre: nivel.nombre,
-                    color: nivel.color
-                });
-            }
-        });
-    } else {
-        // Fallback a niveles estáticos
-        const nivelesStatic = [
-            { id: 'critico', nombre: 'Crítico', color: '#ef4444' },
-            { id: 'alto', nombre: 'Alto', color: '#f97316' },
-            { id: 'medio', nombre: 'Medio', color: '#eab308' },
-            { id: 'bajo', nombre: 'Bajo', color: '#10b981' }
-        ];
-        nivelesStatic.forEach(nivel => {
-            const cantidad = incidenciasSucursal.filter(i => i.nivelRiesgo === nivel.id).length;
-            if (cantidad > 0) {
-                nivelesMap.push(nivel);
-            }
-        });
-    }
-    
-    // 🔥 GRÁFICA DE PASTEL SIN AGUJERO (type: 'pie')
+    // Crear gráfica de barras HORIZONTAL con ALTA RESOLUCIÓN
     graficoRiesgo = new Chart(canvas, {
-        type: 'pie',
+        type: 'bar',
         data: {
             labels: datos.labels,
             datasets: [{
+                label: 'Incidencias',
                 data: datos.data,
                 backgroundColor: datos.colors,
-                borderWidth: 0,
-                hoverOffset: 15
+                borderColor: datos.colors.map(c => c),
+                borderWidth: 2,
+                borderRadius: 10,
+                barPercentage: 0.7,
+                categoryPercentage: 0.85,
+                barThickness: 'flex',
+                maxBarThickness: 50,
+                minBarLength: 5
             }]
         },
         options: {
+            indexAxis: 'y',
             responsive: true,
-            maintainAspectRatio: true,
+            maintainAspectRatio: false,  // CLAVE: permite que ocupe todo el espacio
+            devicePixelRatio: window.devicePixelRatio || 2,  // ALTA RESOLUCIÓN
+            layout: {
+                padding: {
+                    left: 10,
+                    right: 25,
+                    top: 20,
+                    bottom: 10
+                }
+            },
             onClick: (event, activeElements) => {
                 if (activeElements.length > 0) {
                     const index = activeElements[0].index;
-                    const nivelSeleccionado = nivelesMap[index];
+                    const nivelSeleccionado = datos.nivelesInfo[index];
                     
                     if (nivelSeleccionado) {
-                        // Filtrar incidencias por este nivel de riesgo
                         const incidenciasFiltradas = incidenciasSucursal.filter(i => i.nivelRiesgo === nivelSeleccionado.id);
                         
                         if (incidenciasFiltradas.length === 0) {
@@ -543,7 +781,6 @@ function renderizarGraficoRiesgo() {
                             return;
                         }
                         
-                        // Mostrar las incidencias en un SweetAlert
                         mostrarRegistrosIncidenciasEnSweet(
                             incidenciasFiltradas,
                             `Incidencias: ${nivelSeleccionado.nombre}`,
@@ -553,25 +790,84 @@ function renderizarGraficoRiesgo() {
                 }
             },
             plugins: {
-                legend: { 
-                    labels: { color: 'white', font: { size: 11 } }, 
-                    position: 'bottom' 
+                legend: {
+                    labels: { 
+                        color: 'white', 
+                        font: { size: 12, weight: 'bold' },
+                        boxWidth: 15,
+                        padding: 10
+                    },
+                    position: 'top',
+                    align: 'center'
                 },
-                tooltip: { 
-                    callbacks: { 
+                tooltip: {
+                    backgroundColor: 'rgba(0,0,0,0.85)',
+                    titleColor: '#fff',
+                    bodyColor: '#ddd',
+                    borderColor: '#3b82f6',
+                    borderWidth: 1,
+                    callbacks: {
                         label: (ctx) => {
-                            const total = incidenciasSucursal.length;
+                            const total = datos.total;
                             const porcentaje = total > 0 ? ((ctx.raw / total) * 100).toFixed(1) : 0;
-                            return `${ctx.label}: ${ctx.raw} (${porcentaje}%)`;
+                            return `${ctx.dataset.label}: ${ctx.raw} (${porcentaje}%)`;
                         }
-                    } 
+                    }
                 }
+            },
+            scales: {
+                x: {
+                    beginAtZero: true,
+                    grid: { 
+                        color: 'rgba(255,255,255,0.12)',
+                        lineWidth: 1,
+                        drawBorder: true
+                    },
+                    ticks: { 
+                        color: 'white', 
+                        stepSize: 1,
+                        font: { size: 11, weight: 'bold' },
+                        callback: function(value) {
+                            return Number.isInteger(value) ? value : '';
+                        }
+                    },
+                    title: {
+                        display: true,
+                        text: 'Número de incidencias',
+                        color: 'rgba(255,255,255,0.7)',
+                        font: { size: 11 }
+                    }
+                },
+                y: {
+                    grid: { 
+                        display: false,
+                        drawBorder: true
+                    },
+                    ticks: { 
+                        color: 'white', 
+                        font: { size: 13, weight: 'bold' },
+                        padding: 8
+                    }
+                }
+            },
+            // Mejorar renderizado para pantallas retina
+            animation: {
+                duration: 750,
+                easing: 'easeInOutQuart'
             }
         }
     });
     
-    // Agregar cursor pointer para indicar que es clickeable
+    window.graficoRiesgo = graficoRiesgo;
     canvas.style.cursor = 'pointer';
+    
+    // Forzar redibujado después de un pequeño delay (para asegurar dimensiones)
+    setTimeout(() => {
+        if (graficoRiesgo) {
+            graficoRiesgo.resize();
+            graficoRiesgo.update();
+        }
+    }, 100);
 }
 
 function renderizarTablaCategorias() {
@@ -603,7 +899,6 @@ function renderizarGraficoPerdidasRecuperacion() {
         graficoPerdidasRecuperacion.destroy();
     }
     
-    // Guardar los datos para usarlos en el click
     const perdidasData = stats.totalPerdido;
     const recuperacionesData = stats.totalRecuperado;
     const registros = registrosRecuperacionSucursal;
@@ -629,7 +924,6 @@ function renderizarGraficoPerdidasRecuperacion() {
                     const index = activeElements[0].index;
                     
                     if (index === 0) {
-                        // Click en PÉRDIDAS
                         const registrosConPerdida = registros.filter(r => (r.montoPerdido || 0) > 0);
                         
                         if (registrosConPerdida.length === 0) {
@@ -650,7 +944,6 @@ function renderizarGraficoPerdidasRecuperacion() {
                         );
                         
                     } else if (index === 1) {
-                        // Click en RECUPERACIONES
                         const registrosConRecuperacion = registros.filter(r => (r.montoRecuperado || 0) > 0);
                         
                         if (registrosConRecuperacion.length === 0) {
@@ -681,7 +974,6 @@ function renderizarGraficoPerdidasRecuperacion() {
                         label: (ctx) => {
                             const formatter = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' });
                             const valor = ctx.raw;
-                            const registrosCount = registros.length;
                             return `${ctx.dataset.label}: ${formatter.format(valor)}`;
                         } 
                     } 
@@ -706,12 +998,15 @@ function renderizarGraficoPerdidasRecuperacion() {
         }
     });
     
-    // Agregar cursor pointer para indicar que es clickeable
+    // Guardar referencia global
+    window.graficoPerdidasRecuperacion = graficoPerdidasRecuperacion;
     canvas.style.cursor = 'pointer';
 }
 
 function renderizarTablaIncidenciasRecientes() {
     const tbody = document.querySelector('#tablaIncidenciasRecientes tbody');
+    const gridContainer = document.getElementById('incidenciasGrid');
+    
     if (!tbody) return;
     
     const incidenciasRecientes = [...incidenciasSucursal]
@@ -724,9 +1019,13 @@ function renderizarTablaIncidenciasRecientes() {
     
     if (incidenciasRecientes.length === 0) {
         tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">No hay incidencias registradas</td></tr>';
+        if (gridContainer) {
+            gridContainer.innerHTML = '<div class="incidencia-card" style="text-align:center; padding:20px;">No hay incidencias registradas</div>';
+        }
         return;
     }
     
+    // ========== RENDERIZAR TABLA (DESKTOP) ==========
     tbody.innerHTML = incidenciasRecientes.map(inc => {
         const fecha = inc.fechaInicio instanceof Date ? inc.fechaInicio.toLocaleDateString('es-MX') : (inc.fechaInicio ? new Date(inc.fechaInicio).toLocaleDateString('es-MX') : 'N/A');
         const riesgoColor = obtenerColorRiesgo(inc.nivelRiesgo);
@@ -734,34 +1033,77 @@ function renderizarTablaIncidenciasRecientes() {
         const estadoColor = inc.estado === 'finalizada' ? '#10b981' : '#f59e0b';
         const estadoTexto = inc.getEstadoTexto ? inc.getEstadoTexto() : (inc.estado || 'N/A');
         const detalles = inc.detalles ? (inc.detalles.length > 50 ? inc.detalles.substring(0, 50) + '...' : inc.detalles) : 'Sin detalles';
-        
-        // 🔥 ID COMPLETO - sin truncar
-        const idCompleto = inc.id;
-        
-        // 🔥 Verificar si tiene PDF
         const tienePDF = inc.pdfUrl && inc.pdfUrl.trim() !== '';
         
         return `
             <tr>
-                <td><i class="fas fa-hashtag"></i> <span title="${idCompleto}">${idCompleto}</span></td>
+                <td><i class="fas fa-hashtag"></i> <span title="${inc.id}">${inc.id}</span></td>
                 <td><i class="fas fa-calendar-alt"></i> ${fecha}</td>
                 <td><span class="badge-riesgo" style="background: ${riesgoColor}20; color: ${riesgoColor};">${riesgoTexto}</span></td>
                 <td><span class="badge-estado" style="background: ${estadoColor}20; color: ${estadoColor};">${estadoTexto}</span></td>
                 <td>${escapeHTML(detalles)}</td>
                 <td style="text-align: center;">
                     ${tienePDF ? 
-                        `<button class="btn-pdf-mini" onclick="verPDFIncidencia('${inc.id}')" title="Ver PDF">
-                            <i class="fas fa-file-pdf"></i> PDF
-                        </button>` : 
-                        `<button class="btn-pdf-mini disabled" disabled title="PDF no disponible">
-                            <i class="fas fa-file-pdf"></i> Sin PDF
-                        </button>`
+                        `<button class="btn-pdf-mini" onclick="verPDFIncidencia('${inc.id}')"><i class="fas fa-file-pdf"></i> PDF</button>` : 
+                        `<button class="btn-pdf-mini disabled" disabled><i class="fas fa-file-pdf"></i> Sin PDF</button>`
                     }
                 </td>
             </tr>
         `;
     }).join('');
+    
+    // ========== RENDERIZAR TARJETAS (MÓVIL) - ESTILO incidencias.html ==========
+    if (gridContainer) {
+        gridContainer.innerHTML = incidenciasRecientes.map(inc => {
+            const fecha = inc.fechaInicio instanceof Date ? inc.fechaInicio.toLocaleDateString('es-MX') : (inc.fechaInicio ? new Date(inc.fechaInicio).toLocaleDateString('es-MX') : 'N/A');
+            const riesgoColor = obtenerColorRiesgo(inc.nivelRiesgo);
+            const riesgoTexto = inc.getNivelRiesgoTexto ? inc.getNivelRiesgoTexto() : (inc.nivelRiesgo || 'N/A');
+            const estadoColor = inc.estado === 'finalizada' ? '#10b981' : '#f59e0b';
+            const estadoTexto = inc.getEstadoTexto ? inc.getEstadoTexto() : (inc.estado || 'N/A');
+            const detalles = inc.detalles ? (inc.detalles.length > 80 ? inc.detalles.substring(0, 80) + '...' : inc.detalles) : 'Sin detalles';
+            const idCorto = inc.id.length > 16 ? inc.id.substring(0, 14) + '...' : inc.id;
+            const tienePDF = inc.pdfUrl && inc.pdfUrl.trim() !== '';
+            
+            return `
+                <div class="incidencia-card" onclick="verDetallesIncidencia('${inc.id}')">
+                    <div class="incidencia-header">
+                        <span class="incidencia-id"><i class="fas fa-hashtag"></i> ${escapeHTML(idCorto)}</span>
+                        <span class="incidencia-fecha"><i class="fas fa-calendar-alt"></i> ${fecha}</span>
+                    </div>
+                    <div class="incidencia-body">
+                        <div class="incidencia-badges">
+                            <span class="badge-riesgo-card" style="background: ${riesgoColor}20; color: ${riesgoColor};">${riesgoTexto}</span>
+                            <span class="badge-estado-card" style="background: ${estadoColor}20; color: ${estadoColor};">${estadoTexto}</span>
+                        </div>
+                        <div class="incidencia-detalles">
+                            <i class="fas fa-file-alt"></i> ${escapeHTML(detalles)}
+                        </div>
+                    </div>
+                    <div class="incidencia-footer">
+                        ${tienePDF ? 
+                            `<button class="btn-pdf-card" onclick="event.stopPropagation(); verPDFIncidencia('${inc.id}')">
+                                <i class="fas fa-file-pdf"></i> Ver PDF
+                            </button>` : 
+                            `<button class="btn-pdf-card disabled" disabled>
+                                <i class="fas fa-file-pdf"></i> Sin PDF
+                            </button>`
+                        }
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
 }
+
+// Función auxiliar para ver detalles desde la tarjeta
+window.verDetallesIncidencia = function(incidenciaId) {
+    window.location.href = `/usuarios/administrador/verIncidencias/verIncidencias.html?id=${incidenciaId}`;
+};
+
+// Función auxiliar para ver detalles (navegar a la incidencia)
+window.verDetallesIncidencia = function(incidenciaId) {
+    window.location.href = `/usuarios/administrador/verIncidencias/verIncidencias.html?id=${incidenciaId}`;
+};
 
 function actualizarFooter() {
     const fechaEl = document.getElementById('fechaActualizacion');
@@ -782,87 +1124,7 @@ function escapeHTML(text) {
 }
 
 // =============================================
-// INICIALIZACIÓN
-// =============================================
-
-async function inicializarDetalleSucursal() {
-    try {
-        await obtenerDatosOrganizacion();
-        await inicializarManagers();
-        await cargarCategorias();
-        
-        const sucursalCargada = await cargarSucursal();
-        if (!sucursalCargada) return;
-        
-        await cargarIncidenciasSucursal();
-        await cargarRegistrosRecuperacionSucursal();
-        
-        actualizarKPIs();
-        renderizarGraficoRiesgo();
-        renderizarTablaCategorias();
-        renderizarGraficoPerdidasRecuperacion();
-        renderizarTablaIncidenciasRecientes();
-        actualizarFooter();
-        
-        // Configurar botón volver
-        document.getElementById('btnVolver').addEventListener('click', () => {
-            window.location.href = '/usuarios/administrador/estadisticas/estadisticas.html';
-        });
-        
-        // El evento de cambio del selector YA se configura dentro de cargarTodasLasSucursales()
-        
-    } catch (error) {
-        console.error('Error inicializando detalle:', error);
-        Swal.fire({
-            icon: 'error',
-            title: 'Error',
-            text: 'No se pudo cargar la página: ' + error.message
-        });
-    }
-}
-
-
-// =============================================
-// FUNCIÓN GLOBAL PARA VER PDF
-// =============================================
-window.verPDFIncidencia = async function(incidenciaId) {
-    try {
-        // Buscar la incidencia en los datos cargados
-        const incidencia = incidenciasSucursal.find(i => i.id === incidenciaId);
-        
-        if (!incidencia) {
-            Swal.fire({
-                icon: 'error',
-                title: 'Error',
-                text: 'No se encontró la incidencia'
-            });
-            return;
-        }
-        
-        if (!incidencia.pdfUrl || incidencia.pdfUrl.trim() === '') {
-            Swal.fire({
-                icon: 'warning',
-                title: 'PDF no disponible',
-                text: 'Esta incidencia aún no tiene un PDF asociado.',
-                confirmButtonText: 'Entendido'
-            });
-            return;
-        }
-        
-        // Abrir PDF en nueva pestaña (visor nativo del navegador)
-        window.open(incidencia.pdfUrl, '_blank');
-        
-    } catch (error) {
-        console.error('Error al abrir PDF:', error);
-        Swal.fire({
-            icon: 'error',
-            title: 'Error',
-            text: 'No se pudo abrir el PDF: ' + error.message
-        });
-    }
-};
-// =============================================
-// FUNCIÓN PARA MOSTRAR INCIDENCIAS EN SWEETALERT
+// FUNCIONES PARA SWEETALERTS
 // =============================================
 
 function mostrarRegistrosIncidenciasEnSweet(incidencias, titulo, icono) {
@@ -999,6 +1261,7 @@ function mostrarRegistrosIncidenciasEnSweet(incidencias, titulo, icono) {
         backdrop: `rgba(0,0,0,0.8) left top no-repeat`
     });
 }
+
 function mostrarRegistrosRecuperacionEnSweet(registros, titulo, icono) {
     if (!registros || registros.length === 0) {
         Swal.fire({
@@ -1097,6 +1360,224 @@ function mostrarRegistrosRecuperacionEnSweet(registros, titulo, icono) {
         customClass: { popup: 'swal2-popup-custom', title: 'swal2-title-custom', confirmButton: 'swal2-confirm' },
         backdrop: `rgba(0,0,0,0.8) left top no-repeat`
     });
+}
+
+// =============================================
+// FUNCIONES PARA OCULTAR/MOSTRAR SECCIONES SEGÚN DATOS
+// =============================================
+
+function ocultarSeccionesSinDatos() {
+    const statsIncidencias = calcularEstadisticasIncidencias();
+    const statsRecuperacion = calcularEstadisticasRecuperacion();
+    const datosRiesgo = calcularDatosPorRiesgo();
+    const datosCategoria = calcularDatosPorCategoria();
+    
+    const kpisGrid = document.querySelector('.kpis-grid');
+    if (statsIncidencias.total === 0 && kpisGrid) {
+        kpisGrid.style.display = 'none';
+    } else if (kpisGrid) {
+        kpisGrid.style.display = 'grid';
+    }
+    
+    const cardRiesgo = document.querySelector('.charts-row .card:first-child');
+    if (datosRiesgo.data.length === 0 && cardRiesgo) {
+        cardRiesgo.style.display = 'none';
+    } else if (cardRiesgo) {
+        cardRiesgo.style.display = 'block';
+    }
+    
+    const cardCategorias = document.querySelectorAll('.charts-row .card')[1];
+    if (datosCategoria.length === 0 && cardCategorias) {
+        cardCategorias.style.display = 'none';
+    } else if (cardCategorias) {
+        cardCategorias.style.display = 'block';
+    }
+    
+    const chartsRow = document.querySelector('.charts-row');
+    const riesgoVisible = cardRiesgo && cardRiesgo.style.display !== 'none';
+    const categoriasVisible = cardCategorias && cardCategorias.style.display !== 'none';
+    
+    if (chartsRow) {
+        if (!riesgoVisible && !categoriasVisible) {
+            chartsRow.style.display = 'none';
+        } else if (!riesgoVisible || !categoriasVisible) {
+            chartsRow.style.gridTemplateColumns = '1fr';
+        } else {
+            chartsRow.style.gridTemplateColumns = 'repeat(2, 1fr)';
+        }
+    }
+    
+    const cardTiempo = document.querySelectorAll('.charts-row')[1]?.querySelector('.card:first-child');
+    if (statsIncidencias.finalizadas === 0 && cardTiempo) {
+        cardTiempo.style.display = 'none';
+    } else if (cardTiempo) {
+        cardTiempo.style.display = 'block';
+    }
+    
+    const cardPerdidas = document.querySelectorAll('.charts-row')[1]?.querySelector('.card:last-child');
+    if (statsRecuperacion.totalPerdido === 0 && statsRecuperacion.totalRecuperado === 0 && cardPerdidas) {
+        cardPerdidas.style.display = 'none';
+    } else if (cardPerdidas) {
+        cardPerdidas.style.display = 'block';
+    }
+    
+    const segundaFila = document.querySelectorAll('.charts-row')[1];
+    const tiempoVisible = cardTiempo && cardTiempo.style.display !== 'none';
+    const perdidasVisible = cardPerdidas && cardPerdidas.style.display !== 'none';
+    
+    if (segundaFila) {
+        if (!tiempoVisible && !perdidasVisible) {
+            segundaFila.style.display = 'none';
+        } else if (!tiempoVisible || !perdidasVisible) {
+            segundaFila.style.gridTemplateColumns = '1fr';
+        } else {
+            segundaFila.style.gridTemplateColumns = 'repeat(2, 1fr)';
+        }
+    }
+    
+    const cardIncidencias = document.querySelector('.card.full-width');
+    if (statsIncidencias.total === 0 && cardIncidencias) {
+        cardIncidencias.style.display = 'none';
+    } else if (cardIncidencias) {
+        cardIncidencias.style.display = 'block';
+    }
+}
+
+// =============================================
+// FUNCIÓN GLOBAL PARA VER PDF
+// =============================================
+
+window.verPDFIncidencia = async function(incidenciaId) {
+    try {
+        const incidencia = incidenciasSucursal.find(i => i.id === incidenciaId);
+        
+        if (!incidencia) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: 'No se encontró la incidencia'
+            });
+            return;
+        }
+        
+        if (!incidencia.pdfUrl || incidencia.pdfUrl.trim() === '') {
+            Swal.fire({
+                icon: 'warning',
+                title: 'PDF no disponible',
+                text: 'Esta incidencia aún no tiene un PDF asociado.',
+                confirmButtonText: 'Entendido'
+            });
+            return;
+        }
+        
+        window.open(incidencia.pdfUrl, '_blank');
+        
+    } catch (error) {
+        console.error('Error al abrir PDF:', error);
+        Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: 'No se pudo abrir el PDF: ' + error.message
+        });
+    }
+};
+
+// =============================================
+// INICIALIZACIÓN PRINCIPAL
+// =============================================
+
+async function inicializarDetalleSucursal() {
+    try {
+        await obtenerDatosOrganizacion();
+        await inicializarManagers();
+        await cargarCategorias();
+        await cargarNivelesRiesgo ();
+        
+        const sucursalCargada = await cargarSucursal();
+        if (!sucursalCargada) return;
+        
+        await cargarIncidenciasSucursal();
+        await cargarRegistrosRecuperacionSucursal();
+        
+        actualizarKPIs();
+        renderizarGraficoRiesgo();
+        renderizarTablaCategorias();
+        renderizarGraficoPerdidasRecuperacion();
+        renderizarTablaIncidenciasRecientes();
+        actualizarFooter();
+        
+        ocultarSeccionesSinDatos();
+        
+        document.getElementById('btnVolver').addEventListener('click', () => {
+            window.location.href = '/usuarios/administrador/estadisticas/estadisticas.html';
+        });
+        
+        const btnPDF = document.getElementById('btnPDFSucursal');
+        if (btnPDF) {
+            btnPDF.addEventListener('click', async () => {
+                try {
+                    Swal.fire({
+                        title: 'Generando PDF...',
+                        text: 'Preparando el reporte de la sucursal',
+                        allowOutsideClick: false,
+                        didOpen: () => {
+                            Swal.showLoading();
+                        }
+                    });
+                    
+                    // Cambiar gráficas a modo PDF (texto negro)
+                    cambiarGraficasAModoPDF();
+                    
+                    // Esperar a que se apliquen los cambios
+                    await new Promise(resolve => setTimeout(resolve, 300));
+                    
+                    // Recapturar gráficas con los nuevos colores
+                    const chartImages = await recapturarGraficasConNuevosColores();
+                    const regionInfo = await sucursalActual.getRegionInfo();
+                    
+                    const { generadorPDFSucursalDetalle } = await import('/components/pdfEstadisticasSucursales.js');
+                    
+                    generadorPDFSucursalDetalle.configurar({
+                        organizacionActual: organizacionActual,
+                        sucursalActual: sucursalActual,
+                        incidenciasSucursal: incidenciasSucursal,
+                        registrosRecuperacionSucursal: registrosRecuperacionSucursal,
+                        statsIncidencias: calcularEstadisticasIncidencias(),
+                        statsRecuperacion: calcularEstadisticasRecuperacion(),
+                        datosPorRiesgo: calcularDatosPorRiesgo(),
+                        datosPorCategoria: calcularDatosPorCategoria(),
+                        regionInfo: regionInfo,
+                        chartImages: chartImages
+                    });
+                    
+                    await generadorPDFSucursalDetalle.generarReporte();
+                    
+                    // Restaurar gráficas a modo normal (texto blanco)
+                    restaurarGraficasAModoNormal();
+                    
+                    Swal.close();
+                    
+                } catch (error) {
+                    console.error('Error generando PDF:', error);
+                    restaurarGraficasAModoNormal();
+                    Swal.close();
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: 'No se pudo generar el PDF: ' + error.message
+                    });
+                }
+            });
+        }
+        
+    } catch (error) {
+        console.error('Error inicializando detalle:', error);
+        Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: 'No se pudo cargar la página: ' + error.message
+        });
+    }
 }
 
 // Iniciar
