@@ -328,9 +328,9 @@ class CrearPermisoController {
     _configurarCheckboxesPermisos() {
         // TODOS los módulos disponibles (incluyendo Permisos y Login/Monitoreo)
         const todosModulos = [
-            'Areas', 'Categorias', 'Sucursales', 'Regiones', 
-            'Incidencias', 'Monitoreo', 'Usuarios', 'Estadisticas', 
-            'Tareas', 'Permisos', 'LoginMonitoreo','riesgoNivel'
+            'Areas', 'Categorias', 'Sucursales', 'Regiones',
+            'Incidencias', 'Monitoreo', 'Usuarios', 'Estadisticas',
+            'Tareas', 'Permisos', 'LoginMonitoreo', 'RiesgoNivel'
         ];
 
         todosModulos.forEach(modulo => {
