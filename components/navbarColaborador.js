@@ -2359,6 +2359,10 @@ class NavbarComplete {
                             <i class="fa-solid fa-tags"></i>
                             <span>Categorías</span>
                         </a>
+                        <a href="/usuarios/administrador/riesgoNivel/riesgoNivel.html" class="administracion-dropdown-option">
+                            <i class="fa-solid fa-circle-exclamation"></i>
+                            <span>Niveles de Riesgo</span>
+                        </a>
                         <a href="../sucursales/sucursales.html" class="gestionar-dropdown-option" id="sucursalesBtn">
                             <i class="fa-solid fa-store"></i>
                             <span>Sucursales</span>
