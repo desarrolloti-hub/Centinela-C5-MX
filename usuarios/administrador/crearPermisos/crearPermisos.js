@@ -330,7 +330,7 @@ class CrearPermisoController {
         const todosModulos = [
             'Areas', 'Categorias', 'Sucursales', 'Regiones', 
             'Incidencias', 'Monitoreo', 'Usuarios', 'Estadisticas', 
-            'Tareas', 'Permisos', 'LoginMonitoreo'
+            'Tareas', 'Permisos', 'LoginMonitoreo','riesgoNivel'
         ];
 
         todosModulos.forEach(modulo => {
@@ -408,7 +408,8 @@ class CrearPermisoController {
             estadisticas: document.getElementById('permisoEstadisticas')?.checked || false,
             tareas: document.getElementById('permisoTareas')?.checked || false,
             permisos: document.getElementById('permisoPermisos')?.checked || false,
-            loginMonitoreo: document.getElementById('permisoLoginMonitoreo')?.checked || false
+            loginMonitoreo: document.getElementById('permisoLoginMonitoreo')?.checked || false,
+            riesgoNivel: document.getElementById('permisoRiesgoNivel')?.checked || false
         };
 
         return permisos;
@@ -546,7 +547,8 @@ class CrearPermisoController {
                 estadisticas: 'Estadísticas',
                 tareas: 'Tareas',
                 permisos: 'Permisos',
-                loginMonitoreo: 'Login/Monitoreo'
+                loginMonitoreo: 'Login/Monitoreo',
+                riesgoNivel: 'RiesgoNivel'
             };
 
             Swal.close();

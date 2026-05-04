@@ -28,6 +28,7 @@ const nombresModulos = {
     regiones: 'Regiones',
     incidencias: 'Incidencias',
     usuarios: 'Usuarios',
+    riesgo: 'RiesgoNivel',
     estadisticas: 'Estadísticas',
     tareas: 'Tareas',
     permisos: 'Permisos',
@@ -36,7 +37,7 @@ const nombresModulos = {
 };
 
 // Módulos fijos (siempre visibles)
-const modulosFijos = ['areas', 'categorias', 'sucursales', 'regiones', 'usuarios', 'estadisticas', 'tareas', 'permisos', 'loginMonitoreo'];
+const modulosFijos = ['areas', 'categorias', 'sucursales', 'regiones', 'usuarios', 'estadisticas', 'tareas', 'permisos', 'loginMonitoreo','riesgoNivel'];
 
 // Módulos dinámicos (dependen del plan)
 const modulosDinamicos = ['incidencias', 'monitoreo'];

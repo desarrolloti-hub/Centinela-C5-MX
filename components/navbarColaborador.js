@@ -2359,7 +2359,7 @@ class NavbarComplete {
                             <i class="fa-solid fa-tags"></i>
                             <span>Categorías</span>
                         </a>
-                        <a href="/usuarios/administrador/riesgoNivel/riesgoNivel.html" class="administracion-dropdown-option">
+                        <a href="/usuarios/colaboradores/riesgoNivel/riesgoNivel.html" class="gestionar-dropdown-option">
                             <i class="fa-solid fa-circle-exclamation"></i>
                             <span>Niveles de Riesgo</span>
                         </a>

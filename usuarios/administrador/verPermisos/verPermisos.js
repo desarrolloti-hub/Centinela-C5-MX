@@ -18,6 +18,7 @@ const nombresModulos = {
     categorias: 'Categorías',
     sucursales: 'Sucursales',
     regiones: 'Regiones',
+    riesgo: 'RiesgoNivel',
     incidencias: 'Incidencias',
     usuarios: 'Usuarios',
     estadisticas: 'Estadísticas',
@@ -35,17 +36,18 @@ const iconosModulos = {
     usuarios: 'fa-users',
     estadisticas: 'fa-chart-line',
     tareas: 'fa-tasks',
-    monitoreo: 'fa-map-marker-alt'
+    monitoreo: 'fa-map-marker-alt',
+    riesgo: 'fa-map-marker-alt'
 };
 
 // Módulos fijos (siempre visibles)
-const modulosFijos = ['areas', 'categorias', 'sucursales', 'regiones', 'usuarios', 'estadisticas', 'tareas'];
+const modulosFijos = ['areas', 'categorias', 'sucursales', 'regiones', 'usuarios', 'estadisticas', 'tareas', 'permisos', 'loginMonitoreo','riesgoNivel'];
 
 // Módulos dinámicos (dependen del plan)
 const modulosDinamicos = ['incidencias', 'monitoreo'];
 
 // ORDEN DE LOS MÓDULOS PARA MOSTRAR
-const ordenModulos = ['areas', 'categorias', 'sucursales', 'regiones', 'incidencias', 'usuarios', 'estadisticas', 'tareas', 'monitoreo'];
+const ordenModulos = ['areas', 'categorias', 'sucursales', 'regiones', 'riesgoNivel', 'incidencias', 'usuarios', 'estadisticas', 'tareas', 'monitoreo'];
 
 // =============================================
 // INICIALIZACIÓN
