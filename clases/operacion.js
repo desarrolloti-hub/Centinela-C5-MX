@@ -23,24 +23,24 @@ export class OperacionesEstadisticas {
     static storageCache = new Map();
     static procesando = new Set();
     static callbacksProgreso = new Set();
-    
+
     constructor(organizacionId, datos = null) {
         this.id = organizacionId;
         this.organizacion = '';
         this.nombreEmpresa = '';
         this.fechaActualizacion = new Date();
         this.conteos = this._inicializarConteos();
-        
+
         if (datos) {
             this.cargarDatos(datos);
         }
     }
-    
+
     static onProgreso(callback) {
         this.callbacksProgreso.add(callback);
         return () => this.callbacksProgreso.delete(callback);
     }
-    
+
     static _notificarProgreso(progreso) {
         this.callbacksProgreso.forEach(callback => {
             try {
@@ -50,30 +50,30 @@ export class OperacionesEstadisticas {
             }
         });
     }
-    
+
     static _getDocRef(orgId) {
         return doc(db, this.COLECCION, orgId);
     }
-    
+
     static bytesToMB(bytes) {
         return Number((bytes / (1024 * 1024)).toFixed(2));
     }
-    
+
     static calcularPorcentaje(valor, total) {
         if (total === 0) return 0;
         return Number(((valor / total) * 100).toFixed(1));
     }
-    
+
     static clasificarArchivo(contentType, nombreArchivo) {
         const extension = nombreArchivo.split('.').pop()?.toLowerCase() || '';
-        
+
         if (contentType.includes('pdf') || extension === 'pdf') return 'pdf';
-        if (contentType.includes('image') || 
+        if (contentType.includes('image') ||
             ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'svg', 'webp', 'ico', 'heic', 'heif'].includes(extension)) {
             return 'imagenes';
         }
-        if (contentType.includes('document') || contentType.includes('spreadsheet') || 
-            contentType.includes('presentation') || contentType.includes('text') || 
+        if (contentType.includes('document') || contentType.includes('spreadsheet') ||
+            contentType.includes('presentation') || contentType.includes('text') ||
             contentType.includes('application/msword') ||
             ['doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt', 'csv', 'odt', 'ods', 'odp', 'rtf'].includes(extension)) {
             return 'documentos';
@@ -84,16 +84,16 @@ export class OperacionesEstadisticas {
         }
         return 'otros';
     }
-    
+
     static async obtener(organizacionId) {
         if (this.cache.has(organizacionId)) {
             return this.cache.get(organizacionId);
         }
-        
+
         try {
             const docRef = this._getDocRef(organizacionId);
             const docSnap = await getDoc(docRef);
-            
+
             let instancia;
             if (docSnap.exists()) {
                 instancia = new OperacionesEstadisticas(organizacionId, docSnap.data());
@@ -101,23 +101,23 @@ export class OperacionesEstadisticas {
                 instancia = new OperacionesEstadisticas(organizacionId);
                 await instancia.guardar();
             }
-            
+
             this.cache.set(organizacionId, instancia);
             return instancia;
-            
+
         } catch (error) {
             console.error(`Error obteniendo estadísticas de ${organizacionId}:`, error);
             return null;
         }
     }
-    
+
     static async obtenerOrganizaciones() {
         try {
             const adminsRef = collection(db, "administradores");
             const adminsSnapshot = await getDocs(adminsRef);
-            
+
             const organizacionesMap = new Map();
-            
+
             adminsSnapshot.forEach(doc => {
                 const data = doc.data();
                 if (data.organizacionCamelCase && !organizacionesMap.has(data.organizacionCamelCase)) {
@@ -128,15 +128,15 @@ export class OperacionesEstadisticas {
                     });
                 }
             });
-            
+
             return Array.from(organizacionesMap.values());
-            
+
         } catch (error) {
             console.error('Error obteniendo organizaciones:', error);
             return [];
         }
     }
-    
+
     // =============================================
     // MÉTODO PRINCIPAL - OBTENER DATOS DE TODAS LAS EMPRESAS
     // =============================================
@@ -144,40 +144,40 @@ export class OperacionesEstadisticas {
         try {
             const operacionesRef = collection(db, this.COLECCION);
             const snapshot = await getDocs(operacionesRef);
-            
+
             // Totales de todas las empresas
             const totales = {
                 firestore: { documentos: 0, colecciones: 0 },
-                storage: { 
-                    totalArchivos: 0, 
-                    totalSizeMB: 0, 
+                storage: {
+                    totalArchivos: 0,
+                    totalSizeMB: 0,
                     porTipo: {
                         pdf: { cantidad: 0, tamañoMB: 0 },
                         imagenes: { cantidad: 0, tamañoMB: 0 },
                         documentos: { cantidad: 0, tamañoMB: 0 },
                         multimedia: { cantidad: 0, tamañoMB: 0 },
                         otros: { cantidad: 0, tamañoMB: 0 }
-                    } 
+                    }
                 },
                 auth: { totalUsuarios: 0, administradores: 0, colaboradores: 0 }
             };
-            
+
             const porEmpresa = [];
-            
+
             for (const docSnap of snapshot.docs) {
                 let instancia;
-                
+
                 if (this.cache.has(docSnap.id)) {
                     instancia = this.cache.get(docSnap.id);
                 } else {
                     instancia = new OperacionesEstadisticas(docSnap.id, docSnap.data());
                     this.cache.set(docSnap.id, instancia);
                 }
-                
+
                 porEmpresa.push(instancia);
-                
+
                 const resumen = instancia.getResumen();
-                
+
                 // Acumular totales
                 totales.firestore.documentos += instancia.conteos.firestore.documentos;
                 totales.firestore.colecciones += instancia.conteos.firestore.colecciones;
@@ -186,7 +186,7 @@ export class OperacionesEstadisticas {
                 totales.auth.totalUsuarios += resumen.totalUsuarios;
                 totales.auth.administradores += resumen.administradores;
                 totales.auth.colaboradores += resumen.colaboradores;
-                
+
                 // Acumular por tipo
                 totales.storage.porTipo.pdf.cantidad += resumen.pdf.cantidad;
                 totales.storage.porTipo.pdf.tamañoMB += resumen.pdf.tamanioMB;
@@ -199,9 +199,9 @@ export class OperacionesEstadisticas {
                 totales.storage.porTipo.otros.cantidad += resumen.otros.cantidad;
                 totales.storage.porTipo.otros.tamañoMB += resumen.otros.tamanioMB;
             }
-            
+
             return { totales, porEmpresa };
-            
+
         } catch (error) {
             console.error('Error obteniendo datos de todas las empresas:', error);
             return {
@@ -214,7 +214,7 @@ export class OperacionesEstadisticas {
             };
         }
     }
-    
+
     static async actualizarUna(organizacionId, nombreOrganizacion = null) {
         try {
             const instancia = await this.obtener(organizacionId);
@@ -223,7 +223,7 @@ export class OperacionesEstadisticas {
                     instancia.organizacion = nombreOrganizacion;
                     instancia.nombreEmpresa = nombreOrganizacion;
                 }
-                
+
                 const actualizado = await instancia.actualizar();
                 if (actualizado) {
                     await instancia.guardar();
@@ -236,7 +236,7 @@ export class OperacionesEstadisticas {
             return null;
         }
     }
-    
+
     static async actualizarTodas(opciones = {}) {
         const {
             limite = null,
@@ -245,10 +245,10 @@ export class OperacionesEstadisticas {
             loteSize = 2,
             skipCache = false
         } = opciones;
-        
+
         try {
             const organizaciones = await this.obtenerOrganizaciones();
-            
+
             if (!organizaciones || organizaciones.length === 0) {
                 this._notificarProgreso({
                     completado: true,
@@ -258,38 +258,38 @@ export class OperacionesEstadisticas {
                 });
                 return [];
             }
-            
+
             let empresasAProcesar = organizaciones;
             if (limite !== null) {
                 empresasAProcesar = organizaciones.slice(desde, desde + limite);
             }
-            
+
             const total = empresasAProcesar.length;
             let procesadas = 0;
             const resultados = [];
-                    
-            
+
+
             this._notificarProgreso({
                 completado: false,
                 total: total,
                 procesadas: 0,
                 mensaje: 'Iniciando actualización...'
             });
-            
+
             if (skipCache) {
                 this.storageCache.clear();
             }
-            
+
             for (let i = 0; i < empresasAProcesar.length; i += loteSize) {
                 const lote = empresasAProcesar.slice(i, i + loteSize);
-                
+
                 const loteResultados = await Promise.all(
                     lote.map(async (org) => {
                         if (!org.camelCase) return null;
-                        
+
                         try {
                             const inicioEmpresa = Date.now();
-                            
+
                             this._notificarProgreso({
                                 completado: false,
                                 total: total,
@@ -297,18 +297,18 @@ export class OperacionesEstadisticas {
                                 actual: org.nombre || org.camelCase,
                                 mensaje: `Procesando: ${org.nombre || org.camelCase}...`
                             });
-                            
+
                             const instancia = await this.obtener(org.camelCase);
                             if (instancia) {
                                 instancia.organizacion = org.nombre || org.camelCase;
                                 instancia.nombreEmpresa = org.nombre || org.camelCase;
-                                
+
                                 const actualizado = await instancia.actualizar();
                                 if (actualizado) {
                                     await instancia.guardar();
-                                    
-                                    const tiempoEmpresa = Date.now() - inicioEmpresa;                                   
-                                    
+
+                                    const tiempoEmpresa = Date.now() - inicioEmpresa;
+
                                     return instancia;
                                 }
                             }
@@ -326,11 +326,11 @@ export class OperacionesEstadisticas {
                         return null;
                     })
                 );
-                
+
                 const loteValidos = loteResultados.filter(r => r !== null);
                 resultados.push(...loteValidos);
                 procesadas += lote.length;
-                
+
                 this._notificarProgreso({
                     completado: false,
                     total: total,
@@ -339,13 +339,13 @@ export class OperacionesEstadisticas {
                     ultimaEmpresa: lote[lote.length - 1]?.nombre,
                     mensaje: `Procesadas ${procesadas} de ${total} empresas`
                 });
-                
+
                 if (i + loteSize < empresasAProcesar.length && pausaEntreLotes > 0) {
                     await new Promise(resolve => setTimeout(resolve, pausaEntreLotes));
                 }
             }
-            
-            
+
+
             this._notificarProgreso({
                 completado: true,
                 total: total,
@@ -353,9 +353,9 @@ export class OperacionesEstadisticas {
                 exitosas: resultados.length,
                 mensaje: `Actualización completada: ${resultados.length} de ${total} empresas`
             });
-            
+
             return resultados;
-            
+
         } catch (error) {
             console.error('Error actualizando todas:', error);
             this._notificarProgreso({
@@ -366,15 +366,15 @@ export class OperacionesEstadisticas {
             return [];
         }
     }
-    
+
     static limpiarCache() {
         this.cache.clear();
         this.storageCache.clear();
     }
-    
+
     static exportarACSV(estadisticas) {
         if (!estadisticas || estadisticas.length === 0) return null;
-        
+
         const headers = [
             'Organización',
             'Documentos Firestore',
@@ -396,7 +396,7 @@ export class OperacionesEstadisticas {
             'Total Usuarios',
             'Última Actualización'
         ];
-        
+
         const filas = estadisticas.map(est => {
             const resumen = est.getResumen();
             return [
@@ -421,12 +421,12 @@ export class OperacionesEstadisticas {
                 est.fechaActualizacion.toLocaleString()
             ];
         });
-        
+
         return [headers, ...filas];
     }
-    
+
     // ==================== MÉTODOS DE INSTANCIA ====================
-    
+
     _inicializarConteos() {
         return {
             firestore: {
@@ -466,16 +466,16 @@ export class OperacionesEstadisticas {
             }
         };
     }
-    
+
     cargarDatos(datos) {
         this.organizacion = datos.organizacion || this.id;
         this.nombreEmpresa = datos.nombreEmpresa || this.id;
-        
+
         if (datos.fechaActualizacion) {
-            this.fechaActualizacion = datos.fechaActualizacion?.toDate ? 
+            this.fechaActualizacion = datos.fechaActualizacion?.toDate ?
                 datos.fechaActualizacion.toDate() : new Date(datos.fechaActualizacion);
         }
-        
+
         if (datos.conteos) {
             if (datos.conteos.firestore) {
                 this.conteos.firestore = { ...this.conteos.firestore, ...datos.conteos.firestore };
@@ -494,7 +494,7 @@ export class OperacionesEstadisticas {
             }
         }
     }
-    
+
     toFirestore() {
         return {
             organizacion: this.organizacion,
@@ -503,12 +503,12 @@ export class OperacionesEstadisticas {
             conteos: this.conteos
         };
     }
-    
+
     getResumen() {
         const storage = this.conteos.storage;
         const auth = this.conteos.auth;
         const totalArchivos = storage.totalArchivos;
-        
+
         return {
             totalDocumentos: this.conteos.firestore.documentos,
             totalColecciones: this.conteos.firestore.colecciones,
@@ -544,36 +544,36 @@ export class OperacionesEstadisticas {
             totalUsuarios: auth.totalUsuarios
         };
     }
-    
+
     async actualizar() {
         const inicioTiempo = Date.now();
-        
+
         try {
-            
+
             const [firestoreStats, storageStats, authStats] = await Promise.all([
                 this._recopilarFirestoreStats(),
                 this._recopilarStorageStats(),
                 this._recopilarAuthStats()
             ]);
-            
+
             this.conteos.firestore = firestoreStats;
             this.conteos.storage = storageStats;
             this.conteos.auth = authStats;
             this.conteos.coleccionesPersonalizadas = firestoreStats.documentosPorColeccion;
             this.conteos.metricas.tiempoProcesamientoMs = Date.now() - inicioTiempo;
             this.conteos.metricas.ultimaActualizacionExitosa = new Date();
-            
+
             this.fechaActualizacion = new Date();
-            
+
             return true;
-            
+
         } catch (error) {
             console.error(`Error actualizando ${this.id}:`, error);
             this.conteos.metricas.erroresConteo++;
             return false;
         }
     }
-    
+
     async guardar() {
         try {
             const docRef = doc(db, OperacionesEstadisticas.COLECCION, this.id);
@@ -585,7 +585,7 @@ export class OperacionesEstadisticas {
             return false;
         }
     }
-    
+
     async _recopilarFirestoreStats() {
         const coleccionesList = [
             `colaboradores_${this.id}`,
@@ -599,17 +599,17 @@ export class OperacionesEstadisticas {
             `notificaciones_${this.id}`,
             `registros_${this.id}`
         ];
-        
+
         let totalDocumentos = 0;
         let coleccionesActivas = 0;
         const documentosPorColeccion = {};
-        
+
         for (const nombreColeccion of coleccionesList) {
             try {
                 const coleccionRef = collection(db, nombreColeccion);
                 const snapshot = await getDocs(coleccionRef);
                 const cantidad = snapshot.size;
-                
+
                 if (cantidad > 0) {
                     coleccionesActivas++;
                     documentosPorColeccion[nombreColeccion] = cantidad;
@@ -619,7 +619,7 @@ export class OperacionesEstadisticas {
                 // Colección no existe, ignorar
             }
         }
-        
+
         try {
             const adminQuery = query(
                 collection(db, "administradores"),
@@ -627,7 +627,7 @@ export class OperacionesEstadisticas {
             );
             const adminSnapshot = await getDocs(adminQuery);
             const adminCount = adminSnapshot.size;
-            
+
             if (adminCount > 0) {
                 documentosPorColeccion[`administradores_${this.id}`] = adminCount;
                 totalDocumentos += adminCount;
@@ -636,7 +636,7 @@ export class OperacionesEstadisticas {
         } catch (error) {
             // Ignorar error
         }
-        
+
         return {
             colecciones: coleccionesActivas,
             documentos: totalDocumentos,
@@ -647,7 +647,7 @@ export class OperacionesEstadisticas {
             eliminaciones: 0
         };
     }
-    
+
     async _recopilarStorageStats() {
         const cacheKey = `${this.id}_storage`;
         if (OperacionesEstadisticas.storageCache.has(cacheKey)) {
@@ -656,13 +656,13 @@ export class OperacionesEstadisticas {
                 return cacheData.data;
             }
         }
-        
+
         try {
             const carpeta = `incidencias_${this.id}`;
             const carpetaRef = ref(storage, carpeta);
-            
+
             const archivos = await this._listarArchivosRecursivamente(carpetaRef);
-            
+
             const stats = {
                 totalArchivos: archivos.length,
                 totalSizeBytes: 0,
@@ -675,24 +675,27 @@ export class OperacionesEstadisticas {
                     otros: { cantidad: 0, tamañoBytes: 0, tamañoMB: 0 }
                 },
                 porCarpeta: {},
-                ultimosArchivos: []
+                ultimosArchivos: []  // Ahora sí serán los más recientes
             };
-            
+
+            // Guardamos temporalmente metadatos con fecha
+            const archivosConFecha = [];
+
             for (const archivo of archivos) {
                 try {
                     const metadata = await getMetadata(archivo);
                     const size = metadata.size;
-                    
+
                     stats.totalSizeBytes += size;
-                    
+
                     const tipo = OperacionesEstadisticas.clasificarArchivo(
-                        metadata.contentType || '', 
+                        metadata.contentType || '',
                         archivo.name
                     );
-                    
+
                     stats.porTipo[tipo].cantidad++;
                     stats.porTipo[tipo].tamañoBytes += size;
-                    
+
                     const partes = archivo.fullPath.split('/');
                     if (partes.length > 2) {
                         const subcarpeta = partes[2] || 'raiz';
@@ -702,37 +705,38 @@ export class OperacionesEstadisticas {
                         stats.porCarpeta[subcarpeta].cantidad++;
                         stats.porCarpeta[subcarpeta].tamañoBytes += size;
                     }
-                    
-                    if (stats.ultimosArchivos.length < 5) {
-                        stats.ultimosArchivos.push({
-                            nombre: archivo.name,
-                            ruta: archivo.fullPath,
-                            tamaño: size,
-                            tipo: tipo,
-                            fecha: metadata.timeCreated ? new Date(metadata.timeCreated) : new Date()
-                        });
-                    }
-                    
+
+                    archivosConFecha.push({
+                        nombre: archivo.name,
+                        ruta: archivo.fullPath,
+                        tamaño: size,
+                        tipo: tipo,
+                        fecha: metadata.timeCreated ? new Date(metadata.timeCreated) : new Date(0)
+                    });
+
                 } catch (error) {
                     console.warn(`Error obteniendo metadata de ${archivo.name}:`, error);
                 }
             }
-            
+
+            // Ordenar por fecha descendente y tomar los 5 más recientes
+            archivosConFecha.sort((a, b) => b.fecha - a.fecha);
+            stats.ultimosArchivos = archivosConFecha.slice(0, 5);
+
             stats.totalSizeMB = OperacionesEstadisticas.bytesToMB(stats.totalSizeBytes);
-            
+
             for (const tipo of Object.keys(stats.porTipo)) {
                 stats.porTipo[tipo].tamañoMB = OperacionesEstadisticas.bytesToMB(stats.porTipo[tipo].tamañoBytes);
             }
-            
+
             OperacionesEstadisticas.storageCache.set(cacheKey, {
                 data: stats,
                 timestamp: Date.now()
             });
-            
+
             return stats;
-            
+
         } catch (error) {
-            
             return {
                 totalArchivos: 0,
                 totalSizeBytes: 0,
@@ -749,13 +753,13 @@ export class OperacionesEstadisticas {
             };
         }
     }
-    
+
     async _listarArchivosRecursivamente(folderRef) {
         const archivos = [];
         try {
             const resultado = await listAll(folderRef);
             archivos.push(...resultado.items);
-            
+
             for (const subCarpeta of resultado.prefixes) {
                 const subArchivos = await this._listarArchivosRecursivamente(subCarpeta);
                 archivos.push(...subArchivos);
@@ -767,12 +771,12 @@ export class OperacionesEstadisticas {
         }
         return archivos;
     }
-    
+
     async _recopilarAuthStats() {
         try {
             let colaboradores = 0;
             let administradores = 0;
-            
+
             try {
                 const colabRef = collection(db, `colaboradores_${this.id}`);
                 const colabSnap = await getDocs(colabRef);
@@ -780,7 +784,7 @@ export class OperacionesEstadisticas {
             } catch (error) {
                 // Colección no existe
             }
-            
+
             try {
                 const adminQuery = query(
                     collection(db, "administradores"),
@@ -791,14 +795,14 @@ export class OperacionesEstadisticas {
             } catch (error) {
                 // Ignorar
             }
-            
+
             return {
                 totalUsuarios: colaboradores + administradores,
                 administradores: administradores,
                 colaboradores: colaboradores,
                 superAdmin: 0
             };
-            
+
         } catch (error) {
             console.error('Error recopilando stats de auth:', error);
             return {
