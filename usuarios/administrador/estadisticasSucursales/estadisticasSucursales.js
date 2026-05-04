@@ -1509,7 +1509,7 @@ async function inicializarDetalleSucursal() {
         ocultarSeccionesSinDatos();
         
         document.getElementById('btnVolver').addEventListener('click', () => {
-            window.location.href = '/usuarios/administrador/estadisticas/estadisticas.html';
+            window.history.back();
         });
         
         const btnPDF = document.getElementById('btnPDFSucursal');
