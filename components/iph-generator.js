@@ -980,336 +980,439 @@ class IPHGenerator extends PDFBaseGenerator {
         }
     }
     
-    async generarPaginaOficial(pdf, incidencia, onProgress) {
-        const margen = CONFIG.MARGEN;
-        const anchoPagina = this.configuracionCarta.ancho;
-        const altoPagina = this.configuracionCarta.alto;
-        const anchoContenido = anchoPagina - (margen * 2);
-        
-        let yPos = this.alturaEncabezado + 4;
-        
-        this.dibujarEncabezadoBase(pdf, 'INFORME DE INCIDENCIA', incidencia.id || 'Nueva Incidencia');
-        
-        // 1. IDENTIFICACIÓN DE LA UNIDAD
+async generarPaginaOficial(pdf, incidencia, onProgress) {
+    const margen = CONFIG.MARGEN;
+    const anchoPagina = this.configuracionCarta.ancho;
+    const altoPagina = this.configuracionCarta.alto;
+    const anchoContenido = anchoPagina - (margen * 2);
+    
+    let yPos = this.alturaEncabezado + 4;
+    
+    this.dibujarEncabezadoBase(pdf, 'INFORME DE INCIDENCIA', incidencia.id || 'Nueva Incidencia');
+    
+    // 1. IDENTIFICACIÓN DE LA UNIDAD
+    pdf.saveGraphicsState();
+    pdf.setFont('helvetica', 'bold');
+    pdf.setFontSize(this.fonts.normal - 1);
+    pdf.setTextColor(0, 0, 0);
+    pdf.text("1. IDENTIFICACIÓN", margen + 4, yPos + 3);
+    pdf.setDrawColor(180, 180, 180);
+    pdf.setFont('helvetica', 'normal');
+    pdf.setFontSize(this.fonts.small - 0.5);
+    pdf.setTextColor(60, 60, 60);
+    
+    const organizacion = this.organizacionActual?.nombre || incidencia.organizacion || 'Chedraui';
+    pdf.text(`Organización: ${organizacion}`, margen + 4, yPos + 11);
+    
+    const sucursalNombre = incidencia.sucursalNombre || this.obtenerNombreSucursal(incidencia.sucursalId);
+    pdf.text(`Sucursal: ${sucursalNombre}`, margen + 4, yPos + 16);
+    
+    let codigoReportante = incidencia.reportadoPorCodigo || '';
+    if (codigoReportante && codigoReportante.trim() !== '') {
+        pdf.text(`Reportado por operador: ${codigoReportante}`, margen + 4, yPos + 21);
+    } else {
+        const nombreReportante = incidencia.reportadoPorNombre || this.obtenerNombreUsuario(incidencia.reportadoPorId) || incidencia.creadoPorNombre || 'No especificado';
+        pdf.text(`Reportado por operador: ${nombreReportante}`, margen + 4, yPos + 21);
+    }
+    pdf.restoreGraphicsState();
+    yPos += 26;
+    
+    // 2. DATOS GENERALES
+    pdf.saveGraphicsState();
+    pdf.setFont('helvetica', 'bold');
+    pdf.setFontSize(this.fonts.normal - 1);
+    pdf.setTextColor(0, 0, 0);
+    pdf.text("2. DATOS", margen + 4, yPos + 3);
+    pdf.setDrawColor(180, 180, 180);
+    pdf.setFont('helvetica', 'normal');
+    pdf.setFontSize(this.fonts.small - 0.5);
+    pdf.setTextColor(60, 60, 60);
+    const fechaReporte = incidencia.fechaCreacion ? new Date(incidencia.fechaCreacion) : new Date();
+    pdf.text(`Fecha: ${this.formatearFechaVisualizacion(fechaReporte)}`, margen + 4, yPos + 15);
+    pdf.text(`Hora: ${this.formatearHoraVisualizacion(fechaReporte)}`, margen + 100, yPos + 15);
+    pdf.restoreGraphicsState();
+    yPos += 22;
+    
+    // 3. CLASIFICACIÓN
+    pdf.saveGraphicsState();
+    pdf.setFont('helvetica', 'bold');
+    pdf.setFontSize(this.fonts.normal - 1);
+    pdf.setTextColor(0, 0, 0);
+    pdf.text("3. CLASIFICACIÓN", margen + 4, yPos + 3);
+    pdf.setDrawColor(180, 180, 180);
+    pdf.setFont('helvetica', 'normal');
+    pdf.setFontSize(this.fonts.small - 0.5);
+    const categoriaNombre = incidencia.categoriaNombre || this.obtenerNombreCategoria(incidencia.categoriaId);
+    pdf.text(`Categoría: ${categoriaNombre}`, margen + 4, yPos + 15);
+    const subcategoriaNombre = incidencia.subcategoriaNombre || this.obtenerNombreSubcategoria(incidencia.subcategoriaId, incidencia.categoriaId);
+    pdf.text(`Subcategoría: ${subcategoriaNombre}`, margen + 4, yPos + 20);
+    const nivelRiesgo = incidencia.nivelRiesgo || 'No especificado';
+    const riesgoTexto = typeof nivelRiesgo === 'string' ? nivelRiesgo.toUpperCase() : String(nivelRiesgo);
+    let riesgoColor = [60, 60, 60];
+    if (nivelRiesgo === 'critico') riesgoColor = [192, 57, 43];
+    else if (nivelRiesgo === 'alto') riesgoColor = [230, 126, 34];
+    else if (nivelRiesgo === 'medio') riesgoColor = [243, 156, 18];
+    else if (nivelRiesgo === 'bajo') riesgoColor = [39, 174, 96];
+    pdf.setTextColor(riesgoColor[0], riesgoColor[1], riesgoColor[2]);
+    pdf.text(`Riesgo: ${riesgoTexto}`, margen + 4, yPos + 25);
+    pdf.setTextColor(60, 60, 60);
+    const estado = incidencia.estado || 'No especificado';
+    pdf.text(`Estado: ${estado === 'pendiente' ? 'Pendiente' : 'Finalizada'}`, margen + 4, yPos + 30);
+    const fechaInicio = incidencia.fechaInicio ? new Date(incidencia.fechaInicio) : new Date();
+    pdf.text(`Fecha del incidente: ${this.formatearFechaVisualizacion(fechaInicio)}`, margen + 4, yPos + 35);
+    pdf.text(`Hora: ${this.formatearHoraVisualizacion(fechaInicio)}`, margen + 100, yPos + 35);
+    pdf.restoreGraphicsState();
+    yPos += 42;
+    
+    // 4. DESCRIPCIÓN DE LOS HECHOS
+    const detalles = incidencia.detalles || 'No se proporcionó descripción.';
+    const lineasDescripcion = this.dividirTextoPorCaracteres(detalles, CONFIG.MAX_CARACTERES_POR_LINEA);
+    
+    const ALTURA_TITULO = 10;
+    const ALTURA_PADDING_SUPERIOR = 4;
+    const ALTURA_PADDING_INFERIOR = 2;
+    const ALTURA_POR_LINEA = CONFIG.ALTURA_LINEA;
+    const alturaTextoNecesaria = lineasDescripcion.length * ALTURA_POR_LINEA;
+    const alturaTotalNecesaria = ALTURA_TITULO + ALTURA_PADDING_SUPERIOR + alturaTextoNecesaria + ALTURA_PADDING_INFERIOR;
+    const espacioDisponibleEnPagina = altoPagina - yPos - CONFIG.MARGEN_PIE_PAGINA;
+    
+    if (alturaTotalNecesaria <= espacioDisponibleEnPagina) {
         pdf.saveGraphicsState();
         pdf.setFont('helvetica', 'bold');
         pdf.setFontSize(this.fonts.normal - 1);
         pdf.setTextColor(0, 0, 0);
-        pdf.text("1. IDENTIFICACIÓN", margen + 4, yPos + 3);
+        pdf.text("4. DESCRIPCIÓN", margen + 4, yPos + 3);
         pdf.setDrawColor(180, 180, 180);
         pdf.setFont('helvetica', 'normal');
         pdf.setFontSize(this.fonts.small - 0.5);
         pdf.setTextColor(60, 60, 60);
-        
-        const organizacion = this.organizacionActual?.nombre || incidencia.organizacion || 'Chedraui';
-        pdf.text(`Organización: ${organizacion}`, margen + 4, yPos + 11);
-        
-        const sucursalNombre = incidencia.sucursalNombre || this.obtenerNombreSucursal(incidencia.sucursalId);
-        pdf.text(`Sucursal: ${sucursalNombre}`, margen + 4, yPos + 16);
-        
-        let codigoReportante = incidencia.reportadoPorCodigo || '';
-        if (codigoReportante && codigoReportante.trim() !== '') {
-            pdf.text(`Reportado por operador: ${codigoReportante}`, margen + 4, yPos + 21);
-        } else {
-            const nombreReportante = incidencia.reportadoPorNombre || this.obtenerNombreUsuario(incidencia.reportadoPorId) || incidencia.creadoPorNombre || 'No especificado';
-            pdf.text(`Reportado por operador: ${nombreReportante}`, margen + 4, yPos + 21);
+        let yTexto = yPos + ALTURA_PADDING_SUPERIOR + 6;
+        for (let i = 0; i < lineasDescripcion.length; i++) {
+            pdf.text(lineasDescripcion[i], margen + 4, yTexto);
+            yTexto += ALTURA_POR_LINEA;
         }
         pdf.restoreGraphicsState();
-        yPos += 26;
-        
-        // 2. DATOS GENERALES
+        yPos += alturaTotalNecesaria + CONFIG.ESPACIO_ENTRE_BLOQUES;
+    } else {
+        const lineasQueCaben = Math.floor((espacioDisponibleEnPagina - ALTURA_TITULO - ALTURA_PADDING_SUPERIOR - ALTURA_PADDING_INFERIOR) / ALTURA_POR_LINEA);
+        const lineasEnPagina = Math.max(1, Math.min(lineasQueCaben, lineasDescripcion.length));
         pdf.saveGraphicsState();
         pdf.setFont('helvetica', 'bold');
         pdf.setFontSize(this.fonts.normal - 1);
         pdf.setTextColor(0, 0, 0);
-        pdf.text("2. DATOS", margen + 4, yPos + 3);
+        pdf.text("4. DESCRIPCIÓN", margen + 4, yPos + 3);
         pdf.setDrawColor(180, 180, 180);
-                pdf.setFont('helvetica', 'normal');
+        pdf.setFont('helvetica', 'normal');
         pdf.setFontSize(this.fonts.small - 0.5);
         pdf.setTextColor(60, 60, 60);
-        const fechaReporte = incidencia.fechaCreacion ? new Date(incidencia.fechaCreacion) : new Date();
-        pdf.text(`Fecha: ${this.formatearFechaVisualizacion(fechaReporte)}`, margen + 4, yPos + 15);
-        pdf.text(`Hora: ${this.formatearHoraVisualizacion(fechaReporte)}`, margen + 100, yPos + 15);
+        let yTexto = yPos + ALTURA_PADDING_SUPERIOR + 6;
+        for (let i = 0; i < lineasEnPagina; i++) {
+            pdf.text(lineasDescripcion[i], margen + 4, yTexto);
+            yTexto += ALTURA_POR_LINEA;
+        }
+        if (lineasDescripcion.length > lineasEnPagina) {
+            pdf.setFont('helvetica', 'italic');
+            pdf.setFontSize(this.fonts.mini - 1);
+            pdf.setTextColor(150, 150, 150);
+            pdf.text(`(+${lineasDescripcion.length - lineasEnPagina} líneas más)`, margen + 4, yTexto + 2);
+        }
         pdf.restoreGraphicsState();
-        yPos += 22;
-        
-        // 3. CLASIFICACIÓN
-        pdf.saveGraphicsState();
+        yPos += ALTURA_TITULO + ALTURA_PADDING_SUPERIOR + (lineasEnPagina * ALTURA_POR_LINEA) + ALTURA_PADDING_INFERIOR + 5;
+    }
+    
+    // 5. EVIDENCIAS FOTOGRÁFICAS - PRIMERAS 2 IMÁGENES (optimizado como seguimiento)
+    const imagenesPrincipales = incidencia.imagenes || [];
+    
+    if (imagenesPrincipales.length > 0) {
         pdf.setFont('helvetica', 'bold');
         pdf.setFontSize(this.fonts.normal - 1);
         pdf.setTextColor(0, 0, 0);
-        pdf.text("3. CLASIFICACIÓN", margen + 4, yPos + 3);
-        pdf.setDrawColor(180, 180, 180);
-                pdf.setFont('helvetica', 'normal');
-        pdf.setFontSize(this.fonts.small - 0.5);
-        const categoriaNombre = incidencia.categoriaNombre || this.obtenerNombreCategoria(incidencia.categoriaId);
-        pdf.text(`Categoría: ${categoriaNombre}`, margen + 4, yPos + 15);
-        const subcategoriaNombre = incidencia.subcategoriaNombre || this.obtenerNombreSubcategoria(incidencia.subcategoriaId, incidencia.categoriaId);
-        pdf.text(`Subcategoría: ${subcategoriaNombre}`, margen + 4, yPos + 20);
-        const nivelRiesgo = incidencia.nivelRiesgo || 'No especificado';
-        const riesgoTexto = typeof nivelRiesgo === 'string' ? nivelRiesgo.toUpperCase() : String(nivelRiesgo);
-        let riesgoColor = [60, 60, 60];
-        if (nivelRiesgo === 'critico') riesgoColor = [192, 57, 43];
-        else if (nivelRiesgo === 'alto') riesgoColor = [230, 126, 34];
-        else if (nivelRiesgo === 'medio') riesgoColor = [243, 156, 18];
-        else if (nivelRiesgo === 'bajo') riesgoColor = [39, 174, 96];
-        pdf.setTextColor(riesgoColor[0], riesgoColor[1], riesgoColor[2]);
-        pdf.text(`Riesgo: ${riesgoTexto}`, margen + 4, yPos + 25);
-        pdf.setTextColor(60, 60, 60);
-        const estado = incidencia.estado || 'No especificado';
-        pdf.text(`Estado: ${estado === 'pendiente' ? 'Pendiente' : 'Finalizada'}`, margen + 4, yPos + 30);
-        const fechaInicio = incidencia.fechaInicio ? new Date(incidencia.fechaInicio) : new Date();
-        pdf.text(`Fecha del incidente: ${this.formatearFechaVisualizacion(fechaInicio)}`, margen + 4, yPos + 35);
-        pdf.text(`Hora: ${this.formatearHoraVisualizacion(fechaInicio)}`, margen + 100, yPos + 35);
-        pdf.restoreGraphicsState();
-        yPos += 42;
+        pdf.text("5. EVIDENCIAS FOTOGRÁFICAS", margen + 4, yPos + 3);
+        yPos += 10;
         
-        // 4. DESCRIPCIÓN DE LOS HECHOS
-        const detalles = incidencia.detalles || 'No se proporcionó descripción.';
-        const lineasDescripcion = this.dividirTextoPorCaracteres(detalles, CONFIG.MAX_CARACTERES_POR_LINEA);
+        const primerasImagenes = imagenesPrincipales.slice(0, 2);
+        const imgWidth = CONFIG.ANCHO_IMAGEN;
+        const espaciadoHorizontal = CONFIG.ESPACIADO_COLUMNAS;
+        const anchoTotalFilas = (imgWidth * 2) + espaciadoHorizontal;
+        const inicioX = margen + 4 + ((anchoContenido - 8 - anchoTotalFilas) / 2);
+        const col1X = inicioX;
+        const col2X = inicioX + imgWidth + espaciadoHorizontal;
         
-        const ALTURA_TITULO = 10;
-        const ALTURA_PADDING_SUPERIOR = 4;
-        const ALTURA_PADDING_INFERIOR = 2;
-        const ALTURA_POR_LINEA = CONFIG.ALTURA_LINEA;
-        const alturaTextoNecesaria = lineasDescripcion.length * ALTURA_POR_LINEA;
-        const alturaTotalNecesaria = ALTURA_TITULO + ALTURA_PADDING_SUPERIOR + alturaTextoNecesaria + ALTURA_PADDING_INFERIOR;
-        const espacioDisponibleEnPagina = altoPagina - yPos - CONFIG.MARGEN_PIE_PAGINA;
-        
-        if (alturaTotalNecesaria <= espacioDisponibleEnPagina) {
-            pdf.saveGraphicsState();
-            pdf.setFont('helvetica', 'bold');
-            pdf.setFontSize(this.fonts.normal - 1);
-            pdf.setTextColor(0, 0, 0);
-            pdf.text("4. DESCRIPCIÓN", margen + 4, yPos + 3);
-            pdf.setDrawColor(180, 180, 180);
-                        pdf.setFont('helvetica', 'normal');
-            pdf.setFontSize(this.fonts.small - 0.5);
-            pdf.setTextColor(60, 60, 60);
-            let yTexto = yPos + ALTURA_PADDING_SUPERIOR + 6;
-            for (let i = 0; i < lineasDescripcion.length; i++) {
-                pdf.text(lineasDescripcion[i], margen + 4, yTexto);
-                yTexto += ALTURA_POR_LINEA;
-            }
-            pdf.restoreGraphicsState();
-            yPos += alturaTotalNecesaria + CONFIG.ESPACIO_ENTRE_BLOQUES;
-        } else {
-            const lineasQueCaben = Math.floor((espacioDisponibleEnPagina - ALTURA_TITULO - ALTURA_PADDING_SUPERIOR - ALTURA_PADDING_INFERIOR) / ALTURA_POR_LINEA);
-            const lineasEnPagina = Math.max(1, Math.min(lineasQueCaben, lineasDescripcion.length));
-            pdf.saveGraphicsState();
-            pdf.setFont('helvetica', 'bold');
-            pdf.setFontSize(this.fonts.normal - 1);
-            pdf.setTextColor(0, 0, 0);
-            pdf.text("4. DESCRIPCIÓN", margen + 4, yPos + 3);
-            pdf.setDrawColor(180, 180, 180);
-                        pdf.setFont('helvetica', 'normal');
-            pdf.setFontSize(this.fonts.small - 0.5);
-            pdf.setTextColor(60, 60, 60);
-            let yTexto = yPos + ALTURA_PADDING_SUPERIOR + 6;
-            for (let i = 0; i < lineasEnPagina; i++) {
-                pdf.text(lineasDescripcion[i], margen + 4, yTexto);
-                yTexto += ALTURA_POR_LINEA;
-            }
-            if (lineasDescripcion.length > lineasEnPagina) {
-                pdf.setFont('helvetica', 'italic');
-                pdf.setFontSize(this.fonts.mini - 1);
-                pdf.setTextColor(150, 150, 150);
-                pdf.text(`(+${lineasDescripcion.length - lineasEnPagina} líneas más)`, margen + 4, yTexto + 2);
-            }
-            pdf.restoreGraphicsState();
-            yPos += ALTURA_TITULO + ALTURA_PADDING_SUPERIOR + (lineasEnPagina * ALTURA_POR_LINEA) + ALTURA_PADDING_INFERIOR + 5;
-        }
-        
-        // 5. EVIDENCIAS FOTOGRÁFICAS - PRIMERAS 2 IMÁGENES (optimizado como seguimiento)
-        const imagenesPrincipales = incidencia.imagenes || [];
-        
-        if (imagenesPrincipales.length > 0) {
-            pdf.setFont('helvetica', 'bold');
-            pdf.setFontSize(this.fonts.normal - 1);
-            pdf.setTextColor(0, 0, 0);
-            pdf.text("5. EVIDENCIAS FOTOGRÁFICAS", margen + 4, yPos + 3);
-            yPos += 10;
-            
-            const primerasImagenes = imagenesPrincipales.slice(0, 2);
-            const imgWidth = CONFIG.ANCHO_IMAGEN;
-            const espaciadoHorizontal = CONFIG.ESPACIADO_COLUMNAS;
-            const anchoTotalFilas = (imgWidth * 2) + espaciadoHorizontal;
-            const inicioX = margen + 4 + ((anchoContenido - 8 - anchoTotalFilas) / 2);
-            const col1X = inicioX;
-            const col2X = inicioX + imgWidth + espaciadoHorizontal;
-            
-            // Calcular altura máxima para estas 2 imágenes
-            let alturaMaxFila = CONFIG.ALTO_IMAGEN;
-            for (const imagen of primerasImagenes) {
-                const url = this.extraerUrlImagen(imagen);
-                if (url) {
-                    const dimensiones = await this.obtenerDimensionesImagen(url);
-                    if (dimensiones && dimensiones.aspectRatio > 1) {
-                        const alturaReal = imgWidth / dimensiones.aspectRatio;
-                        alturaMaxFila = Math.min(alturaMaxFila, alturaReal);
-                    }
+        // Calcular altura máxima para estas 2 imágenes
+        let alturaMaxFila = CONFIG.ALTO_IMAGEN;
+        for (const imagen of primerasImagenes) {
+            const url = this.extraerUrlImagen(imagen);
+            if (url) {
+                const dimensiones = await this.obtenerDimensionesImagen(url);
+                if (dimensiones && dimensiones.aspectRatio > 1) {
+                    const alturaReal = imgWidth / dimensiones.aspectRatio;
+                    alturaMaxFila = Math.min(alturaMaxFila, alturaReal);
                 }
             }
+        }
+        
+        for (let i = 0; i < primerasImagenes.length; i++) {
+            let xPos = i === 0 ? col1X : col2X;
+            const imagen = primerasImagenes[i];
+            const numeroImagen = i + 1;
             
-            for (let i = 0; i < primerasImagenes.length; i++) {
-                let xPos = i === 0 ? col1X : col2X;
-                const imagen = primerasImagenes[i];
-                const numeroImagen = i + 1;
-                
-                pdf.setFont('helvetica', 'bold');
+            pdf.setFont('helvetica', 'bold');
+            pdf.setFontSize(this.fonts.mini);
+            pdf.setTextColor(80, 80, 80);
+            pdf.text(`Imagen ${numeroImagen}`, xPos + 2, yPos - 2);
+            
+            await this.dibujarImagenSeguimiento(pdf, imagen, xPos, yPos, imgWidth, alturaMaxFila, numeroImagen);
+        }
+        
+        const alturaFilaImagenes = alturaMaxFila + 35;
+        yPos += alturaFilaImagenes + 15;
+        
+        const imagenesRestantes = imagenesPrincipales.slice(2);
+        
+        if (imagenesRestantes.length > 0) {
+            this.dibujarPiePagina(pdf);
+            pdf.addPage();
+            this.paginaActualReal++;
+            this.dibujarEncabezadoBase(pdf, 'INFORME DE INCIDENCIA', `${incidencia.id} (Cont.)`);
+            yPos = this.alturaEncabezado + 12;
+            
+            pdf.setFont('helvetica', 'bold');
+            pdf.setFontSize(this.fonts.normal - 1);
+            pdf.setTextColor(0, 0, 0);
+            pdf.text("5. EVIDENCIAS FOTOGRÁFICAS (Continuación)", margen + 4, yPos + 3);
+            pdf.setFont('helvetica', 'normal');
+            pdf.setFontSize(this.fonts.mini - 1);
+            pdf.setTextColor(100, 100, 100);
+            pdf.text(`${imagenesRestantes.length} imagen(es) restantes`, anchoPagina - margen - 35, yPos + 3);
+            yPos += 15;
+            
+            yPos = await this.dibujarGridImagenes(pdf, imagenesRestantes, margen, anchoContenido, yPos, altoPagina, 2, true);
+        }
+    } else {
+        pdf.saveGraphicsState();
+        pdf.setFont('helvetica', 'italic');
+        pdf.setFontSize(this.fonts.small);
+        pdf.setTextColor(120, 120, 120);
+        pdf.text("No se adjuntaron evidencias fotográficas.", margen + 4, yPos + 12);
+        pdf.restoreGraphicsState();
+        yPos += 25;
+    }
+    
+    // =============================================
+    // AVISO DE PRIVACIDAD EN LA PRIMERA PÁGINA
+    // =============================================
+    
+    // Verificar si estamos en la primera página (página 1)
+    if (this.paginaActualReal === 1) {
+        const espacioRestante = altoPagina - yPos - 20;
+        
+        if (espacioRestante >= 50) {
+            // Hay suficiente espacio, dibujar aviso aquí mismo
+            this.dibujarAvisoPrivacidad(pdf, yPos + 5);
+            this.dibujarPiePagina(pdf);
+        } else {
+            // No hay espacio, crear nueva página para el aviso
+            this.dibujarPiePagina(pdf);
+            pdf.addPage();
+            this.paginaActualReal++;
+            this.dibujarEncabezadoBase(pdf, 'INFORME DE INCIDENCIA', `${incidencia.id || 'Incidencia'} (Aviso)`);
+            this.dibujarAvisoPrivacidad(pdf, this.alturaEncabezado + 15);
+            this.dibujarPiePagina(pdf);
+        }
+    } else {
+        // No es primera página, solo dibujar pie de página normal
+        this.dibujarPiePagina(pdf);
+    }
+    
+    // =============================================
+    // SEGUIMIENTOS (páginas adicionales)
+    // =============================================
+    
+    const seguimientos = incidencia.getSeguimientosArray ? incidencia.getSeguimientosArray() : [];
+    
+    for (let i = 0; i < seguimientos.length; i++) {
+        const seguimiento = seguimientos[i];
+        
+        pdf.addPage();
+        this.paginaActualReal++;
+        this.dibujarEncabezadoBase(pdf, `SEGUIMIENTO ${i + 1} de ${seguimientos.length}`, `${incidencia.id}`);
+        
+        let yPosSeg = this.alturaEncabezado + 8;
+        
+        const fecha = seguimiento.fecha ? this.formatearFechaVisualizacion(seguimiento.fecha) : 'Fecha no disponible';
+        const usuario = seguimiento.usuarioCodigo || seguimiento.usuarioNombre || 'Usuario';
+        
+        pdf.saveGraphicsState();
+        pdf.setFillColor(245, 248, 250);
+        pdf.roundedRect(margen + 4, yPosSeg, anchoContenido - 8, 22, 4, 4, 'F');
+        
+        pdf.setFont('helvetica', 'bold');
+        pdf.setFontSize(this.fonts.small);
+        pdf.setTextColor(0, 0, 0);
+        pdf.text(`SEGUIMIENTO POR: ${usuario}`, margen + 10, yPosSeg + 6);
+        
+        pdf.setFont('helvetica', 'normal');
+        pdf.setFontSize(this.fonts.mini);
+        pdf.setTextColor(100, 100, 100);
+        pdf.text(`${fecha}`, margen + 10, yPosSeg + 14);
+        
+        pdf.restoreGraphicsState();
+        yPosSeg += 28;
+        
+        const descripcion = seguimiento.descripcion || 'Sin descripción';
+        const lineasDescSeg = this.dividirTextoPorCaracteres(descripcion, CONFIG.MAX_CARACTERES_POR_LINEA - 10);
+        const ALTURA_TITULO_DESC = 12;
+        const PADDING_DESC = 8;
+        const lineasAMostrar = Math.min(lineasDescSeg.length, 10);
+        const alturaDescripcionReal = ALTURA_TITULO_DESC + (lineasAMostrar * CONFIG.ALTURA_LINEA) + PADDING_DESC;
+        
+        if (descripcion.trim() !== '' && descripcion !== 'Sin descripción') {
+            pdf.saveGraphicsState();
+            
+            pdf.setFont('helvetica', 'bold');
+            pdf.setFontSize(this.fonts.normal - 1);
+            pdf.setTextColor(0, 0, 0);
+            pdf.text("DESCRIPCIÓN DEL SEGUIMIENTO", margen + 6, yPosSeg + 3);
+            pdf.setDrawColor(180, 180, 180);
+            pdf.line(margen + 4, yPosSeg + 8, margen + anchoContenido - 4, yPosSeg + 8);
+            
+            pdf.setFont('helvetica', 'normal');
+            pdf.setFontSize(this.fonts.small);
+            pdf.setTextColor(60, 60, 60);
+            
+            let yTextoDesc = yPosSeg + 16;
+            for (let j = 0; j < lineasAMostrar; j++) {
+                pdf.text(lineasDescSeg[j], margen + 6, yTextoDesc);
+                yTextoDesc += CONFIG.ALTURA_LINEA;
+            }
+            
+            if (lineasDescSeg.length > 10) {
+                pdf.setFont('helvetica', 'italic');
                 pdf.setFontSize(this.fonts.mini);
-                pdf.setTextColor(80, 80, 80);
-                pdf.text(`Imagen ${numeroImagen}`, xPos + 2, yPos - 2);
-                
-                await this.dibujarImagenSeguimiento(pdf, imagen, xPos, yPos, imgWidth, alturaMaxFila, numeroImagen);
+                pdf.setTextColor(120, 120, 120);
+                pdf.text(`(+${lineasDescSeg.length - 10} líneas más)`, margen + 6, yTextoDesc + 2);
             }
             
-            const alturaFilaImagenes = alturaMaxFila + 35;
-            yPos += alturaFilaImagenes + 15;
-            
-            const imagenesRestantes = imagenesPrincipales.slice(2);
-            
-            if (imagenesRestantes.length > 0) {
-                this.dibujarPiePagina(pdf);
-                pdf.addPage();
-                this.paginaActualReal++;
-                this.dibujarEncabezadoBase(pdf, 'INFORME DE INCIDENCIA', `${incidencia.id} (Cont.)`);
-                yPos = this.alturaEncabezado + 12;
-                
-                pdf.setFont('helvetica', 'bold');
-                pdf.setFontSize(this.fonts.normal - 1);
-                pdf.setTextColor(0, 0, 0);
-                pdf.text("5. EVIDENCIAS FOTOGRÁFICAS (Continuación)", margen + 4, yPos + 3);
-                pdf.setFont('helvetica', 'normal');
-                pdf.setFontSize(this.fonts.mini - 1);
-                pdf.setTextColor(100, 100, 100);
-                pdf.text(`${imagenesRestantes.length} imagen(es) restantes`, anchoPagina - margen - 35, yPos + 3);
-                yPos += 15;
-                
-                yPos = await this.dibujarGridImagenes(pdf, imagenesRestantes, margen, anchoContenido, yPos, altoPagina, 2, true);
-            }
+            pdf.restoreGraphicsState();
+            yPosSeg += alturaDescripcionReal + 5;
         } else {
             pdf.saveGraphicsState();
             pdf.setFont('helvetica', 'italic');
             pdf.setFontSize(this.fonts.small);
             pdf.setTextColor(120, 120, 120);
-            pdf.text("No se adjuntaron evidencias fotográficas.", margen + 4, yPos + 12);
+            pdf.text("Sin descripción en este seguimiento", margen + 6, yPosSeg + 12);
             pdf.restoreGraphicsState();
-            yPos += 25;
+            yPosSeg += 20;
+        }
+        
+        const evidencias = seguimiento.evidencias || [];
+        
+        if (evidencias.length > 0) {
+            pdf.setFont('helvetica', 'bold');
+            pdf.setFontSize(this.fonts.normal - 1);
+            pdf.setTextColor(0, 0, 0);
+            pdf.text(`EVIDENCIAS (${evidencias.length} imagen${evidencias.length !== 1 ? 'es' : ''})`, margen + 6, yPosSeg + 3);
+            pdf.setDrawColor(180, 180, 180);
+            pdf.line(margen + 4, yPosSeg + 8, margen + anchoContenido - 4, yPosSeg + 8);
+            yPosSeg += 18;
+            
+            yPosSeg = await this.dibujarGridImagenes(pdf, evidencias, margen, anchoContenido, yPosSeg, altoPagina, 0, true);
+        } else {
+            pdf.saveGraphicsState();
+            pdf.setFont('helvetica', 'italic');
+            pdf.setFontSize(this.fonts.small);
+            pdf.setTextColor(120, 120, 120);
+            pdf.text("No se adjuntaron evidencias en este seguimiento", margen + 6, yPosSeg + 12);
+            pdf.restoreGraphicsState();
+            yPosSeg += 25;
         }
         
         this.dibujarPiePagina(pdf);
-        
-   
+    }
+}
+// =============================================
+// AVISO DE PRIVACIDAD - NUEVO MÉTODO
+// =============================================
 
-        
-        // PÁGINAS PARA CADA SEGUIMIENTO
-const seguimientos = incidencia.getSeguimientosArray ? incidencia.getSeguimientosArray() : [];
-
-for (let i = 0; i < seguimientos.length; i++) {
-    const seguimiento = seguimientos[i];
+/**
+ * Dibuja el aviso de privacidad en la página actual
+ * @param {Object} pdf - Objeto jsPDF
+ * @param {number} yPosInicial - Posición Y donde comenzar
+ */
+dibujarAvisoPrivacidad(pdf, yPosInicial) {
+    const margen = CONFIG.MARGEN;
+    const anchoPagina = this.configuracionCarta.ancho;
+    const altoPagina = this.configuracionCarta.alto;
     
-    pdf.addPage();
-    this.paginaActualReal++;
-    this.dibujarEncabezadoBase(pdf, `SEGUIMIENTO ${i + 1} de ${seguimientos.length}`, `${incidencia.id}`);
-    
-    let yPosSeg = this.alturaEncabezado + 8;
-    
-    const fecha = seguimiento.fecha ? this.formatearFechaVisualizacion(seguimiento.fecha) : 'Fecha no disponible';
-    const usuario = seguimiento.usuarioCodigo || seguimiento.usuarioNombre || 'Usuario';
+    let yAviso = yPosInicial;
+    const margenAviso = 20;
+    const anchoContenidoAviso = anchoPagina - (margenAviso * 2);
+    const alturaAviso = 42;
     
     pdf.saveGraphicsState();
-    pdf.setFillColor(245, 248, 250);
-    pdf.roundedRect(margen + 4, yPosSeg, anchoContenido - 8, 22, 4, 4, 'F');
     
+    // Fondo
+    pdf.setFillColor(245, 245, 250);
+    pdf.rect(margenAviso, yAviso, anchoContenidoAviso, alturaAviso, 'F');
+    
+    // Borde
+    pdf.setDrawColor(200, 200, 210);
+    pdf.setLineWidth(0.3);
+    pdf.rect(margenAviso, yAviso, anchoContenidoAviso, alturaAviso, 'S');
+    
+    // Título
     pdf.setFont('helvetica', 'bold');
-    pdf.setFontSize(this.fonts.small);
-    pdf.setTextColor(0, 0, 0);
-    pdf.text(`SEGUIMIENTO POR: ${usuario}`, margen + 10, yPosSeg + 6);
+    pdf.setFontSize(8);
+    pdf.setTextColor(60, 60, 80);
+    pdf.text("AVISO DE PRIVACIDAD", margenAviso + 8, yAviso + 7);
     
+    pdf.setDrawColor(200, 200, 210);
+    pdf.line(margenAviso + 6, yAviso + 11, margenAviso + anchoContenidoAviso - 6, yAviso + 11);
+    
+    // Texto
     pdf.setFont('helvetica', 'normal');
-    pdf.setFontSize(this.fonts.mini);
-    pdf.setTextColor(100, 100, 100);
-    pdf.text(`${fecha}`, margen + 10, yPosSeg + 14);
+    pdf.setFontSize(6.5);
+    pdf.setTextColor(100, 100, 110);
+    
+    const avisoTexto = "La información contenida en este documento es responsabilidad exclusiva de quien utiliza el Sistema Centinela y de la persona que ingresó los datos. Este reporte tiene carácter informativo y puede ser utilizado como medio de prueba ante las autoridades correspondientes.";
+    
+    const lineasAviso = this.dividirTextoEnLineas(pdf, avisoTexto, anchoContenidoAviso - 20);
+    let yTexto = yAviso + 18;
+    for (let j = 0; j < Math.min(lineasAviso.length, 3); j++) {
+        pdf.text(lineasAviso[j], margenAviso + 8, yTexto + (j * 4.5));
+    }
     
     pdf.restoreGraphicsState();
-    yPosSeg += 28;
-    
-    const descripcion = seguimiento.descripcion || 'Sin descripción';
-    const lineasDescSeg = this.dividirTextoPorCaracteres(descripcion, CONFIG.MAX_CARACTERES_POR_LINEA - 10);
-    const ALTURA_TITULO_DESC = 12;
-    const PADDING_DESC = 8;
-    const lineasAMostrar = Math.min(lineasDescSeg.length, 10);
-    const alturaDescripcionReal = ALTURA_TITULO_DESC + (lineasAMostrar * CONFIG.ALTURA_LINEA) + PADDING_DESC;
-    
-    if (descripcion.trim() !== '' && descripcion !== 'Sin descripción') {
-        pdf.saveGraphicsState();
-        
-        pdf.setFont('helvetica', 'bold');
-        pdf.setFontSize(this.fonts.normal - 1);
-        pdf.setTextColor(0, 0, 0);
-        pdf.text("DESCRIPCIÓN DEL SEGUIMIENTO", margen + 6, yPosSeg + 3);
-        pdf.setDrawColor(180, 180, 180);
-        pdf.line(margen + 4, yPosSeg + 8, margen + anchoContenido - 4, yPosSeg + 8);
-        
-        pdf.setFont('helvetica', 'normal');
-        pdf.setFontSize(this.fonts.small);
-        pdf.setTextColor(60, 60, 60);
-        
-        let yTextoDesc = yPosSeg + 16;
-        for (let j = 0; j < lineasAMostrar; j++) {
-            pdf.text(lineasDescSeg[j], margen + 6, yTextoDesc);
-            yTextoDesc += CONFIG.ALTURA_LINEA;
-        }
-        
-        if (lineasDescSeg.length > 10) {
-            pdf.setFont('helvetica', 'italic');
-            pdf.setFontSize(this.fonts.mini);
-            pdf.setTextColor(120, 120, 120);
-            pdf.text(`(+${lineasDescSeg.length - 10} líneas más)`, margen + 6, yTextoDesc + 2);
-        }
-        
-        pdf.restoreGraphicsState();
-        yPosSeg += alturaDescripcionReal + 5;
-    } else {
-        pdf.saveGraphicsState();
-        pdf.setFont('helvetica', 'italic');
-        pdf.setFontSize(this.fonts.small);
-        pdf.setTextColor(120, 120, 120);
-        pdf.text("Sin descripción en este seguimiento", margen + 6, yPosSeg + 12);
-        pdf.restoreGraphicsState();
-        yPosSeg += 20;
-    }
-    
-    const evidencias = seguimiento.evidencias || [];
-    
-    if (evidencias.length > 0) {
-        pdf.setFont('helvetica', 'bold');
-        pdf.setFontSize(this.fonts.normal - 1);
-        pdf.setTextColor(0, 0, 0);
-        pdf.text(`EVIDENCIAS (${evidencias.length} imagen${evidencias.length !== 1 ? 'es' : ''})`, margen + 6, yPosSeg + 3);
-        pdf.setDrawColor(180, 180, 180);
-        pdf.line(margen + 4, yPosSeg + 8, margen + anchoContenido - 4, yPosSeg + 8);
-        yPosSeg += 18;
-        
-        yPosSeg = await this.dibujarGridImagenes(pdf, evidencias, margen, anchoContenido, yPosSeg, altoPagina, 0, true);
-    } else {
-        pdf.saveGraphicsState();
-        pdf.setFont('helvetica', 'italic');
-        pdf.setFontSize(this.fonts.small);
-        pdf.setTextColor(120, 120, 120);
-        pdf.text("No se adjuntaron evidencias en este seguimiento", margen + 6, yPosSeg + 12);
-        pdf.restoreGraphicsState();
-        yPosSeg += 25;
-    }
-    
-    // 👇 SOLO el pie de página, SIN el aviso de privacidad (porque ya se dibujará en la última página globalmente)
-    this.dibujarPiePagina(pdf);
 }
 
-// Al final, después de todo, llamar a corregirNumeracionPaginas() que dibujará el aviso en la última página
+/**
+ * Divide texto en líneas según el ancho disponible
+ * @param {Object} pdf - Objeto jsPDF
+ * @param {string} texto - Texto a dividir
+ * @param {number} maxWidth - Ancho máximo en mm
+ * @returns {Array} Array de líneas
+ */
+dividirTextoEnLineas(pdf, texto, maxWidth) {
+    if (!texto) return [''];
+    const palabras = texto.split(' ');
+    const lineas = [];
+    let lineaActual = '';
+    
+    for (const palabra of palabras) {
+        const lineaPrueba = lineaActual ? `${lineaActual} ${palabra}` : palabra;
+        const anchoPrueba = pdf.getTextWidth(lineaPrueba);
+        
+        if (anchoPrueba <= maxWidth) {
+            lineaActual = lineaPrueba;
+        } else {
+            if (lineaActual) lineas.push(lineaActual);
+            lineaActual = palabra;
+        }
     }
-
+    if (lineaActual) lineas.push(lineaActual);
+    
+    return lineas;
+}
 
 // =============================================
 // PAGINACIÓN CORREGIDA (COPIA EXACTA DE SEGUIMIENTO)
