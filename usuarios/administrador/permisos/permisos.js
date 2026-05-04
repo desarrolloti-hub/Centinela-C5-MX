@@ -28,6 +28,7 @@ const nombresModulos = {
     regiones: 'Regiones',
     incidencias: 'Incidencias',
     usuarios: 'Usuarios',
+    riesgoNivel: 'RiesgoNivel',
     estadisticas: 'Estadísticas',
     tareas: 'Tareas',
     permisos: 'Permisos',
@@ -36,13 +37,13 @@ const nombresModulos = {
 };
 
 // Módulos fijos (siempre visibles)
-const modulosFijos = ['areas', 'categorias', 'sucursales', 'regiones', 'usuarios', 'estadisticas', 'tareas', 'permisos', 'loginMonitoreo'];
+const modulosFijos = ['areas', 'categorias', 'sucursales', 'regiones', 'usuarios', 'estadisticas', 'tareas', 'permisos', 'loginMonitoreo', 'riesgoNivel'];
 
 // Módulos dinámicos (dependen del plan)
 const modulosDinamicos = ['incidencias', 'monitoreo'];
 
 // Orden de los módulos para mostrar
-const ordenModulos = ['areas', 'categorias', 'sucursales', 'regiones', 'incidencias', 'usuarios', 'estadisticas', 'tareas', 'permisos', 'loginMonitoreo', 'monitoreo'];
+const ordenModulos = ['areas', 'categorias', 'sucursales', 'regiones', 'incidencias', 'usuarios', 'riesgoNivel', 'estadisticas', 'tareas', 'permisos', 'loginMonitoreo', 'monitoreo'];
 
 // ========== INICIALIZACIÓN ==========
 document.addEventListener('DOMContentLoaded', async function () {

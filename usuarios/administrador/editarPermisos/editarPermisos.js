@@ -351,6 +351,13 @@ class EditarPermisoController {
             chkLoginMonitoreo.checked = permisos.loginMonitoreo || false;
             this._actualizarEstiloCard(document.getElementById('permisoLoginMonitoreoCard'), chkLoginMonitoreo.checked);
         }
+        //Módulo de niveles de riesgo
+        // Módulo de niveles de riesgo
+        const chkRiesgoNivel = document.getElementById('permisoRiesgoNivel');
+        if (chkRiesgoNivel) {
+            chkRiesgoNivel.checked = permisos.riesgoNivel || false;
+            this._actualizarEstiloCard(document.getElementById('permisoRiesgoNivelCard'), chkRiesgoNivel.checked);
+        }
     }
 
     // ========== CONFIGURACIÓN DE ORGANIZACIÓN ==========
@@ -396,9 +403,9 @@ class EditarPermisoController {
     _configurarCheckboxesPermisos() {
         // TODOS los módulos disponibles (incluyendo Permisos y Login/Monitoreo)
         const todosModulos = [
-            'Areas', 'Categorias', 'Sucursales', 'Regiones', 
-            'Incidencias', 'Monitoreo', 'Usuarios', 'Estadisticas', 
-            'Tareas', 'Permisos', 'LoginMonitoreo'
+            'Areas', 'Categorias', 'Sucursales', 'Regiones',
+            'Incidencias', 'Monitoreo', 'Usuarios', 'Estadisticas',
+            'Tareas', 'Permisos', 'LoginMonitoreo', 'RiesgoNivel'
         ];
 
         todosModulos.forEach(modulo => {
@@ -478,7 +485,8 @@ class EditarPermisoController {
             estadisticas: document.getElementById('permisoEstadisticas')?.checked || false,
             tareas: document.getElementById('permisoTareas')?.checked || false,
             permisos: document.getElementById('permisoPermisos')?.checked || false,
-            loginMonitoreo: document.getElementById('permisoLoginMonitoreo')?.checked || false
+            loginMonitoreo: document.getElementById('permisoLoginMonitoreo')?.checked || false,
+            riesgoNivel: document.getElementById('permisoRiesgoNivel')?.checked || false
         };
 
         return permisos;
