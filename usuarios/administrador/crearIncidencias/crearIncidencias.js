@@ -2080,7 +2080,8 @@ class CrearIncidenciaController {
             Swal.close();
 
             if (pdfUrl) {
-                await this._mostrarDialogoCompartir(pdfUrl, datos);
+                    await this._mostrarDialogoCompartir(pdfUrl, datos, folioReal);
+
             }
 
             // Canalizaciones (opcionales)
@@ -2157,7 +2158,7 @@ class CrearIncidenciaController {
         }
     }
 
-    async _mostrarDialogoCompartir(pdfUrl, datos) {
+    async _mostrarDialogoCompartir(pdfUrl, datos, folioReal) {
         return new Promise((resolve) => {
             Swal.fire({
                 title: 'Compartir incidencia',
@@ -2190,7 +2191,7 @@ class CrearIncidenciaController {
 
                     document.getElementById('shareWhatsAppBtn').onclick = () => {
                         Swal.close();
-                        const mensajeWhatsApp = `${tituloIncidencia}\n\nSucursal: ${datos.sucursalNombre}\nRiesgo: ${this._getRiesgoTexto(datos.nivelRiesgo)}\n\nPDF de la incidencia:\n${pdfUrl}\n\n--\nPDF enviado por el sistema Centinela.`;
+                        const mensajeWhatsApp = `${tituloIncidencia}\n\nID: ${folioReal}\nSucursal: ${datos.sucursalNombre}\nRiesgo: ${this._getRiesgoTexto(datos.nivelRiesgo)}\n\nPDF de la incidencia:\n${pdfUrl}\n\n--\nPDF enviado por el sistema Centinela.`;
                         const urlWhatsapp = `https://wa.me/?text=${encodeURIComponent(mensajeWhatsApp)}`;
                         window.open(urlWhatsapp, '_blank');
                         Swal.fire({
@@ -2235,15 +2236,16 @@ class CrearIncidenciaController {
 
                         const tituloIncidencia = `INCIDENCIA: ${sucursalNombre} - ${categoriaNombre}`;
 
-                        const cuerpoTexto =
-                            `${tituloIncidencia}\n\n` +
-                            `Sucursal: ${sucursalNombre}\n` +
-                            `Categoria: ${categoriaNombre}\n` +
-                            `Riesgo: ${riesgoTexto}\n` +
-                            `Fecha: ${fechaInicio}\n` +
-                            `Estado: ${estadoTexto}\n\n` +
-                            `PDF de la incidencia:\n${pdfUrl}\n\n` +
-                            `--\nPDF enviado por el sistema Centinela.`;
+                       const cuerpoTexto =
+                        `${tituloIncidencia}\n\n` +
+                        `ID: ${folioReal}\n` +                     // ← línea agregada
+                        `Sucursal: ${sucursalNombre}\n` +
+                        `Categoría: ${categoriaNombre}\n` +
+                        `Riesgo: ${riesgoTexto}\n` +
+                        `Fecha: ${fechaInicio}\n` +
+                        `Estado: ${estadoTexto}\n\n` +
+                        `PDF de la incidencia:\n${pdfUrl}\n\n` +
+                        `--\nPDF enviado por el sistema Centinela.`;
 
                         const asunto = encodeURIComponent(tituloIncidencia);
                         const cuerpoCodificado = encodeURIComponent(cuerpoTexto);

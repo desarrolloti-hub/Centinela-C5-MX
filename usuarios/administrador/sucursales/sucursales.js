@@ -485,7 +485,7 @@ function renderizarSucursales() {
              </td>
             <td data-label="ACCIONES">
                 <div class="btn-group">
-                    <button type="button" class="btn btn-view" data-action="view" data-branch-id="${suc.id}" data-branch-name="${escapeHTML(suc.nombre)}" title="Ver detalles">
+                    <button type="button" class="btn btn-view" data-action="viewStats" data-branch-id="${suc.id}" data-branch-name="${escapeHTML(suc.nombre)}" title="Ver estadísticas">
                         <i class="fas fa-eye"></i>
                     </button>
                     <button type="button" class="btn btn-edit" data-action="edit" data-branch-id="${suc.id}" data-branch-name="${escapeHTML(suc.nombre)}" title="Editar">
@@ -594,8 +594,9 @@ function setupEvents() {
             if (action === 'edit') {
                 await editBranch(branchId, branchName);
             }
-            else if (action === 'view') {
-                await viewBranchDetails(branchId, branchName);
+                 else if (action === 'viewStats') {
+                // Redirigir a la página de estadísticas de la sucursal
+                window.location.href = `/usuarios/administrador/estadisticasSucursales/estadisticasSucursales.html?id=${branchId}`;
             }
             else if (action === 'delete') {
                 await deleteBranch(branchId, branchName);

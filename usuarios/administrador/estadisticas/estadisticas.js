@@ -3205,11 +3205,22 @@ async function aplicarFiltros() {
         window.mapaCalorComponente.aplicarFiltros();
     }
 
+    // ✅ MOSTRAR EL MAPA DE CALOR AL APLICAR FILTROS
+    mostrarMapaCalor();
+
     await cargarIncidencias();
     await cargarRegistrosRecuperacionConFiltros();
 
     const totalIncidencias = incidenciasFiltradas?.length || 0;
     const totalRecuperaciones = registrosRecuperacionFiltrados?.length || 0;
+    
+    // ✅ MOSTRAR EL BOTÓN PDF SOLO SI HAY DATOS (incidencias O recuperaciones)
+    if (totalIncidencias > 0 || totalRecuperaciones > 0) {
+        mostrarBotonPDF();
+    } else {
+        ocultarBotonPDF(); // Si no hay datos, asegurar que esté oculto
+    }
+    
     if (totalIncidencias > 0 || totalRecuperaciones > 0) {
         await registrarAplicacionFiltros(filtrosActivos, totalIncidencias, totalRecuperaciones);
     }
@@ -3284,6 +3295,12 @@ async function inicializarDashboardUnificado() {
         // Sincronizar filtros con el mapa de calor
         sincronizarFiltrosConMapa();
 
+        // ✅ OCULTAR EL MAPA DE CALOR AL INICIO
+        ocultarMapaCalorInicial();
+        
+        // ✅ OCULTAR EL BOTÓN PDF AL INICIO
+        ocultarBotonPDF();
+
         // NO cargar datos automáticamente - esperar a que el usuario aplique filtros
         const welcomeMsg = document.getElementById('welcomeMessage');
         const resultadosSection = document.getElementById('resultadosSection');
@@ -3306,7 +3323,7 @@ async function inicializarDashboardUnificado() {
         mostrarErrorInicializacion();
     }
 }
-
+aplicarFiltros
 function sincronizarFiltrosConMapa() {
     setTimeout(() => {
         if (window.mapaCalorComponente) {
@@ -3490,5 +3507,40 @@ function restaurarGraficasAModoNormal() {
             g.chart.update();
         }
     });
+}
+
+// =============================================
+// CONTROL DE VISIBILIDAD DEL MAPA DE CALOR
+// =============================================
+
+function ocultarMapaCalorInicial() {
+    const mapaContainer = document.getElementById('mapaCalorComponenteContainer');
+    if (mapaContainer) {
+        mapaContainer.style.display = 'none';
+    }
+}
+
+function mostrarMapaCalor() {
+    const mapaContainer = document.getElementById('mapaCalorComponenteContainer');
+    if (mapaContainer) {
+        mapaContainer.style.display = 'block';
+    }
+}
+// =============================================
+// CONTROL DE VISIBILIDAD DEL BOTÓN PDF
+// =============================================
+
+function ocultarBotonPDF() {
+    const btnPDF = document.getElementById('btnGenerarPDF');
+    if (btnPDF) {
+        btnPDF.style.display = 'none';
+    }
+}
+
+function mostrarBotonPDF() {
+    const btnPDF = document.getElementById('btnGenerarPDF');
+    if (btnPDF) {
+        btnPDF.style.display = 'inline-flex'; // o 'flex' dependiendo de tu CSS
+    }
 }
 document.addEventListener('DOMContentLoaded', inicializarDashboardUnificado);

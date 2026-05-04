@@ -144,15 +144,7 @@ const COLUMNAS_CONFIG = [
                 url: '/usuarios/colaboradores/crearIncidenciasRecuperacion/crearIncidenciasRecuperacion.html',
                 permisoEspecifico: 'crearIncidenciasRecuperacion'
             },
-            {
-                modulo: 'estadisticasIncidenciasRecuperacion',
-                titulo: 'Estadísticas de recuperaciones',
-                descripcion: 'Análisis de pérdidas y recuperaciones',
-                icono: 'fa-chart-line',
-                color: 'orange',
-                url: '/usuarios/colaboradores/estadisticasIncidenciasRecuperacion/estadisticasIncidenciasRecuperacion.html',
-                permisoEspecifico: 'estadisticasIncidenciasRecuperacion'
-            }
+          
         ]
     },
     {

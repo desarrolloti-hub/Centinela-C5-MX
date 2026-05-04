@@ -67,7 +67,7 @@
 }
 
 /* =============================================
-    RESET Y BASE - USANDO VARIABLES DE PERSONALIZATION
+    RESET Y BASE - CON PREVENCIÓN DE DESBORDES
    ============================================= */
 * {
     margin: 0;
@@ -81,6 +81,7 @@ body {
     font-family: var(--font-family-secondary);
     min-height: 100vh;
     line-height: 1.4;
+    overflow-x: hidden; /* Evita scroll horizontal global */
 }
 
 /* Canvas de partículas */
@@ -101,6 +102,7 @@ body {
     width: 100%;
     max-width: 1400px;
     margin: 0 auto;
+    overflow-x: hidden; /* Evita desbordes laterales */
 }
 
 @media (min-width: 768px) {
@@ -126,6 +128,7 @@ body {
     display: flex;
     align-items: center;
     gap: var(--spacing-sm, 0.5rem);
+    flex-wrap: wrap;
 }
 
 .kpi-section h2 i {
@@ -133,10 +136,10 @@ body {
     filter: drop-shadow(0 0 5px var(--color-accent-primary));
 }
 
-/* Grid para 6 tarjetas */
+/* Grid para 6 tarjetas - responsive mejorado */
 .kpi-row-6 {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
     gap: var(--spacing-md, 0.75rem);
 }
 
@@ -177,6 +180,7 @@ body {
     height: 100%;
     position: relative;
     overflow: hidden;
+    word-break: break-word;
 }
 
 .kpi-card:hover {
@@ -207,11 +211,13 @@ body {
     text-transform: uppercase;
     letter-spacing: 0.5px;
     margin-top: auto;
+    word-break: break-word;
 }
 
 .kpi-card p {
     font-size: 0.6rem;
     color: var(--color-text-secondary);
+    word-break: break-word;
 }
 
 @media (min-width: 768px) {
@@ -280,6 +286,7 @@ body {
     width: 100%;
     backdrop-filter: blur(8px);
     box-shadow: 0 0 8px var(--color-accent-primary);
+    overflow-x: hidden;
 }
 
 .section-header {
@@ -298,6 +305,7 @@ body {
     align-items: center;
     gap: 0.5rem;
     margin-bottom: 0.125rem;
+    flex-wrap: wrap;
 }
 
 .section-title i {
@@ -309,7 +317,7 @@ body {
     color: var(--color-text-secondary);
 }
 
-/* Grid para tarjetas - ALINEADAS A LA IZQUIERDA */
+/* Grid para tarjetas - ALINEADAS A LA IZQUIERDA Y RESPONSIVE */
 .cards-grid-2 {
     display: flex !important;
     flex-direction: row !important;
@@ -320,7 +328,7 @@ body {
     align-items: center;
 }
 
-/* Tarjetas base - VERSIÓN COMPACTA */
+/* Tarjetas base - VERSIÓN COMPACTA Y FLEXIBLE */
 .dashboard-card {
     display: flex !important;
     flex-direction: row !important;
@@ -329,7 +337,7 @@ body {
     height: 70px !important;
     min-height: 70px !important;
     width: auto !important;
-    min-width: 200px !important;
+    min-width: 180px !important;
     max-width: 350px !important;
     padding: 0.5rem 0.75rem !important;
     position: relative;
@@ -340,6 +348,7 @@ body {
     backdrop-filter: blur(8px);
     gap: 0.5rem;
     flex-shrink: 0;
+    word-break: break-word;
 }
 
 .dashboard-card[style*="display: none"] {
@@ -407,7 +416,7 @@ body {
     color: #ff4d00;
 }
 
-/* Texto truncado */
+/* Texto truncado pero con protección de desborde */
 .card-text {
     flex: 1;
     min-width: 0;
@@ -445,7 +454,7 @@ body {
     transition: var(--transition-default);
 }
 
-/* MÓDULOS DE ACCESO - GRID DE 3 COLUMNAS */
+/* MÓDULOS DE ACCESO - GRID DE 3 COLUMNAS MEJORADO */
 .modulos-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
@@ -460,6 +469,7 @@ body {
     border: 1px solid var(--color-border-light);
     transition: var(--transition-default);
     box-shadow: 0 0 5px var(--color-accent-primary);
+    overflow-x: hidden;
 }
 
 .modulo-columna:hover {
@@ -474,6 +484,7 @@ body {
     padding-bottom: 0.75rem;
     margin-bottom: 0.75rem;
     border-bottom: 1px solid var(--color-border-light);
+    flex-wrap: wrap;
 }
 
 .modulo-header i {
@@ -486,6 +497,7 @@ body {
     color: var(--color-text-primary);
     text-transform: uppercase;
     letter-spacing: 1px;
+    word-break: break-word;
 }
 
 .modulo-tarjetas {
@@ -501,7 +513,7 @@ body {
 }
 
 /* =============================================
-   RESPONSIVE
+   RESPONSIVE - MEJORAS PARA MÓVILES
    ============================================= */
 @media (max-width: 900px) {
     .modulos-grid {
@@ -513,24 +525,28 @@ body {
 @media (max-width: 600px) {
     .cards-grid-2 {
         flex-direction: column !important;
-        align-items: flex-start !important;
+        align-items: stretch !important;
         gap: 0.75rem !important;
     }
 
     .dashboard-card {
         width: 100% !important;
-        max-width: 300px !important;
-        height: 65px !important;
-        min-height: 65px !important;
+        max-width: none !important;
+        min-width: auto !important;
+        height: auto !important;
+        min-height: 60px !important;
+    }
+
+    .card-text h3,
+    .card-text p {
+        white-space: normal;
+        word-break: break-word;
     }
 }
 
 @media (max-width: 500px) {
     .dashboard-card {
-        max-width: 280px !important;
-        height: 60px !important;
-        min-height: 60px !important;
-        padding: 0.4rem 0.6rem !important;
+        padding: 0.5rem !important;
         gap: 0.4rem;
     }
 
@@ -561,11 +577,46 @@ body {
     .kpi-number {
         font-size: 1.25rem;
     }
+
+    .modulo-columna {
+        padding: 0.75rem;
+    }
+
+    .section-container {
+        padding: 0.75rem;
+    }
+}
+
+@media (max-width: 400px) {
+    .kpi-row-6 {
+        grid-template-columns: 1fr;
+    }
+
+    .dashboard-card {
+        flex-wrap: wrap;
+        justify-content: center;
+        text-align: center;
+        gap: 0.3rem;
+    }
+
+    .card-icon {
+        margin-bottom: 0;
+    }
+
+    .card-text h3,
+    .card-text p {
+        white-space: normal;
+        text-align: center;
+    }
 }
 
 @media (max-width: 350px) {
     .kpi-row-6 {
         grid-template-columns: 1fr;
+    }
+
+    .right-layout {
+        padding: 0.75rem;
     }
 }
 

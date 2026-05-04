@@ -320,6 +320,8 @@ window.seguimientoIncidencia = function (incidenciaId, event) {
     event?.stopPropagation();
     window.location.href = `../seguimientoIncidencias/seguimientoIncidencias.html?id=${incidenciaId}`;
 };
+// incidencias.js - fragmento actualizado de window.compartirIncidencia
+
 window.compartirIncidencia = async function (incidenciaId, event) {
     event?.stopPropagation();
     
@@ -343,8 +345,6 @@ window.compartirIncidencia = async function (incidenciaId, event) {
         }
         
         // Mostrar diálogo de compartir
-            // Mostrar diálogo de compartir
-               // Mostrar diálogo de compartir
         const resultado = await Swal.fire({
             title: ' Compartir incidencia',
             html: `
@@ -380,7 +380,9 @@ window.compartirIncidencia = async function (incidenciaId, event) {
                         new Date(incidencia.fechaInicio).toLocaleDateString('es-MX')) : 
                     'Fecha no disponible';
                 
+                // ✅ MENSAJE PARA WHATSAPP - AHORA INCLUYE EL ID
                 const mensajeTexto = ` *${tituloIncidencia}*\n\n` +
+                    ` *ID:* ${incidencia.id}\n` +   // ← CAMPO AGREGADO
                     ` *Sucursal:* ${obtenerNombreSucursal(incidencia.sucursalId)}\n` +
                     ` *Riesgo:* ${riesgoTexto}\n` +
                     ` *Fecha:* ${fechaInicio}\n` +
@@ -398,7 +400,8 @@ window.compartirIncidencia = async function (incidenciaId, event) {
                         showConfirmButton: false
                     });
                 };
-                              document.getElementById('shareEmailBtn').onclick = async () => {
+                
+                document.getElementById('shareEmailBtn').onclick = async () => {
                     Swal.close();
                     
                     // Preguntar qué servicio de correo usa
@@ -434,9 +437,10 @@ window.compartirIncidencia = async function (incidenciaId, event) {
                     // Título
                     const tituloIncidencia = `INCIDENCIA: ${sucursalNombre} - ${categoriaNombre}`;
                     
-                    // Mensaje SIMPLE sin etiquetas HTML
+                    // ✅ MENSAJE PARA CORREO - AHORA INCLUYE EL ID
                     const cuerpoTexto = 
                         `${tituloIncidencia}\n\n` +
+                        `ID: ${incidencia.id}\n` +     // ← CAMPO AGREGADO
                         `Sucursal: ${sucursalNombre}\n` +
                         `Categoría: ${categoriaNombre}\n` +
                         `Riesgo: ${riesgoTexto}\n` +
@@ -500,14 +504,7 @@ window.compartirIncidencia = async function (incidenciaId, event) {
     }
 };
 
-/**
- * ABRIR PDF EN VISOR NATIVO DEL NAVEGADOR
- * Utiliza la URL guardada en Firestore y la abre en una nueva pestaña
- */
-/**
- * ABRIR PDF EN VISOR NATIVO DEL NAVEGADOR
- * Utiliza la URL guardada en Firestore y la abre en una nueva pestaña
- */
+
 /**
  * ABRIR PDF EN VISOR NATIVO DEL NAVEGADOR (sin Acrobat)
  * Forza el visor integrado de Chrome, Edge, Firefox, Safari, etc.
