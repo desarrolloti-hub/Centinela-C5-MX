@@ -18,12 +18,14 @@ const nombresModulos = {
     categorias: 'Categorías',
     sucursales: 'Sucursales',
     regiones: 'Regiones',
-    riesgo: 'RiesgoNivel',
     incidencias: 'Incidencias',
     usuarios: 'Usuarios',
+    riesgoNivel: 'RiesgoNivel',
     estadisticas: 'Estadísticas',
     tareas: 'Tareas',
-    monitoreo: 'Mapa de Alertas'
+    permisos: 'Permisos',
+    loginMonitoreo: 'LoginMonitoreo',
+    monitoreo: 'Mapa Alertas'
 };
 
 // ICONOS DE LOS MÓDULOS
@@ -34,20 +36,22 @@ const iconosModulos = {
     regiones: 'fa-map-marked-alt',
     incidencias: 'fa-exclamation-triangle',
     usuarios: 'fa-users',
+    riesgoNivel: '',
     estadisticas: 'fa-chart-line',
     tareas: 'fa-tasks',
-    monitoreo: 'fa-map-marker-alt',
-    riesgo: 'fa-map-marker-alt'
+    permisos: 'fa-map-marker-alt',
+    loginMonitoreo: 'fa-map-marker-alt',
+    monitoreo: 'fa-map-marker-alt'
 };
 
 // Módulos fijos (siempre visibles)
-const modulosFijos = ['areas', 'categorias', 'sucursales', 'regiones', 'usuarios', 'estadisticas', 'tareas', 'permisos', 'loginMonitoreo','riesgoNivel'];
+const modulosFijos = ['areas', 'categorias', 'sucursales', 'regiones', 'usuarios', 'estadisticas', 'tareas', 'permisos', 'loginMonitoreo', 'riesgoNivel'];
 
 // Módulos dinámicos (dependen del plan)
 const modulosDinamicos = ['incidencias', 'monitoreo'];
 
 // ORDEN DE LOS MÓDULOS PARA MOSTRAR
-const ordenModulos = ['areas', 'categorias', 'sucursales', 'regiones', 'riesgoNivel', 'incidencias', 'usuarios', 'estadisticas', 'tareas', 'monitoreo'];
+const ordenModulos = ['areas', 'categorias', 'sucursales', 'regiones', 'riesgoNivel', 'incidencias', 'usuarios', 'permisos', 'estadisticas', 'tareas', 'monitoreo', 'loginMonitoreo'];
 
 // =============================================
 // INICIALIZACIÓN
