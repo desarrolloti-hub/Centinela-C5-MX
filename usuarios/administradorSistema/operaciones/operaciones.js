@@ -354,8 +354,15 @@ class OperacionesController {
             case 'personalizado':
                 const fechaInicioInput = document.getElementById('fechaInicio')?.value;
                 const fechaFinInput = document.getElementById('fechaFin')?.value;
-                if (fechaInicioInput) fechaInicio = new Date(fechaInicioInput);
-                if (fechaFinInput) fechaFin = new Date(fechaFinInput);
+                if (fechaInicioInput) {
+                    fechaInicio = new Date(fechaInicioInput);
+                    // Inicio del día (ya es 00:00:00)
+                }
+                if (fechaFinInput) {
+                    fechaFin = new Date(fechaFinInput);
+                    // ⚠️ Ajustar al FINAL del día para incluir todo el día
+                    fechaFin.setHours(23, 59, 59, 999);
+                }
                 break;
             default:
                 // Sin período → sin filtro
@@ -381,7 +388,7 @@ class OperacionesController {
         // 4. Seleccionar empresa
         if (empresaId === 'todas') {
             this.empresaSeleccionada = 'todas';
-            // Mostrar con las empresas filtradas (y recalcular totales)
+            // Mostrar con las empresas filtradas (recalcular totales)
             this.mostrarVistaTodasEmpresasConFiltro(empresasFiltradas);
         } else {
             this.empresaSeleccionada = empresaId;
@@ -389,7 +396,6 @@ class OperacionesController {
             if (empresaData) {
                 await this.mostrarDatosEmpresa(empresaData);
             } else {
-                // Si no pasa el filtro o no existe, mostrar mensaje
                 this.mostrarSinDatos();
                 this.mostrarError('La organización no tiene datos en el período seleccionado.');
             }
