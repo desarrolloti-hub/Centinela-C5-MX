@@ -67,7 +67,7 @@
 }
 
 /* =============================================
-    RESET Y BASE - USANDO VARIABLES DE PERSONALIZATION
+    RESET Y BASE - CON PREVENCIÓN DE DESBORDES
    ============================================= */
 * {
     margin: 0;
@@ -81,6 +81,8 @@ body {
     font-family: var(--font-family-secondary);
     min-height: 100vh;
     line-height: 1.4;
+    overflow-x: hidden;
+    /* Evita scroll horizontal global */
 }
 
 /* Canvas de partículas */
@@ -101,6 +103,8 @@ body {
     width: 100%;
     max-width: 1400px;
     margin: 0 auto;
+    overflow-x: hidden;
+    /* Evita desbordes laterales */
 }
 
 @media (min-width: 768px) {
@@ -126,6 +130,7 @@ body {
     display: flex;
     align-items: center;
     gap: var(--spacing-sm, 0.5rem);
+    flex-wrap: wrap;
 }
 
 .kpi-section h2 i {
@@ -133,10 +138,10 @@ body {
     filter: drop-shadow(0 0 5px var(--color-accent-primary));
 }
 
-/* Grid para 6 tarjetas */
+/* Grid para 6 tarjetas - responsive mejorado */
 .kpi-row-6 {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
     gap: var(--spacing-md, 0.75rem);
 }
 
@@ -177,6 +182,7 @@ body {
     height: 100%;
     position: relative;
     overflow: hidden;
+    word-break: break-word;
 }
 
 .kpi-card:hover {
@@ -207,11 +213,13 @@ body {
     text-transform: uppercase;
     letter-spacing: 0.5px;
     margin-top: auto;
+    word-break: break-word;
 }
 
 .kpi-card p {
     font-size: 0.6rem;
     color: var(--color-text-secondary);
+    word-break: break-word;
 }
 
 @media (min-width: 768px) {
@@ -233,9 +241,7 @@ body {
     }
 }
 
-/* =============================================
-   TARJETA INCIDENCIAS - BRILLO ROJO FIJO
-   ============================================= */
+/* Tarjeta INCIDENCIAS con brillo rojo fijo */
 #kpi-incidencias {
     border: 1px solid #ff4d00;
     box-shadow: 0 0 15px rgba(255, 77, 0, 0.5);
@@ -260,46 +266,7 @@ body {
 }
 
 /* =============================================
-   TARJETA NUEVA INCIDENCIA - CON PARPADEO
-   ============================================= */
-#card-nueva-incidencia {
-    border: 1px solid #ff4d00;
-    background: linear-gradient(145deg, #2a0a0a, #1a0505);
-    cursor: pointer;
-    position: relative;
-    z-index: 10;
-    animation: parpadeo 1.5s ease-in-out infinite;
-}
-
-#card-nueva-incidencia .card-icon {
-    color: #ff4d00 !important;
-    animation: brilloIcono 1.5s ease-in-out infinite;
-    box-shadow: none !important;
-}
-
-#card-nueva-incidencia .card-text h3 {
-    color: #ff4d00 !important;
-    animation: brilloIcono 1.5s ease-in-out infinite;
-}
-
-#card-nueva-incidencia .card-arrow {
-    color: #ff4d00 !important;
-    animation: brilloIcono 1.5s ease-in-out infinite;
-}
-
-#card-nueva-incidencia:hover {
-    animation: parpadeo 0.8s ease-in-out infinite, latido 0.8s ease-in-out infinite;
-    background: linear-gradient(145deg, #3a0f0f, #250a0a);
-}
-
-#card-nueva-incidencia:hover .card-icon,
-#card-nueva-incidencia:hover .card-text h3,
-#card-nueva-incidencia:hover .card-arrow {
-    animation: brilloIcono 0.8s ease-in-out infinite;
-}
-
-/* =============================================
-   SECCIÓN REGISTRO - TARJETAS DINÁMICAS
+   SECCIÓN MÓDULOS - TARJETAS DINÁMICAS
    ============================================= */
 .center-row {
     display: flex;
@@ -312,7 +279,7 @@ body {
     width: 100%;
 }
 
-/* Contenedor base - CON BRILLO PERMANENTE USANDO COLOR DEL SISTEMA */
+/* Contenedor base - CON BRILLO PERMANENTE */
 .section-container {
     border: 1px solid var(--color-accent-primary);
     border-radius: var(--border-radius-medium);
@@ -321,6 +288,7 @@ body {
     width: 100%;
     backdrop-filter: blur(8px);
     box-shadow: 0 0 8px var(--color-accent-primary);
+    overflow-x: hidden;
 }
 
 .section-header {
@@ -339,6 +307,7 @@ body {
     align-items: center;
     gap: 0.5rem;
     margin-bottom: 0.125rem;
+    flex-wrap: wrap;
 }
 
 .section-title i {
@@ -350,7 +319,7 @@ body {
     color: var(--color-text-secondary);
 }
 
-/* Grid para tarjetas - ALINEADAS A LA IZQUIERDA */
+/* Grid para tarjetas - ALINEADAS A LA IZQUIERDA Y RESPONSIVE */
 .cards-grid-2 {
     display: flex !important;
     flex-direction: row !important;
@@ -361,8 +330,7 @@ body {
     align-items: center;
 }
 
-/* Tarjetas base - VERSIÓN COMPACTA */
-/* Tarjetas base - VERSIÓN COMPACTA */
+/* Tarjetas base - VERSIÓN COMPACTA Y FLEXIBLE */
 .dashboard-card {
     display: flex !important;
     flex-direction: row !important;
@@ -371,9 +339,8 @@ body {
     height: 70px !important;
     min-height: 70px !important;
     width: auto !important;
-    min-width: 200px !important;
+    min-width: 180px !important;
     max-width: 350px !important;
-    /* ← CAMBIA ESTE VALOR */
     padding: 0.5rem 0.75rem !important;
     position: relative;
     border: 1px solid var(--color-border-light);
@@ -383,31 +350,31 @@ body {
     backdrop-filter: blur(8px);
     gap: 0.5rem;
     flex-shrink: 0;
+    word-break: break-word;
 }
 
-/* Tarjeta oculta */
 .dashboard-card[style*="display: none"] {
     display: none !important;
 }
 
-/* Hover general para tarjetas (excluyendo la de nueva incidencia) */
-.dashboard-card:not(#card-nueva-incidencia):hover {
+/* Hover general para tarjetas */
+.dashboard-card:hover {
     border-color: var(--color-accent-primary);
     background: var(--color-hover);
     box-shadow: var(--shadow-normal);
     transform: translateY(-3px);
 }
 
-.dashboard-card:not(#card-nueva-incidencia):hover .card-icon {
+.dashboard-card:hover .card-icon {
     transform: scale(1.05);
 }
 
-.dashboard-card:not(#card-nueva-incidencia):hover .card-arrow {
+.dashboard-card:hover .card-arrow {
     color: var(--color-text-primary);
     transform: translateX(3px);
 }
 
-/* Iconos más pequeños */
+/* Iconos */
 .card-icon {
     width: 32px !important;
     height: 32px !important;
@@ -447,7 +414,11 @@ body {
     color: #fd7e14;
 }
 
-/* Texto truncado para no desbordar */
+.card-icon.danger {
+    color: #ff4d00;
+}
+
+/* Texto truncado pero con protección de desborde */
 .card-text {
     flex: 1;
     min-width: 0;
@@ -477,7 +448,6 @@ body {
     line-height: 1.2;
 }
 
-/* Flecha más pequeña */
 .card-arrow {
     position: static !important;
     font-size: 0.8rem !important;
@@ -486,35 +456,99 @@ body {
     transition: var(--transition-default);
 }
 
-/* Estilo para tarjeta de Bitácora */
-#card-bitacora .card-icon {
-    color: #9caba4;
+/* MÓDULOS DE ACCESO - GRID DE 3 COLUMNAS MEJORADO */
+.modulos-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.5rem;
+    margin-top: 1rem;
+}
+
+.modulo-columna {
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: var(--border-radius-medium);
+    padding: 1rem;
+    border: 1px solid var(--color-border-light);
+    transition: var(--transition-default);
+    box-shadow: 0 0 5px var(--color-accent-primary);
+    overflow-x: hidden;
+}
+
+.modulo-columna:hover {
+    border-color: var(--color-accent-primary);
+    transform: translateY(-2px);
+}
+
+.modulo-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding-bottom: 0.75rem;
+    margin-bottom: 0.75rem;
+    border-bottom: 1px solid var(--color-border-light);
+    flex-wrap: wrap;
+}
+
+.modulo-header i {
+    font-size: 1.2rem;
+}
+
+.modulo-header h3 {
+    font-family: var(--font-family-primary);
+    font-size: 0.85rem;
+    color: var(--color-text-primary);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    word-break: break-word;
+}
+
+.modulo-tarjetas {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.modulo-tarjetas .dashboard-card {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: auto !important;
 }
 
 /* =============================================
-   RESPONSIVE - VERSIÓN COMPACTA PEGADA A LA IZQUIERDA
+   RESPONSIVE - MEJORAS PARA MÓVILES
    ============================================= */
+@media (max-width: 900px) {
+    .modulos-grid {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+}
+
 @media (max-width: 600px) {
     .cards-grid-2 {
         flex-direction: column !important;
-        align-items: flex-start !important;
+        align-items: stretch !important;
         gap: 0.75rem !important;
     }
 
     .dashboard-card {
         width: 100% !important;
-        max-width: 300px !important;
-        height: 65px !important;
-        min-height: 65px !important;
+        max-width: none !important;
+        min-width: auto !important;
+        height: auto !important;
+        min-height: 60px !important;
+    }
+
+    .card-text h3,
+    .card-text p {
+        white-space: normal;
+        word-break: break-word;
     }
 }
 
 @media (max-width: 500px) {
     .dashboard-card {
-        max-width: 280px !important;
-        height: 60px !important;
-        min-height: 60px !important;
-        padding: 0.4rem 0.6rem !important;
+        padding: 0.5rem !important;
         gap: 0.4rem;
     }
 
@@ -545,22 +579,50 @@ body {
     .kpi-number {
         font-size: 1.25rem;
     }
+
+    .modulo-columna {
+        padding: 0.75rem;
+    }
+
+    .section-container {
+        padding: 0.75rem;
+    }
+}
+
+@media (max-width: 400px) {
+    .kpi-row-6 {
+        grid-template-columns: 1fr;
+    }
+
+    .dashboard-card {
+        flex-wrap: wrap;
+        justify-content: center;
+        text-align: center;
+        gap: 0.3rem;
+    }
+
+    .card-icon {
+        margin-bottom: 0;
+    }
+
+    .card-text h3,
+    .card-text p {
+        white-space: normal;
+        text-align: center;
+    }
 }
 
 @media (max-width: 350px) {
     .kpi-row-6 {
         grid-template-columns: 1fr;
     }
+
+    .right-layout {
+        padding: 0.75rem;
+    }
 }
 
 @media (prefers-reduced-motion: reduce) {
-
-    #card-nueva-incidencia,
-    #card-nueva-incidencia .card-icon,
-    #card-nueva-incidencia .card-text h3,
-    #card-nueva-incidencia .card-arrow {
-        animation: none;
-    }
 
     .kpi-card,
     .dashboard-card,
@@ -590,67 +652,38 @@ body {
     }
 }
 
-/* =============================================
-   MÓDULOS DE ACCESO - GRID DE 3 COLUMNAS
-   ============================================= */
-.modulos-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 1.5rem;
-    margin-top: 1rem;
+#card-nueva-incidencia {
+    border: 1px solid #ff4d00;
+    background: linear-gradient(145deg, #2a0a0a, #1a0505);
+    cursor: pointer;
+    position: relative;
+    z-index: 10;
+    animation: parpadeo 1.5s ease-in-out infinite;
 }
 
-.modulo-columna {
-    background: rgba(0, 0, 0, 0.3);
-    border-radius: var(--border-radius-medium);
-    border: 1px solid var(--color-border-light);
-    transition: var(--transition-default);
-    box-shadow: 0 0 5px var(--color-accent-primary);
+#card-nueva-incidencia .card-icon {
+    color: #ff4d00 !important;
+    animation: brilloIcono 1.5s ease-in-out infinite;
+    box-shadow: none !important;
 }
 
-.modulo-columna:hover {
-    border-color: var(--color-accent-primary);
-    transform: translateY(-2px);
+#card-nueva-incidencia .card-text h3 {
+    color: #ff4d00 !important;
+    animation: brilloIcono 1.5s ease-in-out infinite;
 }
 
-.modulo-header {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 7px;
-    padding-bottom: 0.75rem;
-    margin-bottom: 0.75rem;
-    border-bottom: 1px solid var(--color-border-light);
+#card-nueva-incidencia .card-arrow {
+    color: #ff4d00 !important;
+    animation: brilloIcono 1.5s ease-in-out infinite;
 }
 
-.modulo-header i {
-    font-size: 1.2rem;
+#card-nueva-incidencia:hover {
+    animation: parpadeo 0.8s ease-in-out infinite, latido 0.8s ease-in-out infinite;
+    background: linear-gradient(145deg, #3a0f0f, #250a0a);
 }
 
-.modulo-header h3 {
-    font-family: var(--font-family-primary);
-    font-size: 0.85rem;
-    color: var(--color-text-primary);
-    text-transform: uppercase;
-    letter-spacing: 1px;
-}
-
-.modulo-tarjetas {
-    display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
-}
-
-.modulo-tarjetas .dashboard-card {
-    width: 100% !important;
-    max-width: 100% !important;
-    min-width: auto !important;
-}
-
-/* Responsive */
-@media (max-width: 900px) {
-    .modulos-grid {
-        grid-template-columns: 1fr;
-        gap: 1rem;
-    }
+#card-nueva-incidencia:hover .card-icon,
+#card-nueva-incidencia:hover .card-text h3,
+#card-nueva-incidencia:hover .card-arrow {
+    animation: brilloIcono 0.8s ease-in-out infinite;
 }

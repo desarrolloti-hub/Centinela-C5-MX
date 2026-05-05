@@ -2359,6 +2359,10 @@ class NavbarComplete {
                             <i class="fa-solid fa-tags"></i>
                             <span>Categorías</span>
                         </a>
+                        <a href="/usuarios/colaboradores/riesgoNivel/riesgoNivel.html" class="gestionar-dropdown-option" id="riesgoNivelBtn">
+                            <i class="fa-solid fa-circle-exclamation"></i>
+                            <span>Niveles de Riesgo</span>
+                        </a>
                         <a href="../sucursales/sucursales.html" class="gestionar-dropdown-option" id="sucursalesBtn">
                             <i class="fa-solid fa-store"></i>
                             <span>Sucursales</span>
@@ -2418,10 +2422,7 @@ class NavbarComplete {
                             <i class="fa-solid fa-plus-circle"></i>
                             <span>Crear Incidencia de Recuperación</span>
                         </a>
-                        <a href="../estadisticasIncidenciasRecuperacion/estadisticasIncidenciasRecuperacion.html" class="incidencias-dropdown-option" id="estadisticasIncidenciasRecuperacionBtn">
-                            <i class="fa-solid fa-chart-line"></i>
-                            <span>Estadísticas de Recuperación</span>
-                        </a>
+                      
                     </div>
                 </div>
 
@@ -2636,6 +2637,7 @@ class NavbarComplete {
                     areas: true,
                     categorias: true,
                     sucursales: true,
+                    riesgoNivel: true,
                     regiones: true,
                     incidencias: true,
                     usuarios: true,
@@ -2663,6 +2665,7 @@ class NavbarComplete {
                     areas: false,
                     categorias: false,
                     sucursales: false,
+                    riesgoNivel: false,
                     regiones: false,
                     incidencias: false,
                     usuarios: false,
@@ -2711,6 +2714,7 @@ class NavbarComplete {
                             areas: permiso.puedeAcceder("areas"),
                             categorias: permiso.puedeAcceder("categorias"),
                             sucursales: permiso.puedeAcceder("sucursales"),
+                            riesgoNivel: permiso.puedeAcceder("riesgoNivel"),
                             regiones: permiso.puedeAcceder("regiones"),
                             incidencias: tieneIncidencias,
                             usuarios: permiso.puedeAcceder("usuarios"),
@@ -2742,6 +2746,7 @@ class NavbarComplete {
                 areas: false,
                 categorias: false,
                 sucursales: false,
+                riesgoNivel: false,
                 regiones: false,
                 incidencias: false,
                 usuarios: false,
@@ -2766,6 +2771,7 @@ class NavbarComplete {
                 areas: false,
                 categorias: false,
                 sucursales: false,
+                riesgoNivel: false,
                 regiones: false,
                 incidencias: false,
                 usuarios: false,
@@ -2811,6 +2817,11 @@ class NavbarComplete {
                 elemento: document.getElementById("sucursalesBtn"),
             },
             {
+                id: "riesgoNivelBtn",
+                modulo: "riesgoNivel",
+                elemento: document.getElementById("riesgoNivelBtn"),
+            },
+            {
                 id: "regionesBtn",
                 modulo: "regiones",
                 elemento: document.getElementById("regionesBtn"),
@@ -2829,7 +2840,8 @@ class NavbarComplete {
                 id: "tareasBtn",
                 modulo: "tareas",
                 elemento: document.getElementById("tareasBtn"),
-            },
+            }
+
         ];
 
         gestionarItems.forEach((item) => {

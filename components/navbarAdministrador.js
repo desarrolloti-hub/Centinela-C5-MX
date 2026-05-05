@@ -517,48 +517,25 @@ class NavbarComplete {
     }
 
     async _manejarClicNotificacionEvento(notificacion, elementoHTML) {
-    try {
-        // OBTENER ESTADO REAL DEL EVENTO DESDE FIRESTORE
-        let estadoReal = notificacion.estadoEvento || (notificacion.detalles?.estadoEvento) || 'pendiente';
-        
         try {
-            const { Evento } = await import('/clases/evento.js');
-            const eventId = notificacion.eventId || notificacion.detalles?.eventId;
-            if (eventId) {
-                const eventoReal = await Evento.obtenerPorId(eventId);
-                if (eventoReal && eventoReal.estadoEvento) {
-                    estadoReal = eventoReal.estadoEvento;
+            // OBTENER ESTADO REAL DEL EVENTO DESDE FIRESTORE
+            let estadoReal = notificacion.estadoEvento || (notificacion.detalles?.estadoEvento) || 'pendiente';
+
+            try {
+                const { Evento } = await import('/clases/evento.js');
+                const eventId = notificacion.eventId || notificacion.detalles?.eventId;
+                if (eventId) {
+                    const eventoReal = await Evento.obtenerPorId(eventId);
+                    if (eventoReal && eventoReal.estadoEvento) {
+                        estadoReal = eventoReal.estadoEvento;
+                    }
                 }
-            }
-        } catch (e) {
-            console.warn('No se pudo obtener evento real:', e);
-        }
-
-        // SI EL EVENTO YA FUE ATENDIDO/IGNORADO → ELIMINAR NOTIFICACIÓN DIRECTAMENTE
-        if (estadoReal !== 'pendiente') {
-            await this.notificacionManager?.marcarComoLeida(
-                this.currentAdmin.id,
-                notificacion.id,
-                this.currentAdmin.organizacionCamelCase
-            );
-            const index = this.notificaciones.findIndex(n => n.id === notificacion.id);
-            if (index !== -1) this.notificaciones.splice(index, 1);
-            this.notificacionesNoLeidas = this.notificaciones.filter(n => !n.leida).length;
-            this._actualizarBadgeNotificaciones();
-            this._renderizarNotificaciones();
-            return;
-        }
-
-        // SI EL EVENTO ESTÁ PENDIENTE → MOSTRAR MODAL DE ATENCIÓN
-        if (this.atencionEventosManager) {
-            if (elementoHTML) {
-                elementoHTML.style.opacity = "0.7";
-                elementoHTML.style.pointerEvents = "none";
+            } catch (e) {
+                console.warn('No se pudo obtener evento real:', e);
             }
 
-            const resultado = await this.atencionEventosManager.procesarNotificacionEvento(notificacion);
-
-            if (resultado) {
+            // SI EL EVENTO YA FUE ATENDIDO/IGNORADO → ELIMINAR NOTIFICACIÓN DIRECTAMENTE
+            if (estadoReal !== 'pendiente') {
                 await this.notificacionManager?.marcarComoLeida(
                     this.currentAdmin.id,
                     notificacion.id,
@@ -569,34 +546,57 @@ class NavbarComplete {
                 this.notificacionesNoLeidas = this.notificaciones.filter(n => !n.leida).length;
                 this._actualizarBadgeNotificaciones();
                 this._renderizarNotificaciones();
+                return;
             }
+
+            // SI EL EVENTO ESTÁ PENDIENTE → MOSTRAR MODAL DE ATENCIÓN
+            if (this.atencionEventosManager) {
+                if (elementoHTML) {
+                    elementoHTML.style.opacity = "0.7";
+                    elementoHTML.style.pointerEvents = "none";
+                }
+
+                const resultado = await this.atencionEventosManager.procesarNotificacionEvento(notificacion);
+
+                if (resultado) {
+                    await this.notificacionManager?.marcarComoLeida(
+                        this.currentAdmin.id,
+                        notificacion.id,
+                        this.currentAdmin.organizacionCamelCase
+                    );
+                    const index = this.notificaciones.findIndex(n => n.id === notificacion.id);
+                    if (index !== -1) this.notificaciones.splice(index, 1);
+                    this.notificacionesNoLeidas = this.notificaciones.filter(n => !n.leida).length;
+                    this._actualizarBadgeNotificaciones();
+                    this._renderizarNotificaciones();
+                }
+
+                if (elementoHTML) {
+                    elementoHTML.style.opacity = "1";
+                    elementoHTML.style.pointerEvents = "auto";
+                }
+            }
+        } catch (error) {
+            console.error("Error:", error);
+            try {
+                await this.notificacionManager?.marcarComoLeida(
+                    this.currentAdmin.id,
+                    notificacion?.id,
+                    this.currentAdmin.organizacionCamelCase
+                );
+                const index = this.notificaciones.findIndex(n => n.id === notificacion?.id);
+                if (index !== -1) this.notificaciones.splice(index, 1);
+                this.notificacionesNoLeidas = this.notificaciones.filter(n => !n.leida).length;
+                this._actualizarBadgeNotificaciones();
+                this._renderizarNotificaciones();
+            } catch (e) { }
 
             if (elementoHTML) {
                 elementoHTML.style.opacity = "1";
                 elementoHTML.style.pointerEvents = "auto";
             }
         }
-    } catch (error) {
-        console.error("Error:", error);
-        try {
-            await this.notificacionManager?.marcarComoLeida(
-                this.currentAdmin.id,
-                notificacion?.id,
-                this.currentAdmin.organizacionCamelCase
-            );
-            const index = this.notificaciones.findIndex(n => n.id === notificacion?.id);
-            if (index !== -1) this.notificaciones.splice(index, 1);
-            this.notificacionesNoLeidas = this.notificaciones.filter(n => !n.leida).length;
-            this._actualizarBadgeNotificaciones();
-            this._renderizarNotificaciones();
-        } catch (e) {}
-        
-        if (elementoHTML) {
-            elementoHTML.style.opacity = "1";
-            elementoHTML.style.pointerEvents = "auto";
-        }
     }
-}
 
     async _mostrarInfoEventoSoloLectura(notificacion) {
         try {
@@ -2316,7 +2316,11 @@ class NavbarComplete {
                         </a>
                         <a href="/usuarios/administrador/categorias/categorias.html" class="administracion-dropdown-option">
                             <i class="fa-solid fa-tags"></i>
-                            <span>Categorías</span>
+                            <span>Catálogo de Incidencias</span>
+                        </a>
+                        <a href="/usuarios/administrador/riesgoNivel/riesgoNivel.html" class="administracion-dropdown-option">
+                            <i class="fa-solid fa-circle-exclamation"></i>
+                            <span>Niveles de Riesgo</span>
                         </a>
                         <a href="/usuarios/administrador/sucursales/sucursales.html" class="administracion-dropdown-option">
                             <i class="fa-solid fa-store"></i>
@@ -2361,23 +2365,24 @@ class NavbarComplete {
                             <i class="fa-solid fa-share-alt"></i>
                             <span>Incidencias Canalizadas</span>
                         </a>
-                        <a href="/usuarios/administrador/estadisticas/estadisticas.html" class="administracion-dropdown-option incidencia-option" data-permiso-id="listaIncidencias">
-                            <i class="fa-solid fa-chart-bar"></i>
-                            <span>Estadisticas Incidencias</span>
-                        </a>
+                        
                         <a href="/usuarios/administrador/mercanciaPerdida/mercanciaPerdida.html" class="administracion-dropdown-option incidencia-option" data-permiso-id="listaIncidencias">
                             <i class="fa-solid fa-list"></i>
-                            <span>Lista de Extravios</span>
+                            <span>Lista de Recuperaciones</span>
                         </a>
                         <a href="/usuarios/administrador/crearIncidenciasRecuperacion/crearIncidenciasRecuperacion.html" class="administracion-dropdown-option incidencia-option" data-permiso-id="incidenciasCanalizadas">
                             <i class="fa-solid fa-plus-circle"></i>
-                            <span>Crear Extravio</span>
+                            <span>Crear Recuperación</span>
+                        </a>
+                        <a href="/usuarios/administrador/estadisticas/estadisticas.html" class="administracion-dropdown-option incidencia-option" data-permiso-id="listaIncidencias">
+                            <i class="fa-solid fa-chart-bar"></i>
+                            <span>Estadisticas</span>
                         </a>
                     </div>
                 </div>
 
-                <!-- SECCIÓN MONITOREO -->
-                <div class="nav-section" id="monitoreoSection">
+                 <!-- SECCIÓN MONITOREO -->
+              <div class="nav-section" id="monitoreoSection">
                     <button class="administracion-dropdown-btn" id="monitoreoDropdownBtn">
                         <span><i class="fa-solid fa-map-marker-alt"></i> Monitoreo</span>
                         <i class="fa-solid fa-chevron-down"></i>
@@ -2385,8 +2390,16 @@ class NavbarComplete {
 
                     <div class="administracion-dropdown-options" id="monitoreoDropdownOptions">
                         <a href="/usuarios/administrador/mapaAlertas/mapaAlertas.html" class="administracion-dropdown-option">
-                            <i class="fa-solid fa-map-marker-alt"></i>
+                              <i class="fa-solid fa-map-location-dot"></i>
                             <span>Mapa de Alertas</span>
+                        </a>
+                        <a href="/usuarios/administrador/monitoreo/monitoreo.html" class="administracion-dropdown-option">
+                            <i class="fa-solid fa-tachometer-alt"></i>
+                            <span>Monitoreo de Eventos</span>
+                        </a>                                                
+                        <a href="/usuarios/administrador/loginMonitoreo/loginMonitoreo.html" class="administracion-dropdown-option">
+                            <i class="fas fa-server"></i>
+                            <span>Gestión de Paneles</span>
                         </a>
                     </div>
                 </div>
@@ -2411,10 +2424,6 @@ class NavbarComplete {
                     </button>
 
                     <div class="admin-dropdown-options" id="adminDropdownOptions">
-                        <a href="/usuarios/administrador/administradorTemas/administradorTemas.html" class="admin-dropdown-option">
-                            <i class="fa-solid fa-palette"></i>
-                            <span>Personalización</span>
-                        </a>
                         <a href="#" class="admin-dropdown-option logout-option" id="logoutOption">
                             <i class="fa-solid fa-right-from-bracket"></i>
                             <span>Cerrar Sesión</span>
@@ -2752,7 +2761,7 @@ class NavbarComplete {
     }
 
     redirectToLogin() {
-        const loginUrl = `/usuarios/visitantes/inicioSesion/inicioSesion.html`;
+        const loginUrl = `/index.html`;
         window.location.href = loginUrl;
         setTimeout(() => window.location.replace(loginUrl), 1000);
     }

@@ -22,16 +22,6 @@ body {
     overflow-x: hidden;
 }
 
-#particle-canvas {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    z-index: 0;
-    pointer-events: none;
-}
-
 .admin-container {
     position: relative;
     z-index: 1;
@@ -188,9 +178,9 @@ body {
 }
 
 .btn-aplicar {
-    background: linear-gradient(145deg, var(--color-accent-primary), #00a0cc);
-    border: none;
-    color: white;
+    background: var(--color-bg-tertiary);
+    border: 1px solid var(--color-border-light);
+    color: var(--color-text-secondary);
 }
 
 .btn-aplicar:hover {
@@ -442,34 +432,6 @@ body {
     justify-content: center;
     align-items: center;
     min-height: 350px;
-}
-
-/* =============================================
-   GRÁFICAS - DIMENSIONES FIJAS
-   ============================================= */
-.grafica-wrapper {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    width: 100%;
-}
-
-#graficoTiposArchivo {
-    width: 400px !important;
-    height: 350px !important;
-    display: block;
-}
-
-#graficoAlmacenamientoPorEmpresa {
-    width: 500px !important;
-    height: 400px !important;
-    display: block;
-}
-
-#graficoDocumentosPorEmpresa {
-    width: 600px !important;
-    height: 350px !important;
-    display: block;
 }
 
 /* =============================================
@@ -814,11 +776,10 @@ body {
 ::-webkit-scrollbar-thumb:hover {
     background: var(--color-text-primary);
 }
-/* =============================================
-   ESTILOS PARA GRÁFICAS (consistente con estadisticas)
-   ============================================= */
 
-/* Contenedores de gráficas */
+/* =============================================
+   GRÁFICAS - DIMENSIONES RESPONSIVE UNIFICADAS
+   ============================================= */
 .grafica-wrapper {
     display: flex;
     justify-content: center;
@@ -827,75 +788,47 @@ body {
     min-height: 300px;
 }
 
-/* Dimensiones fijas para gráficas */
 #graficoTiposArchivo,
 #graficoAlmacenamientoPorEmpresa,
 #graficoDocumentosPorEmpresa {
     width: 100% !important;
     max-width: 500px;
     height: auto !important;
-    max-height: 300px;
+    max-height: 350px;
     display: block;
     margin: 0 auto;
 }
 
-/* Badges para valores en tablas */
-.badge-value {
-    display: inline-block;
-    padding: 4px 8px;
-    border-radius: 12px;
-    font-size: 0.7rem;
-    font-weight: 500;
-    margin-right: 6px;
-}
-
-.badge-info {
-    background: rgba(59, 130, 246, 0.2);
-    color: #3b82f6;
-}
-
-.badge-warning {
-    background: rgba(245, 158, 11, 0.2);
-    color: #f59e0b;
-}
-
-.badge-success {
-    background: rgba(16, 185, 129, 0.2);
-    color: #10b981;
-}
-
-.badge-secondary {
-    background: rgba(107, 114, 128, 0.2);
-    color: #9ca3af;
-}
-
-.badge-primary {
-    background: rgba(0, 207, 255, 0.2);
-    color: #00cfff;
-}
-
-.porcentaje-badge {
-    font-size: 0.6rem;
-    color: #6c757d;
-    margin-left: 4px;
-}
-
 /* Responsive para gráficas */
-@media (max-width: 768px) {
+@media (max-width: 1200px) {
+    #graficoTiposArchivo,
+    #graficoAlmacenamientoPorEmpresa,
+    #graficoDocumentosPorEmpresa {
+        max-width: 450px;
+        max-height: 320px;
+    }
+}
+
+@media (max-width: 1024px) {
+    .grafica-wrapper {
+        min-height: 250px;
+    }
     #graficoTiposArchivo,
     #graficoAlmacenamientoPorEmpresa,
     #graficoDocumentosPorEmpresa {
         max-width: 100%;
-        height: auto !important;
-    }
-    
-    .grafica-wrapper {
-        min-height: 250px;
+        max-height: 280px;
     }
 }
 
 @media (max-width: 480px) {
     .grafica-wrapper {
         min-height: 220px;
+    }
+    #graficoTiposArchivo,
+    #graficoAlmacenamientoPorEmpresa,
+    #graficoDocumentosPorEmpresa {
+        max-width: 100%;
+        max-height: 220px;
     }
 }
