@@ -1,4 +1,4 @@
-// operaciones.js - VERSIÓN COMPLETA SIN "GLOBAL"
+// operaciones.js - VERSIÓN COMPLETA CON FILTRO POR SNAPSHOTS
 
 import OperacionesEstadisticas from '/clases/operacion.js';
 
@@ -70,113 +70,13 @@ class OperacionesController {
         this.actualizarElemento('metricPDFPorcentaje', totalArchivos > 0 ? `${((totales.storage.porTipo.pdf.cantidad / totalArchivos) * 100).toFixed(1)}%` : '0%');
         this.actualizarElemento('metricImagenes', totales.storage.porTipo.imagenes.cantidad);
         this.actualizarElemento('metricImagenesPorcentaje', totalArchivos > 0 ? `${((totales.storage.porTipo.imagenes.cantidad / totalArchivos) * 100).toFixed(1)}%` : '0%');
-        this.actualizarElemento('metricDocumentosStorage', totales.storage.porTipo.documentos.cantidad);
-        this.actualizarElemento('metricDocumentosPorcentaje', totalArchivos > 0 ? `${((totales.storage.porTipo.documentos.cantidad / totalArchivos) * 100).toFixed(1)}%` : '0%');
-        this.actualizarElemento('metricMultimedia', totales.storage.porTipo.multimedia.cantidad);
-        this.actualizarElemento('metricMultimediaPorcentaje', totalArchivos > 0 ? `${((totales.storage.porTipo.multimedia.cantidad / totalArchivos) * 100).toFixed(1)}%` : '0%');
 
-        const labels = ['PDF', 'Imágenes', 'Documentos', 'Multimedia', 'Otros'];
+        const labels = ['PDF', 'Imágenes'];
         const data = [
             totales.storage.porTipo.pdf.cantidad,
-            totales.storage.porTipo.imagenes.cantidad,
-            totales.storage.porTipo.documentos.cantidad,
-            totales.storage.porTipo.multimedia.cantidad,
-            totales.storage.porTipo.otros.cantidad
+            totales.storage.porTipo.imagenes.cantidad
         ];
         this.crearGraficaPastel('graficoTiposArchivo', labels, data);
-
-        const modoVisualizacion = document.getElementById('modoVisualizacion');
-        if (modoVisualizacion) {
-            modoVisualizacion.innerHTML = `<i class="fas fa-chart-line"></i> <span>Todas las empresas</span>`;
-        }
-    }
-
-    mostrarVistaTodasEmpresasConFiltro(empresas) {
-        if (!empresas || empresas.length === 0) {
-            this.mostrarSinDatos();
-            return;
-        }
-
-        this.mostrarContenido();
-
-        // Recalcular totales con las empresas filtradas
-        const totales = {
-            firestore: { documentos: 0, colecciones: 0 },
-            storage: {
-                totalArchivos: 0,
-                totalSizeMB: 0,
-                porTipo: {
-                    pdf: { cantidad: 0, tamañoMB: 0 },
-                    imagenes: { cantidad: 0, tamañoMB: 0 },
-                    documentos: { cantidad: 0, tamañoMB: 0 },
-                    multimedia: { cantidad: 0, tamañoMB: 0 },
-                    otros: { cantidad: 0, tamañoMB: 0 }
-                }
-            },
-            auth: { totalUsuarios: 0, administradores: 0, colaboradores: 0 }
-        };
-
-        empresas.forEach(emp => {
-            const resumen = emp.getResumen();
-            totales.firestore.documentos += emp.conteos.firestore.documentos;
-            totales.firestore.colecciones += emp.conteos.firestore.colecciones;
-            totales.storage.totalArchivos += resumen.archivosTotales;
-            totales.storage.totalSizeMB += resumen.tamanioTotalMB;
-            totales.auth.totalUsuarios += resumen.totalUsuarios;
-            totales.auth.administradores += resumen.administradores;
-            totales.auth.colaboradores += resumen.colaboradores;
-
-            totales.storage.porTipo.pdf.cantidad += resumen.pdf.cantidad;
-            totales.storage.porTipo.pdf.tamañoMB += resumen.pdf.tamanioMB;
-            totales.storage.porTipo.imagenes.cantidad += resumen.imagenes.cantidad;
-            totales.storage.porTipo.imagenes.tamañoMB += resumen.imagenes.tamanioMB;
-            totales.storage.porTipo.documentos.cantidad += resumen.documentos.cantidad;
-            totales.storage.porTipo.documentos.tamañoMB += resumen.documentos.tamanioMB;
-            totales.storage.porTipo.multimedia.cantidad += resumen.multimedia.cantidad;
-            totales.storage.porTipo.multimedia.tamañoMB += resumen.multimedia.tamanioMB;
-            totales.storage.porTipo.otros.cantidad += resumen.otros.cantidad;
-            totales.storage.porTipo.otros.tamañoMB += resumen.otros.tamanioMB;
-        });
-
-        const totalArchivos = totales.storage.totalArchivos;
-
-        // Actualizar métricas
-        this.actualizarElemento('metricDocumentos', totales.firestore.documentos);
-        this.actualizarElemento('metricAdministradores', totales.auth.administradores);
-        this.actualizarElemento('metricColaboradores', totales.auth.colaboradores);
-        this.actualizarElemento('metricTotalUsuarios', totales.auth.totalUsuarios);
-        this.actualizarElemento('metricArchivosTotales', totales.storage.totalArchivos);
-
-        const tamanioElement = document.getElementById('metricTamanioTotal');
-        if (tamanioElement) {
-            tamanioElement.textContent = `${totales.storage.totalSizeMB.toFixed(2)} MB`;
-        }
-
-        this.actualizarElemento('metricPDF', totales.storage.porTipo.pdf.cantidad);
-        this.actualizarElemento('metricPDFPorcentaje', totalArchivos > 0 ? `${((totales.storage.porTipo.pdf.cantidad / totalArchivos) * 100).toFixed(1)}%` : '0%');
-        this.actualizarElemento('metricImagenes', totales.storage.porTipo.imagenes.cantidad);
-        this.actualizarElemento('metricImagenesPorcentaje', totalArchivos > 0 ? `${((totales.storage.porTipo.imagenes.cantidad / totalArchivos) * 100).toFixed(1)}%` : '0%');
-        this.actualizarElemento('metricDocumentosStorage', totales.storage.porTipo.documentos.cantidad);
-        this.actualizarElemento('metricDocumentosPorcentaje', totalArchivos > 0 ? `${((totales.storage.porTipo.documentos.cantidad / totalArchivos) * 100).toFixed(1)}%` : '0%');
-        this.actualizarElemento('metricMultimedia', totales.storage.porTipo.multimedia.cantidad);
-        this.actualizarElemento('metricMultimediaPorcentaje', totalArchivos > 0 ? `${((totales.storage.porTipo.multimedia.cantidad / totalArchivos) * 100).toFixed(1)}%` : '0%');
-
-        // Gráfica de tipos de archivo con totales filtrados
-        const labels = ['PDF', 'Imágenes', 'Documentos', 'Multimedia', 'Otros'];
-        const data = [
-            totales.storage.porTipo.pdf.cantidad,
-            totales.storage.porTipo.imagenes.cantidad,
-            totales.storage.porTipo.documentos.cantidad,
-            totales.storage.porTipo.multimedia.cantidad,
-            totales.storage.porTipo.otros.cantidad
-        ];
-        this.crearGraficaPastel('graficoTiposArchivo', labels, data);
-
-        // Actualizar tabla con las empresas filtradas
-        this.actualizarTabla(empresas);
-
-        // También actualizar las gráficas comparativas (pastel de almacenamiento y barras de documentos)
-        this.actualizarGraficasComparativas(empresas);
 
         const modoVisualizacion = document.getElementById('modoVisualizacion');
         if (modoVisualizacion) {
@@ -286,7 +186,6 @@ class OperacionesController {
     bindEvents() {
         document.getElementById('btnAplicarFiltros')?.addEventListener('click', () => this.aplicarFiltros());
         document.getElementById('btnLimpiarFiltros')?.addEventListener('click', () => this.limpiarFiltros());
-        document.getElementById('btnActualizar')?.addEventListener('click', () => this.actualizarDatos());
         document.getElementById('btnExportarExcel')?.addEventListener('click', () => this.exportarExcel());
 
         const tipoFiltro = document.getElementById('tipoFiltro');
@@ -333,68 +232,100 @@ class OperacionesController {
         this.filtroActual.empresa = empresaId;
         this.filtroActual.periodo = tipoFiltro?.value || '';
 
-        // 1. Calcular fechas reales según el período
         const ahora = new Date();
         let fechaInicio = null;
         let fechaFin = null;
 
         switch (this.filtroActual.periodo) {
-            case 'semanal':
+            case '7d':
                 fechaInicio = new Date(ahora.getTime() - 7 * 24 * 60 * 60 * 1000);
                 fechaFin = ahora;
                 break;
-            case 'quincenal':
-                fechaInicio = new Date(ahora.getTime() - 15 * 24 * 60 * 60 * 1000);
+            case '14d':
+                fechaInicio = new Date(ahora.getTime() - 14 * 24 * 60 * 60 * 1000);
                 fechaFin = ahora;
                 break;
-            case 'mensual':
-                fechaInicio = new Date(ahora.getTime() - 30 * 24 * 60 * 60 * 1000);
+            case '21d':
+                fechaInicio = new Date(ahora.getTime() - 21 * 24 * 60 * 60 * 1000);
+                fechaFin = ahora;
+                break;
+            case '28d':
+                fechaInicio = new Date(ahora.getTime() - 28 * 24 * 60 * 60 * 1000);
                 fechaFin = ahora;
                 break;
             case 'personalizado':
                 const fechaInicioInput = document.getElementById('fechaInicio')?.value;
                 const fechaFinInput = document.getElementById('fechaFin')?.value;
-                if (fechaInicioInput) {
-                    fechaInicio = new Date(fechaInicioInput);
-                    // Inicio del día (ya es 00:00:00)
-                }
+                if (fechaInicioInput) fechaInicio = new Date(fechaInicioInput);
                 if (fechaFinInput) {
                     fechaFin = new Date(fechaFinInput);
-                    // ⚠️ Ajustar al FINAL del día para incluir todo el día
                     fechaFin.setHours(23, 59, 59, 999);
                 }
                 break;
             default:
-                // Sin período → sin filtro
                 break;
         }
 
         this.filtroActual.fechaInicio = fechaInicio;
         this.filtroActual.fechaFin = fechaFin;
 
-        // 2. Obtener todas las empresas disponibles
-        const todasLasEmpresas = this.datosTodasEmpresas?.porEmpresa || [];
-
-        // 3. Filtrar por fecha si hay rango definido
-        let empresasFiltradas = todasLasEmpresas;
-        if (fechaInicio && fechaFin) {
-            empresasFiltradas = todasLasEmpresas.filter(emp => {
-                const f = emp.fechaActualizacion;
-                if (!f || !(f instanceof Date) || isNaN(f)) return false;
-                return f >= fechaInicio && f <= fechaFin;
-            });
+        // Si no hay período, mostrar estado actual (todas las empresas)
+        if (!fechaInicio || !fechaFin) {
+            const todas = this.datosTodasEmpresas?.porEmpresa || [];
+            if (empresaId === 'todas') {
+                this.empresaSeleccionada = 'todas';
+                this.mostrarVistaTodasEmpresasConFiltro(todas);
+            } else {
+                this.empresaSeleccionada = empresaId;
+                const empresaData = todas.find(e => e.id === empresaId);
+                if (empresaData) {
+                    await this.mostrarDatosEmpresa(empresaData);
+                } else {
+                    this.mostrarSinDatos();
+                    this.mostrarError('Organización no encontrada');
+                }
+            }
+            return;
         }
 
-        // 4. Seleccionar empresa
+        // --- FILTRO POR PERÍODO USANDO SNAPSHOTS ---
         if (empresaId === 'todas') {
+            const totalesDelta = {
+                firestore: { documentos: 0 },
+                storage: { totalArchivos: 0, totalSizeMB: 0, porTipo: { pdf: { cantidad: 0 }, imagenes: { cantidad: 0 } } },
+                auth: { totalUsuarios: 0, administradores: 0, colaboradores: 0 }
+            };
+            const orgsConDatos = [];
+
+            for (const emp of (this.datosTodasEmpresas?.porEmpresa || [])) {
+                const snapshots = await OperacionesEstadisticas.obtenerSnapshots(emp.id);
+                const delta = this._calcularDelta(snapshots, fechaInicio, fechaFin);
+                if (delta) {
+                    orgsConDatos.push({ ...delta, id: emp.id, nombre: emp.nombreEmpresa || emp.organizacion || emp.id });
+                    totalesDelta.firestore.documentos += delta.firestore.documentos;
+                    totalesDelta.storage.totalArchivos += delta.storage.totalArchivos;
+                    totalesDelta.storage.totalSizeMB += delta.storage.totalSizeMB;
+                    totalesDelta.storage.porTipo.pdf.cantidad += delta.storage.porTipo.pdf.cantidad;
+                    totalesDelta.storage.porTipo.imagenes.cantidad += delta.storage.porTipo.imagenes.cantidad;
+                    totalesDelta.auth.totalUsuarios += delta.auth.totalUsuarios;
+                    totalesDelta.auth.administradores += delta.auth.administradores;
+                    totalesDelta.auth.colaboradores += delta.auth.colaboradores;
+                }
+            }
+
             this.empresaSeleccionada = 'todas';
-            // Mostrar con las empresas filtradas (recalcular totales)
-            this.mostrarVistaTodasEmpresasConFiltro(empresasFiltradas);
+            if (orgsConDatos.length > 0) {
+                this._mostrarConsolidadoDelta(totalesDelta, orgsConDatos);
+            } else {
+                this.mostrarSinDatos();
+                this.mostrarError('No hay datos en el período seleccionado');
+            }
         } else {
-            this.empresaSeleccionada = empresaId;
-            const empresaData = empresasFiltradas.find(e => e.id === empresaId);
-            if (empresaData) {
-                await this.mostrarDatosEmpresa(empresaData);
+            const snapshots = await OperacionesEstadisticas.obtenerSnapshots(empresaId);
+            const delta = this._calcularDelta(snapshots, fechaInicio, fechaFin);
+            if (delta) {
+                this.empresaSeleccionada = empresaId;
+                this._mostrarDeltaEmpresa(delta, empresaId);
             } else {
                 this.mostrarSinDatos();
                 this.mostrarError('La organización no tiene datos en el período seleccionado.');
@@ -435,22 +366,15 @@ class OperacionesController {
         this.actualizarElemento('metricPDFPorcentaje', `${resumen.pdf.porcentaje}%`);
         this.actualizarElemento('metricImagenes', resumen.imagenes.cantidad);
         this.actualizarElemento('metricImagenesPorcentaje', `${resumen.imagenes.porcentaje}%`);
-        this.actualizarElemento('metricDocumentosStorage', resumen.documentos.cantidad);
-        this.actualizarElemento('metricDocumentosPorcentaje', `${resumen.documentos.porcentaje}%`);
-        this.actualizarElemento('metricMultimedia', resumen.multimedia.cantidad);
-        this.actualizarElemento('metricMultimediaPorcentaje', `${resumen.multimedia.porcentaje}%`);
     }
 
     actualizarGraficaTiposArchivo(empresaData) {
         const resumen = empresaData.getResumen();
 
-        const labels = ['PDF', 'Imágenes', 'Documentos', 'Multimedia', 'Otros'];
+        const labels = ['PDF', 'Imágenes'];
         const data = [
             resumen.pdf.cantidad,
-            resumen.imagenes.cantidad,
-            resumen.documentos.cantidad,
-            resumen.multimedia.cantidad,
-            resumen.otros.cantidad
+            resumen.imagenes.cantidad
         ];
 
         this.crearGraficaPastel('graficoTiposArchivo', labels, data);
@@ -605,18 +529,15 @@ class OperacionesController {
         const rangoGrupo = document.getElementById('rangoFechasGrupo');
         if (rangoGrupo) rangoGrupo.style.display = 'none';
 
-        this.filtroActual = {
-            empresa: 'todas',
-            periodo: '',
-            fechaInicio: null,
-            fechaFin: null
-        };
-
+        this.filtroActual = { empresa: 'todas', periodo: '', fechaInicio: null, fechaFin: null };
         this.empresaSeleccionada = 'todas';
 
-        // Volver a mostrar todas las empresas (sin filtro)
         const todas = this.datosTodasEmpresas?.porEmpresa || [];
-        this.mostrarVistaTodasEmpresasConFiltro(todas);
+        if (todas.length > 0) {
+            this.mostrarVistaTodasEmpresasConFiltro(todas);
+        } else {
+            this.mostrarVistaTodasEmpresas();
+        }
 
         const modoVisualizacion = document.getElementById('modoVisualizacion');
         if (modoVisualizacion) {
@@ -648,25 +569,31 @@ class OperacionesController {
             return;
         }
 
-        const totalDocs = empresas.reduce((sum, e) => sum + e.conteos.firestore.documentos, 0);
-        const totalArchivos = empresas.reduce((sum, e) => sum + e.getResumen().archivosTotales, 0);
+        const totalDocs = empresas.reduce((sum, e) => sum + (e.conteos?.firestore?.documentos || 0), 0);
+        const totalArchivos = empresas.reduce((sum, e) => sum + (e.conteos?.storage?.totalArchivos || 0), 0);
 
         tbody.innerHTML = empresas.map(emp => {
-            const resumen = emp.getResumen();
-            const porcentajeDocs = totalDocs > 0 ? Math.round((resumen.totalDocumentos / totalDocs) * 100) : 0;
-            const porcentajeArchivos = totalArchivos > 0 ? Math.round((resumen.archivosTotales / totalArchivos) * 100) : 0;
+            const documentos = emp.conteos?.firestore?.documentos || 0;
+            const archivos = emp.conteos?.storage?.totalArchivos || 0;
+            const tamanio = emp.conteos?.storage?.totalSizeMB || 0;
+            const admins = emp.conteos?.auth?.administradores || 0;
+            const colabs = emp.conteos?.auth?.colaboradores || 0;
+            const totalUsu = (emp.conteos?.auth?.totalUsuarios) || (admins + colabs) || 0;
+            const nombre = emp.nombre || emp.id || '';
+            const porcentajeDocs = totalDocs > 0 ? Math.round((documentos / totalDocs) * 100) : 0;
+            const porcentajeArchivos = totalArchivos > 0 ? Math.round((archivos / totalArchivos) * 100) : 0;
 
             return `
-            <tr>
-                <td><strong><i class="fas fa-building" style="color: #3b82f6; margin-right: 8px;"></i>${this.escapeHTML(emp.nombreEmpresa || emp.organizacion || emp.id)}</strong></td>
-                <td><span class="badge-value badge-info">${resumen.totalDocumentos.toLocaleString()}</span><span class="porcentaje-badge">${porcentajeDocs}%</span></td>
-                <td><span class="badge-value badge-warning">${resumen.archivosTotales.toLocaleString()}</span><span class="porcentaje-badge">${porcentajeArchivos}%</span></td>
-                <td><span class="badge-value badge-success">${resumen.tamanioTotalMB} MB</span></td>
-                <td><span class="badge-value badge-secondary">${emp.conteos.auth.administradores.toLocaleString()}</span></td>
-                <td><span class="badge-value badge-secondary">${emp.conteos.auth.colaboradores.toLocaleString()}</span></td>
-                <td><span class="badge-value badge-primary">${emp.conteos.auth.totalUsuarios.toLocaleString()}</span></td>
-            </tr>
-        `;
+                <tr>
+                    <td><strong><i class="fas fa-building" style="color: #3b82f6; margin-right: 8px;"></i>${this.escapeHTML(nombre)}</strong></td>
+                    <td><span class="badge-value badge-info">${documentos.toLocaleString()}</span><span class="porcentaje-badge">${porcentajeDocs}%</span></td>
+                    <td><span class="badge-value badge-warning">${archivos.toLocaleString()}</span><span class="porcentaje-badge">${porcentajeArchivos}%</span></td>
+                    <td><span class="badge-value badge-success">${tamanio.toFixed(2)} MB</span></td>
+                    <td><span class="badge-value badge-secondary">${admins.toLocaleString()}</span></td>
+                    <td><span class="badge-value badge-secondary">${colabs.toLocaleString()}</span></td>
+                    <td><span class="badge-value badge-primary">${totalUsu.toLocaleString()}</span></td>
+                </tr>
+            `;
         }).join('');
     }
 
@@ -771,8 +698,7 @@ class OperacionesController {
 
         const metricas = ['metricDocumentos', 'metricAdministradores', 'metricColaboradores', 'metricTotalUsuarios',
             'metricArchivosTotales', 'metricTamanioTotal', 'metricPDF', 'metricPDFPorcentaje',
-            'metricImagenes', 'metricImagenesPorcentaje', 'metricDocumentosStorage',
-            'metricDocumentosPorcentaje', 'metricMultimedia', 'metricMultimediaPorcentaje'];
+            'metricImagenes', 'metricImagenesPorcentaje'];
         metricas.forEach(id => {
             const el = document.getElementById(id);
             if (el) el.textContent = id.includes('Porcentaje') ? '0%' : '0';
@@ -813,6 +739,162 @@ class OperacionesController {
             background: '#1e1e2e',
             color: '#ffffff'
         });
+    }
+
+    // ==================== MÉTODOS PARA FILTRO POR SNAPSHOT ====================
+
+    _calcularDelta(snapshots, fechaInicio, fechaFin) {
+        if (!snapshots || snapshots.length === 0) return null;
+
+        const antesOEnPeriodo = snapshots.filter(s => s.fechaActualizacion <= fechaFin);
+        if (antesOEnPeriodo.length === 0) return null;
+
+        const snapshotFin = antesOEnPeriodo[antesOEnPeriodo.length - 1];
+
+        let snapshotInicio = null;
+        for (let i = antesOEnPeriodo.length - 1; i >= 0; i--) {
+            if (antesOEnPeriodo[i].fechaActualizacion <= fechaInicio) {
+                snapshotInicio = antesOEnPeriodo[i];
+                break;
+            }
+        }
+        if (!snapshotInicio) snapshotInicio = antesOEnPeriodo[0];
+        if (!snapshotInicio || snapshotInicio === snapshotFin) return null;
+
+        const diff = {
+            firestore: {
+                documentos: snapshotFin.conteos.firestore.documentos - snapshotInicio.conteos.firestore.documentos
+            },
+            storage: {
+                totalArchivos: snapshotFin.conteos.storage.totalArchivos - snapshotInicio.conteos.storage.totalArchivos,
+                totalSizeMB: +(snapshotFin.conteos.storage.totalSizeMB - snapshotInicio.conteos.storage.totalSizeMB).toFixed(2),
+                porTipo: {
+                    pdf: {
+                        cantidad: snapshotFin.conteos.storage.porTipo.pdf.cantidad - snapshotInicio.conteos.storage.porTipo.pdf.cantidad
+                    },
+                    imagenes: {
+                        cantidad: snapshotFin.conteos.storage.porTipo.imagenes.cantidad - snapshotInicio.conteos.storage.porTipo.imagenes.cantidad
+                    }
+                }
+            },
+            auth: {
+                totalUsuarios: snapshotFin.conteos.auth.totalUsuarios - snapshotInicio.conteos.auth.totalUsuarios,
+                administradores: snapshotFin.conteos.auth.administradores - snapshotInicio.conteos.auth.administradores,
+                colaboradores: snapshotFin.conteos.auth.colaboradores - snapshotInicio.conteos.auth.colaboradores
+            }
+        };
+        return diff;
+    }
+
+    _mostrarConsolidadoDelta(totalesDelta, orgsConDatos) {
+        this.mostrarContenido();
+
+        this.actualizarElemento('metricDocumentos', totalesDelta.firestore.documentos);
+        this.actualizarElemento('metricAdministradores', totalesDelta.auth.administradores);
+        this.actualizarElemento('metricColaboradores', totalesDelta.auth.colaboradores);
+        this.actualizarElemento('metricTotalUsuarios', totalesDelta.auth.totalUsuarios);
+        this.actualizarElemento('metricArchivosTotales', totalesDelta.storage.totalArchivos);
+        const tamEl = document.getElementById('metricTamanioTotal');
+        if (tamEl) tamEl.textContent = `${totalesDelta.storage.totalSizeMB.toFixed(2)} MB`;
+
+        const totalArchivos = totalesDelta.storage.totalArchivos;
+        this.actualizarElemento('metricPDF', totalesDelta.storage.porTipo.pdf.cantidad);
+        this.actualizarElemento('metricPDFPorcentaje', totalArchivos > 0 ? `${((totalesDelta.storage.porTipo.pdf.cantidad / totalArchivos) * 100).toFixed(1)}%` : '0%');
+        this.actualizarElemento('metricImagenes', totalesDelta.storage.porTipo.imagenes.cantidad);
+        this.actualizarElemento('metricImagenesPorcentaje', totalArchivos > 0 ? `${((totalesDelta.storage.porTipo.imagenes.cantidad / totalArchivos) * 100).toFixed(1)}%` : '0%');
+
+        const labels = ['PDF', 'Imágenes'];
+        const data = [
+            totalesDelta.storage.porTipo.pdf.cantidad,
+            totalesDelta.storage.porTipo.imagenes.cantidad
+        ];
+        this.crearGraficaPastel('graficoTiposArchivo', labels, data);
+
+        const nombres = orgsConDatos.map(o => o.nombre);
+        const almacenamientos = orgsConDatos.map(o => o.storage.totalSizeMB);
+        const docs = orgsConDatos.map(o => o.firestore.documentos);
+        this.crearGraficaPastel('graficoAlmacenamientoPorEmpresa', nombres, almacenamientos);
+        this.crearGraficaBarras('graficoDocumentosPorEmpresa', nombres, docs, 'Documentos');
+
+        this.actualizarTabla(orgsConDatos.map(o => ({
+            id: o.id,
+            nombre: o.nombre,
+            conteos: {
+                firestore: { documentos: o.firestore.documentos },
+                storage: { totalArchivos: o.storage.totalArchivos, totalSizeMB: o.storage.totalSizeMB },
+                auth: o.auth
+            }
+        })));
+
+        const modo = document.getElementById('modoVisualizacion');
+        if (modo) modo.innerHTML = `<i class="fas fa-chart-line"></i> <span>Todas las empresas (consumo)</span>`;
+    }
+
+    _mostrarDeltaEmpresa(delta, empresaId) {
+        this.mostrarContenido();
+
+        this.actualizarElemento('metricDocumentos', delta.firestore.documentos);
+        this.actualizarElemento('metricAdministradores', delta.auth.administradores);
+        this.actualizarElemento('metricColaboradores', delta.auth.colaboradores);
+        this.actualizarElemento('metricTotalUsuarios', delta.auth.totalUsuarios);
+        this.actualizarElemento('metricArchivosTotales', delta.storage.totalArchivos);
+        const tamEl = document.getElementById('metricTamanioTotal');
+        if (tamEl) tamEl.textContent = `${delta.storage.totalSizeMB.toFixed(2)} MB`;
+
+        const totalArchivos = delta.storage.totalArchivos;
+        this.actualizarElemento('metricPDF', delta.storage.porTipo.pdf.cantidad);
+        this.actualizarElemento('metricPDFPorcentaje', totalArchivos > 0 ? `${((delta.storage.porTipo.pdf.cantidad / totalArchivos) * 100).toFixed(1)}%` : '0%');
+        this.actualizarElemento('metricImagenes', delta.storage.porTipo.imagenes.cantidad);
+        this.actualizarElemento('metricImagenesPorcentaje', totalArchivos > 0 ? `${((delta.storage.porTipo.imagenes.cantidad / totalArchivos) * 100).toFixed(1)}%` : '0%');
+
+        this.crearGraficaPastel('graficoTiposArchivo', ['PDF', 'Imágenes'], [
+            delta.storage.porTipo.pdf.cantidad,
+            delta.storage.porTipo.imagenes.cantidad
+        ]);
+        this.crearGraficaPastel('graficoAlmacenamientoPorEmpresa', [empresaId], [delta.storage.totalSizeMB]);
+        this.crearGraficaBarras('graficoDocumentosPorEmpresa', [empresaId], [delta.firestore.documentos], 'Documentos');
+
+        const modo = document.getElementById('modoVisualizacion');
+        if (modo) modo.innerHTML = `<i class="fas fa-building"></i> <span>${empresaId} (consumo)</span>`;
+    }
+
+    mostrarVistaTodasEmpresasConFiltro(empresas) {
+        // Este método se usa para la vista sin filtro (estado actual)
+        if (!empresas || empresas.length === 0) {
+            this.mostrarSinDatos();
+            return;
+        }
+        this.mostrarContenido();
+        // Reutilizamos la lógica de mostrarVistaTodasEmpresas pero con la lista dada
+        // Calculamos totales rápidamente
+        const totalDocs = empresas.reduce((s, e) => s + (e.conteos?.firestore?.documentos || 0), 0);
+        const totalArchivos = empresas.reduce((s, e) => s + (e.conteos?.storage?.totalArchivos || 0), 0);
+        const totalSizeMB = empresas.reduce((s, e) => s + (e.conteos?.storage?.totalSizeMB || 0), 0);
+        const admins = empresas.reduce((s, e) => s + (e.conteos?.auth?.administradores || 0), 0);
+        const colabs = empresas.reduce((s, e) => s + (e.conteos?.auth?.colaboradores || 0), 0);
+        const totalUsuarios = empresas.reduce((s, e) => s + (e.conteos?.auth?.totalUsuarios || 0), 0);
+
+        this.actualizarElemento('metricDocumentos', totalDocs);
+        this.actualizarElemento('metricAdministradores', admins);
+        this.actualizarElemento('metricColaboradores', colabs);
+        this.actualizarElemento('metricTotalUsuarios', totalUsuarios);
+        this.actualizarElemento('metricArchivosTotales', totalArchivos);
+        const tamEl = document.getElementById('metricTamanioTotal');
+        if (tamEl) tamEl.textContent = `${totalSizeMB.toFixed(2)} MB`;
+
+        const pdfCant = empresas.reduce((s, e) => s + (e.conteos?.storage?.porTipo?.pdf?.cantidad || 0), 0);
+        const imgCant = empresas.reduce((s, e) => s + (e.conteos?.storage?.porTipo?.imagenes?.cantidad || 0), 0);
+        this.actualizarElemento('metricPDF', pdfCant);
+        this.actualizarElemento('metricPDFPorcentaje', totalArchivos > 0 ? `${((pdfCant / totalArchivos) * 100).toFixed(1)}%` : '0%');
+        this.actualizarElemento('metricImagenes', imgCant);
+        this.actualizarElemento('metricImagenesPorcentaje', totalArchivos > 0 ? `${((imgCant / totalArchivos) * 100).toFixed(1)}%` : '0%');
+
+        this.crearGraficaPastel('graficoTiposArchivo', ['PDF', 'Imágenes'], [pdfCant, imgCant]);
+        this.actualizarGraficasComparativas(empresas);
+        this.actualizarTabla(empresas);
+
+        const modo = document.getElementById('modoVisualizacion');
+        if (modo) modo.innerHTML = `<i class="fas fa-chart-line"></i> <span>Todas las empresas</span>`;
     }
 }
 

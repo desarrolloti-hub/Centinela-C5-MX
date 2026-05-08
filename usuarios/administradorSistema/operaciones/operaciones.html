@@ -1,77 +1,83 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="es">
 
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
     <title>Estadísticas de Operaciones | Centinela-C5</title>
 
     <!-- Estilos -->
-    <link rel="stylesheet" href="/components/personalization/personalization.css">
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <link rel="icon" href="/assets/images/logo.png" type="image/png">
-    <link rel="stylesheet" href="./operaciones.css">
-    
+    <link rel="stylesheet" href="/components/personalization/personalization.css" />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Rajdhani:wght@500;700&display=swap"
+        rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+    <link rel="icon" href="/assets/images/logo.png" type="image/png" />
+    <link rel="stylesheet" href="./operaciones.css" />
+
     <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
 
     <!-- SEO Básico -->
-    <meta name="description" content="Centinela es un sistema inteligente de seguridad para almacenamiento, monitoreo y predicción de incidencias. Plataforma confiable para prevención y análisis en tiempo real.">
-    <meta name="keywords" content="centinela, centinela, sistema de seguridad, seguridad inteligente, predicción de incidencias, monitoreo de seguridad, plataforma de seguridad, análisis de riesgos, prevención de incidentes">
-    <meta name="author" content="Centinela">
+    <meta name="description"
+        content="Centinela es un sistema inteligente de seguridad para almacenamiento, monitoreo y predicción de incidencias. Plataforma confiable para prevención y análisis en tiempo real." />
+    <meta name="keywords"
+        content="centinela, centinela, sistema de seguridad, seguridad inteligente, predicción de incidencias, monitoreo de seguridad, plataforma de seguridad, análisis de riesgos, prevención de incidentes" />
+    <meta name="author" content="Centinela" />
     <link rel="canonical" href="https://centinela-c5.web.app/" />
 
     <!-- Open Graph / Facebook / WhatsApp / LinkedIn -->
-    <meta property="og:type" content="website">
-    <meta property="og:url" content="https://centinela-c5.web.app">
-    <meta property="og:title" content="Centinela-C5 | Sistema Inteligente de Seguridad y Predicción">
-    <meta property="og:description" content="Centinela-C5 es una plataforma avanzada de seguridad para almacenamiento, monitoreo y predicción de incidencias en tiempo real.">
-    <meta property="og:image" content="https://centinela-c5.web.app/assets/images/logo.png">
-    <meta property="og:image:width" content="500">
-    <meta property="og:image:height" content="500">
-    <meta property="og:image:alt" content="Vista previa oficial de Centinela-C5">
-    <meta property="og:image" content="https://centinela-c5.web.app/assets/images/logo.png">
-    <meta property="og:image:width" content="500">
-    <meta property="og:image:height" content="500">
-    <meta property="og:image:alt" content="Logo oficial de Centinela">
-    <meta property="og:site_name" content="Centinela">
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://centinela-c5.web.app" />
+    <meta property="og:title" content="Centinela-C5 | Sistema Inteligente de Seguridad y Predicción" />
+    <meta property="og:description"
+        content="Centinela-C5 es una plataforma avanzada de seguridad para almacenamiento, monitoreo y predicción de incidencias en tiempo real." />
+    <meta property="og:image" content="https://centinela-c5.web.app/assets/images/logo.png" />
+    <meta property="og:image:width" content="500" />
+    <meta property="og:image:height" content="500" />
+    <meta property="og:image:alt" content="Vista previa oficial de Centinela-C5" />
+    <meta property="og:image" content="https://centinela-c5.web.app/assets/images/logo.png" />
+    <meta property="og:image:width" content="500" />
+    <meta property="og:image:height" content="500" />
+    <meta property="og:image:alt" content="Logo oficial de Centinela" />
+    <meta property="og:site_name" content="Centinela" />
 
     <!-- Twitter Card -->
-    <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:url" content="https://centinela-c5.web.app">
-    <meta name="twitter:title" content="Centinela-C5 | Seguridad Inteligente">
-    <meta name="twitter:description" content="Sistema de seguridad inteligente para monitoreo, almacenamiento y predicción de incidencias.">
-    <meta name="twitter:image" content="https://centinela-c5.web.app/assets/images/logo.png">
-    <meta name="twitter:creator" content="">
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:url" content="https://centinela-c5.web.app" />
+    <meta name="twitter:title" content="Centinela-C5 | Seguridad Inteligente" />
+    <meta name="twitter:description"
+        content="Sistema de seguridad inteligente para monitoreo, almacenamiento y predicción de incidencias." />
+    <meta name="twitter:image" content="https://centinela-c5.web.app/assets/images/logo.png" />
+    <meta name="twitter:creator" content="" />
 
     <!-- Schema.org / JSON-LD -->
     <script type="application/ld+json">
-    {
-    "@context": "https://schema.org",
-    "@type": "LocalBusiness",
-    "name": "Centinela",
-    "operatingSystem": "Web",
-    "applicationCategory": "SecurityApplication",
-    "description": "Centinela es un sistema inteligente de seguridad para el almacenamiento, monitoreo y predicción de incidencias en tiempo real.",
-    "url": "https://centinela-c5.web.app",
-    "image": "https://centinela-c5.web.app/assets/images/logo.png",
-    "publisher": {
-        "@type": "Organization",
+      {
+        "@context": "https://schema.org",
+        "@type": "LocalBusiness",
         "name": "Centinela",
-        "logo": {
-        "@type": "ImageObject",
-        "url": "https://centinela-c5.web.app/assets/images/logo.png"
+        "operatingSystem": "Web",
+        "applicationCategory": "SecurityApplication",
+        "description": "Centinela es un sistema inteligente de seguridad para el almacenamiento, monitoreo y predicción de incidencias en tiempo real.",
+        "url": "https://centinela-c5.web.app",
+        "image": "https://centinela-c5.web.app/assets/images/logo.png",
+        "publisher": {
+          "@type": "Organization",
+          "name": "Centinela",
+          "logo": {
+            "@type": "ImageObject",
+            "url": "https://centinela-c5.web.app/assets/images/logo.png"
+          }
+        },
+        "offers": {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "MXN"
         }
-    },
-    "offers": {
-        "@type": "Offer",
-        "price": "0",
-        "priceCurrency": "MXN"
-    }
-    }
+      }
     </script>
 </head>
 
@@ -104,31 +110,32 @@
                         <option value="todas">Todas las empresas</option>
                     </select>
                 </div>
-                
+
                 <div class="filtro-grupo">
                     <label for="tipoFiltro">
                         <i class="fas fa-calendar-alt"></i> Período:
                     </label>
                     <select id="tipoFiltro" class="filtro-select">
                         <option value="">-- Seleccionar período --</option>
-                        <option value="semanal">Semanal (últimos 7 días)</option>
-                        <option value="quincenal">Quincenal (últimos 15 días)</option>
-                        <option value="mensual">Mensual (últimos 30 días)</option>
+                        <option value="7d">Últimos 7 días</option>
+                        <option value="14d">Últimos 14 días</option>
+                        <option value="21d">Últimos 21 días</option>
+                        <option value="28d">Últimos 28 días</option>
                         <option value="personalizado">Personalizado</option>
                     </select>
                 </div>
-                
-                <div class="filtro-grupo" id="rangoFechasGrupo" style="display: none;">
+
+                <div class="filtro-grupo" id="rangoFechasGrupo" style="display: none">
                     <label for="fechaInicio">
                         <i class="fas fa-calendar-day"></i> Rango personalizado:
                     </label>
                     <div class="filtro-rango">
-                        <input type="date" id="fechaInicio" class="filtro-input">
+                        <input type="date" id="fechaInicio" class="filtro-input" />
                         <span>→</span>
-                        <input type="date" id="fechaFin" class="filtro-input">
+                        <input type="date" id="fechaFin" class="filtro-input" />
                     </div>
                 </div>
-                
+
                 <div class="filtro-acciones">
                     <button class="btn-aplicar" id="btnAplicarFiltros">
                         <i class="fas fa-check"></i> Aplicar Filtros
@@ -136,10 +143,7 @@
                     <button class="btn-limpiar" id="btnLimpiarFiltros">
                         <i class="fas fa-eraser"></i> Limpiar
                     </button>
-                    <button class="btn-actualizar" id="btnActualizar">
-                        <i class="fas fa-sync-alt"></i> Actualizar Datos
-                    </button>
-                    
+
                     <div class="fecha-info">
                         <i class="fas fa-clock"></i>
                         <span>Última actualización:</span>
@@ -153,75 +157,91 @@
         </div>
 
         <!-- Contenedor principal -->
-        <div id="contenidoPrincipal" style="display: none;">
+        <div id="contenidoPrincipal" style="display: none">
             <!-- Métricas principales -->
-            <div id="seccionMetricas" style="display: none;">
+            <div id="seccionMetricas" style="display: none">
                 <div class="metrics-grid">
                     <div class="metric-card firestore">
-                        <div class="metric-title"><i class="fas fa-file-alt"></i> Documentos</div>
+                        <div class="metric-title">
+                            <i class="fas fa-file-alt"></i> Documentos
+                        </div>
                         <div class="metric-value" id="metricDocumentos">0</div>
-                        <div class="metric-subtitle"><i class="fas fa-database"></i> Total en Firestore</div>
+                        <div class="metric-subtitle">
+                            <i class="fas fa-database"></i> Total en Firestore
+                        </div>
                         <i class="fas fa-copy metric-icon"></i>
                     </div>
                     <div class="metric-card total">
-                        <div class="metric-title"><i class="fas fa-user-tie"></i>Administradores</div>
+                        <div class="metric-title">
+                            <i class="fas fa-user-tie"></i>Administradores
+                        </div>
                         <div class="metric-value" id="metricAdministradores">0</div>
-                        <div class="metric-subtitle"><i class="fas fa-user-shield"></i> Total</div>
+                        <div class="metric-subtitle">
+                            <i class="fas fa-user-shield"></i> Total
+                        </div>
                         <i class="fas fa-user-shield metric-icon"></i>
                     </div>
                     <div class="metric-card total">
-                        <div class="metric-title"><i class="fas fa-users"></i> Colaboradores</div>
+                        <div class="metric-title">
+                            <i class="fas fa-users"></i> Colaboradores
+                        </div>
                         <div class="metric-value" id="metricColaboradores">0</div>
-                        <div class="metric-subtitle"><i class="fas fa-user-friends"></i> Total</div>
+                        <div class="metric-subtitle">
+                            <i class="fas fa-user-friends"></i> Total
+                        </div>
                         <i class="fas fa-user-plus metric-icon"></i>
                     </div>
                     <div class="metric-card total">
-                        <div class="metric-title"><i class="fas fa-chart-line"></i> Total Usuarios</div>
+                        <div class="metric-title">
+                            <i class="fas fa-chart-line"></i> Total Usuarios
+                        </div>
                         <div class="metric-value" id="metricTotalUsuarios">0</div>
-                        <div class="metric-subtitle"><i class="fas fa-users"></i> Colaboradores + Administradores</div>
+                        <div class="metric-subtitle">
+                            <i class="fas fa-users"></i> Colaboradores + Administradores
+                        </div>
                         <i class="fas fa-chart-line metric-icon"></i>
                     </div>
                 </div>
             </div>
 
             <!-- Métricas de Storage -->
-            <div id="seccionStorage" style="display: none;">
+            <div id="seccionStorage" style="display: none">
                 <div class="storage-metrics-grid">
                     <div class="metric-card storage">
-                        <div class="metric-title"><i class="fas fa-cloud-upload-alt"></i> Archivos Totales</div>
+                        <div class="metric-title">
+                            <i class="fas fa-cloud-upload-alt"></i> Archivos Totales
+                        </div>
                         <div class="metric-value" id="metricArchivosTotales">0</div>
                         <div class="metric-subtitle" id="metricTamanioTotal">0 MB</div>
                         <i class="fas fa-cloud metric-icon"></i>
                     </div>
                     <div class="metric-card pdf">
-                        <div class="metric-title"><i class="fas fa-file-pdf"></i> PDF</div>
+                        <div class="metric-title">
+                            <i class="fas fa-file-pdf"></i> PDF
+                        </div>
                         <div class="metric-value" id="metricPDF">0</div>
-                        <div class="metric-subtitle"><i class="fas fa-percent"></i> <span id="metricPDFPorcentaje">0%</span></div>
+                        <div class="metric-subtitle">
+                            <i class="fas fa-percent"></i>
+                            <span id="metricPDFPorcentaje">0%</span>
+                        </div>
                         <i class="fas fa-file-pdf metric-icon"></i>
                     </div>
                     <div class="metric-card imagen">
-                        <div class="metric-title"><i class="fas fa-image"></i> Imágenes</div>
+                        <div class="metric-title">
+                            <i class="fas fa-image"></i> Imágenes
+                        </div>
                         <div class="metric-value" id="metricImagenes">0</div>
-                        <div class="metric-subtitle"><i class="fas fa-percent"></i> <span id="metricImagenesPorcentaje">0%</span></div>
+                        <div class="metric-subtitle">
+                            <i class="fas fa-percent"></i>
+                            <span id="metricImagenesPorcentaje">0%</span>
+                        </div>
                         <i class="fas fa-image metric-icon"></i>
-                    </div>
-                    <div class="metric-card storage">
-                        <div class="metric-title"><i class="fas fa-file-word"></i> Documentos</div>
-                        <div class="metric-value" id="metricDocumentosStorage">0</div>
-                        <div class="metric-subtitle"><i class="fas fa-percent"></i> <span id="metricDocumentosPorcentaje">0%</span></div>
-                        <i class="fas fa-file-alt metric-icon"></i>
-                    </div>
-                    <div class="metric-card storage">
-                        <div class="metric-title"><i class="fas fa-film"></i> Multimedia</div>
-                        <div class="metric-value" id="metricMultimedia">0</div>
-                        <div class="metric-subtitle"><i class="fas fa-percent"></i> <span id="metricMultimediaPorcentaje">0%</span></div>
-                        <i class="fas fa-video metric-icon"></i>
                     </div>
                 </div>
             </div>
 
             <!-- Gráficas -->
-            <div id="seccionGraficas" style="display: none;">
+            <div id="seccionGraficas" style="display: none">
                 <div class="charts-grid-2col">
                     <div class="card">
                         <div class="card-header">
@@ -235,7 +255,9 @@
                     </div>
                     <div class="card">
                         <div class="card-header">
-                            <h5><i class="fas fa-chart-pie"></i> Almacenamiento por Empresa</h5>
+                            <h5>
+                                <i class="fas fa-chart-pie"></i> Almacenamiento por Empresa
+                            </h5>
                         </div>
                         <div class="card-body">
                             <div class="grafica-wrapper">
@@ -260,10 +282,14 @@
             </div>
 
             <!-- Tabla de empresas -->
-            <div id="seccionTabla" style="display: none;">
+            <div id="seccionTabla" style="display: none">
                 <div class="tables-grid-1col">
                     <div class="card">
-                        <div class="card-header"><h5><i class="fas fa-building"></i> Estadísticas por Organización</h5></div>
+                        <div class="card-header">
+                            <h5>
+                                <i class="fas fa-building"></i> Estadísticas por Organización
+                            </h5>
+                        </div>
                         <div class="card-body">
                             <div class="table-responsive">
                                 <table class="table">
@@ -279,7 +305,12 @@
                                         </tr>
                                     </thead>
                                     <tbody id="tablaOrganizacionesBody">
-                                        <tr><td colspan="7" style="text-align:center;"><div class="loading-spinner"></div> Cargando...</td></tr>
+                                        <tr>
+                                            <td colspan="7" style="text-align: center">
+                                                <div class="loading-spinner"></div>
+                                                Cargando...
+                                            </td>
+                                        </tr>
                                     </tbody>
                                 </table>
                             </div>
@@ -290,25 +321,38 @@
         </div>
 
         <!-- Mensaje sin datos -->
-        <div id="sinDatosMensaje" class="empty-data" style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 60px 20px;">
-            <i class="fas fa-chart-line" style="font-size: 4rem; opacity: 0.3;"></i>
-            <p id="sinDatosTexto" style="margin-top: 15px; font-size: 1rem;">No hay datos disponibles</p>
-            <p style="font-size: 0.8rem; opacity: 0.7;">Selecciona una empresa o "Todas las empresas" para ver las estadísticas</p>
+        <div id="sinDatosMensaje" class="empty-data" style="
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          padding: 60px 20px;
+        ">
+            <i class="fas fa-chart-line" style="font-size: 4rem; opacity: 0.3"></i>
+            <p id="sinDatosTexto" style="margin-top: 15px; font-size: 1rem">
+                No hay datos disponibles
+            </p>
+            <p style="font-size: 0.8rem; opacity: 0.7">
+                Selecciona una empresa o "Todas las empresas" para ver las
+                estadísticas
+            </p>
         </div>
 
         <!-- Footer -->
         <div class="footer-datetime">
-            <div id="modoVisualizacion"><i class="fas fa-building"></i> <span>Todas las empresas</span></div>
+            <div id="modoVisualizacion">
+                <i class="fas fa-building"></i> <span>Todas las empresas</span>
+            </div>
         </div>
     </div>
 
     <script type="module" src="/components/autenticador.js"></script>
-   <script type="module" src="/components/cargadorTemas.js"></script>
+    <script type="module" src="/components/cargadorTemas.js"></script>
     <script type="module" src="/components/particulas.js"></script>
     <script src="/components/navbarSysAdmin.js"></script>
     <script src="/components/footerAdministrador.js"></script>
     <script type="module" src="./operaciones.js"></script>
-    <script src="/components/protector-master.js"> </script>
+    <script src="/components/protector-master.js"></script>
 </body>
 
 </html>
