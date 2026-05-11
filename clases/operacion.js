@@ -9,7 +9,10 @@ import {
     setDoc,
     query,
     where,
-    serverTimestamp
+    orderBy,
+    limit,
+    serverTimestamp,
+    documentId
 } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-firestore.js";
 import {
     ref,
@@ -53,6 +56,13 @@ export class OperacionesEstadisticas {
 
     static _getDocRef(orgId) {
         return doc(db, this.COLECCION, orgId);
+    }
+
+    static _generarIdSnapshot(orgId, fecha = new Date()) {
+        const yyyy = fecha.getFullYear();
+        const mm = String(fecha.getMonth() + 1).padStart(2, '0');
+        const dd = String(fecha.getDate()).padStart(2, '0');
+        return `${orgId}_${yyyy}${mm}${dd}`;
     }
 
     static bytesToMB(bytes) {
@@ -165,15 +175,16 @@ export class OperacionesEstadisticas {
             const porEmpresa = [];
 
             for (const docSnap of snapshot.docs) {
-                let instancia;
+                const data = docSnap.data();
+                if (docSnap.id.includes('_')) continue;
 
+                let instancia;
                 if (this.cache.has(docSnap.id)) {
                     instancia = this.cache.get(docSnap.id);
                 } else {
-                    instancia = new OperacionesEstadisticas(docSnap.id, docSnap.data());
+                    instancia = new OperacionesEstadisticas(docSnap.id, data);
                     this.cache.set(docSnap.id, instancia);
                 }
-
                 porEmpresa.push(instancia);
 
                 const resumen = instancia.getResumen();
@@ -547,9 +558,7 @@ export class OperacionesEstadisticas {
 
     async actualizar() {
         const inicioTiempo = Date.now();
-
         try {
-
             const [firestoreStats, storageStats, authStats] = await Promise.all([
                 this._recopilarFirestoreStats(),
                 this._recopilarStorageStats(),
@@ -565,8 +574,12 @@ export class OperacionesEstadisticas {
 
             this.fechaActualizacion = new Date();
 
-            return true;
+            // Guardar documento principal (último estado)
+            await this.guardar();
+            // Guardar snapshot histórico diario (ej: chedraui_20260505)
+            await this.guardarSnapshot();
 
+            return true;
         } catch (error) {
             console.error(`Error actualizando ${this.id}:`, error);
             this.conteos.metricas.erroresConteo++;
@@ -582,6 +595,18 @@ export class OperacionesEstadisticas {
             return true;
         } catch (error) {
             console.error(`Error guardando ${this.id}:`, error);
+            return false;
+        }
+    }
+
+    async guardarSnapshot(fecha = new Date()) {
+        try {
+            const snapshotId = OperacionesEstadisticas._generarIdSnapshot(this.id, fecha);
+            const docRef = doc(db, OperacionesEstadisticas.COLECCION, snapshotId);
+            await setDoc(docRef, this.toFirestore(), { merge: true });
+            return true;
+        } catch (error) {
+            console.error(`Error guardando snapshot ${this.id}:`, error);
             return false;
         }
     }
@@ -812,6 +837,25 @@ export class OperacionesEstadisticas {
                 superAdmin: 0
             };
         }
+    }
+
+    static async obtenerSnapshots(organizacionId) {
+        const prefix = `${organizacionId}_`;
+        const operacionesRef = collection(db, this.COLECCION);
+        const q = query(
+            operacionesRef,
+            where(documentId(), '>=', prefix),
+            where(documentId(), '<=', prefix + '\uf8ff'),
+            orderBy(documentId(), 'asc')
+        );
+        const snapshot = await getDocs(q);
+        const snapshots = [];
+        snapshot.forEach(doc => {
+            const data = doc.data();
+            snapshots.push(new OperacionesEstadisticas(doc.id, data));
+        });
+        snapshots.sort((a, b) => a.fechaActualizacion - b.fechaActualizacion);
+        return snapshots;
     }
 }
 
