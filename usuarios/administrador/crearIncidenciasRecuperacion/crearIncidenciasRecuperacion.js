@@ -193,25 +193,26 @@ class CrearMercanciaPerdidaController {
             };
         });
 
-        return {
-            id: `PDF extravio`,
-            nombreEmpresaCC: datos.nombreEmpresaCC,
-            tipoEvento: datos.tipoEvento,
-            montoPerdido: datos.montoPerdido,
-            montoRecuperado: datos.montoRecuperado,
-            fecha: fechaObj,
-            hora: fechaObj.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' }),
-            narracionEventos: datos.narracionEventos,
-            detallesPerdida: datos.detallesPerdida,
-            reportadoPorNombre: this.usuarioActual.nombreCompleto,
-            evidencias: evidenciasProcesadas,
-            estado: 'activo',
-            sucursalInfo: this.sucursalSeleccionada,
-            getMontoNeto: () => datos.montoPerdido - (datos.montoRecuperado || 0),
-            getPorcentajeRecuperado: () => datos.montoPerdido > 0 ? ((datos.montoRecuperado || 0) / datos.montoPerdido) * 100 : 0,
-            getEstadoTexto: () => 'Activo',
-            getTipoEventoTexto: () => this._getTipoEventoTexto(datos.tipoEvento)
-        };
+      return {
+    id: `PDF extravio`,
+    nombreEmpresaCC: datos.nombreEmpresaCC,
+    tipoEvento: datos.tipoEvento,
+    montoPerdido: datos.montoPerdido,
+    montoRecuperado: datos.montoRecuperado,
+    fecha: fechaObj,
+    hora: fechaObj.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' }),
+    narracionEventos: datos.narracionEventos,
+    detallesPerdida: datos.detallesPerdida,
+    reportadoPorNombre: this.usuarioActual.nombreCompleto,
+    reportadoPorCodigo: this.usuarioActual.codigoColaborador || '',  // ← AGREGAR ESTA LÍNEA
+    evidencias: evidenciasProcesadas,
+    estado: 'activo',
+    sucursalInfo: this.sucursalSeleccionada,
+    getMontoNeto: () => datos.montoPerdido - (datos.montoRecuperado || 0),
+    getPorcentajeRecuperado: () => datos.montoPerdido > 0 ? ((datos.montoRecuperado || 0) / datos.montoPerdido) * 100 : 0,
+    getEstadoTexto: () => 'Activo',
+    getTipoEventoTexto: () => this._getTipoEventoTexto(datos.tipoEvento)
+};
     }
 
     // =============================================
@@ -338,52 +339,55 @@ class CrearMercanciaPerdidaController {
         }
     }
 
-    _cargarUsuario() {
-        try {
-            const adminInfo = localStorage.getItem('adminInfo');
-            if (adminInfo) {
-                const adminData = JSON.parse(adminInfo);
-                this.usuarioActual = {
-                    id: adminData.id || adminData.uid || `admin_${Date.now()}`,
-                    uid: adminData.uid || adminData.id,
-                    nombreCompleto: adminData.nombreCompleto || 'Administrador',
-                    organizacion: adminData.organizacion || 'Sin organización',
-                    organizacionCamelCase: adminData.organizacionCamelCase ||
-                        this._generarCamelCase(adminData.organizacion),
-                    correo: adminData.correoElectronico || '',
-                    email: adminData.correoElectronico || ''
-                };
-                return;
-            }
-
-            const userData = JSON.parse(localStorage.getItem('userData') || '{}');
-            if (userData && Object.keys(userData).length > 0) {
-                this.usuarioActual = {
-                    id: userData.uid || userData.id || `user_${Date.now()}`,
-                    uid: userData.uid || userData.id,
-                    nombreCompleto: userData.nombreCompleto || userData.nombre || 'Usuario',
-                    organizacion: userData.organizacion || userData.empresa || 'Sin organización',
-                    organizacionCamelCase: userData.organizacionCamelCase ||
-                        this._generarCamelCase(userData.organizacion || userData.empresa),
-                    correo: userData.correo || userData.email || ''
-                };
-                return;
-            }
-
+  _cargarUsuario() {
+    try {
+        const adminInfo = localStorage.getItem('adminInfo');
+        if (adminInfo) {
+            const adminData = JSON.parse(adminInfo);
             this.usuarioActual = {
-                id: `admin_${Date.now()}`,
-                uid: `admin_${Date.now()}`,
-                nombreCompleto: 'Administrador',
-                organizacion: 'Mi Organización',
-                organizacionCamelCase: 'miOrganizacion',
-                correo: 'admin@centinela.com',
-                email: 'admin@centinela.com'
+                id: adminData.id || adminData.uid || `admin_${Date.now()}`,
+                uid: adminData.uid || adminData.id,
+                nombreCompleto: adminData.nombreCompleto || 'Administrador',
+                organizacion: adminData.organizacion || 'Sin organización',
+                organizacionCamelCase: adminData.organizacionCamelCase ||
+                    this._generarCamelCase(adminData.organizacion),
+                correo: adminData.correoElectronico || '',
+                email: adminData.correoElectronico || '',
+                codigoColaborador: adminData.codigoColaborador || ''  // ← AGREGAR ESTA LÍNEA
             };
-
-        } catch (error) {
-            throw error;
+            return;
         }
+
+        const userData = JSON.parse(localStorage.getItem('userData') || '{}');
+        if (userData && Object.keys(userData).length > 0) {
+            this.usuarioActual = {
+                id: userData.uid || userData.id || `user_${Date.now()}`,
+                uid: userData.uid || userData.id,
+                nombreCompleto: userData.nombreCompleto || userData.nombre || 'Usuario',
+                organizacion: userData.organizacion || userData.empresa || 'Sin organización',
+                organizacionCamelCase: userData.organizacionCamelCase ||
+                    this._generarCamelCase(userData.organizacion || userData.empresa),
+                correo: userData.correo || userData.email || '',
+                codigoColaborador: userData.codigoColaborador || ''  // ← AGREGAR ESTA LÍNEA
+            };
+            return;
+        }
+
+        this.usuarioActual = {
+            id: `admin_${Date.now()}`,
+            uid: `admin_${Date.now()}`,
+            nombreCompleto: 'Administrador',
+            organizacion: 'Mi Organización',
+            organizacionCamelCase: 'miOrganizacion',
+            correo: 'admin@centinela.com',
+            email: 'admin@centinela.com',
+            codigoColaborador: ''  // ← AGREGAR ESTA LÍNEA
+        };
+
+    } catch (error) {
+        throw error;
     }
+}
 
     _generarCamelCase(texto) {
         if (!texto || typeof texto !== 'string') return 'sinOrganizacion';
@@ -1079,19 +1083,20 @@ class CrearMercanciaPerdidaController {
                 throw new Error('No se pudo generar el PDF');
             }
 
-            const registroData = {
-                nombreEmpresaCC: datos.nombreEmpresaCC,
-                tipoEvento: datos.tipoEvento,
-                montoPerdido: datos.montoPerdido,
-                montoRecuperado: datos.montoRecuperado,
-                fecha: fechaObj,
-                hora: hora,
-                narracionEventos: datos.narracionEventos,
-                detallesPerdida: datos.detallesPerdida,
-                reportadoPorId: this.usuarioActual.id,
-                reportadoPorNombre: this.usuarioActual.nombreCompleto,
-                sucursalInfo: this.sucursalSeleccionada
-            };
+           const registroData = {
+    nombreEmpresaCC: datos.nombreEmpresaCC,
+    tipoEvento: datos.tipoEvento,
+    montoPerdido: datos.montoPerdido,
+    montoRecuperado: datos.montoRecuperado,
+    fecha: fechaObj,
+    hora: hora,
+    narracionEventos: datos.narracionEventos,
+    detallesPerdida: datos.detallesPerdida,
+    reportadoPorId: this.usuarioActual.id,
+    reportadoPorNombre: this.usuarioActual.nombreCompleto,
+    reportadoPorCodigo: this.usuarioActual.codigoColaborador || '',  // ← AGREGAR ESTA LÍNEA
+    sucursalInfo: this.sucursalSeleccionada
+};
 
             const nuevoRegistro = await this.mercanciaManager.crearRegistro(
                 registroData,
