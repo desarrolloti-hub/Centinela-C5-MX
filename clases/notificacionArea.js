@@ -576,7 +576,6 @@ class NotificacionAreaManager {
             });
 
             if (!creada) {
-                console.log(`⏭️ Notificación para evento ${evento.id} ya existe, omitiendo`);
                 return { success: true, notificacionCreada: false, mensaje: "Ya existía" };
             }
 
@@ -637,7 +636,6 @@ class NotificacionAreaManager {
             }
 
             const tiempoFin = performance.now();
-            console.log(`⚡ Notificación de evento creada en ${(tiempoFin - tiempoInicio).toFixed(0)}ms | ID: ${notificacionId}`);
 
             return {
                 success: true,
@@ -1181,9 +1179,6 @@ class NotificacionAreaManager {
             });
 
             const tiempoFin = performance.now();
-            console.log(
-                `⚡ Notificaciones cargadas: ${(tiempoFin - tiempoInicio).toFixed(0)}ms | Página ${pagina} | Total: ${total}`,
-            );
 
             return {
                 notificaciones,
@@ -1776,7 +1771,6 @@ class NotificacionAreaManager {
             // Cache válido por 5 minutos
             if (cached && cacheTime && (Date.now() - parseInt(cacheTime)) < 5 * 60 * 1000) {
                 const parsedCache = JSON.parse(cached);
-                console.log('⚡ Usando cache de administradores');
                 return parsedCache;
             }
         } catch (e) {
@@ -1818,7 +1812,6 @@ class NotificacionAreaManager {
             const snapshot = await getDocs(q);
 
             if (snapshot.empty) {
-                console.log(`⚠️ No se encontró notificación para evento ${eventoId}`);
                 return false;
             }
 
@@ -1843,8 +1836,6 @@ class NotificacionAreaManager {
                 // Actualizar color según estado
                 color: datosAtencion.estadoEvento === 'atendido' ? '#2ecc71' : '#95a5a6'
             });
-
-            console.log(`✅ Notificación ${notificacionDoc.id} actualizada con estado: ${datosAtencion.estadoEvento}`);
 
             return true;
 
