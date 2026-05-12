@@ -830,28 +830,40 @@ class MercanciaPDFGenerator extends PDFBaseGenerator {
         yPos += this.alturasContenedores.montos - 11;
         
         // REPORTADO POR
-        if (registro.reportadoPorNombre) {
-            if (!this.verificarEspacio(pdf, yPos, this.alturasContenedores.reportadoPor + 5)) {
-                this.dibujarPiePagina(pdf);
-                pdf.addPage();
-                this.paginaActualReal++;
-                this.dibujarEncabezadoBase(pdf, 'MERCANCÍA PERDIDA/ROBADA', `${registro.id} (Continuación)`);
-                yPos = this.alturaEncabezado + 5;
-            }
-            
-            pdf.setFillColor(coloresBase.fondo);
-            pdf.rect(margen, yPos - 3, anchoContenido, this.alturasContenedores.reportadoPor, 'F');
-            pdf.setFont('helvetica', 'bold');
-            pdf.setFontSize(this.fonts.normal);
-            pdf.setTextColor(coloresBase.primario);
-            pdf.text('REPORTADO POR:', margen + 2, yPos);
-            yPos += 5;
-            pdf.setFont('helvetica', 'normal');
-            pdf.setFontSize(this.fonts.small);
-            pdf.setTextColor(coloresBase.texto);
-            pdf.text(registro.reportadoPorNombre, margen + 2, yPos);
-            yPos += this.alturasContenedores.reportadoPor - 7;
-        }
+       // =============================================
+// REPORTADO POR - CON CÓDIGO DE OPERADOR PRIMERO
+// =============================================
+if (registro.reportadoPorNombre) {
+    if (!this.verificarEspacio(pdf, yPos, this.alturasContenedores.reportadoPor + 5)) {
+        this.dibujarPiePagina(pdf);
+        pdf.addPage();
+        this.paginaActualReal++;
+        this.dibujarEncabezadoBase(pdf, 'MERCANCÍA PERDIDA/ROBADA', `${registro.id} (Continuación)`);
+        yPos = this.alturaEncabezado + 5;
+    }
+    
+    pdf.setFillColor(coloresBase.fondo);
+    pdf.rect(margen, yPos - 3, anchoContenido, this.alturasContenedores.reportadoPor, 'F');
+    pdf.setFont('helvetica', 'bold');
+    pdf.setFontSize(this.fonts.normal);
+    pdf.setTextColor(coloresBase.primario);
+    pdf.text('REPORTADO POR:', margen + 2, yPos);
+    yPos += 5;
+    pdf.setFont('helvetica', 'normal');
+    pdf.setFontSize(this.fonts.small);
+    pdf.setTextColor(coloresBase.texto);
+    
+    // 👇 PRIMERO REVISA SI TIENE CÓDIGO, SI NO, USA EL NOMBRE
+    let textoReportadoPor = '';
+    if (registro.reportadoPorCodigo && registro.reportadoPorCodigo.trim() !== '') {
+        textoReportadoPor = registro.reportadoPorCodigo;
+    } else {
+        textoReportadoPor = registro.reportadoPorNombre;
+    }
+    
+    pdf.text(textoReportadoPor, margen + 2, yPos);
+    yPos += this.alturasContenedores.reportadoPor - 7;
+}
         
         // RESPONSABLE ASIGNADO
         if (registro.responsableAsignado) {
